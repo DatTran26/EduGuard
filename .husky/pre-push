@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+set -eu
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case $local_ref:$remote_ref in
+    refs/heads/main:*|*:refs/heads/main)
+      cat >&2 <<'MSG'
+Push blocked: this project forbids pushing to main.
+Use release, devD, devH, devB, or another approved non-main branch.
+MSG
+      exit 1
+      ;;
+  esac
+done
+
+exit 0

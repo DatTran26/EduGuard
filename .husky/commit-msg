@@ -1,0 +1,41 @@
+#!/usr/bin/env sh
+set -eu
+
+message_file="${1:-}"
+
+if [ -z "$message_file" ] || [ ! -f "$message_file" ]; then
+  echo "Commit message validation failed: missing commit message file." >&2
+  exit 1
+fi
+
+subject="$(sed -n '1p' "$message_file")"
+
+case "$subject" in
+  Merge\ *|Revert\ *)
+    exit 0
+    ;;
+esac
+
+if printf '%s' "$subject" | grep -Eq '^[[:space:]]|[[:space:]]$'; then
+  echo "Commit message validation failed: remove leading or trailing spaces." >&2
+  echo "Example: build: configure husky hooks" >&2
+  exit 1
+fi
+
+if printf '%s' "$subject" | grep -Eiq '(ai-generated|chatgpt|codex|claude|copilot)'; then
+  echo "Commit message validation failed: remove AI/tool references." >&2
+  exit 1
+fi
+
+if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|build|ci|perf|refactor|test|style|docs|revert)(\([a-z0-9][a-z0-9-]*\))?!?: .{1,72}$'; then
+  cat >&2 <<'MSG'
+Commit message validation failed.
+Use conventional commit format:
+  feat: add student upload flow
+  fix(api): handle missing profile
+  build: configure husky hooks
+MSG
+  exit 1
+fi
+
+exit 0
