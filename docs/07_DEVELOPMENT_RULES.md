@@ -7,6 +7,13 @@
 
 ---
 
+## Shell trên Windows
+
+Môi trường mặc định: **PowerShell 5.x** (không dùng `&&`, HEREDOC bash). Agent và developer
+làm việc với Git/`gh` theo `.agents/references/powershell-windows.md`.
+
+---
+
 ## Quy tắc thực hiện
 
 1. **Một giai đoạn xong mới sang giai đoạn tiếp** — không nhảy sang Redis/SignalR khi Auth chưa ổn.
@@ -122,3 +129,4 @@ Chi tiết thực thi: `.agents/skills/ship-code/SKILL.md`, `.agents/skills/gith
 | `docs/project-changelog.md` | Lịch sử thay đổi theo feature |
 | `.agents/skills/push-code/SKILL.md` | Thực thi push lưu repo |
 | `.agents/skills/ship-code/SKILL.md` | Thực thi ship / release |
+| `.agents/references/powershell-windows.md` | Lệnh Git/gh đúng trên Windows |

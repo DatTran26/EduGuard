@@ -7,6 +7,12 @@
 - All implementation work must happen on a non-main branch before any reviewed integration flow.
 - Keep branch changes focused. Do not mix unrelated feature, fix, refactor, or documentation work in one change set.
 
+## Windows Shell
+
+- Default shell: **PowerShell 5.x** on Windows.
+- Do not chain with `&&` or bash HEREDOC (`$(cat <<'EOF')`) — use `;`, multiple `-m` flags, or `--body-file` for `gh pr create`.
+- Reference: `.agents/references/powershell-windows.md`.
+
 ## Husky Hook Guard
 
 - This project uses Husky hooks in `.husky/`.
