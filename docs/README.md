@@ -22,6 +22,8 @@ Hệ thống được thiết kế theo kiến trúc **Client - Server**, sử d
 | `05_API_FRONTEND_INTEGRATION.md` | Quy ước API, cách React gọi backend, JWT, Axios, SignalR |
 | `06_DEVELOPMENT_ROADMAP.md` | Lộ trình triển khai MVP theo từng giai đoạn |
 | `07_DEVELOPMENT_RULES.md` | **Bắt buộc đọc** — quy tắc Git, push/ship workflow, cập nhật Todo List |
+| `08_DEPLOY_WORKFLOW.md` | Flow overview deploy (ASCII + SVG), Local → Staging → Prod |
+| `design-guidelines.md` | **Bắt buộc cho UI** — design system Apple-inspired, tokens, component, checklist merge |
 | `project-changelog.md` | Lịch sử thay đổi theo feature |
 
 ## Bắt buộc đọc (agent & developer)
@@ -31,6 +33,11 @@ Trước khi commit, push, hoặc làm feature mới:
 1. `07_DEVELOPMENT_RULES.md` — quy tắc làm việc, workflow Git
 2. `Todo List.md` (root) — checklist tiến độ hiện tại
 3. `AGENTS.md` (root) — chính sách Husky, commit, changelog
+
+Trước khi làm **frontend UI/UX**:
+
+1. `design-guidelines.md` — chuẩn giao diện bắt buộc
+2. `design.md` (root) — token gốc (colors, typography, components)
 
 ## Cách sử dụng
 
@@ -49,6 +56,10 @@ EduGuard/
 │   ├── 05_API_FRONTEND_INTEGRATION.md
 │   ├── 06_DEVELOPMENT_ROADMAP.md
 │   ├── 07_DEVELOPMENT_RULES.md
+│   ├── 08_DEPLOY_WORKFLOW.md
+│   ├── design-guidelines.md
+│   ├── assets/deploy-flow-overview.png
+│   ├── assets/deploy-flow-overview.svg
 │   ├── project-changelog.md
 ├── Todo List.md
 ├── AGENTS.md

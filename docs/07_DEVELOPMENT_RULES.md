@@ -17,7 +17,7 @@ làm việc với Git/`gh` theo `.agents/references/powershell-windows.md`.
 ## Quy tắc thực hiện
 
 1. **Một giai đoạn xong mới sang giai đoạn tiếp** — không nhảy sang Redis/SignalR khi Auth chưa ổn.
-2. **Mỗi giai đoạn:** backend API → test Swagger → frontend UI → test end-to-end.
+2. **Mỗi giai đoạn:** backend API → test Swagger → frontend UI → test end-to-end. Trước khi code UI: đọc `docs/design-guidelines.md` và `design.md` (root).
 3. **Commit theo cụm chức năng/thư mục** — conventional commit (`feat`, `fix`, `docs`, `build`…).
 4. **Không gắn tham chiếu công cụ AI** trong commit message (Husky `commit-msg`).
 5. **Không push trực tiếp lên `main`** — làm việc trên `devD` / `devH` / `devB` / `release`.
