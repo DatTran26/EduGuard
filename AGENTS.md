@@ -42,3 +42,15 @@ Required description fields:
 - Changelog entries must be grouped by feature, not only by date.
 - Each feature changelog entry must include date, branch/source, description, changed files, validation, and unresolved questions if any.
 - Bug fixes, security changes, and breaking changes must be explicitly labeled in the related feature entry.
+
+## Development Rules & Workflows
+
+Full rules (implementation order, push vs ship, Todo List maintenance): **`docs/07_DEVELOPMENT_RULES.md`**
+
+| User says | Purpose | Skill |
+|-----------|---------|--------|
+| **push code**, đẩy code, lưu lên repo | Backup / sync dev branch | `.agents/skills/push-code/SKILL.md` |
+| **ship**, ship code, **release** | Version cut → production | `.agents/skills/ship-code/SKILL.md` |
+
+- `Todo List.md` (root): live checklist only — update per `docs/07_DEVELOPMENT_RULES.md`.
+- Do not push to `main` in either workflow.
