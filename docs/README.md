@@ -21,7 +21,16 @@ Hệ thống được thiết kế theo kiến trúc **Client - Server**, sử d
 | `04_DATABASE_ENTITIES.md` | Thiết kế entity/database, nhóm bảng, quan hệ dữ liệu chính |
 | `05_API_FRONTEND_INTEGRATION.md` | Quy ước API, cách React gọi backend, JWT, Axios, SignalR |
 | `06_DEVELOPMENT_ROADMAP.md` | Lộ trình triển khai MVP theo từng giai đoạn |
-| `07_REPORT_NOTES.md` | Gợi ý nội dung đưa vào báo cáo đồ án |
+| `07_DEVELOPMENT_RULES.md` | **Bắt buộc đọc** — quy tắc Git, push/ship workflow, cập nhật Todo List |
+| `project-changelog.md` | Lịch sử thay đổi theo feature |
+
+## Bắt buộc đọc (agent & developer)
+
+Trước khi commit, push, hoặc làm feature mới:
+
+1. `07_DEVELOPMENT_RULES.md` — quy tắc làm việc, workflow Git
+2. `Todo List.md` (root) — checklist tiến độ hiện tại
+3. `AGENTS.md` (root) — chính sách Husky, commit, changelog
 
 ## Cách sử dụng
 
@@ -39,7 +48,10 @@ EduGuard/
 │   ├── 04_DATABASE_ENTITIES.md
 │   ├── 05_API_FRONTEND_INTEGRATION.md
 │   ├── 06_DEVELOPMENT_ROADMAP.md
-│   └── 07_REPORT_NOTES.md
+│   ├── 07_DEVELOPMENT_RULES.md
+│   ├── project-changelog.md
+├── Todo List.md
+├── AGENTS.md
 ├── docker-compose.yml
 └── README.md
 ```
@@ -54,4 +66,6 @@ Nếu mới bắt đầu, nên đọc theo thứ tự:
 4. `04_DATABASE_ENTITIES.md`
 5. `05_API_FRONTEND_INTEGRATION.md`
 6. `06_DEVELOPMENT_ROADMAP.md`
+7. `07_DEVELOPMENT_RULES.md` (trước khi commit/push)
+
 
