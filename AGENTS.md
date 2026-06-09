@@ -7,6 +7,12 @@
 - All implementation work must happen on a non-main branch before any reviewed integration flow.
 - Keep branch changes focused. Do not mix unrelated feature, fix, refactor, or documentation work in one change set.
 
+## Windows Shell
+
+- Default shell: **PowerShell 5.x** on Windows.
+- Do not chain with `&&` or bash HEREDOC (`$(cat <<'EOF')`) — use `;`, multiple `-m` flags, or `--body-file` for `gh pr create`.
+- Reference: `.agents/references/powershell-windows.md`.
+
 ## Husky Hook Guard
 
 - This project uses Husky hooks in `.husky/`.
@@ -42,3 +48,15 @@ Required description fields:
 - Changelog entries must be grouped by feature, not only by date.
 - Each feature changelog entry must include date, branch/source, description, changed files, validation, and unresolved questions if any.
 - Bug fixes, security changes, and breaking changes must be explicitly labeled in the related feature entry.
+
+## Development Rules & Workflows
+
+Full rules (implementation order, push vs ship, Todo List maintenance): **`docs/07_DEVELOPMENT_RULES.md`**
+
+| User says | Purpose | Skill |
+|-----------|---------|--------|
+| **push code**, đẩy code, lưu lên repo | Backup / sync dev branch | `.agents/skills/push-code/SKILL.md` |
+| **ship**, ship code, **release** | Version cut → production | `.agents/skills/ship-code/SKILL.md` |
+
+- `Todo List.md` (root): live checklist only — update per `docs/07_DEVELOPMENT_RULES.md`.
+- Do not push to `main` in either workflow.

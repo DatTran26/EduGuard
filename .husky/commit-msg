@@ -22,7 +22,7 @@ if printf '%s' "$subject" | grep -Eq '^[[:space:]]|[[:space:]]$'; then
   exit 1
 fi
 
-if printf '%s' "$subject" | grep -Eiq '(ai-generated|chatgpt|codex|claude|copilot)'; then
+if printf '%s' "$subject" | grep -Eiq '(ai-generated|chatgpt|codex|claude|copilot|cursor)'; then
   echo "Commit message validation failed: remove AI/tool references." >&2
   exit 1
 fi
