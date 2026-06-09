@@ -3,12 +3,13 @@ name: push-code
 description: >
   Push work to the remote repository for backup or collaboration — not a release.
   Trigger when the user asks to push code, save to repo, push lên remote, or sync branch.
-compatibility: "requires: git"
+compatibility: "requires: git, Windows PowerShell"
 ---
 
 # Push Code (lưu lên repo)
 
-Human-readable rules: `docs/07_DEVELOPMENT_RULES.md` → Workflow push code.
+Human-readable rules: `docs/07_DEVELOPMENT_RULES.md` → Workflow push code.  
+Shell: **`.agents/references/powershell-windows.md`** (bắt buộc trên Windows — không dùng `&&`, HEREDOC bash).
 
 Dùng khi bạn chỉ muốn **đẩy code lên GitHub để lưu / đồng bộ**, không cắt version,
 không merge `release`, không mở PR `main`.
@@ -42,32 +43,38 @@ không merge `release`, không mở PR `main`.
 
 ### 1. Kiểm tra trạng thái
 
+Chạy **từng lệnh** (không nối bằng `&&` trên PowerShell 5.x):
+
 ```powershell
+Set-Location D:\Projects\EduGuard
 git status
 git branch -vv
 ```
 
 - Nếu đang trên `main` → dừng, chuyển sang `devD` (hoặc nhánh dev đang dùng).
-- Nếu có thay đổi chưa commit → hỏi user: commit trước hay chỉ push commit sẵn có?
+- Nếu có thay đổi chưa commit → commit theo cụm (user đã nói push code = lưu repo, thường gồm commit).
 
 ### 2. Commit (nếu cần)
-
-Chỉ khi user đồng ý commit hoặc đã yêu cầu "commit và push":
 
 - Gom commit theo **cụm chức năng / thư mục** (không gộp mọi thứ một commit).
 - Conventional commit: `feat`, `fix`, `docs`, `build`, … — **không** `chore:`, **không** tham chiếu AI/tool.
 - Husky chạy `npm test` trước mỗi commit.
 
+```powershell
+git add <paths>
+git commit -m "type(scope): short subject" -m "Optional body. No bash HEREDOC on Windows."
+```
+
 ### 3. Push
 
 ```powershell
-git push -u origin HEAD
+git push origin devD
 ```
 
-Hoặc nếu upstream đã có:
+Hoặc nhánh hiện tại chưa có upstream:
 
 ```powershell
-git push origin <BRANCH>
+git push -u origin HEAD
 ```
 
 ### 4. Cập nhật tài liệu (nếu vừa hoàn thành task)
@@ -90,4 +97,5 @@ git push origin <BRANCH>
 | `pre-push` chặn `main` | Đúng policy — đổi nhánh dev |
 | `commit-msg` fail | Sửa message theo conventional format |
 | `npm test` fail | Sửa test trước khi commit |
-| `rejected` / non-fast-forward | `git pull --rebase` rồi push lại (hỏi user nếu conflict) |
+| `rejected` / non-fast-forward | `git pull --rebase origin <BRANCH>` rồi push lại (hỏi user nếu conflict) |
+| `&&` / `Missing file specification` / HEREDOC fail | Dùng `.agents/references/powershell-windows.md` |

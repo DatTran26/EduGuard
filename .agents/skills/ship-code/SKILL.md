@@ -5,12 +5,13 @@ description: >
   release, or cut a version — NOT for ordinary push code to save work on the repo.
   Runs github-release analysis, mandatory code-reviewer gate, merge to release,
   then opens a detailed PR to main.
-compatibility: "requires: gh CLI, git, npm test"
+compatibility: "requires: gh CLI, git, npm test, Windows PowerShell"
 ---
 
 # Ship Code Workflow (EduGuard)
 
-Human-readable rules: `docs/07_DEVELOPMENT_RULES.md` → Workflow ship / release.
+Human-readable rules: `docs/07_DEVELOPMENT_RULES.md` → Workflow ship / release.  
+Shell: **`.agents/references/powershell-windows.md`** (Windows — không `&&`, không HEREDOC bash).
 
 Orchestrates the full **ship / release → review → merge release → PR main** pipeline.
 Do **not** push directly to `main` (blocked by Husky and `AGENTS.md`).
@@ -53,9 +54,10 @@ unclear.
 
 ## Prerequisites (stop if any fail)
 
-Run on PowerShell (Windows):
+Run **từng lệnh** on PowerShell (Windows) — see `powershell-windows.md`:
 
 ```powershell
+Set-Location D:\Projects\EduGuard
 gh auth status
 gh repo view --json nameWithOwner
 git status
@@ -111,8 +113,9 @@ EduGuard adaptations:
    tests, lockfiles per github-release rules. Also run:
 
    ```powershell
-   git log "$prevSha..HEAD" --oneline --no-merges
-   git diff "$prevSha..HEAD" --stat
+   # $prevSha set in Step 2 (github-release PowerShell block)
+   git log "${prevSha}..HEAD" --oneline --no-merges
+   git diff "${prevSha}..HEAD" --stat
    ```
 
 4. **Step 4 — Propose `NEXT_VERSION`** (e.g. `v1.0.0`). Present rationale from **code
@@ -255,8 +258,8 @@ the temp file):
 - **Rollback:** Revert merge commit on `main` or reset `release` to previous SHA
 
 ### Post-merge checklist
-- [ ] Create annotated tag on merge commit:
-  ```bash
+- [ ] Create annotated tag on merge commit (PowerShell):
+  ```powershell
   git checkout main
   git pull origin main
   git tag vX.Y.Z <merge-commit-sha>
@@ -271,11 +274,13 @@ the temp file):
 
 ### Create PR
 
+Soạn `release_pr_body.md` từ template trên (không commit file tạm). Rồi:
+
 ```powershell
-$prBody = Get-Content -Raw release_pr_body.md
-$prBody | Out-File -FilePath release_pr_body.md -Encoding utf8
 gh pr create --base main --head release --title "Release vX.Y.Z" --body-file release_pr_body.md
 ```
+
+Hoặc tạo body bằng here-string rồi ghi file — xem `.agents/references/powershell-windows.md`.
 
 Return the PR URL to the user.
 
@@ -305,6 +310,7 @@ Tell the user:
 | Review critical issues | Stop pipeline until fixed |
 | `gh pr create` fails | Report error; check if PR already exists |
 | Merge conflict on `release` | Resolve manually, test, then push |
+| `&&` / HEREDOC / `cat <<` errors | Follow `.agents/references/powershell-windows.md` |
 
 ---
 

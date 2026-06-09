@@ -26,8 +26,12 @@ ship a new version" or "time to release".
 
 ## Prerequisites
 
-Examples below include both Bash and PowerShell variants; Windows users should prefer
-the PowerShell blocks.
+**EduGuard (Windows):** Luôn dùng block **PowerShell**, không Bash. Chi tiết:
+`.agents/references/powershell-windows.md`. Không dùng `&&`, `$(cat <<'EOF')`, hoặc
+`chore:` trong commit (Husky EduGuard chặn — dùng `docs:` cho release prep).
+
+Examples below include both Bash and PowerShell variants; **Windows agents must use
+PowerShell blocks only.**
 
 Before starting, verify the environment:
 
@@ -314,6 +318,13 @@ git commit -m "chore: release vX.Y.Z"
 git push origin release/vX.Y.Z
 ```
 
+```powershell
+git add CHANGELOG.md
+# EduGuard: use docs: or build: — chore: is blocked by Husky
+git commit -m "docs: prepare release vX.Y.Z"
+git push origin release/vX.Y.Z
+```
+
 Confirm the push succeeded before moving on.
 
 ---
@@ -367,14 +378,12 @@ This PR prepares the **vX.Y.Z** release.
 - [ ] CI passing
 
 After merging, create the tag on the merge commit:
-``````
-git tag vX.Y.Z <merge-commit-sha>
-git push origin vX.Y.Z
-``````
+  git tag vX.Y.Z <merge-commit-sha>
+  git push origin vX.Y.Z
 "@
 
 # Write to file and use --body-file (do NOT use inline --body with escape sequences)
-$prBody | Out-File -FilePath release_pr_body.md -Encoding utf8 -NoNewline
+$prBody | Set-Content -Path release_pr_body.md -Encoding utf8
 gh pr create --base main --head release/vX.Y.Z --title "Release vX.Y.Z" --body-file release_pr_body.md
 ```
 
@@ -394,7 +403,7 @@ Tell the user:
 > Once the PR is reviewed and merged, you'll need to **create the tag yourself** on
 > the merge commit:
 >
-> ```bash
+> ```powershell
 > git tag vX.Y.Z <merge-commit-sha>
 > git push origin vX.Y.Z
 > ```
