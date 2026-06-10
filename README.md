@@ -39,7 +39,7 @@ Chi tiết chức năng: [`docs/01_PROJECT_OVERVIEW.md`](docs/01_PROJECT_OVERVIE
 
 ## Trạng thái dự án
 
-**Giai đoạn 0 hoàn thành** (2026-06-10): frontend React gọi được backend API. Tiếp theo: **Giai đoạn 1** (Database + Identity). Chi tiết: [`Todo List.md`](Todo%20List.md).
+**Giai đoạn 1 hoàn thành** (2026-06-10): database `EduGuardExam` với Identity schema, RefreshToken, Classroom, ClassroomMember; seed Admin/Teacher/Student. Tiếp theo: **Giai đoạn 2** (Auth + JWT). Chi tiết: [`Todo List.md`](Todo%20List.md).
 
 | Thành phần | Trạng thái |
 |------------|------------|
@@ -47,8 +47,9 @@ Chi tiết chức năng: [`docs/01_PROJECT_OVERVIEW.md`](docs/01_PROJECT_OVERVIE
 | Swagger (dev) | ✅ |
 | Frontend React + Vite + axios | ✅ |
 | CORS + smoke test `GET /api/Test` | ✅ |
-| Database / EF Core | ⬜ Chưa bắt đầu |
-| Auth, API modules, SignalR, Redis | ⬜ Chưa bắt đầu |
+| Database / EF Core (Phase 1) | ✅ |
+| Auth + JWT (Phase 2) | ⬜ Chưa bắt đầu |
+| API modules, SignalR, Redis | ⬜ Chưa bắt đầu |
 | Docker Compose | ⬜ Chưa bắt đầu |
 
 API smoke test: `GET /api/Test` → `{ "message": "EduGuard API is running" }`.
