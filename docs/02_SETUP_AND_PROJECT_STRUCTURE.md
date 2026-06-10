@@ -137,7 +137,6 @@ EduGuard.Application/
 │   └── AntiCheatService.cs
 │
 ├── Interfaces/
-│   ├── IUserRepository.cs
 │   ├── IClassroomRepository.cs
 │   ├── IAssignmentRepository.cs
 │   ├── IExamRepository.cs
@@ -166,9 +165,7 @@ Cấu trúc:
 EduGuard.Domain/
 │
 ├── Entities/
-│   ├── User.cs
-│   ├── Role.cs
-│   ├── UserRole.cs
+│   ├── ApplicationUser.cs
 │   ├── RefreshToken.cs
 │   ├── Classroom.cs
 │   ├── ClassroomMember.cs
@@ -204,33 +201,42 @@ Vai trò:
 - Cấu hình logging.
 - Chứa service kỹ thuật như cache, email, file storage nếu có.
 
-Cấu trúc:
+Cấu trúc (tên file **kebab-case**; class bên trong vẫn PascalCase, ví dụ `app-db-context.cs` → `AppDbContext`):
+
+**Hiện có (Giai đoạn 1):**
 
 ```txt
 EduGuard.Infrastructure/
 │
 ├── Data/
-│   ├── AppDbContext.cs
-│   └── Configurations/
-│       ├── UserConfiguration.cs
-│       ├── ClassroomConfiguration.cs
-│       └── ExamConfiguration.cs
+│   ├── app-db-context.cs
+│   ├── Configurations/
+│   │   ├── classroom-configuration.cs
+│   │   ├── classroom-member-configuration.cs
+│   │   └── refresh-token-configuration.cs
+│   └── Migrations/
 │
+├── dependency-injection.cs          # AddInfrastructure — đăng ký DbContext
+├── Repositories/                  # (.gitkeep — chưa implement)
+├── Redis/                         # (.gitkeep)
+└── Logging/                       # (.gitkeep)
+```
+
+**Kế hoạch (Giai đoạn 2+):**
+
+```txt
+├── Identity/
+│   └── identity-seed.cs
+├── Auth/
+│   ├── i-jwt-token-service.cs
+│   └── jwt-token-service.cs
 ├── Repositories/
-│   ├── UserRepository.cs
-│   ├── ClassroomRepository.cs
-│   ├── AssignmentRepository.cs
-│   ├── ExamRepository.cs
-│   └── CheatingLogRepository.cs
-│
+│   ├── classroom-repository.cs
+│   └── ...
 ├── Redis/
-│   ├── IRedisCacheService.cs
-│   └── RedisCacheService.cs
-│
-├── Logging/
-│   └── SerilogConfiguration.cs
-│
-└── DependencyInjection.cs
+│   └── redis-cache-service.cs
+└── Logging/
+    └── serilog-configuration.cs
 ```
 
 ## 4. Project Reference trong Visual Studio
@@ -268,6 +274,7 @@ Cài cho `EduGuard.Infrastructure`:
 Install-Package Microsoft.EntityFrameworkCore 8.0.24
 Install-Package Microsoft.EntityFrameworkCore.SqlServer 8.0.24
 Install-Package Microsoft.EntityFrameworkCore.Tools 8.0.24
+Install-Package Microsoft.AspNetCore.Identity.EntityFrameworkCore 8.0.24
 Install-Package StackExchange.Redis 2.12.14
 Install-Package Serilog.AspNetCore 8.0.2
 Install-Package Serilog.Sinks.Console 5.0.0
@@ -281,6 +288,7 @@ Install-Package AutoMapper 15.1.3
 Install-Package AutoMapper.Extensions.Microsoft.DependencyInjection 12.0.0
 Install-Package FluentValidation -Version 12.1.1
 Install-Package FluentValidation.DependencyInjectionExtensions -Version 12.1.1
+Install-Package Microsoft.Extensions.Identity.Stores 8.0.24
 ```
 
 > **Lưu ý:** Không cài `FluentValidation.AspNetCore` — NuGet đánh dấu deprecated và không còn được maintain. Inject `IValidator<T>` vào Service, gọi `ValidateAsync()` trước khi xử lý business logic. Đăng ký validator trong `Program.cs`:
@@ -296,7 +304,7 @@ File: `EduGuard.Api/appsettings.json`
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=EduGuardDb;Trusted_Connection=True;TrustServerCertificate=True;",
+    "DefaultConnection": "Server=WPC-ADMIN\\SQLEXPRESS;Database=EduGuardExam;Trusted_Connection=True;TrustServerCertificate=True;",
     "Redis": "localhost:6379"
   },
 
@@ -324,39 +332,36 @@ File: `EduGuard.Api/appsettings.json`
 }
 ```
 
-## 7. Cấu hình Program.cs cơ bản
+## 7. Cấu hình Program.cs
 
-File: `EduGuard.Api/Program.cs`
+### 7.1. Hiện tại (Giai đoạn 0–1) — khớp codebase
+
+File: `backend/EduGuard.Api/Program.cs`
+
+DbContext **không** đăng ký trực tiếp trong `Program.cs`; gọi extension `AddInfrastructure` từ `backend/EduGuard.Infrastructure/dependency-injection.cs`.
 
 ```csharp
-using EduGuard.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
+using EduGuard.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[] { "http://localhost:5173" };
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(corsOrigins)
               .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowAnyMethod();
     });
 });
-
-builder.Services.AddSignalR();
-
-// Đăng ký service/repository tại đây hoặc qua DependencyInjection extension
-// builder.Services.AddScoped<IClassroomService, ClassroomService>();
-// builder.Services.AddScoped<IClassroomRepository, ClassroomRepository>();
 
 var app = builder.Build();
 
@@ -369,14 +374,115 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors("FrontendPolicy");
 
-app.UseAuthentication();
-app.UseAuthorization();
-
 app.MapControllers();
-// app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();
 ```
+
+File: `backend/EduGuard.Infrastructure/dependency-injection.cs`
+
+```csharp
+using EduGuard.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace EduGuard.Infrastructure;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+
+        return services;
+    }
+}
+```
+
+> Chưa có: `AddIdentity`, JwtBearer, `UseAuthentication` / `UseAuthorization`, SignalR — sẽ bổ sung ở Giai đoạn 2+.
+
+### 7.2. Mục tiêu Giai đoạn 2+ (Auth + JWT)
+
+**Quy ước:** Mọi `builder.Services.Add…` (Identity, JwtBearer, auth services) đăng ký trong **`dependency-injection.cs`** — mở rộng `AddInfrastructure` hoặc helper `AddAuth` gọi từ đó. **`Program.cs` chỉ gọi `AddInfrastructure` và middleware pipeline** (`UseAuthentication`, `UseAuthorization`).
+
+File: `backend/EduGuard.Infrastructure/dependency-injection.cs` (mở rộng)
+
+```csharp
+using System.Text;
+using EduGuard.Domain.Entities;
+using EduGuard.Infrastructure.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+
+namespace EduGuard.Infrastructure;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+
+        services.AddIdentity<ApplicationUser, IdentityRole<int>>(options =>
+            {
+                options.Password.RequiredLength = 8;
+                options.User.RequireUniqueEmail = true;
+            })
+            .AddEntityFrameworkStores<AppDbContext>()
+            .AddDefaultTokenProviders();
+
+        var jwtKey = configuration["Jwt:Key"]!;
+        services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = configuration["Jwt:Issuer"],
+                    ValidAudience = configuration["Jwt:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                };
+            });
+
+        services.AddAuthorization();
+
+        // services.AddScoped<IJwtTokenService, JwtTokenService>();
+        // services.AddScoped<IAuthService, AuthService>();
+
+        return services;
+    }
+}
+```
+
+File: `backend/EduGuard.Api/Program.cs` — chỉ thêm middleware (sau `UseCors`, trước `MapControllers`):
+
+```csharp
+app.UseAuthentication();
+app.UseAuthorization();
+```
+
+`Program.cs` **không** gọi trực tiếp `AddIdentity` / `AddJwtBearer`; vẫn chỉ `builder.Services.AddInfrastructure(builder.Configuration)`.
+
+CORS: chỉ thêm `.AllowCredentials()` khi cần cookie hoặc SignalR; với JWT Bearer thuần (header `Authorization`) như hiện tại thì không bắt buộc.
+
+SignalR (`AddSignalR`, `MapHub`) — Giai đoạn 8; đăng ký service trong `AddInfrastructure`, `MapHub` trong `Program.cs` — xem `docs/03_BACKEND_ARCHITECTURE.md` §6–7.
 
 ## 8. Cấu trúc frontend ReactJS
 

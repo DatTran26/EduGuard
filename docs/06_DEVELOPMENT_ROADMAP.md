@@ -26,26 +26,28 @@ Mục tiêu:
 - Cấu hình kết nối frontend/backend.
 - Chạy thử API test.
 
+**Trạng thái:** ✅ Hoàn thành (2026-06-10) — React `localhost:5173` gọi `GET /api/Test` trên backend HTTPS `7168`, hiển thị JSON.
+
 Checklist:
 
 ```txt
-[ ] Tạo repo EduGuard
-[ ] Tạo folder backend
-[ ] Tạo solution EduGuard.sln
-[ ] Tạo 4 project backend
-[ ] Tạo folder frontend
-[ ] Tạo React Vite project
-[ ] Cấu hình TailwindCSS
-[ ] Cấu hình Swagger
-[ ] Cấu hình CORS
-[ ] Tạo TestController
-[ ] React gọi thử GET /api/test
+[x] Tạo repo EduGuard
+[x] Tạo folder backend
+[x] Tạo solution EduGuard.slnx
+[x] Tạo 4 project backend
+[x] Tạo folder frontend
+[x] Tạo React Vite project
+[x] Cấu hình TailwindCSS (deps + index.css)
+[x] Cấu hình Swagger
+[x] Cấu hình CORS
+[x] Tạo TestController
+[x] React gọi thử GET /api/test
 ```
 
 Kết quả cần đạt:
 
 ```txt
-Frontend gọi được backend thành công.
+Frontend gọi được backend thành công. — Đạt.
 ```
 
 ## 4. Giai đoạn 1: Database + Entity nền tảng
@@ -55,14 +57,12 @@ Mục tiêu:
 - Tạo entity cơ bản.
 - Tạo AppDbContext.
 - Tạo migration.
-- Tạo database EduGuardDb.
+- Tạo database (dev: `EduGuardExam` trên SQL Server local).
 
 Entity nên làm trước:
 
 ```txt
-User
-Role
-UserRole
+ApplicationUser (IdentityUser<int>)
 RefreshToken
 Classroom
 ClassroomMember
@@ -71,51 +71,48 @@ ClassroomMember
 Checklist:
 
 ```txt
-[ ] Tạo entity User
-[ ] Tạo entity Role
-[ ] Tạo entity UserRole
-[ ] Tạo entity RefreshToken
-[ ] Tạo entity Classroom
-[ ] Tạo entity ClassroomMember
-[ ] Tạo AppDbContext
-[ ] Cấu hình SQL Server connection string
-[ ] Add-Migration InitialCreate
-[ ] Update-Database
+[x] Tạo ApplicationUser kế thừa IdentityUser<int>
+[x] Tạo entity RefreshToken
+[x] Tạo entity Classroom
+[x] Tạo entity ClassroomMember
+[x] AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
+[x] Seed roles Admin, Teacher, Student
+[x] Cấu hình SQL Server connection string (DefaultConnection)
+[x] Add-Migration InitialIdentityAndClassroom
+[x] Update-Database
 ```
 
 Kết quả cần đạt:
 
 ```txt
-SQL Server có database và các bảng cơ bản.
+SQL Server có database và các bảng cơ bản. — Đạt (2026-06-10, DB EduGuardExam).
 ```
 
 ## 5. Giai đoạn 2: Authentication & Authorization
 
 Mục tiêu:
 
-- Đăng ký.
-- Đăng nhập.
-- JWT.
+- Đăng ký / đăng nhập qua ASP.NET Core Identity.
+- JWT Bearer cho SPA React.
 - Role-based Authorization.
 
 Checklist:
 
 ```txt
-[ ] Tạo AuthController
-[ ] Tạo AuthService
-[ ] Tạo UserRepository
-[ ] Tạo RegisterRequest
-[ ] Tạo LoginRequest
-[ ] Tạo LoginResponse
-[ ] Hash password
-[ ] Tạo JWT token
-[ ] Tạo refresh token
-[ ] Test Swagger đăng ký
-[ ] Test Swagger đăng nhập
+[x] AddIdentity + AddEntityFrameworkStores
+[x] JwtTokenService (IJwtTokenService)
+[x] AuthService (UserManager, SignInManager)
+[x] AuthController: register, login, refresh, logout, me
+[x] RegisterRequest, LoginRequest, LoginResponse, UserDto
+[x] FluentValidation Register/Login
+[x] JwtBearer + Swagger Bearer
+[ ] Test Swagger đăng ký / đăng nhập (manual)
 [ ] React login gọi API thành công
 [ ] Lưu accessToken ở frontend
 [ ] Bảo vệ route frontend
 ```
+
+*(Không dùng UserRepository hay hash password thủ công.)*
 
 Kết quả cần đạt:
 
@@ -135,15 +132,15 @@ Mục tiêu:
 Checklist:
 
 ```txt
-[ ] Tạo ClassroomController
-[ ] Tạo ClassroomService
-[ ] Tạo ClassroomRepository
-[ ] Tạo CreateClassroomRequest
-[ ] Tạo ClassroomDto
-[ ] API tạo lớp
-[ ] API lấy danh sách lớp
-[ ] API join lớp bằng mã
-[ ] API xem thành viên lớp
+[x] Tạo ClassroomController
+[x] Tạo ClassroomService
+[x] Tạo ClassroomRepository
+[x] Tạo CreateClassroomRequest
+[x] Tạo ClassroomDto
+[x] API tạo lớp
+[x] API lấy danh sách lớp
+[x] API join lớp bằng mã
+[x] API xem thành viên lớp
 [ ] Frontend trang danh sách lớp
 [ ] Frontend form tạo lớp
 [ ] Frontend form nhập mã lớp
@@ -425,7 +422,7 @@ Hệ thống có thể chạy bằng Docker Compose.
 Nếu thời gian gấp, làm theo thứ tự:
 
 ```txt
-1. Auth JWT
+1. Auth Identity + JWT
 2. Classroom
 3. Exam CRUD
 4. Start Exam

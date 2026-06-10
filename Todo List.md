@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD`  
-**Cập nhật:** 2026-06-09  
+**Cập nhật:** 2026-06-10 (Phase 3 backend xong — FE chưa)  
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -13,10 +13,10 @@
 
 | Giai đoạn | Tên | Trạng thái |
 |-----------|-----|------------|
-| 0 | Khởi tạo project | 🟡 Đang làm dở |
-| 1 | Database + Entity nền tảng | ⬜ Chưa bắt đầu |
-| 2 | Authentication & Authorization | ⬜ Chưa bắt đầu |
-| 3 | Classroom Management | ⬜ Chưa bắt đầu |
+| 0 | Khởi tạo project | ✅ Hoàn thành |
+| 1 | Database + Entity nền tảng | ✅ Hoàn thành |
+| 2 | Authentication & Authorization | 🟡 Backend xong — FE chưa |
+| 3 | Classroom Management | 🟡 Backend xong — FE chưa |
 | 4 | Assignment Management | ⬜ Chưa bắt đầu |
 | 5 | Exam Management | ⬜ Chưa bắt đầu |
 | 6 | Online Testing / Exam Attempt | ⬜ Chưa bắt đầu |
@@ -38,14 +38,14 @@
 - [x] Tạo 4 project backend (Api, Application, Domain, Infrastructure)
 - [x] Tạo cấu trúc folder `frontend/` (scaffold)
 - [x] Thêm bộ tài liệu `docs/`
-- [ ] Tạo React Vite project trong `frontend/`
-- [ ] Cấu hình TailwindCSS
-- [ ] Cấu hình Swagger (kiểm tra & hoàn thiện)
-- [ ] Cấu hình CORS cho React dev server
-- [ ] Tạo `TestController` → `GET /api/test`
-- [ ] React gọi thử `GET /api/test` và hiển thị kết quả
+- [x] Tạo React Vite project trong `frontend/`
+- [x] Cấu hình TailwindCSS (deps + `@import "tailwindcss"` trong `index.css`)
+- [x] Cấu hình Swagger (mặc định ASP.NET Core, dev)
+- [x] Cấu hình CORS cho React dev server (`http://localhost:5173`)
+- [x] Tạo `TestController` → `GET /api/Test`
+- [x] React gọi thử `GET /api/test` và hiển thị kết quả JSON
 
-**Tiêu chí hoàn thành:** Mở React → gọi API → nhận response JSON từ backend.
+**Tiêu chí hoàn thành:** ✅ Mở React → gọi API → nhận response JSON từ backend (đã verify 2026-06-10).
 
 ---
 
@@ -55,22 +55,24 @@
 
 ### Domain — Entity
 
-- [ ] `User`
-- [ ] `Role`
-- [ ] `UserRole`
-- [ ] `RefreshToken`
-- [ ] `Classroom`
-- [ ] `ClassroomMember`
+- [x] `ApplicationUser` (kế thừa `IdentityUser<int>`)
+- [x] `RefreshToken` (custom — rotate/revoke JWT)
+- [x] `Classroom`
+- [x] `ClassroomMember`
+- [x] Package Domain: `Microsoft.Extensions.Identity.Stores`
 
 ### Infrastructure
 
-- [ ] `AppDbContext`
-- [ ] EF Core Fluent API configurations
-- [ ] Connection string SQL Server (`appsettings.Development.json`)
-- [ ] `Add-Migration InitialCreate`
-- [ ] `Update-Database`
+- [x] `AppDbContext` kế thừa `IdentityDbContext<ApplicationUser, IdentityRole<int>, int>`
+- [x] Map tên bảng: `Users`, `Roles`, `UserRoles` (tuỳ chọn)
+- [x] Seed roles: Admin, Teacher, Student
+- [x] EF Fluent API: RefreshToken, Classroom, ClassroomMember
+- [x] Package: `Microsoft.AspNetCore.Identity.EntityFrameworkCore`
+- [x] Connection string SQL Server (`appsettings.json` → `EduGuardExam`)
+- [x] `Add-Migration InitialIdentityAndClassroom`
+- [x] `Update-Database`
 
-**Tiêu chí hoàn thành:** Database `EduGuardDb` có đủ 6 bảng trên.
+**Tiêu chí hoàn thành:** ✅ Database `EduGuardExam` có schema Identity + `RefreshTokens` + `Classrooms` + `ClassroomMembers`; 3 role seed (đã verify 2026-06-10).
 
 ---
 
@@ -80,14 +82,18 @@
 
 ### Backend
 
-- [ ] `IUserRepository` + `UserRepository`
-- [ ] `AuthService` (register, login, refresh)
-- [ ] DTOs: `RegisterRequest`, `LoginRequest`, `LoginResponse`
-- [ ] Hash password
-- [ ] JWT access token + refresh token
-- [ ] `AuthController` (`register`, `login`, `refresh`)
-- [ ] Cấu hình `[Authorize]` + role policies (Admin, Teacher, Student)
-- [ ] Test qua Swagger
+- [x] `AddIdentity` + `AddEntityFrameworkStores<AppDbContext>`
+- [x] `IJwtTokenService` + `JwtTokenService` (access token)
+- [x] `IRefreshTokenService` hoặc logic refresh trong `AuthService`
+- [x] `IAuthService` + `AuthService` (`UserManager`, `SignInManager`, `RoleManager`)
+- [x] DTOs: `RegisterRequest`, `LoginRequest`, `LoginResponse`, `UserDto`
+- [x] FluentValidation cho Register/Login
+- [x] `AuthController`: register, login, refresh, logout, me
+- [x] JwtBearer trong `AddInfrastructure` + Swagger Bearer
+- [x] `[Authorize(Roles = "...")]` — `GET /api/Test/teacher-only`
+- [x] Test qua Swagger (manual) — đã verify 2026-06-10
+
+*(Không dùng `IUserRepository` / hash password thủ công cho auth.)*
 
 ### Frontend
 
@@ -106,12 +112,12 @@
 
 ### Backend
 
-- [ ] `ClassroomRepository` + `ClassroomService`
-- [ ] DTOs: `CreateClassroomRequest`, `ClassroomDto`
-- [ ] `POST /api/classrooms` — tạo lớp
-- [ ] `GET /api/classrooms` — danh sách lớp
-- [ ] `POST /api/classrooms/join` — tham gia bằng mã
-- [ ] `GET /api/classrooms/{id}/members` — danh sách thành viên
+- [x] `ClassroomRepository` + `ClassroomService`
+- [x] DTOs: `CreateClassroomRequest`, `ClassroomDto`, `JoinClassroomRequest`, `ClassroomMemberDto`
+- [x] `POST /api/classrooms` — tạo lớp
+- [x] `GET /api/classrooms` — danh sách lớp
+- [x] `POST /api/classrooms/join` — tham gia bằng mã
+- [x] `GET /api/classrooms/{id}/members` — danh sách thành viên
 
 ### Frontend
 
@@ -284,7 +290,7 @@
 
 ```txt
 1. Hoàn thiện Giai đoạn 0 (FE ↔ BE kết nối)
-2. Auth JWT
+2. Auth Identity + JWT
 3. Classroom
 4. Exam CRUD
 5. Start Exam → Submit Exam

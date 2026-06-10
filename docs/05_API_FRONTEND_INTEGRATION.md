@@ -347,7 +347,11 @@ GET /api/dashboard/teacher
 GET /api/dashboard/student
 ```
 
+> Danh sách đầy đủ endpoint + checkbox triển khai: [`apiList.md`](apiList.md)
+
 ## 9. JWT flow trong frontend
+
+SPA React **không** dùng cookie đăng nhập của Identity. Mọi request protected gửi JWT qua header `Authorization`.
 
 Luồng:
 

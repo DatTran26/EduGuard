@@ -34,7 +34,7 @@ Google Classroom + Azota + Online Exam Proctoring cơ bản
 | UI Styling | TailwindCSS |
 | Database | SQL Server |
 | ORM | Entity Framework Core |
-| Authentication | JWT + Refresh Token |
+| Authentication | ASP.NET Core Identity + JWT Bearer + Refresh Token |
 | Authorization | Role-based Authorization |
 | Realtime | SignalR |
 | Cache / Session / Performance | Redis |
@@ -119,18 +119,17 @@ Hệ thống được chia thành các cụm chức năng sau:
 
 ## 6.1. Authentication & Authorization
 
-Đây là cụm chức năng xác thực và phân quyền người dùng.
+Đây là cụm chức năng xác thực và phân quyền người dùng (Identity + JWT cho SPA).
 
 Chức năng gồm:
 
-- Đăng ký tài khoản.
-- Đăng nhập.
-- Sinh JWT Access Token.
-- Sinh Refresh Token.
+- Đăng ký tài khoản (`UserManager`).
+- Đăng nhập (`SignInManager` + JWT access token).
+- Sinh Refresh Token (bảng custom).
 - Làm mới token.
-- Đăng xuất.
-- Phân quyền theo vai trò.
-- Khóa tài khoản.
+- Đăng xuất (revoke refresh token).
+- Phân quyền theo vai trò (`[Authorize(Roles = "...")]`).
+- Khóa tài khoản (Identity lockout).
 
 Luồng đăng nhập:
 
@@ -139,13 +138,13 @@ User nhập email/password
         ↓
 Frontend gửi POST /api/auth/login
         ↓
-Backend kiểm tra thông tin đăng nhập
+AuthService: SignInManager kiểm tra mật khẩu
         ↓
-Nếu hợp lệ, backend trả JWT token
+JwtTokenService sinh accessToken + refreshToken
         ↓
-Frontend lưu token
+Frontend lưu token (localStorage — dev/đồ án)
         ↓
-Frontend dùng token để gọi các API cần đăng nhập
+Mọi API protected: Authorization: Bearer <accessToken>
 ```
 
 ## 6.2. User Management
@@ -164,9 +163,8 @@ Chức năng gồm:
 Entity liên quan:
 
 ```txt
-User
-Role
-UserRole
+ApplicationUser (Identity)
+IdentityRole / AspNetUserRoles
 RefreshToken
 ActivityLog
 ```
@@ -470,9 +468,7 @@ CheatingLogs table
 Các entity chính gồm:
 
 ```txt
-User
-Role
-UserRole
+ApplicationUser
 RefreshToken
 Classroom
 ClassroomMember
@@ -495,9 +491,8 @@ Có thể chia thành các nhóm:
 ## 7.1. Nhóm User / Auth
 
 ```txt
-User
-Role
-UserRole
+ApplicationUser (IdentityUser<int>)
+IdentityRole<int> + AspNetUserRoles (Identity)
 RefreshToken
 ```
 

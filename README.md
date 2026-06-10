@@ -24,7 +24,7 @@ EduGuard hướng tới mô hình kết hợp quản lý lớp học, thi trực
 
 | Module | Mô tả |
 |--------|--------|
-| Authentication | Đăng ký, đăng nhập, JWT + Refresh Token, phân quyền theo vai trò |
+| Authentication | Đăng ký, đăng nhập, ASP.NET Core Identity + JWT + Refresh Token, phân quyền theo vai trò |
 | Classroom | Tạo lớp, mã tham gia, quản lý học sinh |
 | Assignment | Giao bài, nộp bài, chấm điểm |
 | Exam | Ngân hàng câu hỏi, tạo đề, cấu hình thời gian |
@@ -39,18 +39,21 @@ Chi tiết chức năng: [`docs/01_PROJECT_OVERVIEW.md`](docs/01_PROJECT_OVERVIE
 
 ## Trạng thái dự án
 
-Dự án đang ở **giai đoạn khởi tạo** (phase 0). Tiến độ chi tiết: [`Todo List.md`](Todo%20List.md).
+**Giai đoạn 2 backend** (2026-06-10): Auth API (register, login, refresh, logout, me), JWT + refresh token, Swagger Bearer. Tiếp theo: **Phase 2 frontend** (Login/Register) rồi **Giai đoạn 3** (Classroom). Chi tiết: [`Todo List.md`](Todo%20List.md).
 
 | Thành phần | Trạng thái |
 |------------|------------|
 | Backend scaffold (4 project .NET 8) | ✅ |
-| Swagger (mặc định) | ✅ |
-| Frontend React + Vite | ⬜ Scaffold folder |
-| Database / EF Core | ⬜ Chưa bắt đầu |
-| Auth, API modules, SignalR, Redis | ⬜ Chưa bắt đầu |
+| Swagger (dev) | ✅ |
+| Frontend React + Vite + axios | ✅ |
+| CORS + smoke test `GET /api/Test` | ✅ |
+| Database / EF Core (Phase 1) | ✅ |
+| Auth + JWT (Phase 2 backend) | ✅ |
+| Auth UI (Phase 2 frontend) | ⬜ Chưa bắt đầu |
+| API modules, SignalR, Redis | ⬜ Chưa bắt đầu |
 | Docker Compose | ⬜ Chưa bắt đầu |
 
-API hiện có: `GET /WeatherForecast` (template ASP.NET Core).
+API smoke test: `GET /api/Test` → `{ "message": "EduGuard API is running" }`.
 
 ---
 
@@ -61,7 +64,7 @@ API hiện có: `GET /WeatherForecast` (template ASP.NET Core).
 | Backend | ASP.NET Core 8 Web API |
 | Frontend | React, Vite, Tailwind CSS *(dự kiến)* |
 | Database | SQL Server, Entity Framework Core *(dự kiến)* |
-| Auth | JWT, Role-based Authorization *(dự kiến)* |
+| Auth | ASP.NET Core Identity + JWT Bearer *(dự kiến)* |
 | Realtime | SignalR *(dự kiến)* |
 | Cache | Redis *(dự kiến)* |
 | Logging | Serilog *(dự kiến)* |

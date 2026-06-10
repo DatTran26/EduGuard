@@ -205,14 +205,15 @@ DbContext là class đại diện cho database trong Entity Framework Core.
 Ví dụ:
 
 ```csharp
-public class AppDbContext : DbContext
+public class AppDbContext
+    : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
     {
     }
 
-    public DbSet<User> Users { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<Classroom> Classrooms { get; set; }
     public DbSet<Exam> Exams { get; set; }
     public DbSet<Question> Questions { get; set; }
@@ -331,48 +332,61 @@ return Ok(userDto);
 
 ## 6. Dependency Injection
 
-Trong `Program.cs` hoặc extension method:
-
-```csharp
-builder.Services.AddScoped<IClassroomService, ClassroomService>();
-builder.Services.AddScoped<IClassroomRepository, ClassroomRepository>();
-```
-
-Nếu nhiều service/repository, nên tạo file:
-
-```txt
-EduGuard.Infrastructure/DependencyInjection.cs
-```
-
-Ví dụ:
-
-```csharp
-public static class DependencyInjection
-{
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
-    {
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
-
-        services.AddScoped<IClassroomRepository, ClassroomRepository>();
-        services.AddScoped<IExamRepository, ExamRepository>();
-        services.AddScoped<ICheatingLogRepository, CheatingLogRepository>();
-
-        return services;
-    }
-}
-```
-
-Trong `Program.cs` gọi:
+**Hiện tại (Giai đoạn 1):** `Program.cs` chỉ gọi một extension — không đăng ký DbContext inline.
 
 ```csharp
 builder.Services.AddInfrastructure(builder.Configuration);
 ```
 
-## 7. Các service chính cần có
+Implementation: `backend/EduGuard.Infrastructure/dependency-injection.cs` (class `DependencyInjection`, method `AddInfrastructure`). Hiện chỉ đăng ký `AppDbContext`.
+
+**Kế hoạch (Giai đoạn 2+):** Toàn bộ `builder.Services.Add…` gom trong `AddInfrastructure` — **không** đăng ký Identity/JwtBearer/repository/service trực tiếp trong `Program.cs`. Có thể tách helper `AddAuth(services, configuration)` trong cùng file hoặc `Infrastructure/Auth/` nếu `dependency-injection.cs` dài.
+
+```csharp
+// Ví dụ sau Giai đoạn 2 — trong AddInfrastructure, chưa có trong repo
+services.AddIdentity<ApplicationUser, IdentityRole<int>>(...).AddEntityFrameworkStores<AppDbContext>();
+services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(...);
+services.AddAuthorization();
+services.AddScoped<IJwtTokenService, JwtTokenService>();
+services.AddScoped<IAuthService, AuthService>();
+services.AddScoped<IClassroomRepository, ClassroomRepository>();
+```
+
+**`Program.cs` chỉ giữ:** `AddInfrastructure`, CORS, Swagger, và pipeline `UseAuthentication()` / `UseAuthorization()` — xem `docs/02_SETUP_AND_PROJECT_STRUCTURE.md` §7.2.
+
+Chi tiết setup: `docs/02_SETUP_AND_PROJECT_STRUCTURE.md` §7.1.
+
+## 7. Authentication — Identity + JWT
+
+Auth **không** đi qua Repository pattern. Luồng:
+
+```txt
+AuthController
+    ↓
+AuthService (UserManager, SignInManager, RoleManager)
+    ↓
+IJwtTokenService → sinh access JWT (claims: sub, email, role)
+    ↓
+RefreshToken lưu qua DbContext / IRefreshTokenRepository
+```
+
+| Thành phần | Vai trò |
+|---|---|
+| `UserManager<ApplicationUser>` | Register, đổi mật khẩu, lockout |
+| `SignInManager<ApplicationUser>` | Login, kiểm tra password |
+| `RoleManager<IdentityRole<int>>` | Seed/gán role |
+| `IJwtTokenService` | Access token JWT |
+| `AuthService` | Orchestrate register/login/refresh |
+
+Controller lấy `userId` từ JWT claims (`User.FindFirstValue(ClaimTypes.NameIdentifier)`), không hard-code.
+
+SPA React: **JwtBearer** + header `Authorization: Bearer …` — không dùng cookie Identity.
+
+## 8. Các service chính cần có
 
 ```txt
 AuthService
+IJwtTokenService / JwtTokenService
 UserService
 ClassroomService
 AssignmentService
@@ -383,11 +397,9 @@ NotificationService
 DashboardService
 ```
 
-## 8. Các repository chính cần có
+## 9. Các repository chính cần có
 
 ```txt
-UserRepository
-RoleRepository
 ClassroomRepository
 AssignmentRepository
 SubmissionRepository
@@ -401,7 +413,9 @@ NotificationRepository
 ActivityLogRepository
 ```
 
-## 9. Kết luận
+*(Auth không dùng UserRepository / RoleRepository — Identity quản lý Users/Roles.)*
+
+## 10. Kết luận
 
 Kiến trúc backend của EduGuard nên giữ nguyên tắc:
 
