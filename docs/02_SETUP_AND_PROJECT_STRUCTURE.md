@@ -137,7 +137,6 @@ EduGuard.Application/
 │   └── AntiCheatService.cs
 │
 ├── Interfaces/
-│   ├── IUserRepository.cs
 │   ├── IClassroomRepository.cs
 │   ├── IAssignmentRepository.cs
 │   ├── IExamRepository.cs
@@ -166,9 +165,7 @@ Cấu trúc:
 EduGuard.Domain/
 │
 ├── Entities/
-│   ├── User.cs
-│   ├── Role.cs
-│   ├── UserRole.cs
+│   ├── ApplicationUser.cs
 │   ├── RefreshToken.cs
 │   ├── Classroom.cs
 │   ├── ClassroomMember.cs
@@ -212,12 +209,18 @@ EduGuard.Infrastructure/
 ├── Data/
 │   ├── AppDbContext.cs
 │   └── Configurations/
-│       ├── UserConfiguration.cs
+│       ├── RefreshTokenConfiguration.cs
 │       ├── ClassroomConfiguration.cs
 │       └── ExamConfiguration.cs
 │
+├── Identity/
+│   └── IdentitySeed.cs
+│
+├── Auth/
+│   ├── IJwtTokenService.cs
+│   └── JwtTokenService.cs
+│
 ├── Repositories/
-│   ├── UserRepository.cs
 │   ├── ClassroomRepository.cs
 │   ├── AssignmentRepository.cs
 │   ├── ExamRepository.cs
@@ -268,6 +271,7 @@ Cài cho `EduGuard.Infrastructure`:
 Install-Package Microsoft.EntityFrameworkCore 8.0.24
 Install-Package Microsoft.EntityFrameworkCore.SqlServer 8.0.24
 Install-Package Microsoft.EntityFrameworkCore.Tools 8.0.24
+Install-Package Microsoft.AspNetCore.Identity.EntityFrameworkCore 8.0.24
 Install-Package StackExchange.Redis 2.12.14
 Install-Package Serilog.AspNetCore 8.0.2
 Install-Package Serilog.Sinks.Console 5.0.0
@@ -281,6 +285,7 @@ Install-Package AutoMapper 15.1.3
 Install-Package AutoMapper.Extensions.Microsoft.DependencyInjection 12.0.0
 Install-Package FluentValidation -Version 12.1.1
 Install-Package FluentValidation.DependencyInjectionExtensions -Version 12.1.1
+Install-Package Microsoft.Extensions.Identity.Stores 8.0.24
 ```
 
 > **Lưu ý:** Không cài `FluentValidation.AspNetCore` — NuGet đánh dấu deprecated và không còn được maintain. Inject `IValidator<T>` vào Service, gọi `ValidateAsync()` trước khi xử lý business logic. Đăng ký validator trong `Program.cs`:
@@ -296,7 +301,7 @@ File: `EduGuard.Api/appsettings.json`
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=EduGuardDb;Trusted_Connection=True;TrustServerCertificate=True;",
+    "DefaultConnection": "Server=WPC-ADMIN\\SQLEXPRESS;Database=EduGuardExam;Trusted_Connection=True;TrustServerCertificate=True;",
     "Redis": "localhost:6379"
   },
 
@@ -329,8 +334,13 @@ File: `EduGuard.Api/appsettings.json`
 File: `EduGuard.Api/Program.cs`
 
 ```csharp
+using System.Text;
+using EduGuard.Domain.Entities;
 using EduGuard.Infrastructure.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -340,6 +350,37 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services
+    .AddIdentity<ApplicationUser, IdentityRole<int>>(options =>
+    {
+        options.Password.RequiredLength = 8;
+        options.User.RequireUniqueEmail = true;
+    })
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();
+
+var jwtKey = builder.Configuration["Jwt:Key"]!;
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+    };
+});
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
@@ -354,9 +395,9 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddSignalR();
 
-// Đăng ký service/repository tại đây hoặc qua DependencyInjection extension
-// builder.Services.AddScoped<IClassroomService, ClassroomService>();
-// builder.Services.AddScoped<IClassroomRepository, ClassroomRepository>();
+// builder.Services.AddScoped<IAuthService, AuthService>();
+// builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+// builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
