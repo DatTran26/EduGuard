@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD`  
-**Cập nhật:** 2026-06-10 (Phase 1 hoàn thành)  
+**Cập nhật:** 2026-06-10 (Phase 2 backend + Swagger test xong)  
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -15,7 +15,7 @@
 |-----------|-----|------------|
 | 0 | Khởi tạo project | ✅ Hoàn thành |
 | 1 | Database + Entity nền tảng | ✅ Hoàn thành |
-| 2 | Authentication & Authorization | 🟡 Sắp bắt đầu |
+| 2 | Authentication & Authorization | 🟡 Backend xong — FE chưa |
 | 3 | Classroom Management | ⬜ Chưa bắt đầu |
 | 4 | Assignment Management | ⬜ Chưa bắt đầu |
 | 5 | Exam Management | ⬜ Chưa bắt đầu |
@@ -82,16 +82,16 @@
 
 ### Backend
 
-- [ ] `AddIdentity` + `AddEntityFrameworkStores<AppDbContext>`
-- [ ] `IJwtTokenService` + `JwtTokenService` (access token)
-- [ ] `IRefreshTokenService` hoặc logic refresh trong `AuthService`
-- [ ] `IAuthService` + `AuthService` (`UserManager`, `SignInManager`, `RoleManager`)
-- [ ] DTOs: `RegisterRequest`, `LoginRequest`, `LoginResponse`, `UserDto`
-- [ ] FluentValidation cho Register/Login
-- [ ] `AuthController`: register, login, refresh, me
-- [ ] JwtBearer trong `Program.cs` + Swagger Bearer
-- [ ] `[Authorize(Roles = "...")]` — Admin, Teacher, Student
-- [ ] Test qua Swagger
+- [x] `AddIdentity` + `AddEntityFrameworkStores<AppDbContext>`
+- [x] `IJwtTokenService` + `JwtTokenService` (access token)
+- [x] `IRefreshTokenService` hoặc logic refresh trong `AuthService`
+- [x] `IAuthService` + `AuthService` (`UserManager`, `SignInManager`, `RoleManager`)
+- [x] DTOs: `RegisterRequest`, `LoginRequest`, `LoginResponse`, `UserDto`
+- [x] FluentValidation cho Register/Login
+- [x] `AuthController`: register, login, refresh, logout, me
+- [x] JwtBearer trong `AddInfrastructure` + Swagger Bearer
+- [x] `[Authorize(Roles = "...")]` — `GET /api/Test/teacher-only`
+- [x] Test qua Swagger (manual) — đã verify 2026-06-10
 
 *(Không dùng `IUserRepository` / hash password thủ công cho auth.)*
 

@@ -1,4 +1,6 @@
+using EduGuard.Application.Services.Interfaces;
 using EduGuard.Domain.Entities;
+using EduGuard.Infrastructure.Auth;
 using EduGuard.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -49,8 +51,9 @@ public static class DependencyInjection
 
         services.AddAuthorization();
 
-        // services.AddScoped<IJwtTokenService, JwtTokenService>();
-        // services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IAuthService, AuthService>();
+
         return services;
     }
 }

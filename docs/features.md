@@ -2,7 +2,7 @@
 
 > **Mục đích:** Liệt kê toàn bộ chức năng cần triển khai dưới dạng checklist có thể tick.  
 > **Liên quan:** [`../Todo List.md`](../Todo%20List.md) · `06_DEVELOPMENT_ROADMAP.md` · `05_API_FRONTEND_INTEGRATION.md` · [`apiList.md`](apiList.md)  
-> **Cập nhật:** 2026-06-10 (Phase 0 hoàn thành) · **Branch:** `devD`
+> **Cập nhật:** 2026-06-10 (Phase 2 backend) · **Branch:** `devD`
 
 ---
 
@@ -123,24 +123,24 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 | F-AUTH-17 | Protected routes theo role | FE | All | ✓ |
 | F-AUTH-18 | Gán role mặc định khi đăng ký (Student) | BE | All | ✓ |
 
-- [ ] F-AUTH-01 AddIdentity
-- [ ] F-AUTH-02 JwtTokenService
-- [ ] F-AUTH-03 Refresh token logic
-- [ ] F-AUTH-04 AuthService
-- [ ] F-AUTH-05 Register API
-- [ ] F-AUTH-06 Login API
-- [ ] F-AUTH-07 Refresh API
-- [ ] F-AUTH-08 Logout API
-- [ ] F-AUTH-09 Me API
-- [ ] F-AUTH-10 Validation
-- [ ] F-AUTH-11 JwtBearer + Swagger
-- [ ] F-AUTH-12 Role policies
+- [x] F-AUTH-01 AddIdentity
+- [x] F-AUTH-02 JwtTokenService
+- [x] F-AUTH-03 Refresh token logic
+- [x] F-AUTH-04 AuthService
+- [x] F-AUTH-05 Register API
+- [x] F-AUTH-06 Login API
+- [x] F-AUTH-07 Refresh API
+- [x] F-AUTH-08 Logout API
+- [x] F-AUTH-09 Me API
+- [x] F-AUTH-10 Validation
+- [x] F-AUTH-11 JwtBearer + Swagger
+- [x] F-AUTH-12 Role policies
 - [ ] F-AUTH-13 FE Register
 - [ ] F-AUTH-14 FE Login
 - [ ] F-AUTH-15 FE Axios interceptor
 - [ ] F-AUTH-16 FE Token storage
 - [ ] F-AUTH-17 FE Protected routes
-- [ ] F-AUTH-18 Default role on register
+- [x] F-AUTH-18 Default role on register
 
 ---
 
