@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0-rc.1] - 2026-06-10
+## [1.1.0] - 2026-06-10
+
+Stable release promoted from `v1.1.0-rc.1` after RC validation (auth + classroom Swagger E2E).
 
 ### Added
 
@@ -24,16 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- **RC limitation:** demo `Jwt:Key` in `appsettings.json` — override via User Secrets/env before non-local deploy
+- Demo `Jwt:Key` in `appsettings.json` — override via User Secrets/env before non-local deploy
 - Join codes are 6-character hex; rate limiting not yet implemented
 
-### Known limitations (RC)
+### Known limitations
 
-- No automated integration tests; manual Swagger E2E recommended
+- No automated integration tests; manual Swagger E2E validated for this release
 - `GET /api/classrooms/{id}` (classroom detail) deferred
 - Members endpoint returns email for active members; tighten for production if needed
 
-[1.1.0-rc.1]: https://github.com/DatTran26/EduGuard/compare/v1.0.0...v1.1.0-rc.1
+[1.1.0]: https://github.com/DatTran26/EduGuard/compare/v1.0.0...v1.1.0
 
 ## [1.0.0] - 2026-06-10
 

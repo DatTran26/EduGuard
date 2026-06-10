@@ -1,5 +1,21 @@
 # Project Changelog
 
+## Release: v1.1.0 (stable) — promote from v1.1.0-rc.1
+
+Date: 2026-06-10
+
+Branch/source: `main` @ `e09ae0c` (merged PR #3)
+
+Description:
+
+- RC `v1.1.0-rc.1` validated (auth + classroom Swagger E2E).
+- Tagged stable `v1.1.0` on `main`; GitHub Release published (non-prerelease).
+- `CHANGELOG.md` updated: section `[1.1.0]` replaces `[1.1.0-rc.1]`.
+
+Validation:
+
+- RC manual Swagger E2E confirmed by user before promote.
+
 ## Feature: Phase 3 — Classroom Management API (backend)
 
 Date: 2026-06-10
