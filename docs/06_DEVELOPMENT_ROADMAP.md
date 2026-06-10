@@ -26,26 +26,28 @@ Mục tiêu:
 - Cấu hình kết nối frontend/backend.
 - Chạy thử API test.
 
+**Trạng thái:** ✅ Hoàn thành (2026-06-10) — React `localhost:5173` gọi `GET /api/Test` trên backend HTTPS `7168`, hiển thị JSON.
+
 Checklist:
 
 ```txt
-[ ] Tạo repo EduGuard
-[ ] Tạo folder backend
-[ ] Tạo solution EduGuard.sln
-[ ] Tạo 4 project backend
-[ ] Tạo folder frontend
-[ ] Tạo React Vite project
-[ ] Cấu hình TailwindCSS
-[ ] Cấu hình Swagger
-[ ] Cấu hình CORS
-[ ] Tạo TestController
-[ ] React gọi thử GET /api/test
+[x] Tạo repo EduGuard
+[x] Tạo folder backend
+[x] Tạo solution EduGuard.slnx
+[x] Tạo 4 project backend
+[x] Tạo folder frontend
+[x] Tạo React Vite project
+[x] Cấu hình TailwindCSS (deps + index.css)
+[x] Cấu hình Swagger
+[x] Cấu hình CORS
+[x] Tạo TestController
+[x] React gọi thử GET /api/test
 ```
 
 Kết quả cần đạt:
 
 ```txt
-Frontend gọi được backend thành công.
+Frontend gọi được backend thành công. — Đạt.
 ```
 
 ## 4. Giai đoạn 1: Database + Entity nền tảng

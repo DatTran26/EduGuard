@@ -73,7 +73,7 @@ Tick `- [ ]` khi endpoint **có controller + Swagger + test cơ bản**.
 | API-SYS-02 | GET | `/api/test` | No | — | ✓ | F-000-07 | Smoke test FE ↔ BE |
 
 - [x] API-SYS-01 GET `/WeatherForecast` *(template có sẵn)*
-- [ ] API-SYS-02 GET `/api/test`
+- [x] API-SYS-02 GET `/api/test`
 
 ---
 
@@ -319,7 +319,7 @@ Không phải REST — kết nối WebSocket qua `@microsoft/signalr`.
 | Trạng thái | Số lượng |
 |------------|----------|
 | Tổng REST + Hub | 57 |
-| Đã tick `[x]` | 1 |
-| Còn lại | 56 |
+| Đã tick `[x]` | 2 |
+| Còn lại | 55 |
 
 *Cập nhật khi merge từng module backend.*

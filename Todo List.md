@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD`  
-**Cập nhật:** 2026-06-10  
+**Cập nhật:** 2026-06-10 (Phase 0 hoàn thành)  
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -13,8 +13,8 @@
 
 | Giai đoạn | Tên | Trạng thái |
 |-----------|-----|------------|
-| 0 | Khởi tạo project | 🟡 Đang làm dở |
-| 1 | Database + Entity nền tảng | ⬜ Chưa bắt đầu |
+| 0 | Khởi tạo project | ✅ Hoàn thành |
+| 1 | Database + Entity nền tảng | 🟡 Sắp bắt đầu |
 | 2 | Authentication & Authorization | ⬜ Chưa bắt đầu |
 | 3 | Classroom Management | ⬜ Chưa bắt đầu |
 | 4 | Assignment Management | ⬜ Chưa bắt đầu |
@@ -38,14 +38,14 @@
 - [x] Tạo 4 project backend (Api, Application, Domain, Infrastructure)
 - [x] Tạo cấu trúc folder `frontend/` (scaffold)
 - [x] Thêm bộ tài liệu `docs/`
-- [ ] Tạo React Vite project trong `frontend/`
-- [ ] Cấu hình TailwindCSS
-- [ ] Cấu hình Swagger (kiểm tra & hoàn thiện)
-- [ ] Cấu hình CORS cho React dev server
-- [ ] Tạo `TestController` → `GET /api/test`
-- [ ] React gọi thử `GET /api/test` và hiển thị kết quả
+- [x] Tạo React Vite project trong `frontend/`
+- [x] Cấu hình TailwindCSS (deps + `@import "tailwindcss"` trong `index.css`)
+- [x] Cấu hình Swagger (mặc định ASP.NET Core, dev)
+- [x] Cấu hình CORS cho React dev server (`http://localhost:5173`)
+- [x] Tạo `TestController` → `GET /api/Test`
+- [x] React gọi thử `GET /api/test` và hiển thị kết quả JSON
 
-**Tiêu chí hoàn thành:** Mở React → gọi API → nhận response JSON từ backend.
+**Tiêu chí hoàn thành:** ✅ Mở React → gọi API → nhận response JSON từ backend (đã verify 2026-06-10).
 
 ---
 

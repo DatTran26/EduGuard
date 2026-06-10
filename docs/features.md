@@ -2,7 +2,7 @@
 
 > **Mục đích:** Liệt kê toàn bộ chức năng cần triển khai dưới dạng checklist có thể tick.  
 > **Liên quan:** [`../Todo List.md`](../Todo%20List.md) · `06_DEVELOPMENT_ROADMAP.md` · `05_API_FRONTEND_INTEGRATION.md` · [`apiList.md`](apiList.md)  
-> **Cập nhật:** 2026-06-10 · **Branch:** `devD`
+> **Cập nhật:** 2026-06-10 (Phase 0 hoàn thành) · **Branch:** `devD`
 
 ---
 
@@ -25,7 +25,7 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 
 | # | Module | Số feature | MVP |
 |---|--------|------------|-----|
-| 0 | Khởi tạo & kết nối FE–BE | 8 | ✓ |
+| 0 | Khởi tạo & kết nối FE–BE | 8 ✅ | ✓ |
 | 1 | Database & Entity nền | 12 | ✓ |
 | 2 | Authentication & Authorization | 18 | ✓ |
 | 3 | User Management | 10 | |
@@ -57,11 +57,14 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 | F-000-07 | `GET /api/test` — health / smoke test | BE | System | ✓ |
 | F-000-08 | React gọi `/api/test` hiển thị JSON | FE | System | ✓ |
 
-- [ ] F-000-04 React Vite + TailwindCSS
-- [ ] F-000-05 Swagger hoàn thiện
-- [ ] F-000-06 CORS
-- [ ] F-000-07 TestController
-- [ ] F-000-08 FE gọi API test
+- [x] F-000-01 Repo + solution backend
+- [x] F-000-02 Scaffold `frontend/`
+- [x] F-000-03 Bộ tài liệu `docs/`
+- [x] F-000-04 React Vite + TailwindCSS
+- [x] F-000-05 Swagger hoàn thiện
+- [x] F-000-06 CORS
+- [x] F-000-07 TestController
+- [x] F-000-08 FE gọi API test
 
 ---
 
@@ -542,8 +545,8 @@ Chi tiết theo giai đoạn: xem [`../Todo List.md`](../Todo%20List.md).
 | Trạng thái | Số lượng |
 |------------|----------|
 | Tổng feature (MVP + mở rộng, không tính F-FUT) | ~168 |
-| Đã hoàn thành `[x]` | 3 (F-000-01, 02, 03) |
-| Đang làm | — |
-| Chưa bắt đầu | ~165 |
+| Đã hoàn thành `[x]` | 8 (F-000-01 … F-000-08) |
+| Đang làm | Giai đoạn 1 — Database + Identity |
+| Chưa bắt đầu | ~160 |
 
 *Cập nhật bảng trên khi tick checkbox trong file này.*

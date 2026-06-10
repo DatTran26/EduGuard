@@ -1,5 +1,39 @@
 # Project Changelog
 
+## Feature: Phase 0 — Frontend/Backend API connectivity
+
+Date: 2026-06-10
+
+Branch/source: `devD`
+
+Description:
+
+- Hoàn thành Giai đoạn 0: React (Vite, port 5173) gọi `GET /api/Test`, hiển thị JSON từ ASP.NET Core API (HTTPS 7168).
+- Backend: `TestController`, CORS `FrontendPolicy` (`Cors:AllowedOrigins` → `http://localhost:5173`).
+- Frontend: `axiosClient`, `.env` (`VITE_API_BASE_URL`), `App.jsx` smoke test; Tailwind deps + `index.css` import.
+- Cập nhật tiến độ: `Todo List.md`, `README.md`, roadmap, `features.md`, `apiList.md`.
+
+Changed files:
+
+- `backend/EduGuard.Api/Controllers/TestController.cs`
+- `backend/EduGuard.Api/Program.cs`
+- `backend/EduGuard.Api/appsettings.json`
+- `frontend/` (Vite, axios, App, env, proxy tùy chọn)
+- `Todo List.md`
+- `README.md`
+- `docs/06_DEVELOPMENT_ROADMAP.md`
+- `docs/features.md`
+- `docs/apiList.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `dotnet run` (profile https) + `npm run dev`; trang React hiển thị `{ "message": "EduGuard API is running" }`.
+
+Unresolved questions:
+
+- Gắn `@tailwindcss/vite` vào `vite.config.js` khi bắt đầu dùng utility classes trong component (hiện UI smoke test dùng inline style).
+
 ## Feature: Auth stack — Identity + JWT
 
 Date: 2026-06-10
