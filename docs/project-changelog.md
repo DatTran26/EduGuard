@@ -1,5 +1,40 @@
 # Project Changelog
 
+## Feature: Auth stack — Identity + JWT
+
+Date: 2026-06-10
+
+Branch/source: `devD` (documentation only)
+
+Description:
+
+- Chuyển thiết kế auth từ POCO User/Role/UserRole + hash thủ công sang **ASP.NET Core Identity** + **JWT Bearer** + **RefreshToken** custom.
+- `ApplicationUser : IdentityUser<int>`, `IdentityDbContext`, seed Admin/Teacher/Student.
+- Cập nhật Todo List Phase 1–2, roadmap, entity docs, backend architecture, setup guide, overview, README, API integration notes.
+- Connection string dev mẫu: `DefaultConnection` → `EduGuardExam` trên `WPC-ADMIN\SQLEXPRESS`.
+- Migration đề xuất: `InitialIdentityAndClassroom`.
+
+Changed files:
+
+- `Todo List.md`
+- `docs/01_PROJECT_OVERVIEW.md`
+- `docs/02_SETUP_AND_PROJECT_STRUCTURE.md`
+- `docs/03_BACKEND_ARCHITECTURE.md`
+- `docs/04_DATABASE_ENTITIES.md`
+- `docs/05_API_FRONTEND_INTEGRATION.md`
+- `docs/06_DEVELOPMENT_ROADMAP.md`
+- `docs/README.md`
+- `README.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- Documentation review only; no backend code or migration run in this change.
+
+Unresolved questions:
+
+- None.
+
 ## Feature: Branching And Change Documentation Policy
 
 Date: 2026-05-31

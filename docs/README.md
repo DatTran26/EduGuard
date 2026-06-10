@@ -9,7 +9,7 @@ Hệ thống được thiết kế theo kiến trúc **Client - Server**, sử d
 - **Database:** SQL Server
 - **Cache / Realtime support:** Redis
 - **Realtime:** SignalR
-- **Authentication:** JWT + Role-based Authorization
+- **Authentication:** ASP.NET Core Identity + JWT Bearer + Role-based Authorization
 
 ## Danh sách tài liệu
 
@@ -20,6 +20,8 @@ Hệ thống được thiết kế theo kiến trúc **Client - Server**, sử d
 | `03_BACKEND_ARCHITECTURE.md` | Kiến trúc backend theo mô hình Controller → Service → Repository → DbContext |
 | `04_DATABASE_ENTITIES.md` | Thiết kế entity/database, nhóm bảng, quan hệ dữ liệu chính |
 | `05_API_FRONTEND_INTEGRATION.md` | Quy ước API, cách React gọi backend, JWT, Axios, SignalR |
+| `apiList.md` | **Checklist** — danh sách REST endpoint + SignalR hub (tick khi implement) |
+| `features.md` | **Checklist** — toàn bộ chức năng theo module (BE/FE/DB) |
 | `06_DEVELOPMENT_ROADMAP.md` | Lộ trình triển khai MVP theo từng giai đoạn |
 | `07_DEVELOPMENT_RULES.md` | **Bắt buộc đọc** — quy tắc Git, push/ship workflow, cập nhật Todo List |
 | `08_DEPLOY_WORKFLOW.md` | Flow overview deploy (ASCII + SVG), Local → Staging → Prod |
@@ -54,6 +56,8 @@ EduGuard/
 │   ├── 03_BACKEND_ARCHITECTURE.md
 │   ├── 04_DATABASE_ENTITIES.md
 │   ├── 05_API_FRONTEND_INTEGRATION.md
+│   ├── apiList.md
+│   ├── features.md
 │   ├── 06_DEVELOPMENT_ROADMAP.md
 │   ├── 07_DEVELOPMENT_RULES.md
 │   ├── 08_DEPLOY_WORKFLOW.md
@@ -76,7 +80,8 @@ Nếu mới bắt đầu, nên đọc theo thứ tự:
 3. `03_BACKEND_ARCHITECTURE.md`
 4. `04_DATABASE_ENTITIES.md`
 5. `05_API_FRONTEND_INTEGRATION.md`
-6. `06_DEVELOPMENT_ROADMAP.md`
-7. `07_DEVELOPMENT_RULES.md` (trước khi commit/push)
+6. `apiList.md` / `features.md` — tick tiến độ API & chức năng
+7. `06_DEVELOPMENT_ROADMAP.md`
+8. `07_DEVELOPMENT_RULES.md` (trước khi commit/push)
 
 

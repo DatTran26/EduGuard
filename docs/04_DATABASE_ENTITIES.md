@@ -13,7 +13,7 @@ Entity = Model ánh xạ với bảng trong database
 Ví dụ:
 
 ```txt
-User entity → Users table
+User entity → Users table (ApplicationUser / Identity)
 Classroom entity → Classrooms table
 Exam entity → Exams table
 CheatingLog entity → CheatingLogs table
@@ -36,72 +36,74 @@ Hệ thống có thể chia entity thành các nhóm:
 
 ## 3. Nhóm Auth / User
 
-### 3.1. User
+EduGuard dùng **ASP.NET Core Identity** cho tài khoản/mật khẩu/vai trò và **JWT Bearer** cho SPA React (không dùng cookie Identity).
 
-Đại diện cho tài khoản người dùng.
+### 3.1. ApplicationUser
 
-Field đề xuất:
+Kế thừa `IdentityUser<int>` — ánh xạ bảng `Users` (schema Identity).
+
+Field mở rộng (Domain):
 
 | Field | Kiểu | Ý nghĩa |
 |---|---|---|
-| Id | int | Khóa chính |
 | FullName | string | Họ tên |
-| Email | string | Email đăng nhập |
-| PasswordHash | string | Mật khẩu đã mã hóa |
 | AvatarUrl | string? | Ảnh đại diện |
 | IsActive | bool | Trạng thái tài khoản |
 | CreatedAt | DateTime | Ngày tạo |
 | UpdatedAt | DateTime? | Ngày cập nhật |
 
+Field do Identity quản lý (không tự implement):
+
+| Field | Ý nghĩa |
+|---|---|
+| Id | Khóa chính `int` |
+| UserName / Email | Đăng nhập |
+| PasswordHash | Hash mật khẩu (Identity) |
+| EmailConfirmed | Xác nhận email (tuỳ chọn) |
+| LockoutEnabled, AccessFailedCount | Khóa tài khoản |
+
 Ghi chú:
 
-- Không bao giờ trả `PasswordHash` về frontend.
-- Frontend chỉ nhận `UserDto`.
+- Không tạo entity POCO `User` riêng.
+- Không trả entity ra API — chỉ `UserDto`.
+- Không hash password thủ công; dùng `UserManager<ApplicationUser>`.
 
-### 3.2. Role
+### 3.2. Role (Identity)
 
-Đại diện cho vai trò người dùng.
+Dùng `IdentityRole<int>` — bảng `Roles`.
 
-Field đề xuất:
+Seed ban đầu:
+
+```txt
+Admin
+Teacher
+Student
+```
+
+Gán role qua `UserManager.AddToRoleAsync` / `RoleManager` — bảng trung gian `UserRoles` do Identity tạo tự động.
+
+**Không** tạo entity POCO `Role` hoặc `UserRole` riêng.
+
+### 3.3. RefreshToken
+
+Bảng custom — làm mới JWT access token (rotate/revoke).
 
 | Field | Kiểu | Ý nghĩa |
 |---|---|---|
 | Id | int | Khóa chính |
-| Name | string | Tên role: Admin, Teacher, Student |
-| Description | string? | Mô tả |
-
-### 3.3. UserRole
-
-Bảng trung gian giữa User và Role.
-
-Field đề xuất:
-
-| Field | Kiểu | Ý nghĩa |
-|---|---|---|
-| UserId | int | FK đến Users |
-| RoleId | int | FK đến Roles |
+| UserId | int | FK → Users (ApplicationUser) |
+| Token | string | Refresh token (hash hoặc random) |
+| ExpiresAt | DateTime | Thời gian hết hạn |
+| CreatedAt | DateTime | Ngày tạo |
+| RevokedAt | DateTime? | Ngày bị thu hồi |
+| IsRevoked | bool | Đã thu hồi chưa |
 
 Quan hệ:
 
 ```txt
-User 1-n UserRole n-1 Role
+ApplicationUser 1-n RefreshToken
+ApplicationUser n-n IdentityRole (qua AspNetUserRoles)
 ```
-
-### 3.4. RefreshToken
-
-Dùng để làm mới JWT token.
-
-Field đề xuất:
-
-| Field | Kiểu | Ý nghĩa |
-|---|---|---|
-| Id | int | Khóa chính |
-| UserId | int | FK đến Users |
-| Token | string | Refresh token |
-| ExpiresAt | DateTime | Thời gian hết hạn |
-| CreatedAt | DateTime | Ngày tạo |
-| RevokedAt | DateTime? | Ngày bị thu hồi |
-| IsRevoked | bool | Đã bị thu hồi chưa |
 
 ## 4. Nhóm Classroom
 
@@ -406,8 +408,9 @@ Field đề xuất:
 ## 11. Sơ đồ quan hệ tổng quan dạng text
 
 ```txt
-User
-├── UserRole ── Role
+ApplicationUser
+├── Identity UserRoles ── IdentityRole
+├── RefreshToken
 ├── ClassroomMember ── Classroom
 ├── Assignment Submission
 ├── ExamAttempt ── Exam
@@ -431,7 +434,7 @@ Exam
 Nên tạo theo thứ tự:
 
 ```txt
-1. User, Role, UserRole, RefreshToken
+1. ApplicationUser (+ Identity tables), RefreshToken
 2. Classroom, ClassroomMember
 3. Assignment, Submission
 4. Exam, Question, Answer, ExamSetting
@@ -444,28 +447,31 @@ Nên tạo theo thứ tự:
 ## 13. Gợi ý DbSet trong AppDbContext
 
 ```csharp
-public DbSet<User> Users { get; set; }
-public DbSet<Role> Roles { get; set; }
-public DbSet<UserRole> UserRoles { get; set; }
-public DbSet<RefreshToken> RefreshTokens { get; set; }
+public class AppDbContext
+    : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-public DbSet<Classroom> Classrooms { get; set; }
-public DbSet<ClassroomMember> ClassroomMembers { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
 
-public DbSet<Assignment> Assignments { get; set; }
-public DbSet<Submission> Submissions { get; set; }
-public DbSet<SubmissionFile> SubmissionFiles { get; set; }
+    public DbSet<Classroom> Classrooms { get; set; }
+    public DbSet<ClassroomMember> ClassroomMembers { get; set; }
 
-public DbSet<Exam> Exams { get; set; }
-public DbSet<ExamSetting> ExamSettings { get; set; }
-public DbSet<Question> Questions { get; set; }
-public DbSet<Answer> Answers { get; set; }
+    public DbSet<Assignment> Assignments { get; set; }
+    public DbSet<Submission> Submissions { get; set; }
+    public DbSet<SubmissionFile> SubmissionFiles { get; set; }
 
-public DbSet<ExamAttempt> ExamAttempts { get; set; }
-public DbSet<StudentAnswer> StudentAnswers { get; set; }
+    public DbSet<Exam> Exams { get; set; }
+    public DbSet<ExamSetting> ExamSettings { get; set; }
+    public DbSet<Question> Questions { get; set; }
+    public DbSet<Answer> Answers { get; set; }
 
-public DbSet<CheatingLog> CheatingLogs { get; set; }
-public DbSet<Notification> Notifications { get; set; }
-public DbSet<ActivityLog> ActivityLogs { get; set; }
+    public DbSet<ExamAttempt> ExamAttempts { get; set; }
+    public DbSet<StudentAnswer> StudentAnswers { get; set; }
+
+    public DbSet<CheatingLog> CheatingLogs { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
+    public DbSet<ActivityLog> ActivityLogs { get; set; }
+}
 ```
 

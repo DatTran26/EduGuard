@@ -55,14 +55,12 @@ Mục tiêu:
 - Tạo entity cơ bản.
 - Tạo AppDbContext.
 - Tạo migration.
-- Tạo database EduGuardDb.
+- Tạo database (dev: `EduGuardExam` trên SQL Server local).
 
 Entity nên làm trước:
 
 ```txt
-User
-Role
-UserRole
+ApplicationUser (IdentityUser<int>)
 RefreshToken
 Classroom
 ClassroomMember
@@ -71,15 +69,14 @@ ClassroomMember
 Checklist:
 
 ```txt
-[ ] Tạo entity User
-[ ] Tạo entity Role
-[ ] Tạo entity UserRole
+[ ] Tạo ApplicationUser kế thừa IdentityUser<int>
 [ ] Tạo entity RefreshToken
 [ ] Tạo entity Classroom
 [ ] Tạo entity ClassroomMember
-[ ] Tạo AppDbContext
-[ ] Cấu hình SQL Server connection string
-[ ] Add-Migration InitialCreate
+[ ] AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
+[ ] Seed roles Admin, Teacher, Student
+[ ] Cấu hình SQL Server connection string (DefaultConnection)
+[ ] Add-Migration InitialIdentityAndClassroom
 [ ] Update-Database
 ```
 
@@ -93,29 +90,27 @@ SQL Server có database và các bảng cơ bản.
 
 Mục tiêu:
 
-- Đăng ký.
-- Đăng nhập.
-- JWT.
+- Đăng ký / đăng nhập qua ASP.NET Core Identity.
+- JWT Bearer cho SPA React.
 - Role-based Authorization.
 
 Checklist:
 
 ```txt
-[ ] Tạo AuthController
-[ ] Tạo AuthService
-[ ] Tạo UserRepository
-[ ] Tạo RegisterRequest
-[ ] Tạo LoginRequest
-[ ] Tạo LoginResponse
-[ ] Hash password
-[ ] Tạo JWT token
-[ ] Tạo refresh token
-[ ] Test Swagger đăng ký
-[ ] Test Swagger đăng nhập
+[ ] AddIdentity + AddEntityFrameworkStores
+[ ] JwtTokenService (IJwtTokenService)
+[ ] AuthService (UserManager, SignInManager)
+[ ] AuthController: register, login, refresh, me
+[ ] RegisterRequest, LoginRequest, LoginResponse, UserDto
+[ ] FluentValidation Register/Login
+[ ] JwtBearer + Swagger Bearer
+[ ] Test Swagger đăng ký / đăng nhập
 [ ] React login gọi API thành công
 [ ] Lưu accessToken ở frontend
 [ ] Bảo vệ route frontend
 ```
+
+*(Không dùng UserRepository hay hash password thủ công.)*
 
 Kết quả cần đạt:
 
@@ -425,7 +420,7 @@ Hệ thống có thể chạy bằng Docker Compose.
 Nếu thời gian gấp, làm theo thứ tự:
 
 ```txt
-1. Auth JWT
+1. Auth Identity + JWT
 2. Classroom
 3. Exam CRUD
 4. Start Exam

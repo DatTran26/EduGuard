@@ -205,14 +205,15 @@ DbContext là class đại diện cho database trong Entity Framework Core.
 Ví dụ:
 
 ```csharp
-public class AppDbContext : DbContext
+public class AppDbContext
+    : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
     {
     }
 
-    public DbSet<User> Users { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<Classroom> Classrooms { get; set; }
     public DbSet<Exam> Exams { get; set; }
     public DbSet<Question> Questions { get; set; }
@@ -369,10 +370,37 @@ Trong `Program.cs` gọi:
 builder.Services.AddInfrastructure(builder.Configuration);
 ```
 
-## 7. Các service chính cần có
+## 7. Authentication — Identity + JWT
+
+Auth **không** đi qua Repository pattern. Luồng:
+
+```txt
+AuthController
+    ↓
+AuthService (UserManager, SignInManager, RoleManager)
+    ↓
+IJwtTokenService → sinh access JWT (claims: sub, email, role)
+    ↓
+RefreshToken lưu qua DbContext / IRefreshTokenRepository
+```
+
+| Thành phần | Vai trò |
+|---|---|
+| `UserManager<ApplicationUser>` | Register, đổi mật khẩu, lockout |
+| `SignInManager<ApplicationUser>` | Login, kiểm tra password |
+| `RoleManager<IdentityRole<int>>` | Seed/gán role |
+| `IJwtTokenService` | Access token JWT |
+| `AuthService` | Orchestrate register/login/refresh |
+
+Controller lấy `userId` từ JWT claims (`User.FindFirstValue(ClaimTypes.NameIdentifier)`), không hard-code.
+
+SPA React: **JwtBearer** + header `Authorization: Bearer …` — không dùng cookie Identity.
+
+## 8. Các service chính cần có
 
 ```txt
 AuthService
+IJwtTokenService / JwtTokenService
 UserService
 ClassroomService
 AssignmentService
@@ -383,11 +411,9 @@ NotificationService
 DashboardService
 ```
 
-## 8. Các repository chính cần có
+## 9. Các repository chính cần có
 
 ```txt
-UserRepository
-RoleRepository
 ClassroomRepository
 AssignmentRepository
 SubmissionRepository
@@ -401,7 +427,9 @@ NotificationRepository
 ActivityLogRepository
 ```
 
-## 9. Kết luận
+*(Auth không dùng UserRepository / RoleRepository — Identity quản lý Users/Roles.)*
+
+## 10. Kết luận
 
 Kiến trúc backend của EduGuard nên giữ nguyên tắc:
 

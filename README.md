@@ -24,7 +24,7 @@ EduGuard hướng tới mô hình kết hợp quản lý lớp học, thi trực
 
 | Module | Mô tả |
 |--------|--------|
-| Authentication | Đăng ký, đăng nhập, JWT + Refresh Token, phân quyền theo vai trò |
+| Authentication | Đăng ký, đăng nhập, ASP.NET Core Identity + JWT + Refresh Token, phân quyền theo vai trò |
 | Classroom | Tạo lớp, mã tham gia, quản lý học sinh |
 | Assignment | Giao bài, nộp bài, chấm điểm |
 | Exam | Ngân hàng câu hỏi, tạo đề, cấu hình thời gian |
@@ -61,7 +61,7 @@ API hiện có: `GET /WeatherForecast` (template ASP.NET Core).
 | Backend | ASP.NET Core 8 Web API |
 | Frontend | React, Vite, Tailwind CSS *(dự kiến)* |
 | Database | SQL Server, Entity Framework Core *(dự kiến)* |
-| Auth | JWT, Role-based Authorization *(dự kiến)* |
+| Auth | ASP.NET Core Identity + JWT Bearer *(dự kiến)* |
 | Realtime | SignalR *(dự kiến)* |
 | Cache | Redis *(dự kiến)* |
 | Logging | Serilog *(dự kiến)* |

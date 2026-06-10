@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD`  
-**Cập nhật:** 2026-06-09  
+**Cập nhật:** 2026-06-10  
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -55,22 +55,24 @@
 
 ### Domain — Entity
 
-- [ ] `User`
-- [ ] `Role`
-- [ ] `UserRole`
-- [ ] `RefreshToken`
+- [ ] `ApplicationUser` (kế thừa `IdentityUser<int>`)
+- [ ] `RefreshToken` (custom — rotate/revoke JWT)
 - [ ] `Classroom`
 - [ ] `ClassroomMember`
+- [ ] Package Domain: `Microsoft.Extensions.Identity.Stores`
 
 ### Infrastructure
 
-- [ ] `AppDbContext`
-- [ ] EF Core Fluent API configurations
+- [ ] `AppDbContext` kế thừa `IdentityDbContext<ApplicationUser, IdentityRole<int>, int>`
+- [ ] Map tên bảng: `Users`, `Roles`, `UserRoles` (tuỳ chọn)
+- [ ] Seed roles: Admin, Teacher, Student
+- [ ] EF Fluent API: RefreshToken, Classroom, ClassroomMember
+- [ ] Package: `Microsoft.AspNetCore.Identity.EntityFrameworkCore`
 - [ ] Connection string SQL Server (`appsettings.Development.json`)
-- [ ] `Add-Migration InitialCreate`
+- [ ] `Add-Migration InitialIdentityAndClassroom`
 - [ ] `Update-Database`
 
-**Tiêu chí hoàn thành:** Database `EduGuardDb` có đủ 6 bảng trên.
+**Tiêu chí hoàn thành:** Database có schema Identity + `RefreshTokens` + `Classrooms` + `ClassroomMembers`; 3 role seed. (Dev có thể dùng tên DB `EduGuardExam` thay `EduGuardDb`.)
 
 ---
 
@@ -80,14 +82,18 @@
 
 ### Backend
 
-- [ ] `IUserRepository` + `UserRepository`
-- [ ] `AuthService` (register, login, refresh)
-- [ ] DTOs: `RegisterRequest`, `LoginRequest`, `LoginResponse`
-- [ ] Hash password
-- [ ] JWT access token + refresh token
-- [ ] `AuthController` (`register`, `login`, `refresh`)
-- [ ] Cấu hình `[Authorize]` + role policies (Admin, Teacher, Student)
+- [ ] `AddIdentity` + `AddEntityFrameworkStores<AppDbContext>`
+- [ ] `IJwtTokenService` + `JwtTokenService` (access token)
+- [ ] `IRefreshTokenService` hoặc logic refresh trong `AuthService`
+- [ ] `IAuthService` + `AuthService` (`UserManager`, `SignInManager`, `RoleManager`)
+- [ ] DTOs: `RegisterRequest`, `LoginRequest`, `LoginResponse`, `UserDto`
+- [ ] FluentValidation cho Register/Login
+- [ ] `AuthController`: register, login, refresh, me
+- [ ] JwtBearer trong `Program.cs` + Swagger Bearer
+- [ ] `[Authorize(Roles = "...")]` — Admin, Teacher, Student
 - [ ] Test qua Swagger
+
+*(Không dùng `IUserRepository` / hash password thủ công cho auth.)*
 
 ### Frontend
 
@@ -284,7 +290,7 @@
 
 ```txt
 1. Hoàn thiện Giai đoạn 0 (FE ↔ BE kết nối)
-2. Auth JWT
+2. Auth Identity + JWT
 3. Classroom
 4. Exam CRUD
 5. Start Exam → Submit Exam
