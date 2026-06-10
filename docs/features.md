@@ -191,14 +191,14 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 | F-CLS-13 | Trang chi tiết lớp + thành viên | FE | All | |
 | F-CLS-14 | Đăng thông báo trong lớp (optional MVP+) | BE/FE | Teacher | |
 
-- [ ] F-CLS-01 Create classroom
-- [ ] F-CLS-02 List classrooms
+- [x] F-CLS-01 Create classroom
+- [x] F-CLS-02 List classrooms
 - [ ] F-CLS-03 Classroom detail
 - [ ] F-CLS-04 Update classroom
 - [ ] F-CLS-05 Delete classroom
-- [ ] F-CLS-06 JoinCode generation
-- [ ] F-CLS-07 Join by code
-- [ ] F-CLS-08 List members
+- [x] F-CLS-06 JoinCode generation
+- [x] F-CLS-07 Join by code
+- [x] F-CLS-08 List members
 - [ ] F-CLS-09 Remove member
 - [ ] F-CLS-10 FE list page
 - [ ] F-CLS-11 FE create form

@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD`  
-**Cập nhật:** 2026-06-10 (Phase 2 backend + Swagger test xong)  
+**Cập nhật:** 2026-06-10 (Phase 3 backend xong — FE chưa)  
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -16,7 +16,7 @@
 | 0 | Khởi tạo project | ✅ Hoàn thành |
 | 1 | Database + Entity nền tảng | ✅ Hoàn thành |
 | 2 | Authentication & Authorization | 🟡 Backend xong — FE chưa |
-| 3 | Classroom Management | ⬜ Chưa bắt đầu |
+| 3 | Classroom Management | 🟡 Backend xong — FE chưa |
 | 4 | Assignment Management | ⬜ Chưa bắt đầu |
 | 5 | Exam Management | ⬜ Chưa bắt đầu |
 | 6 | Online Testing / Exam Attempt | ⬜ Chưa bắt đầu |
@@ -112,12 +112,12 @@
 
 ### Backend
 
-- [ ] `ClassroomRepository` + `ClassroomService`
-- [ ] DTOs: `CreateClassroomRequest`, `ClassroomDto`
-- [ ] `POST /api/classrooms` — tạo lớp
-- [ ] `GET /api/classrooms` — danh sách lớp
-- [ ] `POST /api/classrooms/join` — tham gia bằng mã
-- [ ] `GET /api/classrooms/{id}/members` — danh sách thành viên
+- [x] `ClassroomRepository` + `ClassroomService`
+- [x] DTOs: `CreateClassroomRequest`, `ClassroomDto`, `JoinClassroomRequest`, `ClassroomMemberDto`
+- [x] `POST /api/classrooms` — tạo lớp
+- [x] `GET /api/classrooms` — danh sách lớp
+- [x] `POST /api/classrooms/join` — tham gia bằng mã
+- [x] `GET /api/classrooms/{id}/members` — danh sách thành viên
 
 ### Frontend
 

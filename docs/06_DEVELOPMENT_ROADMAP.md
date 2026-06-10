@@ -132,15 +132,15 @@ Mục tiêu:
 Checklist:
 
 ```txt
-[ ] Tạo ClassroomController
-[ ] Tạo ClassroomService
-[ ] Tạo ClassroomRepository
-[ ] Tạo CreateClassroomRequest
-[ ] Tạo ClassroomDto
-[ ] API tạo lớp
-[ ] API lấy danh sách lớp
-[ ] API join lớp bằng mã
-[ ] API xem thành viên lớp
+[x] Tạo ClassroomController
+[x] Tạo ClassroomService
+[x] Tạo ClassroomRepository
+[x] Tạo CreateClassroomRequest
+[x] Tạo ClassroomDto
+[x] API tạo lớp
+[x] API lấy danh sách lớp
+[x] API join lớp bằng mã
+[x] API xem thành viên lớp
 [ ] Frontend trang danh sách lớp
 [ ] Frontend form tạo lớp
 [ ] Frontend form nhập mã lớp

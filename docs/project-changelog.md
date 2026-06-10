@@ -1,5 +1,39 @@
 # Project Changelog
 
+## Feature: Phase 3 — Classroom Management API (backend)
+
+Date: 2026-06-10
+
+Branch/source: `devD`
+
+Description:
+
+- Hoàn thành backend Giai đoạn 3 (phạm vi MVP): Teacher tạo lớp, Student join bằng mã, danh sách lớp, danh sách thành viên.
+- Application: DTOs (`CreateClassroomRequest`, `ClassroomDto`, `JoinClassroomRequest`, `ClassroomMemberDto`), `IClassroomRepository`, `IClassroomService`, FluentValidation.
+- Infrastructure: `ClassroomRepository`, `ClassroomService` (sinh `JoinCode` 6 ký tự, rejoin sau Removed), DI registration.
+- Api: `ClassroomsController` với `[Authorize]`, role Teacher/Student cho create/join.
+
+Changed files:
+
+- `backend/EduGuard.Application/DTOs/Classrooms/**`
+- `backend/EduGuard.Application/Repositories/Interfaces/i-classroom-repository.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-classroom-service.cs`
+- `backend/EduGuard.Application/Validators/create-classroom-request-validator.cs`
+- `backend/EduGuard.Application/Validators/join-classroom-request-validator.cs`
+- `backend/EduGuard.Infrastructure/Repositories/classroom-repository.cs`
+- `backend/EduGuard.Infrastructure/Classrooms/classroom-service.cs`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `backend/EduGuard.Api/Controllers/classrooms-controller.cs`
+- `Todo List.md`, `docs/features.md`, `docs/06_DEVELOPMENT_ROADMAP.md`
+
+Validation:
+
+- `dotnet build backend/EduGuard.Api/EduGuard.Api.slnx` — 0 errors, 0 warnings.
+
+Unresolved questions:
+
+- `GET /api/classrooms/{id}` (F-CLS-03) chưa trong checklist Giai đoạn 3 — để phase sau hoặc khi FE cần.
+
 ## Feature: Phase 2 — Authentication API (backend)
 
 Date: 2026-06-10
