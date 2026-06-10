@@ -1,5 +1,37 @@
 # Project Changelog
 
+## Feature: Phase 2 — Authentication API (backend)
+
+Date: 2026-06-10
+
+Branch/source: `devD`
+
+Description:
+
+- Hoàn thành backend Giai đoạn 2: đăng ký, đăng nhập, refresh/logout token, profile `me`.
+- Application: DTOs (`RegisterRequest`, `LoginRequest`, `LoginResponse`, `UserDto`, `ApiResponse`), `IAuthService`, `IJwtTokenService`, FluentValidation.
+- Infrastructure: `JwtTokenService`, `AuthService` (Identity + refresh token rotate/revoke), DI registration.
+- Api: `AuthController`, Swagger Bearer security, `GET /api/Test/teacher-only` role test.
+
+Changed files:
+
+- `backend/EduGuard.Application/DTOs/**`
+- `backend/EduGuard.Application/Services/Interfaces/**`
+- `backend/EduGuard.Application/Validators/**`
+- `backend/EduGuard.Infrastructure/Auth/**`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `backend/EduGuard.Api/Controllers/auth-controller.cs`
+- `backend/EduGuard.Api/Controllers/TestController.cs`
+- `backend/EduGuard.Api/Program.cs`
+- `backend/EduGuard.Api/EduGuard.Api.csproj`
+- `backend/EduGuard.Infrastructure/EduGuard.Infrastructure.csproj`
+- `Todo List.md`, `README.md`, `docs/features.md`, `docs/06_DEVELOPMENT_ROADMAP.md`
+
+Validation:
+
+- `dotnet build backend/EduGuard.Api/EduGuard.Api.slnx` — 0 errors, 0 warnings.
+- Manual Swagger E2E: register, login, me, refresh-token, logout, `GET /api/Test`, `teacher-only` — đã verify 2026-06-10.
+
 ## Feature: Docs — Auth DI trong AddInfrastructure
 
 Date: 2026-06-10

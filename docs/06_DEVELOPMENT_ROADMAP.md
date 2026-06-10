@@ -99,14 +99,14 @@ Mục tiêu:
 Checklist:
 
 ```txt
-[ ] AddIdentity + AddEntityFrameworkStores
-[ ] JwtTokenService (IJwtTokenService)
-[ ] AuthService (UserManager, SignInManager)
-[ ] AuthController: register, login, refresh, me
-[ ] RegisterRequest, LoginRequest, LoginResponse, UserDto
-[ ] FluentValidation Register/Login
-[ ] JwtBearer + Swagger Bearer
-[ ] Test Swagger đăng ký / đăng nhập
+[x] AddIdentity + AddEntityFrameworkStores
+[x] JwtTokenService (IJwtTokenService)
+[x] AuthService (UserManager, SignInManager)
+[x] AuthController: register, login, refresh, logout, me
+[x] RegisterRequest, LoginRequest, LoginResponse, UserDto
+[x] FluentValidation Register/Login
+[x] JwtBearer + Swagger Bearer
+[ ] Test Swagger đăng ký / đăng nhập (manual)
 [ ] React login gọi API thành công
 [ ] Lưu accessToken ở frontend
 [ ] Bảo vệ route frontend
