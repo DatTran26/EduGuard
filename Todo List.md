@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD`  
-**Cập nhật:** 2026-06-10 (Phase 0 hoàn thành)  
+**Cập nhật:** 2026-06-10 (Phase 1 hoàn thành)  
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -14,8 +14,8 @@
 | Giai đoạn | Tên | Trạng thái |
 |-----------|-----|------------|
 | 0 | Khởi tạo project | ✅ Hoàn thành |
-| 1 | Database + Entity nền tảng | 🟡 Sắp bắt đầu |
-| 2 | Authentication & Authorization | ⬜ Chưa bắt đầu |
+| 1 | Database + Entity nền tảng | ✅ Hoàn thành |
+| 2 | Authentication & Authorization | 🟡 Sắp bắt đầu |
 | 3 | Classroom Management | ⬜ Chưa bắt đầu |
 | 4 | Assignment Management | ⬜ Chưa bắt đầu |
 | 5 | Exam Management | ⬜ Chưa bắt đầu |
@@ -55,24 +55,24 @@
 
 ### Domain — Entity
 
-- [ ] `ApplicationUser` (kế thừa `IdentityUser<int>`)
-- [ ] `RefreshToken` (custom — rotate/revoke JWT)
-- [ ] `Classroom`
-- [ ] `ClassroomMember`
-- [ ] Package Domain: `Microsoft.Extensions.Identity.Stores`
+- [x] `ApplicationUser` (kế thừa `IdentityUser<int>`)
+- [x] `RefreshToken` (custom — rotate/revoke JWT)
+- [x] `Classroom`
+- [x] `ClassroomMember`
+- [x] Package Domain: `Microsoft.Extensions.Identity.Stores`
 
 ### Infrastructure
 
-- [ ] `AppDbContext` kế thừa `IdentityDbContext<ApplicationUser, IdentityRole<int>, int>`
-- [ ] Map tên bảng: `Users`, `Roles`, `UserRoles` (tuỳ chọn)
-- [ ] Seed roles: Admin, Teacher, Student
-- [ ] EF Fluent API: RefreshToken, Classroom, ClassroomMember
-- [ ] Package: `Microsoft.AspNetCore.Identity.EntityFrameworkCore`
-- [ ] Connection string SQL Server (`appsettings.Development.json`)
-- [ ] `Add-Migration InitialIdentityAndClassroom`
-- [ ] `Update-Database`
+- [x] `AppDbContext` kế thừa `IdentityDbContext<ApplicationUser, IdentityRole<int>, int>`
+- [x] Map tên bảng: `Users`, `Roles`, `UserRoles` (tuỳ chọn)
+- [x] Seed roles: Admin, Teacher, Student
+- [x] EF Fluent API: RefreshToken, Classroom, ClassroomMember
+- [x] Package: `Microsoft.AspNetCore.Identity.EntityFrameworkCore`
+- [x] Connection string SQL Server (`appsettings.json` → `EduGuardExam`)
+- [x] `Add-Migration InitialIdentityAndClassroom`
+- [x] `Update-Database`
 
-**Tiêu chí hoàn thành:** Database có schema Identity + `RefreshTokens` + `Classrooms` + `ClassroomMembers`; 3 role seed. (Dev có thể dùng tên DB `EduGuardExam` thay `EduGuardDb`.)
+**Tiêu chí hoàn thành:** ✅ Database `EduGuardExam` có schema Identity + `RefreshTokens` + `Classrooms` + `ClassroomMembers`; 3 role seed (đã verify 2026-06-10).
 
 ---
 

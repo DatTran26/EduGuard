@@ -83,20 +83,20 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 | F-DB-09 | Migration `InitialIdentityAndClassroom` | DB | System | ✓ |
 | F-DB-10 | `Update-Database` — DB dev (`EduGuardExam`) | DB | System | ✓ |
 | F-DB-11 | Package Identity EF Core + Identity.Stores | Infra | System | ✓ |
-| F-DB-12 | Map tên bảng Users/Roles (tuỳ chọn) | DB | System | |
+| F-DB-12 | Map tên bảng Users/Roles (tuỳ chọn) | DB | System | ✓ |
 
-- [ ] F-DB-01 ApplicationUser
-- [ ] F-DB-02 RefreshToken
-- [ ] F-DB-03 Classroom
-- [ ] F-DB-04 ClassroomMember
-- [ ] F-DB-05 AppDbContext Identity
-- [ ] F-DB-06 Fluent API configs
-- [ ] F-DB-07 Seed roles
-- [ ] F-DB-08 Connection string
-- [ ] F-DB-09 Migration
-- [ ] F-DB-10 Update-Database
-- [ ] F-DB-11 Packages
-- [ ] F-DB-12 Table naming (optional)
+- [x] F-DB-01 ApplicationUser
+- [x] F-DB-02 RefreshToken
+- [x] F-DB-03 Classroom
+- [x] F-DB-04 ClassroomMember
+- [x] F-DB-05 AppDbContext Identity
+- [x] F-DB-06 Fluent API configs
+- [x] F-DB-07 Seed roles
+- [x] F-DB-08 Connection string
+- [x] F-DB-09 Migration
+- [x] F-DB-10 Update-Database
+- [x] F-DB-11 Packages
+- [x] F-DB-12 Table naming (optional)
 
 ---
 

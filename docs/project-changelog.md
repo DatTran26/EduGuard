@@ -1,5 +1,93 @@
 # Project Changelog
 
+## Feature: Docs — Auth DI trong AddInfrastructure
+
+Date: 2026-06-10
+
+Branch/source: `devD`
+
+Description:
+
+- Làm rõ quy ước Giai đoạn 2: `AddIdentity`, JwtBearer, `AddAuthorization`, auth services đăng ký trong `dependency-injection.cs` (`AddInfrastructure`); `Program.cs` chỉ middleware `UseAuthentication` / `UseAuthorization`.
+- Bỏ wording mơ hồ "AddInfrastructure hoặc Program.cs" cho đăng ký DI.
+- Cập nhật `docs/02_SETUP_AND_PROJECT_STRUCTURE.md` §7.2 (ví dụ đầy đủ) và `docs/03_BACKEND_ARCHITECTURE.md` §6.
+
+Changed files:
+
+- `docs/02_SETUP_AND_PROJECT_STRUCTURE.md`
+- `docs/03_BACKEND_ARCHITECTURE.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- Đối chiếu quy ước DI Giai đoạn 1 (`AddDbContext` đã trong `AddInfrastructure`).
+
+Unresolved questions:
+
+- None.
+
+## Feature: Docs sync — Program.cs & AddInfrastructure
+
+Date: 2026-06-10
+
+Branch/source: `devD`
+
+Description:
+
+- Đồng bộ `docs/02_SETUP_AND_PROJECT_STRUCTURE.md` với code Giai đoạn 1: `Program.cs` dùng `AddInfrastructure`, tách mục hiện tại (§7.1) vs mục tiêu Auth/JWT (§7.2).
+- Cập nhật cấu trúc Infrastructure: tên file kebab-case thực tế (`app-db-context.cs`, `dependency-injection.cs`, configs) vs thư mục kế hoạch.
+- Cập nhật `docs/03_BACKEND_ARCHITECTURE.md` §6: phân biệt DI hiện tại và đăng ký repository/service tương lai.
+
+Changed files:
+
+- `docs/02_SETUP_AND_PROJECT_STRUCTURE.md`
+- `docs/03_BACKEND_ARCHITECTURE.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- Đối chiếu với `backend/EduGuard.Api/Program.cs` và `backend/EduGuard.Infrastructure/dependency-injection.cs`.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Phase 1 — Database + Foundation Entities
+
+Date: 2026-06-10
+
+Branch/source: `devD`
+
+Description:
+
+- Hoàn thành Giai đoạn 1: EF Core + SQL Server database `EduGuardExam` với Identity schema và entity nền tảng.
+- Domain: `ApplicationUser`, `RefreshToken`, `Classroom`, `ClassroomMember`, `ClassroomMemberStatus`.
+- Infrastructure: `AppDbContext`, Fluent API configs, `DependencyInjection.AddInfrastructure`, role seed (Admin/Teacher/Student).
+- Migration `InitialIdentityAndClassroom` tạo bảng Users, Roles, UserRoles, RefreshTokens, Classrooms, ClassroomMembers.
+- Api: đăng ký `AddInfrastructure` trong `Program.cs`; thêm `Microsoft.EntityFrameworkCore.Design`.
+
+Changed files:
+
+- `backend/EduGuard.Domain/Entities/*.cs`
+- `backend/EduGuard.Domain/Enums/ClassroomMemberStatus.cs`
+- `backend/EduGuard.Infrastructure/Data/app-db-context.cs`
+- `backend/EduGuard.Infrastructure/Data/Configurations/*.cs`
+- `backend/EduGuard.Infrastructure/Data/Migrations/*`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `backend/EduGuard.Api/Program.cs`
+- `backend/EduGuard.Api/EduGuard.Api.csproj`
+- `Todo List.md`, `README.md`, `docs/06_DEVELOPMENT_ROADMAP.md`, `docs/features.md`
+
+Validation:
+
+- `dotnet build` — 0 errors.
+- `dotnet ef migrations add InitialIdentityAndClassroom` — success.
+- `dotnet ef database update` — created `EduGuardExam`, applied migration, seeded 3 roles.
+
+Unresolved questions:
+
+- None.
+
 ## Feature: Phase 0 — Frontend/Backend API connectivity
 
 Date: 2026-06-10

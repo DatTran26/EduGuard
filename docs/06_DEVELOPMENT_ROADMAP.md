@@ -71,21 +71,21 @@ ClassroomMember
 Checklist:
 
 ```txt
-[ ] Tạo ApplicationUser kế thừa IdentityUser<int>
-[ ] Tạo entity RefreshToken
-[ ] Tạo entity Classroom
-[ ] Tạo entity ClassroomMember
-[ ] AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
-[ ] Seed roles Admin, Teacher, Student
-[ ] Cấu hình SQL Server connection string (DefaultConnection)
-[ ] Add-Migration InitialIdentityAndClassroom
-[ ] Update-Database
+[x] Tạo ApplicationUser kế thừa IdentityUser<int>
+[x] Tạo entity RefreshToken
+[x] Tạo entity Classroom
+[x] Tạo entity ClassroomMember
+[x] AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
+[x] Seed roles Admin, Teacher, Student
+[x] Cấu hình SQL Server connection string (DefaultConnection)
+[x] Add-Migration InitialIdentityAndClassroom
+[x] Update-Database
 ```
 
 Kết quả cần đạt:
 
 ```txt
-SQL Server có database và các bảng cơ bản.
+SQL Server có database và các bảng cơ bản. — Đạt (2026-06-10, DB EduGuardExam).
 ```
 
 ## 5. Giai đoạn 2: Authentication & Authorization
