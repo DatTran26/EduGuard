@@ -39,18 +39,19 @@ Chi tiết chức năng: [`docs/01_PROJECT_OVERVIEW.md`](docs/01_PROJECT_OVERVIE
 
 ## Trạng thái dự án
 
-Dự án đang ở **giai đoạn khởi tạo** (phase 0). Tiến độ chi tiết: [`Todo List.md`](Todo%20List.md).
+**Giai đoạn 0 hoàn thành** (2026-06-10): frontend React gọi được backend API. Tiếp theo: **Giai đoạn 1** (Database + Identity). Chi tiết: [`Todo List.md`](Todo%20List.md).
 
 | Thành phần | Trạng thái |
 |------------|------------|
 | Backend scaffold (4 project .NET 8) | ✅ |
-| Swagger (mặc định) | ✅ |
-| Frontend React + Vite | ⬜ Scaffold folder |
+| Swagger (dev) | ✅ |
+| Frontend React + Vite + axios | ✅ |
+| CORS + smoke test `GET /api/Test` | ✅ |
 | Database / EF Core | ⬜ Chưa bắt đầu |
 | Auth, API modules, SignalR, Redis | ⬜ Chưa bắt đầu |
 | Docker Compose | ⬜ Chưa bắt đầu |
 
-API hiện có: `GET /WeatherForecast` (template ASP.NET Core).
+API smoke test: `GET /api/Test` → `{ "message": "EduGuard API is running" }`.
 
 ---
 
