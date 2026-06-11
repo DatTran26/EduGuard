@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { classroomApi } from "../../../api/classroomApi";
 import Button from "../../../components/common/Button";
+import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
+import Input from "../../../components/common/Input";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
@@ -10,6 +12,13 @@ import { getRoleLabel } from "../../../routes/roleRoutes";
 import { routeConfig } from "../../../routes/routeConfig";
 import ClassroomCard from "../components/ClassroomCard";
 import CreateClassroomForm from "../components/CreateClassroomForm";
+
+const ADMIN_CLASSROOM_SORT_OPTIONS = [
+  { label: "Tên lớp học (A-Z)", value: "name-asc" },
+  { label: "Tên lớp học (Z-A)", value: "name-desc" },
+  { label: "Số thành viên (nhiều đến ít)", value: "members-desc" },
+  { label: "Số thành viên (ít đến nhiều)", value: "members-asc" },
+];
 
 // Hàm này dựng bộ số liệu nhỏ phía trên để trang classroom bớt trống và dễ quét hơn.
 function buildSummaryItems(classrooms) {
@@ -31,7 +40,7 @@ function getPageCopyByRole(role) {
   if (role === "Admin") {
     return {
       title: "Quản lý lớp học",
-      description: "Theo dõi toàn bộ lớp học và kiểm tra nhanh trạng thái dữ liệu trong hệ thống.",
+      description: "Xem, tìm kiếm và sắp xếp toàn bộ lớp học trong hệ thống.",
       actionLabel: null,
     };
   }
@@ -51,6 +60,44 @@ function getPageCopyByRole(role) {
   };
 }
 
+// Hàm này lọc lớp học theo tên lớp hoặc tên giảng viên để admin tìm nhanh đúng dữ liệu cần xem.
+function filterAndSortAdminClassrooms(classrooms, searchTerm, sortOption) {
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+  const filteredClassrooms = classrooms.filter((classroom) => {
+    if (!normalizedSearchTerm) {
+      return true;
+    }
+
+    const classroomName = classroom.name?.toLowerCase() ?? "";
+    const teacherName = classroom.teacherName?.toLowerCase() ?? "";
+
+    return classroomName.includes(normalizedSearchTerm) || teacherName.includes(normalizedSearchTerm);
+  });
+
+  return filteredClassrooms.slice().sort((firstClassroom, secondClassroom) => {
+    if (sortOption === "name-desc") {
+      return secondClassroom.name.localeCompare(firstClassroom.name, "vi");
+    }
+
+    if (sortOption === "members-desc") {
+      return (
+        secondClassroom.memberCount - firstClassroom.memberCount ||
+        firstClassroom.name.localeCompare(secondClassroom.name, "vi")
+      );
+    }
+
+    if (sortOption === "members-asc") {
+      return (
+        firstClassroom.memberCount - secondClassroom.memberCount ||
+        firstClassroom.name.localeCompare(secondClassroom.name, "vi")
+      );
+    }
+
+    return firstClassroom.name.localeCompare(secondClassroom.name, "vi");
+  });
+}
+
 // Trang này hiển thị classroom list theo quyền hiện tại và cho teacher thao tác CRUD phần tạo lớp.
 export default function ClassroomListPage() {
   const location = useLocation();
@@ -62,8 +109,14 @@ export default function ClassroomListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreateFormVisible, setIsCreateFormVisible] = useState(false);
+  const [adminSearchTerm, setAdminSearchTerm] = useState("");
+  const [adminSortOption, setAdminSortOption] = useState("name-asc");
   const pageCopy = getPageCopyByRole(user?.role);
   const summaryItems = buildSummaryItems(classrooms);
+  const isAdminView = user?.role === "Admin";
+  const visibleClassrooms = isAdminView
+    ? filterAndSortAdminClassrooms(classrooms, adminSearchTerm, adminSortOption)
+    : classrooms;
 
   useEffect(() => {
     if (!location.state?.message) {
@@ -204,6 +257,12 @@ export default function ClassroomListPage() {
     }
   }
 
+  // Hàm này đưa bộ lọc của admin về mặc định để tìm kiếm lại từ đầu cho nhanh.
+  function handleResetAdminFilters() {
+    setAdminSearchTerm("");
+    setAdminSortOption("name-asc");
+  }
+
   // Hàm này trả empty state phù hợp hơn với vai trò hiện tại thay vì dùng một thông điệp chung.
   function renderEmptyState() {
     if (loadErrorMessage) {
@@ -246,6 +305,21 @@ export default function ClassroomListPage() {
     );
   }
 
+  // Hàm này trả trạng thái rỗng riêng khi admin đã có dữ liệu nhưng bộ lọc hiện tại không khớp lớp nào.
+  function renderAdminFilterEmptyState() {
+    return (
+      <EmptyState
+        title="Không tìm thấy lớp học phù hợp."
+        description="Hãy thử đổi từ khóa tìm kiếm hoặc cách sắp xếp để xem lại danh sách lớp học."
+        action={
+          <Button variant="secondary" onClick={handleResetAdminFilters}>
+            Xóa bộ lọc
+          </Button>
+        }
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -268,14 +342,67 @@ export default function ClassroomListPage() {
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {summaryItems.map((item) => (
-          <div key={item.label} className="rounded-[20px] border border-border bg-surface p-5">
-            <p className="text-[0.82rem] font-medium text-secondary">{item.label}</p>
-            <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{item.value}</p>
+      {isAdminView ? (
+        <Card className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-primary">Bộ lọc lớp học</h3>
+              <p className="text-sm leading-6 text-secondary">
+                Tìm theo tên lớp học hoặc tên giảng viên, đồng thời sắp xếp danh sách theo nhu cầu.
+              </p>
+            </div>
+            <Button
+              disabled={!adminSearchTerm && adminSortOption === "name-asc"}
+              variant="ghost"
+              onClick={handleResetAdminFilters}
+            >
+              Đặt lại
+            </Button>
           </div>
-        ))}
-      </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+            <div>
+              <label className="eg-label" htmlFor="admin-classroom-search">
+                Tìm kiếm lớp học
+              </label>
+              <Input
+                id="admin-classroom-search"
+                placeholder="Nhập tên lớp học hoặc tên giảng viên"
+                type="search"
+                value={adminSearchTerm}
+                onChange={(event) => setAdminSearchTerm(event.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="eg-label" htmlFor="admin-classroom-sort">
+                Sắp xếp danh sách
+              </label>
+              <select
+                id="admin-classroom-sort"
+                className="eg-input"
+                value={adminSortOption}
+                onChange={(event) => setAdminSortOption(event.target.value)}
+              >
+                {ADMIN_CLASSROOM_SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-3">
+          {summaryItems.map((item) => (
+            <div key={item.label} className="rounded-[20px] border border-border bg-surface p-5">
+              <p className="text-[0.82rem] font-medium text-secondary">{item.label}</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{item.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {user?.role === "Teacher" && isCreateFormVisible ? (
         <CreateClassroomForm
@@ -291,9 +418,9 @@ export default function ClassroomListPage() {
         <div className="rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
           Đang tải danh sách lớp học...
         </div>
-      ) : classrooms.length > 0 ? (
+      ) : visibleClassrooms.length > 0 ? (
         <div className="grid gap-6">
-          {classrooms.map((classroom) => (
+          {visibleClassrooms.map((classroom) => (
             <ClassroomCard
               key={classroom.id}
               classroom={classroom}
@@ -301,6 +428,8 @@ export default function ClassroomListPage() {
             />
           ))}
         </div>
+      ) : isAdminView && classrooms.length > 0 ? (
+        renderAdminFilterEmptyState()
       ) : (
         renderEmptyState()
       )}

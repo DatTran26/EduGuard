@@ -1,250 +1,150 @@
-import {
-  appendActivityLog,
-  buildApiResponse,
-  buildRefreshResponse,
-  createApiError,
-  executeMockRequest,
-  getCurrentStoredRefreshToken,
-  getNextNumericId,
-  issueRefreshToken,
-  normalizeEmail,
-  readMockDatabase,
-  requireCurrentUser,
-  revokeRefreshToken,
-  toUserDto,
-  writeMockDatabase,
-} from "./mockDatabase";
-import { buildMockGoogleProfile, DEFAULT_CAPYBARA_AVATAR_URL } from "../utils/avatar";
+import axiosClient from "./axiosClient";
 
-// Hàm này tạo access token mock đơn giản để giữ shape response giống backend JWT.
-function buildAccessToken(userId) {
-  return `mock-access-token-${userId}-${Date.now()}`;
+const DEFAULT_ROLE = "Student";
+const ROLE_PRIORITY = ["Admin", "Teacher", "Student"];
+
+// Hàm này chọn vai trò ưu tiên cao nhất từ danh sách roles trả về để route frontend không bị chọn nhầm.
+function resolvePrimaryRole(roles) {
+  for (const role of ROLE_PRIORITY) {
+    if (roles.includes(role)) {
+      return role;
+    }
+  }
+
+  return roles[0] ?? DEFAULT_ROLE;
 }
 
-// Hàm này kiểm tra dữ liệu đăng ký cơ bản trước khi tạo user mới trong mock database.
-function validateRegisterPayload(payload) {
-  if (!payload.fullName?.trim()) {
-    throw createApiError("Họ và tên không được để trống.");
-  }
-
-  if (!payload.email?.trim()) {
-    throw createApiError("Email không được để trống.");
-  }
-
-  if (!payload.password || payload.password.length < 8) {
-    throw createApiError("Mật khẩu cần ít nhất 8 ký tự.");
-  }
-}
-
-// Hàm này tạo mới user Student bằng form đăng ký thường và gắn sẵn avatar capybara mặc định.
-function buildLocalStudentUser(database, payload) {
-  const normalizedEmail = normalizeEmail(payload.email);
+// Hàm này chuẩn hóa user DTO từ backend về shape mà frontend hiện tại đang dùng.
+function normalizeAuthUser(user) {
+  const roles = Array.isArray(user?.roles) ? user.roles.filter(Boolean) : [];
 
   return {
-    id: getNextNumericId(database.users),
-    fullName: payload.fullName.trim(),
-    avatarUrl: DEFAULT_CAPYBARA_AVATAR_URL,
+    id: Number(user?.id) || 0,
+    fullName: user?.fullName ?? "",
+    email: user?.email ?? "",
+    roles,
+    role: resolvePrimaryRole(roles),
+    avatarUrl: "",
     isActive: true,
-    createdAt: new Date().toISOString(),
+    createdAt: null,
     updatedAt: null,
-    email: normalizedEmail,
-    userName: normalizedEmail,
-    role: "Student",
-    authProvider: "Local",
-    // Trường password chỉ để mô phỏng flow auth trong giai đoạn chưa có backend.
-    password: payload.password,
   };
 }
 
-// Hàm này xử lý profile Google demo để mô phỏng OAuth: có thể login tài khoản cũ hoặc tự tạo mới.
-function upsertGoogleStudentUser(database) {
-  const googleProfile = buildMockGoogleProfile();
-  const normalizedEmail = normalizeEmail(googleProfile.email);
-  const matchedUser = database.users.find(
-    (userItem) => normalizeEmail(userItem.email) === normalizedEmail,
-  );
+// Hàm này đổi response envelope từ backend thành object data gọn để tầng trên dùng thống nhất.
+function unwrapApiResponse(response) {
+  const apiResponse = response?.data;
 
-  if (matchedUser) {
-    matchedUser.fullName = googleProfile.fullName;
-    matchedUser.avatarUrl = googleProfile.avatarUrl;
-    matchedUser.updatedAt = new Date().toISOString();
-    matchedUser.authProvider = "Google";
+  if (!apiResponse?.success) {
+    throw new Error(apiResponse?.message || "Yêu cầu không thành công.");
+  }
+
+  return apiResponse;
+}
+
+// Hàm này gom message lỗi từ axios/backend để UI hiển thị toast dễ hiểu hơn.
+function buildClientError(error) {
+  const message =
+    error.response?.data?.message ||
+    error.response?.data?.title ||
+    error.message ||
+    "Đã có lỗi xảy ra trong lúc gọi API.";
+  const nextError = new Error(message);
+
+  nextError.status = error.response?.status;
+  return nextError;
+}
+
+// Hàm này bọc lời gọi axios để luôn trả lỗi theo một kiểu nhất quán cho frontend.
+async function requestAuthApi(requestFactory) {
+  try {
+    const response = await requestFactory();
+    return unwrapApiResponse(response);
+  } catch (error) {
+    throw buildClientError(error);
+  }
+}
+
+// Hàm này chuẩn hóa data login/refresh để frontend giữ nguyên flow lưu session hiện tại.
+function normalizeLoginResponseData(data) {
+  return {
+    accessToken: data?.accessToken ?? "",
+    refreshToken: data?.refreshToken ?? "",
+    user: normalizeAuthUser(data?.user),
+  };
+}
+
+// Object này gọi auth API thật của backend theo đúng contract trong docs và controller hiện tại.
+export const authApi = {
+  async login(payload) {
+    const apiResponse = await requestAuthApi(() =>
+      axiosClient.post("/auth/login", {
+        email: payload.email?.trim() ?? "",
+        password: payload.password ?? "",
+      }),
+    );
 
     return {
-      isNewUser: false,
-      user: matchedUser,
+      ...apiResponse,
+      data: normalizeLoginResponseData(apiResponse.data),
     };
-  }
-
-  const newUser = {
-    id: getNextNumericId(database.users),
-    fullName: googleProfile.fullName,
-    avatarUrl: googleProfile.avatarUrl,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: null,
-    email: normalizedEmail,
-    userName: normalizedEmail,
-    role: "Student",
-    authProvider: "Google",
-    password: "",
-  };
-
-  database.users.push(newUser);
-
-  return {
-    isNewUser: true,
-    user: newUser,
-  };
-}
-
-// Object này mô phỏng toàn bộ auth endpoint để sau này đổi sang backend thật sẽ rất thuận tay.
-export const authApi = {
-  login(payload) {
-    return executeMockRequest(() => {
-      const database = readMockDatabase();
-      const normalizedEmail = normalizeEmail(payload.email ?? "");
-      const user = database.users.find((userItem) => normalizeEmail(userItem.email) === normalizedEmail);
-
-      if (!user || user.password !== payload.password) {
-        throw createApiError("Email hoặc mật khẩu chưa đúng.", 401);
-      }
-
-      if (!user.isActive) {
-        throw createApiError("Tài khoản hiện đang bị khóa.", 403);
-      }
-
-      const refreshToken = issueRefreshToken(database, user.id);
-      appendActivityLog(database, {
-        userId: user.id,
-        action: "AUTH_LOGIN",
-        description: `Người dùng ${user.email} đăng nhập vào hệ thống.`,
-      });
-      writeMockDatabase(database);
-
-      return buildApiResponse({
-        message: "Đăng nhập thành công.",
-        data: {
-          accessToken: buildAccessToken(user.id),
-          refreshToken,
-          user: toUserDto(user),
-        },
-      });
-    });
   },
 
-  register(payload) {
-    return executeMockRequest(() => {
-      validateRegisterPayload(payload);
+  async register(payload) {
+    const apiResponse = await requestAuthApi(() =>
+      axiosClient.post("/auth/register", {
+        fullName: payload.fullName?.trim() ?? "",
+        email: payload.email?.trim() ?? "",
+        password: payload.password ?? "",
+      }),
+    );
 
-      const database = readMockDatabase();
-      const normalizedEmail = normalizeEmail(payload.email);
-      const emailExists = database.users.some(
-        (userItem) => normalizeEmail(userItem.email) === normalizedEmail,
-      );
-
-      if (emailExists) {
-        throw createApiError("Email này đã tồn tại trong hệ thống.", 409);
-      }
-
-      const newUser = buildLocalStudentUser(database, payload);
-
-      database.users.push(newUser);
-
-      const refreshToken = issueRefreshToken(database, newUser.id);
-      appendActivityLog(database, {
-        userId: newUser.id,
-        action: "AUTH_REGISTER",
-        description: `Tạo mới tài khoản student ${newUser.email}.`,
-      });
-      writeMockDatabase(database);
-
-      return buildApiResponse({
-        message: "Đăng ký thành công.",
-        data: {
-          accessToken: buildAccessToken(newUser.id),
-          refreshToken,
-          user: toUserDto(newUser),
-        },
-      });
-    });
+    return {
+      ...apiResponse,
+      data: normalizeAuthUser(apiResponse.data),
+    };
   },
 
-  continueWithGoogle() {
-    return executeMockRequest(() => {
-      const database = readMockDatabase();
-      const { isNewUser, user } = upsertGoogleStudentUser(database);
+  async me() {
+    const apiResponse = await requestAuthApi(() => axiosClient.get("/auth/me"));
 
-      if (!user.isActive) {
-        throw createApiError("Tài khoản Google này hiện đang bị khóa.", 403);
-      }
-
-      const refreshToken = issueRefreshToken(database, user.id);
-      appendActivityLog(database, {
-        userId: user.id,
-        action: isNewUser ? "AUTH_REGISTER_GOOGLE" : "AUTH_LOGIN_GOOGLE",
-        description: isNewUser
-          ? `Tạo mới tài khoản Google ${user.email}.`
-          : `Người dùng ${user.email} đăng nhập bằng Google.`,
-      });
-      writeMockDatabase(database);
-
-      return buildApiResponse({
-        message: isNewUser
-          ? "Đăng ký bằng Google thành công."
-          : "Đăng nhập bằng Google thành công.",
-        data: {
-          accessToken: buildAccessToken(user.id),
-          refreshToken,
-          user: toUserDto(user),
-        },
-      });
-    });
+    return {
+      ...apiResponse,
+      data: normalizeAuthUser(apiResponse.data),
+    };
   },
 
-  me() {
-    return executeMockRequest(() => {
-      const database = readMockDatabase();
-      const currentUser = requireCurrentUser(database);
+  async refreshToken(refreshToken) {
+    const apiResponse = await requestAuthApi(() =>
+      axiosClient.post("/auth/refresh-token", {
+        refreshToken,
+      }),
+    );
 
-      return buildApiResponse({
-        message: "Lấy thông tin người dùng thành công.",
-        data: {
-          user: toUserDto(currentUser),
-        },
-      });
-    });
+    return {
+      ...apiResponse,
+      data: normalizeLoginResponseData(apiResponse.data),
+    };
   },
 
-  refreshToken() {
-    return executeMockRequest(() => {
-      const database = readMockDatabase();
-      const currentRefreshToken = getCurrentStoredRefreshToken();
-      const response = buildRefreshResponse(database, currentRefreshToken);
-
-      writeMockDatabase(database);
-      return response;
-    });
-  },
-
-  logout() {
-    return executeMockRequest(() => {
-      const database = readMockDatabase();
-      const currentUser = requireCurrentUser(database);
-      const currentRefreshToken = getCurrentStoredRefreshToken();
-
-      revokeRefreshToken(database, currentRefreshToken);
-      appendActivityLog(database, {
-        userId: currentUser.id,
-        action: "AUTH_LOGOUT",
-        description: `Người dùng ${currentUser.email} đăng xuất khỏi hệ thống.`,
-      });
-      writeMockDatabase(database);
-
-      return buildApiResponse({
+  async logout(refreshToken) {
+    if (!refreshToken) {
+      return {
+        success: true,
         message: "Đăng xuất thành công.",
         data: null,
-      });
-    });
+      };
+    }
+
+    const apiResponse = await requestAuthApi(() =>
+      axiosClient.post("/auth/logout", {
+        refreshToken,
+      }),
+    );
+
+    return {
+      ...apiResponse,
+      data: apiResponse.data ?? null,
+    };
   },
 };

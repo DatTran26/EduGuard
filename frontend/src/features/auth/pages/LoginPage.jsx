@@ -3,42 +3,22 @@ import { useLocation, useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import Button from "../../../components/common/Button";
 import TextInput from "../../../components/forms/TextInput";
-import GoogleAuthButton from "../components/GoogleAuthButton";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { getDefaultPathByRole } from "../../../routes/roleRoutes";
 import { routeConfig } from "../../../routes/routeConfig";
 
-const DEMO_ACCOUNT_OPTIONS = [
-  {
-    label: "Giảng viên",
-    email: "teacher@eduguard.local",
-    password: "12345678",
-  },
-  {
-    label: "Sinh viên",
-    email: "student@eduguard.local",
-    password: "12345678",
-  },
-  {
-    label: "Quản trị viên",
-    email: "admin@eduguard.local",
-    password: "12345678",
-  },
-];
-
-// Trang này dùng mock auth API để đăng nhập thật giả lập bằng các tài khoản seed trong localStorage.
+// Trang này gọi API đăng nhập thật của backend theo contract auth trong docs.
 export default function LoginPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { login, loginWithGoogle } = useAuth();
+  const { login } = useAuth();
   const { showToast } = useToast();
   const [formValues, setFormValues] = useState({
-    email: "teacher@eduguard.local",
-    password: "12345678",
+    email: "",
+    password: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeMethod, setActiveMethod] = useState("");
 
   // Hàm này lấy route cần quay lại sau khi login xong, giống lúc route guard redirect user.
   function getRedirectPath(role) {
@@ -53,18 +33,18 @@ export default function LoginPage() {
     }));
   }
 
-  // Hàm này đổ sẵn thông tin tài khoản seed vào form để test role nhanh hơn.
-  function handleFillDemoAccount(account) {
-    setFormValues({
-      email: account.email,
-      password: account.password,
+  // Hàm này giữ chỗ cho luồng quên mật khẩu trước khi backend thực sự cung cấp endpoint tương ứng.
+  function handleForgotPasswordClick() {
+    showToast({
+      tone: "info",
+      title: "Quên mật khẩu",
+      message: "Tính năng khôi phục mật khẩu đang được hoàn thiện trong EduGuard.",
     });
   }
 
-  // Hàm này xử lý submit form đăng nhập theo flow authApi.login.
+  // Hàm này xử lý submit form đăng nhập theo đúng endpoint `/api/auth/login`.
   async function handleSubmit(event) {
     event.preventDefault();
-    setActiveMethod("local");
     setIsSubmitting(true);
 
     try {
@@ -83,84 +63,32 @@ export default function LoginPage() {
       });
     } finally {
       setIsSubmitting(false);
-      setActiveMethod("");
-    }
-  }
-
-  // Hàm này mô phỏng nút Google OAuth để user có thể vào nhanh bằng profile Google demo.
-  async function handleGoogleLogin() {
-    setActiveMethod("google");
-    setIsSubmitting(true);
-
-    try {
-      const session = await loginWithGoogle();
-      showToast({
-        tone: "success",
-        title: "Đăng nhập Google thành công",
-        message: `Đã kết nối tài khoản ${session.user.email}.`,
-      });
-      navigate(getRedirectPath(session.user.role), { replace: true });
-    } catch (error) {
-      showToast({
-        tone: "danger",
-        title: "Google chưa đăng nhập được",
-        message: error.message || "Không thể tiếp tục với Google lúc này.",
-      });
-    } finally {
-      setIsSubmitting(false);
-      setActiveMethod("");
     }
   }
 
   return (
     <AuthLayout
-      title="Đăng nhập"
-      description="Tiếp tục vào không gian làm việc của bạn."
+      title="Đăng nhập EduGuard"
+      description="Truy cập nhanh vào lớp học, bài kiểm tra và khu vực quản trị của bạn chỉ với một lần xác thực."
       footerText="Chưa có tài khoản?"
       footerLinkLabel="Đăng ký ngay"
       footerLinkTo={routeConfig.register}
     >
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <GoogleAuthButton
-          disabled={isSubmitting}
-          isLoading={isSubmitting && activeMethod === "google"}
-          onClick={handleGoogleLogin}
-        />
-
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-secondary">hoặc</span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
-
-        <div className="space-y-2">
-          <label className="eg-label">Tài khoản mẫu</label>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {DEMO_ACCOUNT_OPTIONS.map((account) => (
-              <Button
-                key={account.email}
-                onClick={() => handleFillDemoAccount(account)}
-                type="button"
-                variant="secondary"
-              >
-                {account.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-
+      <form className="space-y-5" onSubmit={handleSubmit}>
         <TextInput
           autoComplete="email"
+          className="rounded-[18px] border-[#D7E0EA] bg-[#FBFCFE] px-4 py-3.5 focus:border-[#1479E8] focus:shadow-[0_0_0_4px_rgba(20,121,232,0.12)]"
           id="login-email"
           label="Email"
           onChange={(event) => handleFieldChange("email", event.target.value)}
-          placeholder="teacher@eduguard.local"
+          placeholder="student@gmail.com"
           required
           type="email"
           value={formValues.email}
         />
         <TextInput
           autoComplete="current-password"
+          className="rounded-[18px] border-[#D7E0EA] bg-[#FBFCFE] px-4 py-3.5 focus:border-[#1479E8] focus:shadow-[0_0_0_4px_rgba(20,121,232,0.12)]"
           id="login-password"
           label="Mật khẩu"
           onChange={(event) => handleFieldChange("password", event.target.value)}
@@ -170,8 +98,30 @@ export default function LoginPage() {
           value={formValues.password}
         />
 
-        <Button className="w-full" disabled={isSubmitting} type="submit">
-          {isSubmitting && activeMethod === "local" ? "Đang đăng nhập..." : "Đăng nhập"}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <label className="inline-flex items-center gap-3 text-sm font-medium text-[#536277]">
+            <input
+              className="h-4 w-4 rounded border-[#CCD7E4] accent-[#1479E8]"
+              name="remember-session"
+              type="checkbox"
+            />
+            Ghi nhớ đăng nhập
+          </label>
+          <button
+            className="text-sm font-semibold text-[#0F2F57] transition-colors duration-200 hover:text-[#1479E8]"
+            type="button"
+            onClick={handleForgotPasswordClick}
+          >
+            Quên mật khẩu?
+          </button>
+        </div>
+
+        <Button
+          className="w-full rounded-[20px] bg-[#1479E8] px-6 py-3.5 text-base font-semibold text-white shadow-[0_18px_42px_rgba(20,121,232,0.24)] hover:bg-[#136CCF]"
+          disabled={isSubmitting}
+          type="submit"
+        >
+          {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
         </Button>
       </form>
     </AuthLayout>
