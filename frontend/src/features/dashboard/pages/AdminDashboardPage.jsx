@@ -106,10 +106,8 @@ export default function AdminDashboardPage() {
         description="Theo dõi người dùng, lớp học và các hoạt động gần đây trong EduGuard."
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <StatCard label="Người dùng" value={summary.totalUsers} helperText="Tổng số tài khoản trong hệ thống mock" tone="info" />
-        <StatCard label="Giảng viên" value={summary.totalTeachers} helperText="Số tài khoản giảng viên hiện có" tone="neutral" />
-        <StatCard label="Sinh viên" value={summary.totalStudents} helperText="Số tài khoản sinh viên hiện có" tone="success" />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Người dùng" value={summary.totalUsers} helperText={`${summary.totalStudents} sinh viên • ${summary.totalTeachers} giảng viên`} tone="info" />
         <StatCard label="Lớp học" value={summary.totalClassrooms} helperText="Tổng lớp đang được lưu trong hệ thống mock" tone="neutral" />
         <StatCard label="Bài kiểm tra" value={summary.totalExams} helperText={`${summary.totalAttempts} lượt làm bài đã ghi nhận`} tone="success" />
         <StatCard label="Điểm nghi ngờ" value={summary.totalSuspicionPoints} helperText="Tổng suspicion point từ các lượt làm bài" tone="caution" />

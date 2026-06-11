@@ -3,23 +3,25 @@ import { useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import Button from "../../../components/common/Button";
 import TextInput from "../../../components/forms/TextInput";
+import GoogleAuthButton from "../components/GoogleAuthButton";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { getDefaultPathByRole } from "../../../routes/roleRoutes";
 import { routeConfig } from "../../../routes/routeConfig";
 
-// Trang này đăng ký tài khoản mới qua backend rồi đăng nhập luôn để giữ trải nghiệm mượt hơn.
+// Trang này đăng ký tài khoản Student mới bằng mock auth API để mô phỏng backend register thật.
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { loginWithGoogle, register } = useAuth();
   const { showToast } = useToast();
   const [formValues, setFormValues] = useState({
-    confirmPassword: "",
-    email: "",
-    fullName: "",
-    password: "",
+    confirmPassword: "12345678",
+    email: "studentmoi@eduguard.local",
+    fullName: "Sinh viên mới",
+    password: "12345678",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeMethod, setActiveMethod] = useState("");
 
   // Hàm này cập nhật state form đăng ký theo từng field để phần submit dưới đây đỡ lặp lại.
   function handleFieldChange(fieldName, value) {
@@ -39,22 +41,6 @@ export default function RegisterPage() {
       return "Mật khẩu cần ít nhất 8 ký tự.";
     }
 
-    if (!/[a-z]/.test(formValues.password)) {
-      return "Mật khẩu cần có ít nhất 1 chữ thường.";
-    }
-
-    if (!/[A-Z]/.test(formValues.password)) {
-      return "Mật khẩu cần có ít nhất 1 chữ hoa.";
-    }
-
-    if (!/[0-9]/.test(formValues.password)) {
-      return "Mật khẩu cần có ít nhất 1 chữ số.";
-    }
-
-    if (!/[^A-Za-z0-9]/.test(formValues.password)) {
-      return "Mật khẩu cần có ít nhất 1 ký tự đặc biệt.";
-    }
-
     return "";
   }
 
@@ -72,6 +58,7 @@ export default function RegisterPage() {
       return;
     }
 
+    setActiveMethod("local");
     setIsSubmitting(true);
 
     try {
@@ -79,7 +66,7 @@ export default function RegisterPage() {
       showToast({
         tone: "success",
         title: "Đăng ký thành công",
-        message: "Tài khoản mới đã được tạo và đăng nhập vào hệ thống.",
+        message: "Tài khoản mới đã được tạo với avatar capybara mặc định.",
       });
       navigate(getDefaultPathByRole(session.user.role), { replace: true });
     } catch (error) {
@@ -90,20 +77,58 @@ export default function RegisterPage() {
       });
     } finally {
       setIsSubmitting(false);
+      setActiveMethod("");
+    }
+  }
+
+  // Hàm này mô phỏng flow đăng ký bằng Google và dùng luôn ảnh từ profile Google demo.
+  async function handleGoogleRegister() {
+    setActiveMethod("google");
+    setIsSubmitting(true);
+
+    try {
+      const session = await loginWithGoogle();
+      showToast({
+        tone: "success",
+        title: "Google đã sẵn sàng",
+        message: `Tài khoản ${session.user.email} đã vào hệ thống cùng ảnh đại diện Google.`,
+      });
+      navigate(getDefaultPathByRole(session.user.role), { replace: true });
+    } catch (error) {
+      showToast({
+        tone: "danger",
+        title: "Google chưa đăng ký được",
+        message: error.message || "Không thể tạo tài khoản bằng Google.",
+      });
+    } finally {
+      setIsSubmitting(false);
+      setActiveMethod("");
     }
   }
 
   return (
     <AuthLayout
-      title="Tạo tài khoản EduGuard"
-      description="Điền thông tin để bắt đầu sử dụng không gian học tập và thi trực tuyến minh bạch của EduGuard."
+      title="Đăng ký"
+      description="Tạo tài khoản sinh viên mới để tham gia lớp học."
       footerText="Đã có tài khoản?"
       footerLinkLabel="Quay lại đăng nhập"
       footerLinkTo={routeConfig.login}
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
+        <GoogleAuthButton
+          disabled={isSubmitting}
+          isLoading={isSubmitting && activeMethod === "google"}
+          label="Đăng ký với Google"
+          onClick={handleGoogleRegister}
+        />
+
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs font-medium uppercase tracking-[0.14em] text-secondary">hoặc</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
         <TextInput
-          className="rounded-[18px] border-[#D7E0EA] bg-[#FBFCFE] px-4 py-3.5 focus:border-[#1479E8] focus:shadow-[0_0_0_4px_rgba(20,121,232,0.12)]"
           id="register-full-name"
           label="Họ và tên"
           onChange={(event) => handleFieldChange("fullName", event.target.value)}
@@ -113,18 +138,16 @@ export default function RegisterPage() {
         />
         <TextInput
           autoComplete="email"
-          className="rounded-[18px] border-[#D7E0EA] bg-[#FBFCFE] px-4 py-3.5 focus:border-[#1479E8] focus:shadow-[0_0_0_4px_rgba(20,121,232,0.12)]"
           id="register-email"
           label="Email"
           onChange={(event) => handleFieldChange("email", event.target.value)}
-          placeholder="student@gmail.com"
+          placeholder="student@eduguard.local"
           required
           type="email"
           value={formValues.email}
         />
         <TextInput
           autoComplete="new-password"
-          className="rounded-[18px] border-[#D7E0EA] bg-[#FBFCFE] px-4 py-3.5 focus:border-[#1479E8] focus:shadow-[0_0_0_4px_rgba(20,121,232,0.12)]"
           id="register-password"
           label="Mật khẩu"
           onChange={(event) => handleFieldChange("password", event.target.value)}
@@ -135,7 +158,6 @@ export default function RegisterPage() {
         />
         <TextInput
           autoComplete="new-password"
-          className="rounded-[18px] border-[#D7E0EA] bg-[#FBFCFE] px-4 py-3.5 focus:border-[#1479E8] focus:shadow-[0_0_0_4px_rgba(20,121,232,0.12)]"
           id="register-confirm-password"
           label="Xác nhận mật khẩu"
           onChange={(event) => handleFieldChange("confirmPassword", event.target.value)}
@@ -145,12 +167,8 @@ export default function RegisterPage() {
           value={formValues.confirmPassword}
         />
 
-        <Button
-          className="w-full rounded-[20px] bg-[#1479E8] px-6 py-3.5 text-base font-semibold text-white shadow-[0_18px_42px_rgba(20,121,232,0.24)] hover:bg-[#136CCF]"
-          disabled={isSubmitting}
-          type="submit"
-        >
-          {isSubmitting ? "Đang tạo tài khoản..." : "Tạo tài khoản"}
+        <Button className="w-full" disabled={isSubmitting} type="submit">
+          {isSubmitting && activeMethod === "local" ? "Đang tạo tài khoản..." : "Tạo tài khoản"}
         </Button>
       </form>
     </AuthLayout>

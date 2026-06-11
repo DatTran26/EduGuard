@@ -4,7 +4,7 @@ const TONE_CLASS_NAMES = {
   neutral: "border-border bg-surface",
   info: "border-info/15 bg-info/5",
   success: "border-success/15 bg-success/5",
-  caution: "border-caution/15 bg-caution/5",
+  caution: "border-warning/15 bg-warning/5",
 };
 
 // Component này là thẻ số liệu thống nhất cho dashboard để các role nhìn cùng một ngôn ngữ hiển thị.

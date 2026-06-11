@@ -11,10 +11,6 @@ import {
   writeMockDatabase,
 } from "./mockDatabase";
 
-// MOCK STATUS:
-// - Toàn bộ exam CRUD, question bank và setting trong file này vẫn đang chạy trên mockDatabase/localStorage.
-// - Giao diện và quyền truy cập đã làm khá sâu, nhưng backend exam thật vẫn chưa được nối vào frontend.
-
 const EXAM_QUESTION_TYPES = ["SingleChoice", "MultipleChoice", "TrueFalse", "ShortAnswer"];
 
 // Hàm này kiểm tra dữ liệu đề thi trước khi create hoặc update để tránh lưu record lỗi.
@@ -494,8 +490,7 @@ function requireTeacherOwnedClassroomForExam(database, currentUser, classroomId)
   return classroom;
 }
 
-// MOCK ENDPOINT GROUP:
-// - getAll / getById / getQuestionList / create / update / delete / question CRUD đều đang là mock endpoint.
+// Object này mô phỏng exam endpoint để frontend làm CRUD đề thi như đang gọi backend thật.
 export const examApi = {
   getAll(filters = {}) {
     return executeMockRequest(() => {

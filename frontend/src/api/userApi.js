@@ -10,10 +10,6 @@ import {
   writeMockDatabase,
 } from "./mockDatabase";
 
-// MOCK STATUS:
-// - Hồ sơ cá nhân và danh sách người dùng admin hiện vẫn đi qua mockDatabase/localStorage.
-// - Auth session là backend thật, nhưng profile update/avatar vẫn chưa có user API backend tương ứng ở frontend.
-
 // Hàm này kiểm tra dữ liệu hồ sơ trước khi cập nhật để tránh lưu thông tin nửa vời.
 function validateProfilePayload(payload) {
   if (!payload.fullName?.trim()) {
@@ -47,8 +43,7 @@ function updateCurrentUserProfile(database, currentUser, payload) {
   return currentUser;
 }
 
-// MOCK ENDPOINT GROUP:
-// - getMyProfile / updateMyProfile / getAll hiện đều đang là mock endpoint.
+// Object này mô phỏng users endpoint để quản lý hồ sơ cá nhân và màn admin overview.
 export const userApi = {
   getMyProfile() {
     return executeMockRequest(() => {

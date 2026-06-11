@@ -13,11 +13,6 @@ import {
   setStoredUser,
 } from "../utils/tokenStorage";
 
-// INTEGRATION STATUS:
-// - login / register / me / logout đang gọi backend auth thật qua authApi.
-// - updateProfile và phần hydrate avatar/thông tin cá nhân vẫn tạm nối với userApi mock/localStorage.
-// - Session backend được bridge sang mock DB để dashboard/classroom/exam chưa nối backend vẫn chạy liền mạch.
-
 const AuthContext = createContext(undefined);
 
 // Hàm này kiểm tra session đọc từ localStorage có còn đúng shape cơ bản để dùng tiếp hay không.
@@ -54,15 +49,6 @@ function getInitialSession() {
   };
 }
 
-// Hàm này lấy danh sách role hiện tại từ session để route guard xử lý đúng cả trường hợp user có nhiều quyền.
-function getUserRoles(user) {
-  if (Array.isArray(user?.roles) && user.roles.length > 0) {
-    return user.roles.filter(Boolean);
-  }
-
-  return user?.role ? [user.role] : [];
-}
-
 // Hàm này lưu session mới sau login, register hoặc refresh profile.
 function persistSession(session) {
   setStoredTokens({
@@ -75,23 +61,6 @@ function persistSession(session) {
 // Hàm này chỉ cập nhật user hiện tại trong session khi token không thay đổi.
 function persistUserOnly(user) {
   setStoredUser(user);
-}
-
-// Hàm này trộn profile mock cục bộ vào user auth để avatar/thông tin cá nhân không bị mất sau khi tải lại trang.
-function mergeHydratedUserProfile(authUser, profileUser) {
-  if (!profileUser) {
-    return authUser;
-  }
-
-  return {
-    ...authUser,
-    fullName: profileUser.fullName || authUser.fullName,
-    email: profileUser.email || authUser.email,
-    avatarUrl: profileUser.avatarUrl ?? authUser.avatarUrl,
-    isActive: typeof profileUser.isActive === "boolean" ? profileUser.isActive : authUser.isActive,
-    createdAt: profileUser.createdAt ?? authUser.createdAt,
-    updatedAt: profileUser.updatedAt ?? authUser.updatedAt,
-  };
 }
 
 // Hàm này xóa toàn bộ session local khi logout hoặc phiên không còn hợp lệ.
@@ -108,8 +77,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let isMounted = true;
 
-    // Hàm này đồng bộ session với auth API thật để F5 trang vẫn lấy lại đúng user từ JWT.
-    async function syncSessionWithApi() {
+    // Hàm này đồng bộ session với mock database để tránh giữ user đã bị thay đổi hoặc xóa.
+    async function syncSessionWithDatabase() {
       if (!session.accessToken) {
         setIsHydrating(false);
         return;
@@ -122,20 +91,7 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        let nextUser = response.data;
-
-        try {
-          const profileResponse = await userApi.getMyProfile();
-
-          if (!isMounted) {
-            return;
-          }
-
-          nextUser = mergeHydratedUserProfile(response.data, profileResponse.data);
-        } catch {
-          nextUser = response.data;
-        }
-
+        const nextUser = response.data.user;
         persistUserOnly(nextUser);
         setSession((previousSession) => ({
           ...previousSession,
@@ -159,7 +115,7 @@ export function AuthProvider({ children }) {
       }
     }
 
-    syncSessionWithApi();
+    syncSessionWithDatabase();
 
     return () => {
       isMounted = false;
@@ -179,37 +135,35 @@ export function AuthProvider({ children }) {
     return nextSession;
   }
 
-  // Hàm này gọi login API của backend rồi lưu session theo flow JWT hiện tại của app.
+  // Hàm này gọi mock login API rồi lưu session giống lúc mình nhận JWT thật từ backend.
   async function login(payload) {
     const response = await authApi.login(payload);
     return applyAuthResponse(response);
   }
 
-  // Hàm này đăng ký qua backend rồi đăng nhập ngay để giữ nguyên trải nghiệm hiện tại của frontend.
+  // Hàm này gọi mock register API rồi đăng nhập luôn user mới tạo như nhiều app thực tế vẫn làm.
   async function register(payload) {
-    await authApi.register(payload);
-    const response = await authApi.login({
-      email: payload.email,
-      password: payload.password,
-    });
+    const response = await authApi.register(payload);
+    return applyAuthResponse(response);
+  }
+
+  // Hàm này mô phỏng đăng nhập/đăng ký bằng Google để frontend test social auth trước khi có backend thật.
+  async function loginWithGoogle() {
+    const response = await authApi.continueWithGoogle();
     return applyAuthResponse(response);
   }
 
   // Hàm này cập nhật hồ sơ cá nhân xong thì đồng bộ lại session user đang lưu ở local.
   async function updateProfile(payload) {
     const response = await userApi.updateMyProfile(payload);
-    const nextUser = {
-      ...response.data,
-      roles: getUserRoles(session.user),
-    };
 
-    persistUserOnly(nextUser);
+    persistUserOnly(response.data);
     setSession((previousSession) => ({
       ...previousSession,
-      user: nextUser,
+      user: response.data,
     }));
 
-    return nextUser;
+    return response.data;
   }
 
   // Hàm này kiểm tra user hiện tại có thuộc nhóm role được cấp quyền hay không.
@@ -218,15 +172,14 @@ export function AuthProvider({ children }) {
       return true;
     }
 
-    const currentRoles = getUserRoles(session.user);
-    return currentRoles.some((role) => allowedRoles.includes(role));
+    return allowedRoles.includes(session.user?.role ?? "");
   }
 
   // Hàm này đăng xuất user hiện tại và thu dọn session local cho sạch.
   async function logout() {
     try {
       if (session.accessToken) {
-        await authApi.logout(session.refreshToken);
+        await authApi.logout();
       }
     } catch {
       // Đoạn này mình chủ động bỏ qua vì kể cả revoke lỗi thì phía client vẫn nên thoát phiên.
@@ -249,6 +202,7 @@ export function AuthProvider({ children }) {
         isHydrating,
         isSkeletonMode: true,
         login,
+        loginWithGoogle,
         logout,
         refreshToken: session.refreshToken,
         register,
