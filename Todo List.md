@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `release`  
-**Cập nhật:** 2026-06-11 (đã gộp backend Phase 1-3 từ `devD` với frontend mock auth/classroom/dashboard/exam từ `devH`; frontend chưa nối backend thật)  
+**Cập nhật:** 2026-06-11 (backend Phase 7 anti-cheat xong; Phase 3–6 backend xong; frontend vẫn mock/chưa nối API thật)  
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -16,11 +16,11 @@
 | 0 | Khởi tạo project | ✅ Hoàn thành |
 | 1 | Database + Entity nền tảng | ✅ Hoàn thành |
 | 2 | Authentication & Authorization | 🟡 Backend xong, FE mock xong — chưa nối thật |
-| 3 | Classroom Management | 🟡 Backend xong, FE mock xong — chưa nối thật |
-| 4 | Assignment Management | ⬜ Chưa bắt đầu |
-| 5 | Exam Management | 🟡 Đang làm |
-| 6 | Online Testing / Exam Attempt | ⬜ Chưa bắt đầu |
-| 7 | Anti-cheat Monitoring | ⬜ Chưa bắt đầu |
+| 3 | Classroom Management | 🟡 Backend xong (8/8 API), FE mock — chưa nối thật |
+| 4 | Assignment Management | 🟡 Backend xong (8/8 API), FE chưa |
+| 5 | Exam Management | 🟡 Backend xong (11/11 API), FE mock — chưa nối thật |
+| 6 | Online Testing / Exam Attempt | 🟡 Backend xong (6/6 API), FE chưa |
+| 7 | Anti-cheat Monitoring | 🟡 Backend xong (4/4 API), FE chưa |
 | 8 | SignalR Realtime | ⬜ Chưa bắt đầu |
 | 9 | Redis | ⬜ Chưa bắt đầu |
 | 10 | Dashboard & Reporting | 🟡 Đang làm |
@@ -119,8 +119,12 @@
 - [x] DTOs: `CreateClassroomRequest`, `ClassroomDto`, `JoinClassroomRequest`, `ClassroomMemberDto`
 - [x] `POST /api/classrooms` — tạo lớp
 - [x] `GET /api/classrooms` — danh sách lớp
+- [x] `GET /api/classrooms/{id}` — chi tiết lớp
+- [x] `PUT /api/classrooms/{id}` — cập nhật lớp
+- [x] `DELETE /api/classrooms/{id}` — xóa lớp
 - [x] `POST /api/classrooms/join` — tham gia bằng mã
 - [x] `GET /api/classrooms/{id}/members` — danh sách thành viên
+- [x] `DELETE /api/classrooms/{id}/members/{studentId}` — xóa thành viên
 
 ### Frontend
 
@@ -141,13 +145,12 @@
 
 ### Backend
 
-- [ ] Entity `Assignment`, `Submission`
-- [ ] Migration
-- [ ] `AssignmentController` + Service + Repository
-- [ ] API tạo bài tập
-- [ ] API xem bài tập theo lớp
-- [ ] API nộp bài
-- [ ] API chấm điểm
+- [x] Entity `Assignment`, `Submission`
+- [x] Migration `AddAssignmentsExamsAndAttempts`
+- [x] `AssignmentsController` + Service + Repository (8 API)
+- [x] API tạo / sửa / xóa / xem bài tập theo lớp
+- [x] API nộp bài + danh sách bài nộp
+- [x] API chấm điểm (`POST /api/submissions/{id}/grade`)
 
 ### Frontend
 
@@ -166,13 +169,12 @@
 
 ### Backend
 
-- [ ] Entity `Exam`, `ExamSetting`, `Question`, `Answer`
-- [ ] Migration
-- [ ] `ExamController` + Service + Repository
-- [ ] API tạo đề thi
-- [ ] API thêm câu hỏi
-- [ ] API thêm đáp án
-- [ ] API publish đề thi
+- [x] Entity `Exam`, `ExamSetting`, `Question`, `Answer`
+- [x] Migration `AddAssignmentsExamsAndAttempts`
+- [x] `ExamsController` + Service + Repository (11 API + question bank)
+- [x] API CRUD đề thi theo lớp
+- [x] API thêm / sửa / xóa câu hỏi & đáp án
+- [x] API publish đề thi (yêu cầu ≥1 câu hỏi)
 
 ### Frontend
 
@@ -193,13 +195,12 @@
 
 ### Backend
 
-- [ ] Entity `ExamAttempt`, `StudentAnswer`
-- [ ] `POST /api/exams/{id}/start`
-- [ ] Random câu hỏi / đáp án
-- [ ] API lưu đáp án từng câu
-- [ ] `POST /api/exams/{id}/submit`
-- [ ] Logic chấm điểm tự động
-- [ ] Tính tổng điểm, lưu trạng thái `Submitted`
+- [x] Entity `ExamAttempt`, `StudentAnswer`
+- [x] `POST /api/exams/{id}/start` (resume in-progress, shuffle Q/A)
+- [x] Random câu hỏi / đáp án theo `ExamSetting`
+- [x] `POST /api/attempts/{id}/answers` — lưu đáp án từng câu
+- [x] `POST /api/attempts/{id}/submit` — chấm tự động + tổng điểm
+- [x] `GET /api/attempts/{id}/result` + `GET /api/exams/{id}/attempts` (teacher)
 
 ### Frontend
 
@@ -217,11 +218,12 @@
 
 ### Backend
 
-- [ ] Entity `CheatingLog`
-- [ ] `AntiCheatController` + Service + Repository
-- [ ] API ghi log anti-cheat
-- [ ] API xem log theo attempt
-- [ ] API xem suspicion score
+- [x] Entity `CheatingLog`
+- [x] `AntiCheatController` + Service + Repository
+- [x] API ghi log anti-cheat
+- [x] API xem log theo attempt
+- [x] API xem suspicion score
+- [x] API tổng hợp anti-cheat theo đề thi (`GET /api/anti-cheat/exams/{examId}/summary`)
 
 ### Frontend
 
