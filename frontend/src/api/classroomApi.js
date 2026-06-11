@@ -13,6 +13,10 @@ import {
   writeMockDatabase,
 } from "./mockDatabase";
 
+// MOCK STATUS:
+// - Toàn bộ classroom API trong file này vẫn đang giả lập bằng mockDatabase/localStorage.
+// - UI quản lý lớp đã chạy đủ create/update/delete/join, nhưng chưa gọi backend classroom thật.
+
 // Hàm này kiểm tra payload tạo hoặc cập nhật classroom để tránh đẩy dữ liệu rỗng xuống storage.
 function validateClassroomPayload(payload) {
   if (!payload.name?.trim()) {
@@ -70,7 +74,8 @@ function buildClassroomDetailResponse(database, currentUser, classroom, message)
   });
 }
 
-// Object này mô phỏng classroom endpoint đủ gần với tài liệu API để sau này nối backend sẽ mượt hơn.
+// MOCK ENDPOINT GROUP:
+// - getAll / getById / getMembers / generateJoinCode / create / update / delete / join đều đang là mock endpoint.
 export const classroomApi = {
   getAll() {
     return executeMockRequest(() => {

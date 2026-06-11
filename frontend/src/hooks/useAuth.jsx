@@ -13,6 +13,11 @@ import {
   setStoredUser,
 } from "../utils/tokenStorage";
 
+// INTEGRATION STATUS:
+// - login / register / me / logout đang gọi backend auth thật qua authApi.
+// - updateProfile và phần hydrate avatar/thông tin cá nhân vẫn tạm nối với userApi mock/localStorage.
+// - Session backend được bridge sang mock DB để dashboard/classroom/exam chưa nối backend vẫn chạy liền mạch.
+
 const AuthContext = createContext(undefined);
 
 // Hàm này kiểm tra session đọc từ localStorage có còn đúng shape cơ bản để dùng tiếp hay không.

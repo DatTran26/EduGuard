@@ -4,16 +4,20 @@ import Avatar from "../common/Avatar";
 import Badge from "../common/Badge";
 import Button from "../common/Button";
 import { useAuth } from "../../hooks/useAuth";
+import { useTheme } from "../../hooks/useTheme";
 import { useToast } from "../../hooks/useToast";
 import { getProfileRouteByRole, getRoleLabel } from "../../routes/roleRoutes";
 import { routeConfig } from "../../routes/routeConfig";
+import { cn } from "../../utils/cn";
 
-const USER_MENU_ITEMS = [
-  { label: "Thông tin", action: "profile" },
-  { label: "Đổi mật khẩu", action: "password" },
-  { label: "Chế độ tối", action: "theme" },
-  { label: "EduGuard Premium", action: "premium" },
-];
+function buildUserMenuItems(isDarkMode) {
+  return [
+    { label: "Thông tin", action: "profile" },
+    { label: "Đổi mật khẩu", action: "password" },
+    { label: isDarkMode ? "Trở về chế độ sáng" : "Bật chế độ tối", action: "theme" },
+    { label: "EduGuard Premium", action: "premium" },
+  ];
+}
 
 function DropdownChevronIcon({ isOpen }) {
   return (
@@ -39,8 +43,10 @@ export default function TopBar() {
   const navigate = useNavigate();
   const userMenuRef = useRef(null);
   const { logout, user } = useAuth();
+  const { isDarkMode, toggleTheme } = useTheme();
   const { showToast } = useToast();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuItems = buildUserMenuItems(isDarkMode);
 
   useEffect(() => {
     if (!isUserMenuOpen) {
@@ -96,6 +102,20 @@ export default function TopBar() {
     });
   }
 
+  // Hàm này đổi theme sáng/tối của toàn app để người dùng chuyển nhanh chế độ làm việc.
+  function handleThemeToggle() {
+    const nextIsDarkMode = !isDarkMode;
+    closeUserMenu();
+    toggleTheme();
+    showToast({
+      tone: "success",
+      title: nextIsDarkMode ? "Đã bật chế độ tối" : "Đã trở về chế độ sáng",
+      message: nextIsDarkMode
+        ? "Giao diện EduGuard đã chuyển sang nền tối để làm việc ban đêm dễ hơn."
+        : "Giao diện EduGuard đã quay lại tông sáng mặc định.",
+    });
+  }
+
   // Hàm này xử lý click từng item trong dropdown theo đúng loại hành động đã khai báo.
   function handleUserMenuItemClick(action) {
     if (action === "profile") {
@@ -109,7 +129,7 @@ export default function TopBar() {
     }
 
     if (action === "theme") {
-      handleComingSoonAction("Chế độ tối");
+      handleThemeToggle();
       return;
     }
 
@@ -129,14 +149,23 @@ export default function TopBar() {
   }
 
   return (
-    <header className="rounded-[32px] border border-border bg-surface px-5 py-5 shadow-[0_22px_46px_rgba(15,23,42,0.06)] md:px-6">
+    <header className="eg-shell-panel rounded-[32px] px-5 py-5 md:px-6">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] xl:items-center">
         <div className="flex min-w-0 items-center gap-3">
-          <img
-            alt="Logo EduGuard"
-            className="h-11 w-auto shrink-0 object-contain md:h-[3rem]"
-            src="/logo.png"
-          />
+          <div
+            className={cn(
+              "flex shrink-0 items-center justify-center overflow-hidden transition-all duration-200",
+              isDarkMode
+                ? "rounded-[20px] border border-white/12 bg-white/6 p-2 shadow-[0_14px_28px_rgba(0,0,0,0.26)]"
+                : "rounded-none border-transparent bg-transparent p-0 shadow-none",
+            )}
+          >
+            <img
+              alt="Logo EduGuard"
+              className="h-11 w-auto shrink-0 object-contain md:h-[3rem]"
+              src="/logo.png"
+            />
+          </div>
 
           <div className="min-w-0 space-y-1">
             <h2 className="text-xl font-semibold tracking-tight text-primary md:text-[2rem]">
@@ -158,7 +187,7 @@ export default function TopBar() {
             <button
               aria-expanded={isUserMenuOpen}
               aria-haspopup="menu"
-              className="flex w-full min-w-0 items-center gap-3 rounded-full border border-border bg-[linear-gradient(180deg,#ffffff,#f7fbff)] px-3 py-2 text-left shadow-[0_14px_30px_rgba(15,23,42,0.06)] transition-all duration-200 hover:border-[#d5e2f2] hover:shadow-[0_16px_32px_rgba(15,23,42,0.08)] sm:min-w-[300px]"
+              className="eg-user-trigger flex w-full min-w-0 items-center gap-3 rounded-full px-3 py-2 text-left sm:min-w-[300px]"
               type="button"
               onClick={toggleUserMenu}
             >
@@ -181,7 +210,7 @@ export default function TopBar() {
 
             {isUserMenuOpen ? (
               <div
-                className="absolute right-0 top-[calc(100%+12px)] z-20 w-[min(320px,calc(100vw-2.5rem))] overflow-hidden rounded-[26px] border border-border bg-surface p-2 shadow-[0_26px_52px_rgba(15,23,42,0.16)]"
+                className="eg-dropdown-panel absolute right-0 top-[calc(100%+12px)] z-20 w-[min(320px,calc(100vw-2.5rem))] overflow-hidden rounded-[26px] p-2"
                 role="menu"
               >
                 <div className="border-b border-border px-3 py-3">
@@ -194,10 +223,10 @@ export default function TopBar() {
                 </div>
 
                 <div className="space-y-1 p-2">
-                  {USER_MENU_ITEMS.map((item) => (
+                  {userMenuItems.map((item) => (
                     <button
                       key={item.label}
-                      className="flex w-full items-center justify-between rounded-[18px] px-4 py-3 text-left text-sm font-medium text-primary transition-colors duration-200 hover:bg-[rgba(20,35,60,0.05)]"
+                      className="eg-user-menu-item flex w-full items-center justify-between rounded-[18px] px-4 py-3 text-left text-sm font-medium"
                       role="menuitem"
                       type="button"
                       onClick={() => handleUserMenuItemClick(item.action)}

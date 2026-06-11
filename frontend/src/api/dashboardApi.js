@@ -6,6 +6,10 @@ import {
   requireCurrentUser,
 } from "./mockDatabase";
 
+// MOCK STATUS:
+// - Dashboard hiện mới có frontend/mock API để hoàn thiện UI, chưa gọi backend dashboard thật.
+// - Toàn bộ thống kê trong file này đang được tổng hợp từ mockDatabase/localStorage.
+
 // Hàm này tính trung bình các số và làm tròn 1 chữ số thập phân để đưa lên dashboard cho dễ đọc.
 function calculateAverage(values) {
   if (values.length === 0) {
@@ -439,7 +443,8 @@ function buildStudentDashboardData(database, currentUser) {
   };
 }
 
-// Object này mô phỏng các endpoint dashboard theo role để frontend đi đúng flow tài liệu.
+// MOCK ENDPOINT GROUP:
+// - getAdminDashboard / getTeacherDashboard / getStudentDashboard đều là mock endpoint theo role.
 export const dashboardApi = {
   getAdminDashboard() {
     return executeMockRequest(() => {

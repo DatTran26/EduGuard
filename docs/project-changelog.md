@@ -1,5 +1,45 @@
 # Project Changelog
 
+## Feature: Dark theme toggle and mock status mapping
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Bật thật chức năng đổi theme từ dropdown thông tin cá nhân trên top bar: người dùng có thể chuyển qua lại giữa giao diện sáng và tối ngay trong khu vực đã đăng nhập.
+- Thiết lập `ThemeProvider` và bộ biến màu toàn cục để header, sidebar, card, button, input và dropdown đồng loạt chuyển sang nền tối/chữ sáng thay vì chỉ đổi màu cục bộ ở một vài component.
+- Tinh chỉnh nhận diện thương hiệu ở dark mode: logo trên top bar được đặt trong khung bo góc riêng để nổi bật hơn trên nền đen.
+- Gắn thêm các khối comment `MOCK STATUS` / `INTEGRATION STATUS` ở các module dữ liệu chính để nhìn nhanh phần nào đã nối backend thật, phần nào vẫn đang chạy bằng `mockDatabase` và `localStorage`.
+
+Changed files:
+
+- `frontend/src/main.jsx`
+- `frontend/src/index.css`
+- `frontend/src/hooks/useTheme.jsx`
+- `frontend/src/hooks/useAuth.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/dashboard/StatCard.jsx`
+- `frontend/src/api/mockDatabase.js`
+- `frontend/src/api/classroomApi.js`
+- `frontend/src/api/dashboardApi.js`
+- `frontend/src/api/examApi.js`
+- `frontend/src/api/userApi.js`
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- Theme tối hiện đã áp vào khu vực app đã đăng nhập; nếu muốn đồng bộ cả login/register theo theme này thì có thể làm tiếp ở nhịp UI sau.
+
 ## Feature: Auth page redesign and top bar logo scaling
 
 Date: 2026-06-11

@@ -13,6 +13,10 @@ import { formatShortDateTime } from "../../../utils/formatDate";
 const ACCEPTED_AVATAR_FILE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const MAX_AVATAR_FILE_SIZE_BYTES = 700 * 1024;
 
+// MOCK STATUS:
+// - Trang này đang đọc/lưu hồ sơ qua userApi mock.
+// - Avatar upload hiện được giữ cục bộ trong localStorage dưới dạng data URL để chờ API upload thật.
+
 // Hàm này chuyển dữ liệu profile lấy từ API sang state form để việc chỉnh sửa dễ kiểm soát hơn.
 function buildProfileFormValues(profile) {
   return {

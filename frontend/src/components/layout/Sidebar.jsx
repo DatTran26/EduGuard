@@ -5,9 +5,7 @@ import { cn } from "../../utils/cn";
 function getNavigationLinkClassName({ isActive }) {
   return cn(
     "block rounded-[18px] px-4 py-3 text-sm font-medium transition-all duration-200",
-    isActive
-      ? "bg-[linear-gradient(135deg,#e8f1ff,#d8e8ff)] text-[#14233c] shadow-[0_10px_22px_rgba(37,99,235,0.10)]"
-      : "text-secondary hover:bg-[rgba(20,35,60,0.05)] hover:text-primary",
+    isActive ? "eg-sidebar-link-active" : "eg-sidebar-link-idle",
   );
 }
 
@@ -38,7 +36,7 @@ export default function Sidebar({
     >
       <div
         className={cn(
-          "flex h-full w-[286px] flex-col gap-4 border-r border-border bg-surface p-5 transition-transform duration-200 lg:sticky lg:top-0 lg:h-[calc(100vh-12rem)] lg:rounded-[30px] lg:border lg:shadow-[0_20px_40px_rgba(15,23,42,0.06)]",
+          "eg-shell-panel flex h-full w-[286px] flex-col gap-4 p-5 transition-transform duration-200 lg:sticky lg:top-0 lg:h-[calc(100vh-12rem)] lg:rounded-[30px]",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
         onClick={handlePanelClick}

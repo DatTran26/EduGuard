@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 // Layout này dùng chung cho login và register để giao diện xác thực nhìn gọn và nhất quán hơn.
 export default function AuthLayout({
   title,
-  description,
+
   footerText,
   footerLinkLabel,
   footerLinkTo,
@@ -32,10 +32,10 @@ export default function AuthLayout({
               <div className="space-y-6">
                 <div className="flex flex-col items-center gap-3">
                   <p className="whitespace-nowrap text-[clamp(1.24rem,2.7vw,2.7rem)] font-semibold leading-none tracking-tight text-white">
-                    Học tập an toàn.
+                    Học tập an toàn
                   </p>
                   <p className="whitespace-nowrap text-[clamp(1.12rem,2.45vw,2.45rem)] font-semibold leading-none tracking-tight text-[#FFF6E3]">
-                    Thi trực tuyến minh bạch.
+                    Thi trực tuyến minh bạch
                   </p>
                 </div>
               </div>
@@ -53,9 +53,6 @@ export default function AuthLayout({
                 <h2 className="text-[2rem] font-semibold leading-tight tracking-tight text-[#0F2F57] md:text-[2.4rem]">
                   {title}
                 </h2>
-                <p className="text-sm leading-7 text-[#5F6E82] md:text-[0.95rem]">
-                  {description}
-                </p>
               </div>
 
               {children}
