@@ -61,6 +61,15 @@ public class ClassroomRepository : IClassroomRepository
     public async Task AddMemberAsync(ClassroomMember member, CancellationToken ct = default) =>
         await _db.ClassroomMembers.AddAsync(member, ct);
 
+    public void Update(Classroom classroom) =>
+        _db.Classrooms.Update(classroom);
+
+    public void Remove(Classroom classroom) =>
+        _db.Classrooms.Remove(classroom);
+
+    public void RemoveMember(ClassroomMember member) =>
+        _db.ClassroomMembers.Remove(member);
+
     public Task SaveChangesAsync(CancellationToken ct = default) =>
         _db.SaveChangesAsync(ct);
 }

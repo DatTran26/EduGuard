@@ -13,5 +13,8 @@ public interface IClassroomRepository
     Task<List<ClassroomMember>> GetActiveMembersAsync(int classroomId, CancellationToken ct = default);
     Task AddAsync(Classroom classroom, CancellationToken ct = default);
     Task AddMemberAsync(ClassroomMember member, CancellationToken ct = default);
+    void Update(Classroom classroom);
+    void Remove(Classroom classroom);
+    void RemoveMember(ClassroomMember member);
     Task SaveChangesAsync(CancellationToken ct = default);
 }
