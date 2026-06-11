@@ -486,11 +486,13 @@ Dùng để:
 - Biết response backend trả về.
 - Hỗ trợ frontend tích hợp dễ hơn.
 
-URL thường là:
+URL (Development, profile `https`):
 
 ```txt
-https://localhost:7234/swagger
+https://localhost:7168/swagger
 ```
+
+**Hướng dẫn chi tiết:** [`swagger-api-testing-guide.md`](swagger-api-testing-guide.md) — đăng nhập JWT, gán role Teacher, luồng Classroom → Assignment → Exam → Attempt.
 
 ## 14. Quy tắc tích hợp frontend/backend
 

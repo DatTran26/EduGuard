@@ -1,5 +1,143 @@
 # Project Changelog
 
+## Feature: Backend Phase 7 — Anti-cheat Monitoring APIs
+
+Date: 2026-06-11
+
+Branch/source: local workspace (`release`)
+
+Description:
+
+- Thêm entity `CheatingLog`, bảng `CheatingLogs` (gộp trong migration `AddAssignmentsExamsAndAttempts` sau regenerate).
+- `AntiCheatController` + `AntiCheatService` + `CheatingLogRepository`: ghi log hành vi, xem log/score theo attempt, tổng hợp theo đề thi.
+- Student chỉ ghi log khi attempt **InProgress** và exam **EnableAntiCheat**; cộng dồn `SuspicionScore` trên `ExamAttempt`.
+- Loại hành vi API: `TAB_SWITCH`, `WINDOW_BLUR`, `COPY_PASTE`, `EXIT_FULLSCREEN`, `PAGE_RELOAD`, `DISCONNECTED`, `WEBCAM_OFF`.
+
+Changed files:
+
+- `backend/EduGuard.Domain/Entities/CheatingLog.cs`, `Enums/CheatingType.cs`
+- `backend/EduGuard.Application/DTOs/AntiCheat/*`, validators, service/repository interfaces
+- `backend/EduGuard.Infrastructure/AntiCheat/*`, `Repositories/cheating-log-repository.cs`
+- `backend/EduGuard.Infrastructure/Data/Configurations/cheating-log-configuration.cs`
+- `backend/EduGuard.Api/Controllers/anti-cheat-controller.cs`
+- `backend/EduGuard.Infrastructure/Data/Migrations/20260611090709_AddAssignmentsExamsAndAttempts.*`
+- `docs/apiList.md`, `docs/swagger-api-testing-guide.md`, `Todo List.md`
+
+Validation:
+
+- `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` — 0 errors
+- `dotnet ef database update` — applied `20260611090709_AddAssignmentsExamsAndAttempts` (includes `CheatingLogs` table)
+
+Unresolved questions:
+
+- SignalR realtime warning (Phase 8) chưa implement.
+- Frontend monitor hook/dashboard chưa làm (ngoài scope backend-only).
+
+## Feature: PATCH endpoints (partial update)
+
+Date: 2026-06-11
+
+Branch/source: local workspace
+
+Description:
+
+- Thêm **PATCH** cho cập nhật một phần: Classroom, Assignment, Exam, Question, Answer.
+- Dùng `Optional<T>` — field không có trong JSON body được giữ nguyên; PUT vẫn thay thế đầy đủ.
+- Ví dụ: `PATCH /api/classrooms/1` body `{"name":"..."}` — không đổi `description`.
+
+Changed files:
+
+- `backend/EduGuard.Application/DTOs/Common/optional*.cs`
+- `backend/EduGuard.Application/DTOs/**/patch-*-request.cs`
+- `backend/EduGuard.Application/Validators/patch-*-validator.cs`
+- `backend/EduGuard.Infrastructure/**` services (PatchAsync)
+- `backend/EduGuard.Api/Controllers/*.cs`, `Program.cs`
+- `docs/apiList.md`, `docs/swagger-api-testing-guide.md`
+
+Validation: `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` — 0 errors.
+
+## Fix: JSON response cho 401/403 (Authorize / JWT)
+
+Date: 2026-06-11
+
+Branch/source: local workspace
+
+Description:
+
+- **Bug:** Student gọi API Teacher (vd. `PUT /api/classrooms/{id}`) trả 403 với body rỗng (`content-length: 0`).
+- **Fix:** Handler toàn cục `ApiAuthorizationMiddlewareResultHandler` + `JwtBearerEvents` trả `ApiResponse<object>` JSON cho 401/403 trên mọi API có `[Authorize]`.
+- Lỗi nghiệp vụ trong controller (`UnauthorizedAccessException`) vẫn trả message chi tiết như trước.
+
+Changed files:
+
+- `backend/EduGuard.Api/Authorization/api-authorization-middleware-result-handler.cs`
+- `backend/EduGuard.Api/Authorization/auth-api-response-writer.cs`
+- `backend/EduGuard.Api/Program.cs`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `docs/swagger-api-testing-guide.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `dotnet build` (cần restart/stop `EduGuard.Api` nếu process đang lock DLL)
+
+## Feature: Swagger API testing guide
+
+Date: 2026-06-11
+
+Branch/source: local workspace
+
+Description:
+
+- Thêm `docs/swagger-api-testing-guide.md`: hướng dẫn mở Swagger, Authorize JWT, gán role Teacher qua SQL, luồng test Phase 2–6 và checklist E2E.
+- Sửa URL Swagger cũ (`7234`) trong `05_API_FRONTEND_INTEGRATION.md` → `7168`.
+- Liên kết từ `apiList.md`, `07_DEVELOPMENT_RULES.md`.
+
+Changed files:
+
+- `docs/swagger-api-testing-guide.md` (mới)
+- `docs/05_API_FRONTEND_INTEGRATION.md`
+- `docs/07_DEVELOPMENT_RULES.md`
+- `docs/apiList.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- Nội dung đối chiếu `launchSettings.json`, controllers và DTO hiện tại.
+
+## Feature: Backend Phase 3–6 — Classroom, Assignment, Exam, Exam Attempt APIs
+
+Date: 2026-06-11
+
+Branch/source: `release` (local workspace)
+
+Description:
+
+- Hoàn thiện **Phase 3** Classroom: GET/PUT/DELETE lớp, xóa thành viên (8/8 API).
+- Triển khai **Phase 4** Assignment: entity `Assignment`/`Submission`, 8 API (CRUD, submit, grade).
+- Triển khai **Phase 5** Exam: entity `Exam`/`ExamSetting`/`Question`/`Answer`, 11 API + question bank cho teacher.
+- Triển khai **Phase 6** Exam Attempt: start (shuffle + resume), save answer, submit (auto-grade), result, list attempts.
+- Migration EF `20260611022446_AddAssignmentsExamsAndAttempts` đã apply lên `EduGuardExam`.
+- Frontend vẫn dùng mock; tích hợp API thật là bước riêng.
+
+Changed files:
+
+- `backend/EduGuard.Domain/**` (entities, enums)
+- `backend/EduGuard.Application/**` (DTOs, interfaces, validators)
+- `backend/EduGuard.Infrastructure/**` (repositories, services, EF configs, migration)
+- `backend/EduGuard.Api/Controllers/**` (classrooms, assignments, exams, exam-attempts)
+- `Todo List.md`, `docs/apiList.md`, `docs/project-changelog.md`
+
+Validation:
+
+- `dotnet build` (backend) — 0 errors
+- `dotnet ef database update` — migration applied successfully
+
+Unresolved questions:
+
+- Chưa chạy Swagger E2E đầy đủ classroom → assignment → exam → attempt trên môi trường dev.
+- Anti-cheat (Phase 7) chưa ghi log suspicion khi làm bài.
+
 ## Feature: Design tokens v1.1 — Institutional Slate palette
 
 Date: 2026-06-11

@@ -16,6 +16,15 @@ public class AppDbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Classroom> Classrooms => Set<Classroom>();
     public DbSet<ClassroomMember> ClassroomMembers => Set<ClassroomMember>();
+    public DbSet<Assignment> Assignments => Set<Assignment>();
+    public DbSet<Submission> Submissions => Set<Submission>();
+    public DbSet<Exam> Exams => Set<Exam>();
+    public DbSet<ExamSetting> ExamSettings => Set<ExamSetting>();
+    public DbSet<Question> Questions => Set<Question>();
+    public DbSet<Answer> Answers => Set<Answer>();
+    public DbSet<ExamAttempt> ExamAttempts => Set<ExamAttempt>();
+    public DbSet<StudentAnswer> StudentAnswers => Set<StudentAnswer>();
+    public DbSet<CheatingLog> CheatingLogs => Set<CheatingLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
