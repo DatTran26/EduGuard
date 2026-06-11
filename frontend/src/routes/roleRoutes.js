@@ -8,10 +8,10 @@ import {
 const ROLE_NAVIGATION_ITEMS = {
   Admin: [
     { label: "Dashboard", path: routeConfig.adminDashboard },
-    { label: "Lớp học", path: routeConfig.adminClassrooms },
-    { label: "Bài kiểm tra", path: routeConfig.adminExams },
-    { label: "Người dùng", path: routeConfig.adminUsers },
-    { label: "Hồ sơ", path: routeConfig.adminProfile },
+    { label: "Quản lí lớp học", path: routeConfig.adminClassrooms },
+    { label: "Quản lí bài kiểm tra", path: routeConfig.adminExams },
+    { label: "Quản lí người dùng", path: routeConfig.adminUsers },
+    { label: "Hồ sơ cá nhân", path: routeConfig.adminProfile },
   ],
   Teacher: [
     { label: "Lớp học", path: routeConfig.teacherClassrooms },

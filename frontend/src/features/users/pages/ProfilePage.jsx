@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { userApi } from "../../../api/userApi";
 import Avatar from "../../../components/common/Avatar";
 import Button from "../../../components/common/Button";
@@ -10,6 +10,13 @@ import { useToast } from "../../../hooks/useToast";
 import { getRoleLabel } from "../../../routes/roleRoutes";
 import { formatShortDateTime } from "../../../utils/formatDate";
 
+const ACCEPTED_AVATAR_FILE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const MAX_AVATAR_FILE_SIZE_BYTES = 700 * 1024;
+
+// MOCK STATUS:
+// - Trang này đang đọc/lưu hồ sơ qua userApi mock.
+// - Avatar upload hiện được giữ cục bộ trong localStorage dưới dạng data URL để chờ API upload thật.
+
 // Hàm này chuyển dữ liệu profile lấy từ API sang state form để việc chỉnh sửa dễ kiểm soát hơn.
 function buildProfileFormValues(profile) {
   return {
@@ -19,12 +26,27 @@ function buildProfileFormValues(profile) {
   };
 }
 
+// Hàm này đọc file ảnh thành data URL để avatar có thể lưu cục bộ trong mock profile hiện tại.
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const fileReader = new FileReader();
+
+    fileReader.onload = () => resolve(typeof fileReader.result === "string" ? fileReader.result : "");
+    fileReader.onerror = () => reject(new Error("Không thể đọc file ảnh đã chọn."));
+    fileReader.readAsDataURL(file);
+  });
+}
+
 // Trang này cho phép người dùng xem và sửa thông tin cá nhân của chính mình.
 export default function ProfilePage() {
   const { updateProfile, user } = useAuth();
   const { showToast } = useToast();
+  const avatarFileInputRef = useRef(null);
   const [profile, setProfile] = useState(null);
   const [formValues, setFormValues] = useState(buildProfileFormValues(user));
+  const [avatarUploadError, setAvatarUploadError] = useState("");
+  const [isProcessingAvatar, setIsProcessingAvatar] = useState(false);
+  const [selectedAvatarFileName, setSelectedAvatarFileName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -74,6 +96,74 @@ export default function ProfilePage() {
     }));
   }
 
+  // Hàm này mở hộp thoại chọn file avatar từ máy người dùng.
+  function handleAvatarPickerClick() {
+    avatarFileInputRef.current?.click();
+  }
+
+  // Hàm này đọc ảnh đã chọn, kiểm tra định dạng/dung lượng rồi đưa vào form để người dùng xem trước.
+  async function handleAvatarFileChange(event) {
+    const selectedFile = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!selectedFile) {
+      return;
+    }
+
+    if (!ACCEPTED_AVATAR_FILE_TYPES.includes(selectedFile.type)) {
+      const nextMessage = "Chỉ hỗ trợ ảnh PNG, JPG hoặc WEBP.";
+      setAvatarUploadError(nextMessage);
+      showToast({
+        tone: "danger",
+        title: "Ảnh chưa hợp lệ",
+        message: nextMessage,
+      });
+      return;
+    }
+
+    if (selectedFile.size > MAX_AVATAR_FILE_SIZE_BYTES) {
+      const nextMessage = "Ảnh đại diện phải nhỏ hơn 700 KB để lưu ổn định trong trình duyệt.";
+      setAvatarUploadError(nextMessage);
+      showToast({
+        tone: "danger",
+        title: "Ảnh quá lớn",
+        message: nextMessage,
+      });
+      return;
+    }
+
+    setIsProcessingAvatar(true);
+    setAvatarUploadError("");
+
+    try {
+      const avatarDataUrl = await readFileAsDataUrl(selectedFile);
+      handleFieldChange("avatarUrl", avatarDataUrl);
+      setSelectedAvatarFileName(selectedFile.name);
+      showToast({
+        tone: "success",
+        title: "Đã chọn ảnh đại diện",
+        message: "Ảnh mới đang được xem trước. Hãy lưu thay đổi để cập nhật avatar.",
+      });
+    } catch (error) {
+      const nextMessage = error.message || "Không thể xử lý ảnh đại diện.";
+      setAvatarUploadError(nextMessage);
+      showToast({
+        tone: "danger",
+        title: "Tải ảnh thất bại",
+        message: nextMessage,
+      });
+    } finally {
+      setIsProcessingAvatar(false);
+    }
+  }
+
+  // Hàm này đưa form về avatar mặc định để người dùng có thể bỏ ảnh hiện tại nếu muốn.
+  function handleResetAvatar() {
+    handleFieldChange("avatarUrl", "");
+    setAvatarUploadError("");
+    setSelectedAvatarFileName("");
+  }
+
   // Hàm này submit thay đổi hồ sơ cá nhân rồi đồng bộ lại session user đang đăng nhập.
   async function handleSubmit(event) {
     event.preventDefault();
@@ -107,6 +197,14 @@ export default function ProfilePage() {
     );
   }
 
+  const previewFullName = formValues.fullName || profile?.fullName || user?.fullName || "Người dùng EduGuard";
+  const previewEmail = formValues.email || profile?.email || user?.email || "user@eduguard.local";
+  const avatarStatusText = selectedAvatarFileName
+    ? `Ảnh đã chọn: ${selectedAvatarFileName}`
+    : formValues.avatarUrl
+      ? "Đang xem trước ảnh đại diện hiện tại"
+      : "Đang dùng avatar mặc định của hệ thống";
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -137,13 +235,62 @@ export default function ProfilePage() {
               type="email"
               value={formValues.email}
             />
-            <TextInput
-              id="profile-avatar-url"
-              label="Avatar URL"
-              onChange={(event) => handleFieldChange("avatarUrl", event.target.value)}
-              placeholder="https://..."
-              value={formValues.avatarUrl}
-            />
+
+            <div className="space-y-3">
+              <label className="eg-label" htmlFor="profile-avatar-file">
+                Ảnh đại diện
+              </label>
+              <div className="flex items-center gap-4 rounded-[18px] border border-border bg-neutral p-4">
+                <Avatar
+                  alt={`Xem trước ảnh đại diện của ${previewFullName}`}
+                  name={previewFullName}
+                  sizeClassName="h-16 w-16"
+                  src={formValues.avatarUrl}
+                />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="truncate text-sm font-semibold text-primary">{avatarStatusText}</p>
+                  <p className="text-sm leading-6 text-secondary">
+                    Hỗ trợ PNG, JPG, WEBP. Dung lượng tối đa 700 KB.
+                  </p>
+                </div>
+              </div>
+
+              <input
+                ref={avatarFileInputRef}
+                accept={ACCEPTED_AVATAR_FILE_TYPES.join(",")}
+                className="hidden"
+                id="profile-avatar-file"
+                type="file"
+                onChange={handleAvatarFileChange}
+              />
+
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  disabled={isProcessingAvatar || isSubmitting}
+                  type="button"
+                  variant="secondary"
+                  onClick={handleAvatarPickerClick}
+                >
+                  {isProcessingAvatar ? "Đang xử lý ảnh..." : "Tải ảnh từ máy"}
+                </Button>
+                <Button
+                  disabled={isProcessingAvatar || isSubmitting || !formValues.avatarUrl}
+                  type="button"
+                  variant="ghost"
+                  onClick={handleResetAvatar}
+                >
+                  Dùng avatar mặc định
+                </Button>
+              </div>
+
+              {avatarUploadError ? (
+                <p className="eg-error-text">{avatarUploadError}</p>
+              ) : (
+                <p className="eg-helper-text">
+                  Ảnh được lưu cục bộ trong trình duyệt ở phiên bản mock hiện tại.
+                </p>
+              )}
+            </div>
 
             <Button className="w-full sm:w-auto" disabled={isSubmitting} type="submit">
               {isSubmitting ? "Đang lưu..." : "Lưu thay đổi"}
@@ -156,14 +303,14 @@ export default function ProfilePage() {
 
           <div className="flex items-center gap-4 rounded-[18px] border border-border bg-neutral p-4">
             <Avatar
-              alt={`Ảnh đại diện của ${profile?.fullName ?? "người dùng"}`}
-              name={profile?.fullName ?? ""}
+              alt={`Ảnh đại diện của ${previewFullName}`}
+              name={previewFullName}
               sizeClassName="h-[72px] w-[72px]"
-              src={profile?.avatarUrl ?? ""}
+              src={formValues.avatarUrl}
             />
             <div className="min-w-0">
-              <p className="truncate text-base font-semibold text-primary">{profile?.fullName}</p>
-              <p className="truncate text-sm text-secondary">{profile?.email}</p>
+              <p className="truncate text-base font-semibold text-primary">{previewFullName}</p>
+              <p className="truncate text-sm text-secondary">{previewEmail}</p>
             </div>
           </div>
 

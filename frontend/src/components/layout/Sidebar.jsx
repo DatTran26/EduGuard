@@ -1,14 +1,11 @@
 import { NavLink } from "react-router-dom";
-import Avatar from "../common/Avatar";
 import { cn } from "../../utils/cn";
 
 // Hàm này trả class cho từng item trong sidebar để route đang active nhìn rõ hơn.
 function getNavigationLinkClassName({ isActive }) {
   return cn(
-    "block rounded-[12px] px-4 py-3 text-sm font-medium transition-colors duration-150",
-    isActive
-      ? "bg-[rgba(0,113,227,0.10)] text-primary"
-      : "text-secondary hover:bg-[rgba(29,29,31,0.05)] hover:text-primary",
+    "block rounded-[18px] px-4 py-3 text-sm font-medium transition-all duration-200",
+    isActive ? "eg-sidebar-link-active" : "eg-sidebar-link-idle",
   );
 }
 
@@ -18,10 +15,6 @@ export default function Sidebar({
   navigationItems,
   onNavigate,
   onClose,
-  userAvatarUrl,
-  userEmail,
-  roleLabel,
-  userName,
 }) {
   // Hàm này đóng sidebar khi người dùng bấm ra ngoài vùng panel trên mobile.
   function handleOverlayClick() {
@@ -43,55 +36,28 @@ export default function Sidebar({
     >
       <div
         className={cn(
-          "flex h-full w-[290px] flex-col gap-6 border-r border-border bg-surface p-5 transition-transform duration-200 lg:sticky lg:top-0 lg:h-[calc(100vh-12.2rem)] lg:rounded-[24px] lg:border lg:shadow-[0_18px_36px_rgba(15,23,42,0.05)]",
+          "eg-shell-panel flex h-full w-[286px] flex-col gap-4 p-5 transition-transform duration-200 lg:sticky lg:top-0 lg:h-[calc(100vh-12rem)] lg:rounded-[30px]",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
         onClick={handlePanelClick}
       >
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[0.82rem] font-semibold uppercase tracking-[0.16em] text-secondary">
-                Điều hướng
-              </p>
-              <h2 className="text-xl font-semibold text-primary">Menu chức năng</h2>
-            </div>
-            <button
-              type="button"
-              className="rounded-[12px] border border-border px-3 py-2 text-sm text-secondary lg:hidden"
-              onClick={onClose}
-            >
-              Đóng
-            </button>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[0.82rem] font-semibold uppercase tracking-[0.16em] text-secondary">
+              Điều hướng
+            </p>
+            <h2 className="text-xl font-semibold text-primary">Menu chức năng</h2>
           </div>
-          <div className="rounded-[20px] border border-border bg-[linear-gradient(180deg,#ffffff,#f6fbf7)] p-4">
-            <div className="flex items-center gap-3">
-              <Avatar
-                alt={`Ảnh đại diện của ${userName}`}
-                name={userName}
-                sizeClassName="h-14 w-14"
-                src={userAvatarUrl}
-              />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-primary">{userName}</p>
-                <p className="mt-1 truncate text-sm text-secondary">{userEmail}</p>
-              </div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <span className="rounded-full border border-border px-3 py-1 text-xs font-medium text-secondary">
-                {roleLabel}
-              </span>
-              <span className="rounded-full border border-border px-3 py-1 text-xs font-medium text-secondary">
-                Demo
-              </span>
-            </div>
-          </div>
+          <button
+            type="button"
+            className="rounded-[14px] border border-border px-3 py-2 text-sm text-secondary lg:hidden"
+            onClick={onClose}
+          >
+            Đóng
+          </button>
         </div>
 
-        <nav className="space-y-2">
-          <p className="px-2 text-[0.82rem] font-semibold uppercase tracking-[0.12em] text-secondary">
-            Điều hướng
-          </p>
+        <nav className="flex flex-1 flex-col gap-2">
           {navigationItems.map((item) => (
             <NavLink
               key={item.path}
@@ -103,10 +69,6 @@ export default function Sidebar({
             </NavLink>
           ))}
         </nav>
-
-        <div className="mt-auto rounded-[18px] border border-border bg-neutral p-4 text-sm leading-6 text-secondary">
-          Bố cục sidebar đã được hạ xuống dưới brand bar để bạn dễ gắn thêm logo và bộ nhận diện riêng ở phía trên.
-        </div>
       </div>
     </aside>
   );

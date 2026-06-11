@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `release`  
-**Cập nhật:** 2026-06-11 (backend Phase 7 anti-cheat xong; Phase 3–6 backend xong; frontend vẫn mock/chưa nối API thật)  
+**Cập nhật:** 2026-06-11 (backend Phase 7 anti-cheat xong; Phase 3–6 backend xong; frontend auth đã nối backend thật cho register/login/me/logout; dashboard/classroom/exam/profile vẫn còn bridge/mock ở nhiều màn; đã làm lại workspace header, dọn sidebar Admin, thêm upload avatar, tinh chỉnh auth UI, thêm dark mode thật trong dropdown cá nhân và gắn comment nhận diện các module mock để dễ rà tiến độ tích hợp backend)  
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -15,8 +15,8 @@
 |-----------|-----|------------|
 | 0 | Khởi tạo project | ✅ Hoàn thành |
 | 1 | Database + Entity nền tảng | ✅ Hoàn thành |
-| 2 | Authentication & Authorization | 🟡 Backend xong, FE mock xong — chưa nối thật |
-| 3 | Classroom Management | 🟡 Backend xong (8/8 API), FE mock — chưa nối thật |
+| 2 | Authentication & Authorization | 🟡 Backend xong, FE auth thật xong — các màn khác còn mock |
+| 3 | Classroom Management | 🟡 Backend xong (8/8 API), FE mock xong — chưa nối thật |
 | 4 | Assignment Management | 🟡 Backend xong (8/8 API), FE chưa |
 | 5 | Exam Management | 🟡 Backend xong (11/11 API), FE mock — chưa nối thật |
 | 6 | Online Testing / Exam Attempt | 🟡 Backend xong (6/6 API), FE chưa |
@@ -97,13 +97,14 @@
 
 ### Frontend
 
-- [x] Trang Login / Register *(đã chuyển sang mock API theo flow auth thật, có tài khoản seed Admin/Teacher/Student, hỗ trợ thêm nút Google mock)*
-- [x] Axios client + interceptor gắn `Authorization` *(đã có bộ khung; hiện mock API chưa dùng request HTTP thật)*
-- [x] Lưu `accessToken` *(đã lưu session local theo shape gần giống JWT flow)*
+- [x] Trang Login / Register *(đã gọi backend thật theo `POST /api/auth/register` và `POST /api/auth/login`; đã thiết kế lại layout xác thực theo bố cục 2 cột, thêm checkbox ghi nhớ đăng nhập và link quên mật khẩu dạng UI placeholder, tăng logo và tách thông điệp hero thành 2 dòng chữ không xuống hàng)*
+- [x] Axios client + interceptor gắn `Authorization` *(đã gắn Bearer token thật cho request protected)*
+- [x] Lưu `accessToken` *(đã lưu access token và refresh token backend theo shape JWT flow)*
 - [x] Protected routes theo role *(đã tách route riêng cho Admin / Teacher / Student)*
-- [x] Trang hồ sơ cá nhân và cập nhật thông tin *(mock API `users/me` + update profile, có preview avatar hiện tại)*
+- [x] Trang hồ sơ cá nhân và cập nhật thông tin *(phiên đăng nhập lấy từ `GET /api/auth/me`; màn hồ sơ hiện vẫn dùng mock users API; đã hỗ trợ upload avatar từ máy và preview trước khi lưu)*
 - [x] Popup toast toàn app cho thông báo thao tác/lỗi *(góc trên bên phải, tự ẩn sau 3 giây, đã thêm thông báo đăng nhập/đăng xuất thành công)*
-- [x] Avatar mặc định và avatar social *(đăng ký thường dùng capybara mặc định, Google mock dùng ảnh profile Google demo)*
+- [x] Đồng bộ session backend vào app mock hiện tại *(user đăng nhập backend thật vẫn dùng tiếp được classroom/dashboard/exam đang còn mock)*
+- [x] Layout dùng chung cho khu đăng nhập theo vai trò *(đã bỏ navbar trên cùng cũ, đưa header workspace mới lên trên, thêm dropdown người dùng, dùng logo nền trong suốt `public/logo-transparent.png`, bỏ cờ Việt Nam, bỏ nút 3 gạch cạnh logo, thêm dấu `v` cho card cá nhân, phóng logo top bar ngang chiều cao chữ, dọn menu/sidebar Admin và rút sidebar còn điều hướng; dropdown cá nhân đã bật/tắt được chế độ tối thật cho khu vực app đã đăng nhập)*
 
 **Tiêu chí hoàn thành:** Đăng ký → đăng nhập → nhận JWT → gọi API được bảo vệ.
 
@@ -133,7 +134,7 @@
 - [x] CRUD lớp học cho Teacher *(tạo ở list page, sửa/xóa ở detail page)*
 - [x] Form nhập mã lớp (Student) *(đã join thật vào mock database bằng join code)*
 - [x] Trang chi tiết lớp + thành viên *(đã đọc detail + members theo quyền hiện tại)*
-- [x] Route admin xem người dùng và lớp học tổng quan *(mức mock frontend, chưa có backend thật)*
+- [x] Route admin xem người dùng và lớp học tổng quan *(mức mock frontend, chưa có backend thật; danh sách lớp đã có tìm kiếm theo tên lớp/tên giảng viên và sắp xếp theo tên hoặc số thành viên)*
 
 **Tiêu chí hoàn thành:** Teacher tạo được lớp, Student tham gia được lớp.
 
@@ -275,7 +276,7 @@
 - [ ] API dashboard Student
 - [ ] Thống kê số lớp, học sinh, bài tập, điểm thi
 - [ ] Thống kê cheating score
-- [x] Frontend dashboard Admin *(đã có mock API + UI tổng quan người dùng, lớp học, activity, anti-cheat)*
+- [x] Frontend dashboard Admin *(đã có mock API + UI tổng quan người dùng, lớp học, activity, anti-cheat; đã tách số liệu giảng viên và sinh viên thành thống kê riêng)*
 - [x] Frontend dashboard Teacher *(đã có mock API + UI lớp quản lý, nộp bài, lịch thi, sinh viên rủi ro cao; đã bỏ mục điểm trung bình khỏi dashboard tổng quan)*
 - [x] Frontend dashboard Student *(đã có mock API + UI tiến độ lớp, việc sắp tới, kết quả, thông báo; đã bỏ mục điểm trung bình khỏi dashboard tổng quan)*
 - [x] Frontend biểu đồ dashboard *(mức cơ bản bằng stat card + progress bars, chưa dùng chart library)*

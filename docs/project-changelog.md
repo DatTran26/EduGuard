@@ -170,6 +170,284 @@ Unresolved questions:
 
 - Dark mode pairing chưa định nghĩa trong v1.1 (chỉ light theme).
 
+## Feature: Dark theme toggle and mock status mapping
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Bật thật chức năng đổi theme từ dropdown thông tin cá nhân trên top bar: người dùng có thể chuyển qua lại giữa giao diện sáng và tối ngay trong khu vực đã đăng nhập.
+- Thiết lập `ThemeProvider` và bộ biến màu toàn cục để header, sidebar, card, button, input và dropdown đồng loạt chuyển sang nền tối/chữ sáng thay vì chỉ đổi màu cục bộ ở một vài component.
+- Tinh chỉnh nhận diện thương hiệu ở dark mode: logo trên top bar được đặt trong khung bo góc riêng để nổi bật hơn trên nền đen.
+- Gắn thêm các khối comment `MOCK STATUS` / `INTEGRATION STATUS` ở các module dữ liệu chính để nhìn nhanh phần nào đã nối backend thật, phần nào vẫn đang chạy bằng `mockDatabase` và `localStorage`.
+
+Changed files:
+
+- `frontend/src/main.jsx`
+- `frontend/src/index.css`
+- `frontend/src/hooks/useTheme.jsx`
+- `frontend/src/hooks/useAuth.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/dashboard/StatCard.jsx`
+- `frontend/src/api/mockDatabase.js`
+- `frontend/src/api/classroomApi.js`
+- `frontend/src/api/dashboardApi.js`
+- `frontend/src/api/examApi.js`
+- `frontend/src/api/userApi.js`
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- Theme tối hiện đã áp vào khu vực app đã đăng nhập; nếu muốn đồng bộ cả login/register theo theme này thì có thể làm tiếp ở nhịp UI sau.
+
+## Feature: Auth page redesign and top bar logo scaling
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Thiết kế lại giao diện xác thực EduGuard theo hướng tối giản, hiện đại: bố cục 2 cột với panel giới thiệu nền navy gradient ở bên trái và form trắng nhiều khoảng thở ở bên phải.
+- Panel giới thiệu được tinh chỉnh tiếp theo góp ý UI: logo dùng bản nền trong suốt, phóng lớn hơn, thêm wordmark `EduGuard` ngay dưới logo và chuyển thông điệp thành 2 dòng chữ riêng `Học tập an toàn.` / `Thi trực tuyến minh bạch.` để không bị xuống hàng.
+- Màn đăng nhập được bổ sung đúng các thành phần UI yêu cầu: nhãn `XÁC THỰC TÀI KHOẢN`, tiêu đề `Đăng nhập EduGuard`, checkbox `Ghi nhớ đăng nhập`, link `Quên mật khẩu?` và CTA chính màu xanh.
+- Đồng bộ lại register page để dùng cùng ngôn ngữ thiết kế mới của khu xác thực thay vì giữ layout cũ lệch tông.
+- Chỉnh logo trên top bar: dùng bản logo nền trong suốt, bỏ lớp nền trắng bao quanh và phóng logo lớn lên để cân bằng với chiều cao chữ `EduGuard Workspace`.
+
+Changed files:
+
+- `frontend/src/features/auth/components/AuthLayout.jsx`
+- `frontend/src/features/auth/pages/LoginPage.jsx`
+- `frontend/src/features/auth/pages/RegisterPage.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/public/logo-transparent.png`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- Link `Quên mật khẩu?` hiện mới là placeholder UI có toast vì backend chưa có luồng khôi phục mật khẩu tương ứng.
+
+## Feature: Top bar cue cleanup for header actions
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Bỏ nút 3 gạch đứng trước logo trong header workspace để phần thương hiệu bên trái gọn hơn đúng theo yêu cầu UI mới.
+- Thêm lại dấu `v` ở cuối khối thông tin cá nhân để người dùng dễ nhận ra card này có thể bấm mở dropdown thao tác.
+
+Changed files:
+
+- `frontend/src/components/layout/TopBar.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- Sau thay đổi này, header không còn điểm mở sidebar từ chính top bar nữa; nếu sau này cần hỗ trợ mobile rõ hơn có thể cân nhắc đặt trigger ở vị trí khác.
+
+## Feature: Admin classroom list filters and simplified overview
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Tinh chỉnh màn `admin/classrooms` để bỏ 3 ô tổng hợp phía trên danh sách lớp học, giữ trọng tâm vào việc duyệt danh sách lớp thay vì overview ngắn.
+- Thêm khối `Bộ lọc lớp học` cho Admin với tìm kiếm theo `tên lớp học` hoặc `tên giảng viên`.
+- Bổ sung sắp xếp danh sách lớp theo `tên lớp học` và `số lượng thành viên`, đồng thời thêm trạng thái rỗng riêng khi bộ lọc không khớp lớp nào.
+- Giữ nguyên flow hiện tại của Teacher và Student để không làm lệch trải nghiệm ở các vai trò còn lại.
+
+Changed files:
+
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- Màn Admin hiện vẫn đọc dữ liệu lớp học từ mock API; khi nối backend thật có thể đẩy phần sắp xếp/tìm kiếm này xuống query server nếu số lượng lớp tăng lớn.
+
+## Feature: Profile avatar upload and local session hydration
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Bổ sung khả năng tải ảnh đại diện từ máy ở trang hồ sơ thay cho việc chỉ nhập `Avatar URL`; người dùng có thể xem trước ảnh, dùng lại avatar mặc định và chỉ cập nhật thật sau khi bấm lưu.
+- Thêm kiểm tra định dạng ảnh `PNG/JPG/WEBP` và giới hạn dung lượng `700 KB` để tránh phình `localStorage` trong mock app hiện tại.
+- Vá luồng hydrate auth khi tải lại trang: sau khi xác thực token bằng backend `me`, app sẽ trộn lại profile mock cục bộ để avatar và thông tin cá nhân vừa cập nhật không bị mất khỏi session frontend.
+
+Changed files:
+
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `frontend/src/hooks/useAuth.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- Ảnh đại diện hiện được lưu cục bộ dưới dạng data URL trong trình duyệt; khi nối backend thật nên chuyển sang upload file lên server hoặc object storage.
+
+## Feature: Admin dashboard navigation cleanup and role stats
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Tinh gọn lại phần điều hướng của màn `admin/dashboard`: bỏ icon-only ở cạnh phải thẻ thông tin cá nhân trên header để khối user gọn hơn nhưng vẫn giữ dropdown thao tác.
+- Đồng bộ menu Admin ở sidebar theo nhãn mới: `Dashboard`, `Quản lí lớp học`, `Quản lí bài kiểm tra`, `Quản lí người dùng`, `Hồ sơ cá nhân`.
+- Dọn sidebar để chỉ còn tiêu đề và danh sách route, bỏ hai khối mô tả `EduGuard điều hướng nhanh...` và `Sidebar hiện chỉ giữ...` theo yêu cầu UI.
+- Bổ sung thống kê tách riêng `Giảng viên` và `Sinh viên` trên dashboard Admin thay vì chỉ để trong helper text của thẻ `Người dùng`.
+
+Changed files:
+
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/routes/roleRoutes.js`
+- `frontend/src/features/dashboard/pages/AdminDashboardPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- Dashboard Admin hiện vẫn đọc mock API, nên số liệu giảng viên và sinh viên đang phản ánh dữ liệu mock/session hiện có của frontend.
+
+## Feature: Workspace header layout and simplified role sidebar
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Thay khung layout chung của toàn bộ vai trò để bám giao diện EduGuard hiện tại: bỏ `BrandNavbar` cũ ở phía trên, đưa khối workspace lên làm header chính, giữ nền sáng, card trắng, bo góc lớn và tông xanh navy/xanh nhạt.
+- Header được tinh chỉnh tiếp theo phản hồi UI: bên trái thay khối `EG` bằng ảnh thật `public/logo.png`, bỏ chữ `Mở menu` và `Khu làm việc`, ở giữa bỏ hẳn khối cờ Việt Nam để tổng thể gọn hơn.
+- Khối thông tin người dùng bên phải giữ badge vai trò và dropdown cá nhân; nút `Đăng xuất` được chuyển vào trong dropdown thay vì đứng riêng bên ngoài. Các mục `Thông tin`, `Đổi mật khẩu`, `Chế độ tối`, `EduGuard Premium` vẫn giữ nguyên; chỉ `Thông tin` điều hướng sang hồ sơ, các mục còn lại hiện là placeholder UI để không đụng logic trang.
+- Tối giản lại sidebar để chỉ giữ điều hướng, bỏ phần lặp thông tin người dùng; đồng thời chỉnh active state và spacing để nhìn sạch hơn trên desktop lẫn mobile.
+
+Changed files:
+
+- `frontend/src/components/layout/AppShell.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- `Đổi mật khẩu`, `Chế độ tối`, `EduGuard Premium` hiện mới là mục dropdown ở mức giao diện; nếu muốn dùng thật sẽ cần nối thêm logic riêng sau.
+
+## Feature: Frontend role sync for protected routes and mock dashboards
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Vá frontend auth mapping để không còn lấy bừa `roles[0]` từ backend. App giờ chọn role chính theo ưu tiên `Admin -> Teacher -> Student`, nên redirect và route guard không bị lệch khi user có nhiều quyền.
+- Sửa bridge giữa backend session và mock database: nếu user đã tồn tại trong mock DB theo `id` hoặc `email`, frontend sẽ cập nhật lại `role`, `email`, `fullName`, trạng thái và timestamp từ session backend thay vì giữ role mock cũ.
+- Nhờ đó các màn dashboard mock cho `Admin` và `Teacher` sẽ đọc đúng vai trò mới sau khi đổi quyền trong database và tải lại phiên đăng nhập.
+
+Changed files:
+
+- `frontend/src/api/authApi.js`
+- `frontend/src/api/mockDatabase.js`
+- `frontend/src/hooks/useAuth.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm test`
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- Nếu user đang giữ access token/session cũ từ trước khi đổi role trong DB, vẫn nên tải lại trang hoặc đăng xuất rồi đăng nhập lại để frontend hydrate lại thông tin quyền mới.
+
+## Feature: Frontend auth integration with backend API
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Chuyển `LoginPage` và `RegisterPage` sang gọi backend auth thật theo đúng docs và controller hiện tại: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`.
+- Giữ nguyên trải nghiệm hiện có của frontend bằng cách map `UserDto.Roles` từ backend về shape `user.role` mà app đang dùng, nên route guard, sidebar và redirect theo role không phải sửa lan rộng.
+- Vì dashboard/classroom/exam vẫn đang đọc mock API, thêm một lớp bridge trong `mockDatabase` để user đăng nhập từ backend thật vẫn được đồng bộ vào mock DB khi cần, tránh vỡ flow sau lúc login.
+- Gỡ luồng Google/demo auth khỏi UI đăng nhập và đăng ký để bám sát yêu cầu hệ thống trong `docs/` và tránh tạo session mock không khớp backend.
+
+Changed files:
+
+- `frontend/src/api/authApi.js`
+- `frontend/src/api/mockDatabase.js`
+- `frontend/src/hooks/useAuth.jsx`
+- `frontend/src/features/auth/pages/LoginPage.jsx`
+- `frontend/src/features/auth/pages/RegisterPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm test`
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- `users`, `classrooms`, `dashboard`, `exams` trên frontend vẫn còn dùng mock API; bước tiếp theo nên nối dần các module này với backend thật để bỏ bridge tạm.
+
 ## Feature: Release integration — backend phases 1-3 with frontend mock MVP
 
 Date: 2026-06-11
