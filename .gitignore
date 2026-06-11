@@ -49,6 +49,10 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 
+# Local dotnet build workaround dirs (not committed)
+backend/.build-check/
+backend/.build-patch-check/
+
 *_i.c
 *_p.c
 *_i.h
