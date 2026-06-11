@@ -125,6 +125,7 @@ Chi tiết thực thi: `.agents/skills/ship-code/SKILL.md`, `.agents/skills/gith
 | File | Mục đích |
 |------|----------|
 | `Todo List.md` | Checklist theo giai đoạn (chỉ task, không quy tắc) |
+| `docs/swagger-api-testing-guide.md` | Hướng dẫn test API trên Swagger (JWT, luồng E2E) |
 | `AGENTS.md` | Chính sách Git, Husky, changelog — entry point cho agent |
 | `docs/project-changelog.md` | Lịch sử thay đổi theo feature |
 | `.agents/skills/push-code/SKILL.md` | Thực thi push lưu repo |

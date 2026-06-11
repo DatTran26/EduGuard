@@ -19,7 +19,7 @@ EduGuard dùng hướng thiết kế **Apple**: white space cao, sans chặt (SF
 | **Clarity over decoration** | Đọc hiểu nhanh hơn hiệu ứng trang trí. Mỗi màn hình **một hành động chính** (primary action). |
 | **Trust & professionalism** | Xử lý điểm số, thi cử, cảnh báo gian lận — UI ổn định, có kiểm soát, không kiểu game/casual. |
 | **Negative space is a feature** | Nền `Neutral` mang bố cục; không nhồi component. |
-| **Single accent rule** | Màu **Tertiary** (`#0071E3`) là **duy nhất** cho CTA button. Link inline dùng **Link** (`#0066CC`) — không trộn accent khác cho CTA. |
+| **Single accent rule** | Màu **Tertiary** (`#1D4ED8`) là **duy nhất** cho CTA button. Link inline dùng **Link** (`#1E40AF`) — không trộn accent khác cho CTA. |
 | **Flat on purpose** | **Không gradient.** Hệ thống phẳng, có chủ đích. |
 
 ### 1.2. Role-aware UX
@@ -48,29 +48,36 @@ EduGuard dùng hướng thiết kế **Apple**: white space cao, sans chặt (SF
 
 Định nghĩa tập trung trong [`design.md`](../design.md), `tailwind.config.js` và CSS variables (`frontend/src/index.css`). **Không hardcode** màu/spacing rải rác trong component.
 
-### 2.1. Colors (từ `design.md` v1.0)
+### 2.1. Colors (từ `design.md` v1.1 — Institutional Slate)
 
-Palette flat: neutral tương phản cao, **một accent CTA**, link riêng, semantic cho status.
+Palette flat premium: slate authority, **một accent CTA**, link riêng, semantic + `*-muted` cho badge.
 
 | Token | Hex | Vai trò |
 |-------|-----|---------|
-| `primary` | `#1D1D1F` | Headlines, core text |
-| `secondary` | `#6E6E73` | Captions, metadata |
-| `tertiary` | `#0071E3` | **Duy nhất** cho CTA button, focus ring |
-| `link` | `#0066CC` | Link inline — **không** dùng cho button fill |
-| `neutral` | `#F5F5F7` | Nền trang (canvas) |
+| `primary` | `#0F172A` | Headlines, core text |
+| `secondary` | `#64748B` | Captions, metadata |
+| `tertiary` | `#1D4ED8` | **Duy nhất** cho CTA button, focus ring |
+| `tertiary-hover` | `#1E3A8A` | Hover / pressed CTA |
+| `link` | `#1E40AF` | Link inline — **không** dùng cho button fill |
+| `neutral` | `#F8FAFC` | Nền trang (canvas) |
 | `surface` | `#FFFFFF` | Card, panel, modal, input |
-| `border` | `#E8E8ED` | Viền card, divider, input |
+| `surface-sunken` | `#F1F5F9` | Inset trong card trắng |
+| `border` | `#E2E8F0` | Viền card, divider, input |
 | `on-primary` | `#FFFFFF` | Text trên nút tertiary |
+| `obsidian` | `#0B1120` | Dark panel hiếm |
 
 **Semantic (chỉ status, không thay tertiary cho CTA):**
 
 | Token | Hex | Dùng cho |
 |-------|-----|----------|
-| `success` | `#16A34A` | Đã nộp, hoàn thành, pass |
-| `caution` | `#B64400` | Sắp hết giờ, cảnh báo anti-cheat nhẹ |
+| `success` | `#047857` | Đã nộp, hoàn thành, pass |
+| `success-muted` | `#ECFDF5` | Nền badge success |
+| `caution` | `#B45309` | Sắp hết giờ, cảnh báo anti-cheat nhẹ |
+| `caution-muted` | `#FFFBEB` | Nền badge caution |
 | `danger` | `#DC2626` | Lỗi, vi phạm nghiêm trọng |
-| `info` | `#2563EB` | Ghi nhận sự kiện, thông tin |
+| `danger-muted` | `#FEF2F2` | Nền badge danger |
+| `info` | `#0369A1` | Ghi nhận sự kiện, thông tin |
+| `info-muted` | `#EFF6FF` | Nền badge info |
 
 **Quy tắc màu:**
 
@@ -95,10 +102,10 @@ Font: **Inter** (SF Pro–style tight sans). Hỗ trợ tiếng Việt tốt.
 
 | Cấp | Class |
 |-----|-------|
-| Page title | `text-[2.6rem] font-semibold tracking-tight text-[#1D1D1F]` |
-| Section heading | `text-lg font-semibold text-[#1D1D1F]` |
-| Body | `text-base leading-relaxed text-[#1D1D1F]` |
-| Caption / meta | `text-[0.82rem] font-medium text-[#6E6E73]` |
+| Page title | `text-[2.6rem] font-semibold tracking-tight text-primary` |
+| Section heading | `text-lg font-semibold text-primary` |
+| Body | `text-base leading-relaxed text-primary` |
+| Caption / meta | `text-[0.82rem] font-medium text-secondary` |
 | Mono (mã lớp, log ID) | `font-mono text-sm` |
 
 Đoạn văn dài (đề thi, mô tả): `leading-relaxed`. Không dùng font size < 12px cho nội dung đọc được.
@@ -129,7 +136,7 @@ Grid **8px** — scale: `sm` 8px, `md` 16px, `lg` 32px.
 
 ### 2.5. Elevation
 
-- Ưu tiên **border** (`border-[#6E6E73]/20` hoặc slate-200) + `shadow-sm` nhẹ.
+- Ưu tiên **border** (`border-border` hoặc slate-200) — elevation bằng màu, không shadow trên card.
 - Modal/dropover: `shadow-lg`, overlay `bg-black/40`.
 - Không shadow đậm trừ overlay/modal.
 
@@ -147,7 +154,8 @@ Grid **8px** — scale: `sm` 8px, `md` 16px, `lg` 32px.
 ### 3.1. Button primary (`button-primary`)
 
 ```txt
-background: tertiary (#0071E3)
+background: tertiary (#1D4ED8)
+hover: tertiary-hover (#1E3A8A)
 text: on-primary (#FFFFFF)
 rounded: md (12px)
 padding: 12px 20px
@@ -168,12 +176,12 @@ padding: 12px 20px
 
 ```txt
 background: surface (#FFFFFF)
-text: primary (#1D1D1F)
+text: primary (#0F172A)
 rounded: lg (20px)
 padding: 24px
 ```
 
-Đặt trên nền `neutral` (`#F5F5F7`). Không xếp card sát nhau — để negative space thở.
+Đặt trên nền `neutral` (`#F8FAFC`). Không xếp card sát nhau — để negative space thở.
 
 ### 3.3. Cấu trúc thư mục (bắt buộc)
 
@@ -288,7 +296,7 @@ frontend/src/components/
 ## 6. Accessibility (WCAG 2.2 AA)
 
 - Keyboard: mọi control focus được; tab order hợp lý.
-- Focus ring: `ring-2 ring-[#0071E3] ring-offset-2` — không `outline-none` không thay thế.
+- Focus ring: `ring-2 ring-tertiary ring-offset-2` — không `outline-none` không thay thế.
 - Form: `htmlFor`, `aria-describedby` cho lỗi.
 - Icon-only: `aria-label` tiếng Việt.
 - Modal: focus trap, Esc đóng, `aria-modal="true"`.

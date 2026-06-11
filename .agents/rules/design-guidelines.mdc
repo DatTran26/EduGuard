@@ -11,7 +11,7 @@ Trước khi tạo hoặc sửa component, page, style trong `frontend/`:
 1. Đọc `docs/design-guidelines.md` (chuẩn đầy đủ, checklist merge).
 2. Đọc `design.md` ở root (token gốc: colors, typography, spacing, button/card).
 3. Tuân thủ:
-   - Single-accent: **một** CTA tertiary (`#0071E3`) per section; link inline `#0066CC`.
+   - Single-accent: **một** CTA tertiary (`#1D4ED8`) per section; link inline `#1E40AF`.
    - Flat palette — **không gradient**.
    - Token từ theme — không hardcode hex rải rác.
    - Loading + empty + error state cho mọi data view.

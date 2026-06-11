@@ -1,11 +1,16 @@
+using EduGuard.Application.DTOs.Common;
 using EduGuard.Application.Repositories.Interfaces;
 using EduGuard.Application.Services.Interfaces;
 using EduGuard.Domain.Entities;
+using EduGuard.Infrastructure.AntiCheat;
+using EduGuard.Infrastructure.Assignments;
 using EduGuard.Infrastructure.Auth;
 using EduGuard.Infrastructure.Classrooms;
+using EduGuard.Infrastructure.Exams;
 using EduGuard.Infrastructure.Data;
 using EduGuard.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -50,6 +55,25 @@ public static class DependencyInjection
                     ValidAudience = configuration["Jwt:Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
                 };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnChallenge = async context =>
+                    {
+                        context.HandleResponse();
+                        await WriteAuthFailureAsync(
+                            context.HttpContext,
+                            StatusCodes.Status401Unauthorized,
+                            "Bạn cần đăng nhập để truy cập tài nguyên này.");
+                    },
+                    OnForbidden = async context =>
+                    {
+                        await WriteAuthFailureAsync(
+                            context.HttpContext,
+                            StatusCodes.Status403Forbidden,
+                            "Bạn không có quyền thực hiện thao tác này.");
+                    }
+                };
             });
 
         services.AddAuthorization();
@@ -58,7 +82,24 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IClassroomRepository, ClassroomRepository>();
         services.AddScoped<IClassroomService, ClassroomService>();
+        services.AddScoped<IAssignmentRepository, AssignmentRepository>();
+        services.AddScoped<IAssignmentService, AssignmentService>();
+        services.AddScoped<IExamRepository, ExamRepository>();
+        services.AddScoped<IExamService, ExamService>();
+        services.AddScoped<IExamAttemptService, ExamAttemptService>();
+        services.AddScoped<ICheatingLogRepository, CheatingLogRepository>();
+        services.AddScoped<IAntiCheatService, AntiCheatService>();
 
         return services;
+    }
+
+    private static Task WriteAuthFailureAsync(HttpContext context, int statusCode, string message)
+    {
+        if (context.Response.HasStarted)
+            return Task.CompletedTask;
+
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/json";
+        return context.Response.WriteAsJsonAsync(ApiResponse<object>.CreateFailure(message));
     }
 }

@@ -1,5 +1,203 @@
 # Project Changelog
 
+## Feature: Backend Phase 7 — Anti-cheat Monitoring APIs
+
+Date: 2026-06-11
+
+Branch/source: local workspace (`release`)
+
+Description:
+
+- Thêm entity `CheatingLog`, bảng `CheatingLogs` (gộp trong migration `AddAssignmentsExamsAndAttempts` sau regenerate).
+- `AntiCheatController` + `AntiCheatService` + `CheatingLogRepository`: ghi log hành vi, xem log/score theo attempt, tổng hợp theo đề thi.
+- Student chỉ ghi log khi attempt **InProgress** và exam **EnableAntiCheat**; cộng dồn `SuspicionScore` trên `ExamAttempt`.
+- Loại hành vi API: `TAB_SWITCH`, `WINDOW_BLUR`, `COPY_PASTE`, `EXIT_FULLSCREEN`, `PAGE_RELOAD`, `DISCONNECTED`, `WEBCAM_OFF`.
+
+Changed files:
+
+- `backend/EduGuard.Domain/Entities/CheatingLog.cs`, `Enums/CheatingType.cs`
+- `backend/EduGuard.Application/DTOs/AntiCheat/*`, validators, service/repository interfaces
+- `backend/EduGuard.Infrastructure/AntiCheat/*`, `Repositories/cheating-log-repository.cs`
+- `backend/EduGuard.Infrastructure/Data/Configurations/cheating-log-configuration.cs`
+- `backend/EduGuard.Api/Controllers/anti-cheat-controller.cs`
+- `backend/EduGuard.Infrastructure/Data/Migrations/20260611090709_AddAssignmentsExamsAndAttempts.*`
+- `docs/apiList.md`, `docs/swagger-api-testing-guide.md`, `Todo List.md`
+
+Validation:
+
+- `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` — 0 errors
+- `dotnet ef database update` — applied `20260611090709_AddAssignmentsExamsAndAttempts` (includes `CheatingLogs` table)
+
+Unresolved questions:
+
+- SignalR realtime warning (Phase 8) chưa implement.
+- Frontend monitor hook/dashboard chưa làm (ngoài scope backend-only).
+
+## Feature: PATCH endpoints (partial update)
+
+Date: 2026-06-11
+
+Branch/source: local workspace
+
+Description:
+
+- Thêm **PATCH** cho cập nhật một phần: Classroom, Assignment, Exam, Question, Answer.
+- Dùng `Optional<T>` — field không có trong JSON body được giữ nguyên; PUT vẫn thay thế đầy đủ.
+- Ví dụ: `PATCH /api/classrooms/1` body `{"name":"..."}` — không đổi `description`.
+
+Changed files:
+
+- `backend/EduGuard.Application/DTOs/Common/optional*.cs`
+- `backend/EduGuard.Application/DTOs/**/patch-*-request.cs`
+- `backend/EduGuard.Application/Validators/patch-*-validator.cs`
+- `backend/EduGuard.Infrastructure/**` services (PatchAsync)
+- `backend/EduGuard.Api/Controllers/*.cs`, `Program.cs`
+- `docs/apiList.md`, `docs/swagger-api-testing-guide.md`
+
+Validation: `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` — 0 errors.
+
+## Fix: JSON response cho 401/403 (Authorize / JWT)
+
+Date: 2026-06-11
+
+Branch/source: local workspace
+
+Description:
+
+- **Bug:** Student gọi API Teacher (vd. `PUT /api/classrooms/{id}`) trả 403 với body rỗng (`content-length: 0`).
+- **Fix:** Handler toàn cục `ApiAuthorizationMiddlewareResultHandler` + `JwtBearerEvents` trả `ApiResponse<object>` JSON cho 401/403 trên mọi API có `[Authorize]`.
+- Lỗi nghiệp vụ trong controller (`UnauthorizedAccessException`) vẫn trả message chi tiết như trước.
+
+Changed files:
+
+- `backend/EduGuard.Api/Authorization/api-authorization-middleware-result-handler.cs`
+- `backend/EduGuard.Api/Authorization/auth-api-response-writer.cs`
+- `backend/EduGuard.Api/Program.cs`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `docs/swagger-api-testing-guide.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `dotnet build` (cần restart/stop `EduGuard.Api` nếu process đang lock DLL)
+
+## Feature: Swagger API testing guide
+
+Date: 2026-06-11
+
+Branch/source: local workspace
+
+Description:
+
+- Thêm `docs/swagger-api-testing-guide.md`: hướng dẫn mở Swagger, Authorize JWT, gán role Teacher qua SQL, luồng test Phase 2–6 và checklist E2E.
+- Sửa URL Swagger cũ (`7234`) trong `05_API_FRONTEND_INTEGRATION.md` → `7168`.
+- Liên kết từ `apiList.md`, `07_DEVELOPMENT_RULES.md`.
+
+Changed files:
+
+- `docs/swagger-api-testing-guide.md` (mới)
+- `docs/05_API_FRONTEND_INTEGRATION.md`
+- `docs/07_DEVELOPMENT_RULES.md`
+- `docs/apiList.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- Nội dung đối chiếu `launchSettings.json`, controllers và DTO hiện tại.
+
+## Feature: Backend Phase 3–6 — Classroom, Assignment, Exam, Exam Attempt APIs
+
+Date: 2026-06-11
+
+Branch/source: `release` (local workspace)
+
+Description:
+
+- Hoàn thiện **Phase 3** Classroom: GET/PUT/DELETE lớp, xóa thành viên (8/8 API).
+- Triển khai **Phase 4** Assignment: entity `Assignment`/`Submission`, 8 API (CRUD, submit, grade).
+- Triển khai **Phase 5** Exam: entity `Exam`/`ExamSetting`/`Question`/`Answer`, 11 API + question bank cho teacher.
+- Triển khai **Phase 6** Exam Attempt: start (shuffle + resume), save answer, submit (auto-grade), result, list attempts.
+- Migration EF `20260611022446_AddAssignmentsExamsAndAttempts` đã apply lên `EduGuardExam`.
+- Frontend vẫn dùng mock; tích hợp API thật là bước riêng.
+
+Changed files:
+
+- `backend/EduGuard.Domain/**` (entities, enums)
+- `backend/EduGuard.Application/**` (DTOs, interfaces, validators)
+- `backend/EduGuard.Infrastructure/**` (repositories, services, EF configs, migration)
+- `backend/EduGuard.Api/Controllers/**` (classrooms, assignments, exams, exam-attempts)
+- `Todo List.md`, `docs/apiList.md`, `docs/project-changelog.md`
+
+Validation:
+
+- `dotnet build` (backend) — 0 errors
+- `dotnet ef database update` — migration applied successfully
+
+Unresolved questions:
+
+- Chưa chạy Swagger E2E đầy đủ classroom → assignment → exam → attempt trên môi trường dev.
+- Anti-cheat (Phase 7) chưa ghi log suspicion khi làm bài.
+
+## Feature: Design tokens v1.1 — Institutional Slate palette
+
+Date: 2026-06-11
+
+Branch/source: local workspace (`design.md` + preview + frontend tokens)
+
+Description:
+
+- Nâng cấp bộ màu EduGuard từ Apple Gray sang **Institutional Slate**: slate authority cho text, blue sâu hơn cho CTA, neutral/border tinh chỉnh cho cảm giác B2B education SaaS premium.
+- Giữ nguyên quy tắc flat: một accent `tertiary` cho CTA, link riêng, không gradient/shadow trên card.
+- Thêm token `tertiary-hover`, `surface-sunken`, `border-subtle`, và `*-muted` cho badge/alert surface.
+- Đồng bộ `design.md`, preview HTML, `frontend/src/index.css`, `docs/design-guidelines.md`, và rule files.
+
+Changed files:
+
+- `design.md`
+- `plans/visuals/eduguard-design-tokens-preview.html`
+- `frontend/src/index.css`
+- `docs/design-guidelines.md`
+- `.cursor/rules/design-guidelines.mdc`
+- `.agents/rules/design-guidelines.mdc`
+- `docs/project-changelog.md`
+
+Validation:
+
+- Grep repo: không còn `#0071E3`, `#0066CC`, `#1D1D1F` trong `frontend/`
+- Preview: mở `plans/visuals/eduguard-design-tokens-preview.html` trong browser
+
+Unresolved questions:
+
+- Dark mode pairing chưa định nghĩa trong v1.1 (chỉ light theme).
+
+## Feature: Release integration — backend phases 1-3 with frontend mock MVP
+
+Date: 2026-06-11
+
+Branch/source: `release` (merge `devD` backend line with `devH` frontend line)
+
+Description:
+
+- Gộp nhánh `devH` vào `release` để nhánh tích hợp chứa đồng thời backend Phase 1-3 và frontend mock cho auth, classroom, exam, dashboard.
+- Đồng bộ `Todo List.md` để trạng thái dự án phản ánh đúng: backend auth/classroom đã xong, frontend mock đã có nhưng chưa nối API thật.
+- Giữ `release` là nhánh tích hợp nội bộ, chưa tạo thêm production release hay PR mới vào `main` trong thay đổi này.
+
+Changed files:
+
+- `Todo List.md`
+- `docs/project-changelog.md`
+- `frontend/**`
+
+Validation:
+
+- `npm test`
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- Frontend hiện vẫn dùng mock/localStorage cho auth, classroom, dashboard và exam; cần bước tích hợp với backend thật ở nhịp tiếp theo.
+
 ## Release: v1.1.0 (stable) — promote from v1.1.0-rc.1
 
 Date: 2026-06-10
@@ -15,6 +213,362 @@ Description:
 Validation:
 
 - RC manual Swagger E2E confirmed by user before promote.
+
+## Feature: Mock Google auth, avatar defaults, brand navbar, and dashboard polish
+
+Date: 2026-06-10
+
+Branch/source: `devH`
+
+Description:
+
+- Bổ sung mock social auth bằng Google trên frontend: `LoginPage` và `RegisterPage` đều có nút Google, dùng profile Google demo để mô phỏng OAuth trước khi có backend thật.
+- Luồng đăng ký thường giờ gắn sẵn avatar capybara mặc định; luồng Google mock sẽ dùng ảnh từ profile Google demo. Đồng thời thêm component `Avatar` dùng chung cho top bar, sidebar và hồ sơ cá nhân.
+- Dựng thêm `BrandNavbar` ngang trên cùng để chừa không gian cho logo/thương hiệu; từ đó hạ sidebar xuống dưới, kéo vùng nội dung chính thoáng hơn và thêm quick links theo role.
+- Đổi thứ tự menu của `Teacher` và `Student` để `Dashboard` nằm gần cuối danh sách chức năng như yêu cầu; đồng thời giữ `Hồ sơ` ở cuối.
+- Tinh gọn dashboard giảng viên và sinh viên: bỏ thẻ “điểm trung bình” khỏi phần tổng quan, sửa helper text để dashboard chỉ tập trung vào tiến độ, cảnh báo và việc sắp tới.
+- Chuyển trang lớp học của giảng viên sang flow thực tế hơn: chỉ hiện button `Tạo lớp học`, bấm vào mới mở form.
+- Nâng cấp UI toast: nền dịu hơn, chữ trắng, hiệu ứng nổi rõ hơn; đồng thời thêm thông báo khi đăng nhập thành công và khi đăng xuất.
+
+Changed files:
+
+- `frontend/public/capybara-avatar.svg`
+- `frontend/public/google-student-avatar.svg`
+- `frontend/src/utils/avatar.js`
+- `frontend/src/components/common/Avatar.jsx`
+- `frontend/src/components/common/ToastViewport.jsx`
+- `frontend/src/components/layout/BrandNavbar.jsx`
+- `frontend/src/components/layout/AppShell.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/features/auth/components/GoogleAuthButton.jsx`
+- `frontend/src/features/auth/pages/LoginPage.jsx`
+- `frontend/src/features/auth/pages/RegisterPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/features/dashboard/pages/StudentDashboardPage.jsx`
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `frontend/src/api/authApi.js`
+- `frontend/src/api/dashboardApi.js`
+- `frontend/src/hooks/useAuth.jsx`
+- `frontend/src/routes/roleRoutes.js`
+- `frontend/src/index.css`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm run lint`
+- `npm run build`
+
+Unresolved questions:
+
+- Google auth hiện là mock frontend để test UX; khi backend sẵn sàng sẽ cần thay bằng OAuth thật hoặc Google Identity Services.
+
+## Feature: Exam question bank and answer management on mock frontend
+
+Date: 2026-06-10
+
+Branch/source: `devH`
+
+Description:
+
+- Mở rộng `examApi` để quản lý dữ liệu `Question` và `Answer` theo kiểu database thật: lấy danh sách câu hỏi theo đề, thêm câu hỏi, cập nhật câu hỏi, xóa câu hỏi và đồng bộ lại `orderIndex`.
+- Thêm validate cho từng loại câu hỏi `SingleChoice / MultipleChoice / TrueFalse / ShortAnswer`, bao gồm số lượng đáp án tối thiểu, số đáp án đúng hợp lệ và bộ đáp án cố định cho câu đúng/sai.
+- Dựng `QuestionForm` và `QuestionCard` trong trang chi tiết đề thi để giảng viên thêm/sửa/xóa câu hỏi cùng đáp án ngay tại chỗ; phần chỉnh sửa dùng chung một form động để giảm lặp UI.
+- Bổ sung question summary trong `ExamDetailPage`: tổng câu hỏi, tổng điểm, số câu một đáp án, nhiều đáp án và tự luận; sau mỗi thao tác CRUD sẽ reload lại dữ liệu để summary luôn khớp mock DB.
+- Giữ quyền truy cập an toàn hơn ở mức frontend mock: `Admin` xem được question bank, `Teacher` chỉ quản lý đề của mình, `Student` không xem được nội dung câu hỏi/đáp án ở trang detail để tránh lộ đáp án.
+
+Changed files:
+
+- `frontend/src/api/examApi.js`
+- `frontend/src/features/exams/examHelpers.js`
+- `frontend/src/features/exams/components/QuestionForm.jsx`
+- `frontend/src/features/exams/components/QuestionCard.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm run lint`
+- `npm run build`
+
+Unresolved questions:
+
+- Chưa có màn hình làm bài và chấm điểm thật, nên phần `ShortAnswer` hiện mới lưu các đáp án mẫu chấp nhận để chuẩn bị cho bước exam attempt sau.
+
+## Feature: Global toast notifications for frontend feedback
+
+Date: 2026-06-10
+
+Branch/source: `devH`
+
+Description:
+
+- Bổ sung hệ thống toast dùng chung cho toàn frontend để các thông báo thành công/thất bại hiện ở góc trên bên phải màn hình và tự ẩn sau 3 giây.
+- Thay các banner thông báo tạm thời trong login, register, classroom, exam, profile, user management và dashboard bằng popup toast để giao diện gọn hơn, thống nhất hơn.
+- Giữ `EmptyState` cho các trường hợp tải dữ liệu thất bại nghiêm trọng để người dùng vẫn có ngữ cảnh màn hình, còn các phản hồi thao tác nhanh sẽ đi qua toast.
+- Rà lại dependency của các `useEffect` liên quan đến `showToast` và dọn timer cleanup trong provider để tránh warning lint.
+
+Changed files:
+
+- `frontend/src/main.jsx`
+- `frontend/src/index.css`
+- `frontend/src/components/common/ToastViewport.jsx`
+- `frontend/src/hooks/useToast.jsx`
+- `frontend/src/features/auth/pages/LoginPage.jsx`
+- `frontend/src/features/auth/pages/RegisterPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/classrooms/pages/JoinClassroomPage.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `frontend/src/features/users/pages/UserManagementPage.jsx`
+- `frontend/src/features/dashboard/pages/AdminDashboardPage.jsx`
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/features/dashboard/pages/StudentDashboardPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm run lint`
+- `npm run build`
+
+Unresolved questions:
+
+- Khi nối backend thật hoặc thêm realtime sau này, có thể cần mở rộng toast thành nhiều mức ưu tiên hơn như queue, action button hoặc cảnh báo không tự ẩn.
+
+## Feature: Exam CRUD on role-based mock API
+
+Date: 2026-06-10
+
+Branch/source: `devH`
+
+Description:
+
+- Bổ sung `examApi` cho CRUD bài kiểm tra theo mock database: danh sách, chi tiết, tạo, cập nhật, xóa; quyền được tách rõ cho `Admin / Teacher / Student`.
+- Mở rộng route và navigation với khu vực `Bài kiểm tra` cho cả 3 role; sau đó dựng `ExamListPage`, `ExamDetailPage`, `ExamForm`, `ExamCard`.
+- Teacher hiện có thể tạo/sửa/xóa/publish-unpublish đề thi ở mức metadata + settings: lớp học, thời lượng, lịch mở-đóng, anti-cheat, fullscreen, random câu hỏi/đáp án, max attempts, show result.
+- Student chỉ nhìn thấy đề đã publish trong các lớp đã tham gia; Admin có thể xem toàn bộ đề thi trong hệ thống mock.
+- Mở rộng mock database với `examSettings`, `questions`, `answers` để bám sát tài liệu entity và chuẩn bị cho bước question editor sau.
+- Vá logic xóa lớp học để cascade luôn `assignments`, `submissions`, `exams`, `examSettings`, `questions`, `answers`, `examAttempts`, `cheatingLogs`, tránh dashboard đếm sai dữ liệu mồ côi.
+
+Changed files:
+
+- `frontend/src/api/classroomApi.js`
+- `frontend/src/api/examApi.js`
+- `frontend/src/api/mockDatabase.js`
+- `frontend/src/components/forms/CheckboxField.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/exams/examHelpers.js`
+- `frontend/src/features/exams/components/ExamCard.jsx`
+- `frontend/src/features/exams/components/ExamForm.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/routes/routeConfig.js`
+- `frontend/src/routes/roleRoutes.js`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm run lint`
+- `npm run build`
+
+Unresolved questions:
+
+- Chưa triển khai editor câu hỏi/đáp án trên UI, mới dừng ở CRUD đề thi và settings.
+- Chưa có backend thật; toàn bộ exam CRUD hiện chạy trên localStorage theo mock API.
+
+## Feature: Role-based dashboards on mock API
+
+Date: 2026-06-10
+
+Branch/source: `devH`
+
+Description:
+
+- Bổ sung `dashboardApi` chạy trên mock database để mô phỏng 3 endpoint `GET /api/dashboard/admin`, `GET /api/dashboard/teacher`, `GET /api/dashboard/student`.
+- Mở rộng mock database với các bảng dữ liệu phục vụ thống kê: `assignments`, `submissions`, `exams`, `examAttempts`, `cheatingLogs`, `notifications`; dùng cơ chế bổ sung schema mềm để không phải reset dữ liệu classroom cũ trong localStorage.
+- Thêm dashboard riêng cho `Admin`, `Teacher`, `Student`; mỗi role có nội dung khác nhau: admin xem user/classroom/activity, teacher xem hiệu suất lớp/rủi ro anti-cheat/lịch thi, student xem tiến độ cá nhân/việc sắp tới/kết quả.
+- Thêm các component dashboard dùng chung như `StatCard`, `MetricBarList`, `TimelineList` để giữ UI thống nhất và bám theo design guideline phần dashboard.
+- Đổi luồng đăng nhập mặc định sang dashboard theo role thay vì vào thẳng trang classroom.
+
+Changed files:
+
+- `frontend/src/api/dashboardApi.js`
+- `frontend/src/api/mockDatabase.js`
+- `frontend/src/components/dashboard/StatCard.jsx`
+- `frontend/src/components/dashboard/MetricBarList.jsx`
+- `frontend/src/components/dashboard/TimelineList.jsx`
+- `frontend/src/features/dashboard/pages/AdminDashboardPage.jsx`
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/features/dashboard/pages/StudentDashboardPage.jsx`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/routes/routeConfig.js`
+- `frontend/src/routes/roleRoutes.js`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm run lint`
+- `npm run build`
+
+Unresolved questions:
+
+- Dashboard hiện dùng mock data trong localStorage, chưa lấy từ backend thật.
+- Chưa có chart library, nên biểu đồ đang ở mức progress bar và timeline cơ bản.
+
+## Feature: Role-based mock API, classroom CRUD, and profile management
+
+Date: 2026-06-10
+
+Branch/source: `devH`
+
+Description:
+
+- Chuyển frontend từ mức UI skeleton sang mock logic gần giống backend thật: dữ liệu lưu trong localStorage theo các bảng `users`, `classrooms`, `classroomMembers`, `refreshTokens`, `activityLogs`.
+- Đổi `authApi`, `classroomApi`, thêm `userApi` để response có dạng `success/message/data`, gần với tài liệu API integration và dễ thay bằng backend ASP.NET Core sau này.
+- Tách route theo role `Admin / Teacher / Student`; mỗi role có luồng classroom riêng, teacher có CRUD lớp học, student join lớp bằng mã, admin xem người dùng và lớp học tổng quan.
+- Bổ sung trang hồ sơ cá nhân cho mọi role; người dùng có thể xem và sửa `fullName`, `email`, `avatarUrl`, đồng thời đồng bộ lại session đang đăng nhập.
+- Rà lại logic truy cập classroom: teacher chỉ quản lý lớp mình tạo, student chỉ xem lớp đã tham gia, admin xem toàn hệ thống.
+
+Changed files:
+
+- `frontend/src/api/authApi.js`
+- `frontend/src/api/classroomApi.js`
+- `frontend/src/api/mockDatabase.js`
+- `frontend/src/api/userApi.js`
+- `frontend/src/hooks/useAuth.jsx`
+- `frontend/src/main.jsx`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/routes/routeConfig.js`
+- `frontend/src/routes/roleRoutes.js`
+- `frontend/src/components/layout/AppShell.jsx`
+- `frontend/src/components/layout/ProtectedRoute.jsx`
+- `frontend/src/components/layout/PublicRoute.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/features/auth/pages/LoginPage.jsx`
+- `frontend/src/features/auth/pages/RegisterPage.jsx`
+- `frontend/src/features/classrooms/components/ClassroomCard.jsx`
+- `frontend/src/features/classrooms/components/CreateClassroomForm.jsx`
+- `frontend/src/features/classrooms/components/JoinClassroomForm.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/pages/JoinClassroomPage.jsx`
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `frontend/src/features/users/pages/UserManagementPage.jsx`
+- `frontend/src/features/classrooms/mockClassrooms.js` *(removed)*
+- `frontend/src/features/classrooms/useDemoClassrooms.jsx` *(removed)*
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm run lint`
+- `npm run build`
+
+Unresolved questions:
+
+- Chưa có backend thật, nên toàn bộ auth/classroom/profile hiện vẫn là mock API chạy trên localStorage.
+- Chưa triển khai dashboard, assignment, exam CRUD và các luồng thi/anti-cheat.
+
+## Feature: Frontend demo polish and classroom state persistence
+
+Date: 2026-06-10
+
+Branch/source: `devH`
+
+Description:
+
+- Rà lại logic demo frontend và sửa lỗi classroom state: lớp mới tạo giờ dùng chung qua provider + local storage, không còn mất khi đổi route hoặc mở trang chi tiết.
+- Sửa hành vi mobile sidebar để bấm menu item là đóng sidebar luôn, tránh cảm giác route đã đổi mà panel vẫn che màn hình.
+- Tinh gọn lại giao diện auth, top bar, sidebar và classroom theo hướng ít chữ hơn, rõ hành động hơn, bám sát design guideline Apple-inspired và quy tắc Vietnamese-first.
+- Giữ nguyên chế độ test/mock khi chưa có backend: auth vẫn đăng nhập demo, classroom vẫn chạy bằng dữ liệu mô phỏng.
+
+Changed files:
+
+- `frontend/src/main.jsx`
+- `frontend/src/index.css`
+- `frontend/src/components/layout/AppShell.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/features/auth/components/AuthLayout.jsx`
+- `frontend/src/features/auth/pages/LoginPage.jsx`
+- `frontend/src/features/auth/pages/RegisterPage.jsx`
+- `frontend/src/features/classrooms/mockClassrooms.js`
+- `frontend/src/features/classrooms/useDemoClassrooms.jsx`
+- `frontend/src/features/classrooms/components/CreateClassroomForm.jsx`
+- `frontend/src/features/classrooms/components/JoinClassroomForm.jsx`
+- `frontend/src/features/classrooms/components/ClassroomCard.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/pages/JoinClassroomPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `Todo List.md`
+
+Validation:
+
+- `npm run lint`
+- `npm run build`
+
+Unresolved questions:
+
+- Chưa có backend thật, nên auth/classroom vẫn chỉ kiểm thử bằng dữ liệu demo và local storage.
+
+## Feature: Frontend foundation, auth routing skeleton, and classroom skeleton
+
+Date: 2026-06-10
+
+Branch/source: `devH`
+
+Description:
+
+- Dựng lại nền giao diện frontend theo token trong `design.md`: bỏ template Vite demo, thay bằng palette phẳng, surface/card, button/input/badge dùng chung và layout Apple-inspired.
+- Thêm `react-router-dom`, dựng `AppRoutes`, `PublicRoute`, `ProtectedRoute`, `AppShell`, `Sidebar`, `TopBar` để khóa sớm luồng route theo role.
+- Tạo auth skeleton chạy bằng local storage mô phỏng: login, register, session tạm, logout, role-based redirect; mục tiêu là test UI và flow trước khi backend auth sẵn sàng.
+- Tạo classroom skeleton với mock data: danh sách lớp, form tạo lớp cho Teacher, form nhập mã cho Student, classroom detail + thành viên.
+- Bổ sung comment tiếng Việt trong từng component/hàm để dễ đọc lại khi học hoặc tiếp tục phát triển.
+
+Changed files:
+
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `frontend/vite.config.js`
+- `frontend/src/main.jsx`
+- `frontend/src/App.jsx`
+- `frontend/src/index.css`
+- `frontend/src/api/axiosClient.js`
+- `frontend/src/api/authApi.js`
+- `frontend/src/api/classroomApi.js`
+- `frontend/src/hooks/useAuth.jsx`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/routes/routeConfig.js`
+- `frontend/src/routes/roleRoutes.js`
+- `frontend/src/components/common/*`
+- `frontend/src/components/forms/*`
+- `frontend/src/components/layout/*`
+- `frontend/src/features/auth/components/AuthLayout.jsx`
+- `frontend/src/features/auth/pages/LoginPage.jsx`
+- `frontend/src/features/auth/pages/RegisterPage.jsx`
+- `frontend/src/features/classrooms/mockClassrooms.js`
+- `frontend/src/features/classrooms/components/*`
+- `frontend/src/features/classrooms/pages/*`
+- `Todo List.md`
+
+Validation:
+
+- `npm run lint`
+- `npm run build`
+
+Unresolved questions:
+
+- Auth và classroom hiện mới là skeleton UI dùng local storage + mock data; cần nối `authApi` và `classroomApi` khi backend phase 2 và 3 sẵn sàng.
 
 ## Feature: Phase 3 — Classroom Management API (backend)
 
@@ -40,7 +594,9 @@ Changed files:
 - `backend/EduGuard.Infrastructure/Classrooms/classroom-service.cs`
 - `backend/EduGuard.Infrastructure/dependency-injection.cs`
 - `backend/EduGuard.Api/Controllers/classrooms-controller.cs`
-- `Todo List.md`, `docs/features.md`, `docs/06_DEVELOPMENT_ROADMAP.md`
+- `Todo List.md`
+- `docs/features.md`
+- `docs/06_DEVELOPMENT_ROADMAP.md`
 
 Validation:
 
@@ -75,7 +631,10 @@ Changed files:
 - `backend/EduGuard.Api/Program.cs`
 - `backend/EduGuard.Api/EduGuard.Api.csproj`
 - `backend/EduGuard.Infrastructure/EduGuard.Infrastructure.csproj`
-- `Todo List.md`, `README.md`, `docs/features.md`, `docs/06_DEVELOPMENT_ROADMAP.md`
+- `Todo List.md`
+- `README.md`
+- `docs/features.md`
+- `docs/06_DEVELOPMENT_ROADMAP.md`
 
 Validation:
 
@@ -158,7 +717,10 @@ Changed files:
 - `backend/EduGuard.Infrastructure/dependency-injection.cs`
 - `backend/EduGuard.Api/Program.cs`
 - `backend/EduGuard.Api/EduGuard.Api.csproj`
-- `Todo List.md`, `README.md`, `docs/06_DEVELOPMENT_ROADMAP.md`, `docs/features.md`
+- `Todo List.md`
+- `README.md`
+- `docs/06_DEVELOPMENT_ROADMAP.md`
+- `docs/features.md`
 
 Validation:
 
