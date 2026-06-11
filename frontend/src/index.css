@@ -2,35 +2,51 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #1d1d1f;
-  --color-secondary: #6e6e73;
-  --color-tertiary: #0071e3;
-  --color-link: #0066cc;
-  --color-neutral: #f5f5f7;
+  --color-primary: #0f172a;
+  --color-secondary: #64748b;
+  --color-tertiary: #1d4ed8;
+  --color-tertiary-hover: #1e3a8a;
+  --color-link: #1e40af;
+  --color-neutral: #f8fafc;
   --color-surface: #ffffff;
-  --color-border: #e8e8ed;
+  --color-surface-sunken: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-border-subtle: #f1f5f9;
   --color-on-primary: #ffffff;
-  --color-success: #16a34a;
-  --color-caution: #b64400;
+  --color-obsidian: #0b1120;
+  --color-success: #047857;
+  --color-success-muted: #ecfdf5;
+  --color-caution: #b45309;
+  --color-caution-muted: #fffbeb;
   --color-danger: #dc2626;
-  --color-info: #2563eb;
+  --color-danger-muted: #fef2f2;
+  --color-info: #0369a1;
+  --color-info-muted: #eff6ff;
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
 :root {
-  --color-primary: #1d1d1f;
-  --color-secondary: #6e6e73;
-  --color-tertiary: #0071e3;
-  --color-link: #0066cc;
-  --color-neutral: #f5f5f7;
+  --color-primary: #0f172a;
+  --color-secondary: #64748b;
+  --color-tertiary: #1d4ed8;
+  --color-tertiary-hover: #1e3a8a;
+  --color-link: #1e40af;
+  --color-neutral: #f8fafc;
   --color-surface: #ffffff;
-  --color-border: #e8e8ed;
+  --color-surface-sunken: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-border-subtle: #f1f5f9;
   --color-on-primary: #ffffff;
-  --color-success: #16a34a;
-  --color-caution: #b64400;
+  --color-obsidian: #0b1120;
+  --color-success: #047857;
+  --color-success-muted: #ecfdf5;
+  --color-caution: #b45309;
+  --color-caution-muted: #fffbeb;
   --color-danger: #dc2626;
-  --color-info: #2563eb;
+  --color-danger-muted: #fef2f2;
+  --color-info: #0369a1;
+  --color-info-muted: #eff6ff;
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
   --radius-sm: 8px;
@@ -68,7 +84,7 @@ a {
 
 a:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgb(0 113 227 / 14%);
+  box-shadow: 0 0 0 3px rgb(29 78 216 / 18%);
   border-radius: var(--radius-md);
 }
 
@@ -88,7 +104,7 @@ button {
 }
 
 ::selection {
-  background: rgb(0 113 227 / 12%);
+  background: rgb(29 78 216 / 14%);
   color: var(--color-primary);
 }
 
@@ -142,7 +158,7 @@ button {
 
 .eg-button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgb(0 113 227 / 14%);
+  box-shadow: 0 0 0 3px rgb(29 78 216 / 18%);
 }
 
 .eg-button-primary {
@@ -151,7 +167,7 @@ button {
 }
 
 .eg-button-primary:hover:not(:disabled) {
-  opacity: 0.95;
+  background: var(--color-tertiary-hover);
   transform: translateY(-1px);
 }
 
@@ -162,7 +178,7 @@ button {
 }
 
 .eg-button-secondary:hover:not(:disabled) {
-  background: #fcfcfd;
+  background: var(--color-surface-sunken);
   transform: translateY(-1px);
 }
 
@@ -172,7 +188,7 @@ button {
 }
 
 .eg-button-ghost:hover:not(:disabled) {
-  background: rgb(29 29 31 / 6%);
+  background: rgb(15 23 42 / 6%);
   color: var(--color-primary);
   transform: translateY(-1px);
 }
@@ -201,7 +217,7 @@ button {
 .eg-input:focus {
   outline: none;
   border-color: var(--color-tertiary);
-  box-shadow: 0 0 0 3px rgb(0 113 227 / 12%);
+  box-shadow: 0 0 0 3px rgb(29 78 216 / 16%);
 }
 
 .eg-input[aria-invalid="true"] {

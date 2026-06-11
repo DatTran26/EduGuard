@@ -1,5 +1,37 @@
 # Project Changelog
 
+## Feature: Design tokens v1.1 — Institutional Slate palette
+
+Date: 2026-06-11
+
+Branch/source: local workspace (`design.md` + preview + frontend tokens)
+
+Description:
+
+- Nâng cấp bộ màu EduGuard từ Apple Gray sang **Institutional Slate**: slate authority cho text, blue sâu hơn cho CTA, neutral/border tinh chỉnh cho cảm giác B2B education SaaS premium.
+- Giữ nguyên quy tắc flat: một accent `tertiary` cho CTA, link riêng, không gradient/shadow trên card.
+- Thêm token `tertiary-hover`, `surface-sunken`, `border-subtle`, và `*-muted` cho badge/alert surface.
+- Đồng bộ `design.md`, preview HTML, `frontend/src/index.css`, `docs/design-guidelines.md`, và rule files.
+
+Changed files:
+
+- `design.md`
+- `plans/visuals/eduguard-design-tokens-preview.html`
+- `frontend/src/index.css`
+- `docs/design-guidelines.md`
+- `.cursor/rules/design-guidelines.mdc`
+- `.agents/rules/design-guidelines.mdc`
+- `docs/project-changelog.md`
+
+Validation:
+
+- Grep repo: không còn `#0071E3`, `#0066CC`, `#1D1D1F` trong `frontend/`
+- Preview: mở `plans/visuals/eduguard-design-tokens-preview.html` trong browser
+
+Unresolved questions:
+
+- Dark mode pairing chưa định nghĩa trong v1.1 (chỉ light theme).
+
 ## Feature: Release integration — backend phases 1-3 with frontend mock MVP
 
 Date: 2026-06-11

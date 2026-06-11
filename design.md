@@ -1,25 +1,32 @@
 ---
-version: "1.0.0"
+version: "1.1.0"
 name: EduGuard
-description: Apple-inspired app tokens. Flat palette, single CTA accent, EduGuard semantic status.
-source: EduGuard unified tokens (Apple-inspired app palette)
+description: Institutional Slate tokens. Flat premium palette, single CTA accent, EduGuard semantic status.
+source: EduGuard unified tokens (Apple discipline + B2B education SaaS trust)
 
 colors:
   # — Core (app) —
-  primary: "#1D1D1F"
-  secondary: "#6E6E73"
-  tertiary: "#0071E3"
-  link: "#0066CC"
-  neutral: "#F5F5F7"
+  primary: "#0F172A"
+  secondary: "#64748B"
+  tertiary: "#1D4ED8"
+  tertiary-hover: "#1E3A8A"
+  link: "#1E40AF"
+  neutral: "#F8FAFC"
   surface: "#FFFFFF"
-  border: "#E8E8ED"
+  surface-sunken: "#F1F5F9"
+  border: "#E2E8F0"
+  border-subtle: "#F1F5F9"
   on-primary: "#FFFFFF"
-  obsidian: "#000000"
+  obsidian: "#0B1120"
   # — Semantic (status only, never CTA) —
-  success: "#16A34A"
-  caution: "#B64400"
+  success: "#047857"
+  success-muted: "#ECFDF5"
+  caution: "#B45309"
+  caution-muted: "#FFFBEB"
   danger: "#DC2626"
-  info: "#2563EB"
+  danger-muted: "#FEF2F2"
+  info: "#0369A1"
+  info-muted: "#EFF6FF"
 
 typography:
   fontFamily:
@@ -97,7 +104,9 @@ excluded:
 
 # EduGuard Design Tokens
 
-Apple-inspired, **flat**, tối ưu cho **LMS + thi + anti-cheat** — không phải trang marketing sản phẩm.
+**Institutional Slate** — flat, premium, tối ưu cho **LMS + thi + anti-cheat**. Giữ kỷ luật Apple (một CTA, không shadow), nâng cấp neutral slate + blue có authority cho cảm giác B2B education SaaS.
+
+**v1.1 (2026-06-11):** Chuyển từ Apple Gray sang Slate; CTA sâu hơn; thêm `*-muted` cho badge/alert surface.
 
 **Chuẩn triển khai đầy đủ:** [`docs/design-guidelines.md`](docs/design-guidelines.md)
 
@@ -109,15 +118,18 @@ Apple-inspired, **flat**, tối ưu cho **LMS + thi + anti-cheat** — không ph
 
 | Token | CSS var | Hex | Vai trò |
 |-------|---------|-----|---------|
-| `primary` | `--color-primary` | `#1D1D1F` | Headlines, body chính, icon fill |
-| `secondary` | `--color-secondary` | `#6E6E73` | Caption, metadata, placeholder |
-| `tertiary` | `--color-tertiary` | `#0071E3` | **Duy nhất** cho CTA button, focus ring |
-| `link` | `--color-link` | `#0066CC` | Link inline trong text — **không** dùng cho button fill |
-| `neutral` | `--color-neutral` | `#F5F5F7` | Nền trang (canvas) |
+| `primary` | `--color-primary` | `#0F172A` | Headlines, body chính, icon fill — slate authority |
+| `secondary` | `--color-secondary` | `#64748B` | Caption, metadata, placeholder |
+| `tertiary` | `--color-tertiary` | `#1D4ED8` | **Duy nhất** cho CTA button, focus ring |
+| `tertiary-hover` | `--color-tertiary-hover` | `#1E3A8A` | Hover / pressed state của CTA |
+| `link` | `--color-link` | `#1E40AF` | Link inline trong text — **không** dùng cho button fill |
+| `neutral` | `--color-neutral` | `#F8FAFC` | Nền trang (canvas) |
 | `surface` | `--color-surface` | `#FFFFFF` | Card, panel, modal, input |
-| `border` | `--color-border` | `#E8E8ED` | Viền card, divider, input border |
+| `surface-sunken` | `--color-surface-sunken` | `#F1F5F9` | Vùng lõm trong card trắng (inset) |
+| `border` | `--color-border` | `#E2E8F0` | Viền card, divider, input border |
+| `border-subtle` | `--color-border-subtle` | `#F1F5F9` | Divider nhẹ, separator trong card |
 | `on-primary` | `--color-on-primary` | `#FFFFFF` | Chữ trên nút tertiary |
-| `obsidian` | `--color-obsidian` | `#000000` | Dark card / hero hiếm — dùng tiết kiệm |
+| `obsidian` | `--color-obsidian` | `#0B1120` | Dark card / hero hiếm — midnight, không pure black |
 
 ### 1.2. Semantic (status & feedback)
 
@@ -125,25 +137,29 @@ Chỉ dùng cho badge, alert, toast, anti-cheat — **không** thay `tertiary` l
 
 | Token | CSS var | Hex | Vai trò |
 |-------|---------|-----|---------|
-| `success` | `--color-success` | `#16A34A` | Đã nộp, hoàn thành, pass |
-| `caution` | `--color-caution` | `#B64400` | Sắp hết giờ, cảnh báo anti-cheat nhẹ |
+| `success` | `--color-success` | `#047857` | Đã nộp, hoàn thành, pass |
+| `success-muted` | `--color-success-muted` | `#ECFDF5` | Nền badge/alert success |
+| `caution` | `--color-caution` | `#B45309` | Sắp hết giờ, cảnh báo anti-cheat nhẹ |
+| `caution-muted` | `--color-caution-muted` | `#FFFBEB` | Nền badge/alert caution |
 | `danger` | `--color-danger` | `#DC2626` | Lỗi, vi phạm nghiêm trọng |
-| `info` | `--color-info` | `#2563EB` | Ghi nhận sự kiện, thông tin trung tính |
+| `danger-muted` | `--color-danger-muted` | `#FEF2F2` | Nền badge/alert danger |
+| `info` | `--color-info` | `#0369A1` | Ghi nhận sự kiện, thông tin trung tính |
+| `info-muted` | `--color-info-muted` | `#EFF6FF` | Nền badge/alert info |
 
 ### 1.3. Surfaces (elevation bằng màu, không shadow)
 
 | Level | Token | Hex | Dùng cho |
 |-------|-------|-----|----------|
-| 0 | `neutral` | `#F5F5F7` | Page canvas |
+| 0 | `neutral` | `#F8FAFC` | Page canvas |
 | 1 | `surface` | `#FFFFFF` | Card nổi trên canvas |
-| 2 | `neutral` | `#F5F5F7` | Vùng lõm trong card trắng |
-| — | `border` | `#E8E8ED` | Phân tách viền |
+| 2 | `surface-sunken` | `#F1F5F9` | Vùng lõm trong card trắng |
+| — | `border` | `#E2E8F0` | Phân tách viền |
 
 ### 1.4. Không dùng trong app
 
 - Gradient theatrical (Citrus / Indigo / Blush)
 - Màu swatch trang trí (`#DDDC8C`, `#E8D0D0`, `#596680`)
-- `#0071E3` cho link text (dùng `link` `#0066CC`)
+- `#1D4ED8` cho link text (dùng `link` `#1E40AF`)
 - Box-shadow trên card
 
 ---
@@ -205,7 +221,8 @@ Base unit: **4px**. Grid ưu tiên bội số 8.
 ### Button primary
 
 ```
-background: tertiary (#0071E3)
+background: tertiary (#1D4ED8)
+hover: tertiary-hover (#1E3A8A)
 color: on-primary (#FFFFFF)
 border-radius: md (12px)
 padding: 12px 20px
@@ -226,11 +243,11 @@ border-radius: md (12px)
 ### Link
 
 ```
-color: link (#0066CC)
+color: link (#1E40AF)
 underline: on hover only
 ```
 
-Không fill button bằng `#0066CC`.
+Không fill button bằng `#1E40AF`.
 
 ### Card
 
@@ -261,7 +278,7 @@ focus: ring 2px tertiary
 ### Do
 
 - Dùng `tertiary` cho **đúng một** primary CTA mỗi section.
-- Dùng `link` (`#0066CC`) cho anchor text; `tertiary` cho button.
+- Dùng `link` (`#1E40AF`) cho anchor text; `tertiary` cho button.
 - Để `neutral` mang bố cục — negative space là feature.
 - Elevation chỉ bằng chênh `neutral` / `surface` / `border`.
 - Semantic + icon + text cho mọi status badge.
@@ -281,21 +298,28 @@ focus: ring 2px tertiary
 ```css
 :root {
   /* Core */
-  --color-primary: #1d1d1f;
-  --color-secondary: #6e6e73;
-  --color-tertiary: #0071e3;
-  --color-link: #0066cc;
-  --color-neutral: #f5f5f7;
+  --color-primary: #0f172a;
+  --color-secondary: #64748b;
+  --color-tertiary: #1d4ed8;
+  --color-tertiary-hover: #1e3a8a;
+  --color-link: #1e40af;
+  --color-neutral: #f8fafc;
   --color-surface: #ffffff;
-  --color-border: #e8e8ed;
+  --color-surface-sunken: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-border-subtle: #f1f5f9;
   --color-on-primary: #ffffff;
-  --color-obsidian: #000000;
+  --color-obsidian: #0b1120;
 
   /* Semantic */
-  --color-success: #16a34a;
-  --color-caution: #b64400;
+  --color-success: #047857;
+  --color-success-muted: #ecfdf5;
+  --color-caution: #b45309;
+  --color-caution-muted: #fffbeb;
   --color-danger: #dc2626;
-  --color-info: #2563eb;
+  --color-danger-muted: #fef2f2;
+  --color-info: #0369a1;
+  --color-info-muted: #eff6ff;
 
   /* Typography */
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -319,18 +343,26 @@ focus: ring 2px tertiary
 
 ```js
 colors: {
-  primary: "#1D1D1F",
-  secondary: "#6E6E73",
-  tertiary: "#0071E3",
-  link: "#0066CC",
-  neutral: "#F5F5F7",
+  primary: "#0F172A",
+  secondary: "#64748B",
+  tertiary: "#1D4ED8",
+  "tertiary-hover": "#1E3A8A",
+  link: "#1E40AF",
+  neutral: "#F8FAFC",
   surface: "#FFFFFF",
-  border: "#E8E8ED",
+  "surface-sunken": "#F1F5F9",
+  border: "#E2E8F0",
+  "border-subtle": "#F1F5F9",
   "on-primary": "#FFFFFF",
-  success: "#16A34A",
-  caution: "#B64400",
+  obsidian: "#0B1120",
+  success: "#047857",
+  "success-muted": "#ECFDF5",
+  caution: "#B45309",
+  "caution-muted": "#FFFBEB",
   danger: "#DC2626",
-  info: "#2563EB",
+  "danger-muted": "#FEF2F2",
+  info: "#0369A1",
+  "info-muted": "#EFF6FF",
 },
 borderRadius: {
   sm: "8px",
