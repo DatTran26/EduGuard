@@ -2,7 +2,7 @@
 
 > **Mục đích:** Registry toàn bộ REST endpoint + SignalR hub — tick khi đã implement và test.  
 > **Liên quan:** `05_API_FRONTEND_INTEGRATION.md` (Axios, JWT, luồng FE) · [`features.md`](features.md) · [`../Todo List.md`](../Todo%20List.md)  
-> **Cập nhật:** 2026-06-10 · **Branch:** `devD`
+> **Cập nhật:** 2026-06-11 · **Branch:** `release` @ `749f7ed`
 
 ---
 
@@ -50,10 +50,10 @@ Tick `- [ ]` khi endpoint **có controller + Swagger + test cơ bản**.
 
 | Nhóm | Số endpoint | Đã implement |
 |------|-------------|--------------|
-| System / Health | 2 | 1 (template) |
-| Auth | 5 | 0 |
+| System / Health | 2 | 2 |
+| Auth | 5 | 5 |
 | Users | 5 | 0 |
-| Classrooms | 8 | 0 |
+| Classrooms | 8 | 4 |
 | Assignments | 8 | 0 |
 | Exams | 11 | 0 |
 | Exam Attempts | 6 | 0 |
@@ -61,7 +61,7 @@ Tick `- [ ]` khi endpoint **có controller + Swagger + test cơ bản**.
 | Notifications | 3 | 0 |
 | Dashboard | 3 | 0 |
 | SignalR Hubs | 2 | 0 |
-| **Tổng** | **57** | **1** |
+| **Tổng** | **57** | **11** |
 
 ---
 
@@ -99,11 +99,11 @@ Tick `- [ ]` khi endpoint **có controller + Swagger + test cơ bản**.
 { "email": "student@gmail.com", "password": "12345678" }
 ```
 
-- [ ] API-AUTH-01 Register
-- [ ] API-AUTH-02 Login
-- [ ] API-AUTH-03 Refresh token
-- [ ] API-AUTH-04 Logout
-- [ ] API-AUTH-05 Me
+- [x] API-AUTH-01 Register
+- [x] API-AUTH-02 Login
+- [x] API-AUTH-03 Refresh token
+- [x] API-AUTH-04 Logout
+- [x] API-AUTH-05 Me
 
 ---
 
@@ -144,13 +144,13 @@ Tick `- [ ]` khi endpoint **có controller + Swagger + test cơ bản**.
 { "joinCode": "A1B2C3" }
 ```
 
-- [ ] API-CLS-01 List classrooms
-- [ ] API-CLS-02 Get classroom
-- [ ] API-CLS-03 Create classroom
+- [x] API-CLS-01 List classrooms
+- [ ] API-CLS-02 Get classroom *(deferred — chưa có action trong `ClassroomsController`)*
+- [x] API-CLS-03 Create classroom
 - [ ] API-CLS-04 Update classroom
 - [ ] API-CLS-05 Delete classroom
-- [ ] API-CLS-06 Join classroom
-- [ ] API-CLS-07 List members
+- [x] API-CLS-06 Join classroom
+- [x] API-CLS-07 List members
 - [ ] API-CLS-08 Remove member
 
 ---
@@ -299,18 +299,18 @@ Không phải REST — kết nối WebSocket qua `@microsoft/signalr`.
 
 ## Controller map (dự kiến)
 
-| Controller | Prefix | Endpoints |
-|------------|--------|-----------|
-| `TestController` | `/api/test` | SYS |
-| `AuthController` | `/api/auth` | AUTH |
-| `UsersController` | `/api/users` | USER |
-| `ClassroomsController` | `/api/classrooms` | CLS |
-| `AssignmentsController` | `/api/assignments`, nested classroom | ASG |
-| `ExamsController` | `/api/exams`, nested classroom | EXM, ATT (start) |
-| `AttemptsController` | `/api/attempts` | ATT |
-| `AntiCheatController` | `/api/anti-cheat` | AC |
-| `NotificationsController` | `/api/notifications` | NOT |
-| `DashboardController` | `/api/dashboard` | DASH |
+| Controller | Prefix | Endpoints | Trạng thái |
+|------------|--------|-----------|------------|
+| `TestController` | `/api/test` | SYS | ✓ |
+| `AuthController` | `/api/auth` | AUTH | ✓ |
+| `UsersController` | `/api/users` | USER | — |
+| `ClassroomsController` | `/api/classrooms` | CLS (4/8) | một phần |
+| `AssignmentsController` | `/api/assignments`, nested classroom | ASG | — |
+| `ExamsController` | `/api/exams`, nested classroom | EXM, ATT (start) | — |
+| `AttemptsController` | `/api/attempts` | ATT | — |
+| `AntiCheatController` | `/api/anti-cheat` | AC | — |
+| `NotificationsController` | `/api/notifications` | NOT | — |
+| `DashboardController` | `/api/dashboard` | DASH | — |
 
 ---
 
@@ -319,7 +319,7 @@ Không phải REST — kết nối WebSocket qua `@microsoft/signalr`.
 | Trạng thái | Số lượng |
 |------------|----------|
 | Tổng REST + Hub | 57 |
-| Đã tick `[x]` | 2 |
-| Còn lại | 55 |
+| Đã tick `[x]` | 11 |
+| Còn lại | 46 |
 
-*Cập nhật khi merge từng module backend.*
+*Backend: Auth + Classroom MVP (Phase 2–3). Frontend trên `release` dùng mock API — chưa nối các endpoint trên.*
