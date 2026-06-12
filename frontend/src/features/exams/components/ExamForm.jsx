@@ -38,6 +38,7 @@ export default function ExamForm({
   title = "Thông tin bài kiểm tra",
 }) {
   const [formValues, setFormValues] = useState(() => buildExamFormValues(exam, defaultClassroomId));
+  const isEditingExam = Boolean(exam);
 
   // Hàm này cập nhật một field đơn giản trong form để code phần JSX gọn hơn.
   function handleFieldChange(fieldName, value) {
@@ -60,13 +61,15 @@ export default function ExamForm({
 
   // Hàm này gom dữ liệu hiện tại về shape mà examApi đang mong đợi.
   function buildSubmitPayload() {
+    const shouldPublishAfterSave = Boolean(exam) && !exam.isPublished && Boolean(formValues.isPublished);
+
     return {
       classroomId: Number(formValues.classroomId),
       description: formValues.description.trim(),
       durationMinutes: Number(formValues.durationMinutes),
       enableAntiCheat: Boolean(formValues.enableAntiCheat),
       endTime: formValues.endTime ? new Date(formValues.endTime).toISOString() : null,
-      isPublished: Boolean(formValues.isPublished),
+      isPublished: shouldPublishAfterSave,
       settings: {
         maxAttempts: Number(formValues.settings.maxAttempts),
         requireFullscreen: Boolean(formValues.settings.requireFullscreen),
@@ -100,15 +103,13 @@ export default function ExamForm({
 
   return (
     <Card className="space-y-5">
-      <div className="space-y-1">
-        <h3 className="text-lg font-semibold text-primary">{title}</h3>
-        <p className="text-sm text-secondary">Tiêu đề, lịch mở đề, anti-cheat và các cấu hình cơ bản.</p>
-      </div>
+      <h3 className="text-lg font-semibold text-primary">{title}</h3>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Select
           id="exam-classroom-id"
           label="Lớp học"
+          disabled={isEditingExam}
           onChange={(event) => handleFieldChange("classroomId", event.target.value)}
           options={selectOptions}
           required
@@ -169,20 +170,28 @@ export default function ExamForm({
             type="number"
             value={formValues.settings.maxAttempts}
           />
-          <div className="rounded-[16px] border border-border bg-neutral px-4 py-4">
-            <p className="text-sm font-semibold text-primary">Trạng thái hiển thị</p>
-            <p className="mt-1 text-sm text-secondary">
-              Bạn có thể bật publish ngay lúc tạo hoặc để ở dạng nháp.
-            </p>
-            <div className="mt-3">
-              <CheckboxField
-                checked={formValues.isPublished}
-                id="exam-is-published"
-                label="Publish ngay sau khi lưu"
-                onChange={(event) => handleFieldChange("isPublished", event.target.checked)}
-              />
+          {isEditingExam ? (
+            <div className="rounded-[16px] border border-border bg-neutral px-4 py-4">
+              <p className="text-sm font-semibold text-primary">Trạng thái hiển thị</p>
+              {exam?.isPublished ? (
+                <p className="mt-2 text-sm text-secondary">Đã publish</p>
+              ) : (
+                <div className="mt-3">
+                  <CheckboxField
+                    checked={formValues.isPublished}
+                    id="exam-is-published"
+                    label="Publish sau khi lưu"
+                    onChange={(event) => handleFieldChange("isPublished", event.target.checked)}
+                  />
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="rounded-[16px] border border-border bg-neutral px-4 py-4">
+              <p className="text-sm font-semibold text-primary">Trạng thái hiển thị</p>
+              <p className="mt-2 text-sm text-secondary">Bản nháp</p>
+            </div>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -190,35 +199,30 @@ export default function ExamForm({
           <div className="grid gap-3 md:grid-cols-2">
             <CheckboxField
               checked={formValues.enableAntiCheat}
-              helperText="Ghi nhận các hành vi bất thường trong lúc làm bài."
               id="exam-enable-anti-cheat"
               label="Bật anti-cheat"
               onChange={(event) => handleFieldChange("enableAntiCheat", event.target.checked)}
             />
             <CheckboxField
               checked={formValues.settings.requireFullscreen}
-              helperText="Yêu cầu người làm bài bật fullscreen."
               id="exam-require-fullscreen"
               label="Yêu cầu fullscreen"
               onChange={(event) => handleSettingChange("requireFullscreen", event.target.checked)}
             />
             <CheckboxField
               checked={formValues.settings.shuffleQuestions}
-              helperText="Đảo thứ tự câu hỏi giữa các lượt làm bài."
               id="exam-shuffle-questions"
               label="Random câu hỏi"
               onChange={(event) => handleSettingChange("shuffleQuestions", event.target.checked)}
             />
             <CheckboxField
               checked={formValues.settings.shuffleAnswers}
-              helperText="Đảo thứ tự đáp án với câu trắc nghiệm."
               id="exam-shuffle-answers"
               label="Random đáp án"
               onChange={(event) => handleSettingChange("shuffleAnswers", event.target.checked)}
             />
             <CheckboxField
               checked={formValues.settings.showResultAfterSubmit}
-              helperText="Cho phép sinh viên xem điểm ngay sau khi nộp."
               id="exam-show-result"
               label="Hiển thị kết quả sau khi nộp"
               onChange={(event) => handleSettingChange("showResultAfterSubmit", event.target.checked)}

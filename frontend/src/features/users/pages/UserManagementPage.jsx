@@ -30,7 +30,7 @@ function getBadgeVariantByRole(role) {
   return "neutral";
 }
 
-// Trang này dành cho admin xem nhanh người dùng và số lượng lớp học đang có trong hệ thống mock.
+// Trang này dành cho admin xem nhanh người dùng mock hiện tại và classroom mà backend đang trả về.
 export default function UserManagementPage() {
   const { showToast } = useToast();
   const [users, setUsers] = useState([]);
@@ -84,7 +84,6 @@ export default function UserManagementPage() {
       <PageHeader
         eyebrow="Quản trị viên"
         title="Người dùng hệ thống"
-        description="Theo dõi nhanh tài khoản đang có và dữ liệu lớp học hiện tại."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -126,18 +125,25 @@ export default function UserManagementPage() {
           <Card className="space-y-4">
             <h3 className="text-lg font-semibold text-primary">Lớp học hiện có</h3>
 
-            <div className="space-y-3">
-              {classrooms.map((classroom) => (
-                <div
-                  key={classroom.id}
-                  className="rounded-[16px] border border-border bg-neutral p-4"
-                >
-                  <p className="text-sm font-semibold text-primary">{classroom.name}</p>
-                  <p className="mt-1 text-sm text-secondary">{classroom.teacherName}</p>
-                  <p className="mt-2 font-mono text-sm text-secondary">{classroom.joinCode}</p>
-                </div>
-              ))}
-            </div>
+            {classrooms.length > 0 ? (
+              <div className="space-y-3">
+                {classrooms.map((classroom) => (
+                  <div
+                    key={classroom.id}
+                    className="rounded-[16px] border border-border bg-neutral p-4"
+                  >
+                    <p className="text-sm font-semibold text-primary">{classroom.name}</p>
+                    <p className="mt-1 text-sm text-secondary">{classroom.teacherName}</p>
+                    <p className="mt-2 font-mono text-sm text-secondary">{classroom.joinCode}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm leading-6 text-secondary">
+                Backend hiện chưa trả danh sách classroom tổng hợp cho tài khoản admin qua endpoint
+                `/api/classrooms`.
+              </p>
+            )}
           </Card>
         </div>
       )}

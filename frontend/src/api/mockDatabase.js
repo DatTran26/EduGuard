@@ -2,7 +2,7 @@ import { getStoredRefreshToken, getStoredUser } from "../utils/tokenStorage";
 
 // MOCK STATUS:
 // - Đây là mock database trung tâm của frontend, đang lưu toàn bộ dữ liệu bằng localStorage.
-// - Classroom, dashboard, exam và profile mock hiện đều đọc/ghi qua file này.
+// - Dashboard, user/profile mock và các seed dữ liệu demo hiện vẫn đọc/ghi qua file này.
 // - Auth đã đi backend thật, nhưng session backend vẫn được bridge sang mock DB để các module chưa nối API tiếp tục chạy.
 
 const MOCK_DATABASE_STORAGE_KEY = "eduguard_mock_database";

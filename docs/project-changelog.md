@@ -1,5 +1,170 @@
 # Project Changelog
 
+## Feature: Frontend assignment, exam attempt, and anti-cheat REST workflows
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Hoàn thiện 3 luồng frontend còn thiếu nhưng backend đã sẵn sàng: `Assignment Management`, `Online Testing / Exam Attempt`, và `Anti-cheat Monitoring` bản REST cơ bản.
+- Gắn `assignment` trực tiếp vào `ClassroomDetailPage`: teacher có thể tạo/sửa/xóa bài tập, mở danh sách bài nộp và chấm điểm; student có thể nộp bài ngay trong lớp học theo đúng palette/token hiện tại.
+- Thêm route làm bài riêng cho student tại `student/attempts/:attemptId`: start/resume từ exam detail, timer cố định, auto-save, điều hướng câu hỏi desktop/mobile, xác nhận nộp bài, auto submit khi hết giờ và màn kết quả sau nộp.
+- Bổ sung hook anti-cheat REST cơ bản trong lúc làm bài: ghi `TAB_SWITCH`, `COPY_PASTE`, `EXIT_FULLSCREEN`, `PAGE_RELOAD`, `DISCONNECTED`; đồng thời mở `AttemptMonitorPanel` ở exam detail cho teacher để xem suspicion score, log count và timeline theo từng lượt làm.
+- Giữ đúng design direction trong `docs/design-guidelines.md` và token màu trong `docs/eduguard-design-tokens-preview.html`: flat surfaces, một primary CTA mỗi vùng, không thêm gradient/shadow mới.
+
+Changed files:
+
+- `frontend/src/routes/routeConfig.js`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/api/antiCheatApi.js`
+- `frontend/src/features/assignments/assignmentHelpers.js`
+- `frontend/src/features/assignments/components/AssignmentForm.jsx`
+- `frontend/src/features/assignments/components/AssignmentSection.jsx`
+- `frontend/src/features/anti-cheat/antiCheatHelpers.js`
+- `frontend/src/features/anti-cheat/components/AttemptMonitorPanel.jsx`
+- `frontend/src/features/exam-attempts/attemptHelpers.js`
+- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- Backend hiện chưa có endpoint để student lấy lại bài nộp của chính mình, nên trạng thái `Đã nộp` của assignment đang được giữ ổn định trên FE bằng local cache sau khi submit; teacher vẫn xem/chấm qua API thật bình thường.
+
+## Fix: Refresh JWT claims when backend role changes
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Xác định lỗi 403 ở các API chỉ cho `Teacher` như `POST /api/classrooms`: frontend có thể đã đọc role mới từ `GET /api/auth/me`, nhưng access token cũ vẫn giữ claim `Student`.
+- Nguyên nhân xảy ra khi quyền được đổi trong database sau lần đăng nhập trước đó; UI route guard nhìn theo `user.roles` mới nên cho vào màn Teacher, còn backend authorize vẫn đọc claim role cũ trong JWT.
+- Vá `AuthProvider` để trong lúc hydrate session, nếu role từ `/api/auth/me` khác role đang lưu, app tự gọi `POST /api/auth/refresh-token` và lưu lại access token/refresh token mới trước khi tiếp tục dùng session.
+- Nhờ đó các màn Teacher như tạo lớp học, tạo đề thi, xem endpoint `teacher-only` không còn bị lệch giữa role hiển thị ở UI và quyền thật trong token.
+
+Changed files:
+
+- `frontend/src/hooks/useAuth.jsx`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Validation:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- Nếu tài khoản thực tế chưa được gán role `Teacher` trong database thì backend vẫn sẽ trả `403` đúng thiết kế; fix này chỉ xử lý trường hợp role đã đổi nhưng token chưa được làm mới.
+
+## Feature: Role UI simplification and design-token color alignment
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Rà lại các màn chính của `Admin`, `Teacher`, `Student` và bỏ phần mô tả phụ ở cấp page header, section block, stat card, list card, form intro và note panel; UI giữ lại title, số liệu và dữ liệu nghiệp vụ cần đọc.
+- Tinh gọn dashboard components dùng chung: `StatCard`, `MetricBarList`, `TimelineList` không còn render helper/subtitle/description mặc định; dữ liệu cần thiết được dồn về title hoặc meta ngắn.
+- Dọn các màn classroom, exam, dashboard, user/profile theo hướng title-first: card lớp học và bài kiểm tra không còn đoạn mô tả dài; form tạo/join/chỉnh sửa giảm helper copy không cần thiết.
+- Chuẩn hóa màu ở workspace đã đăng nhập theo token trong `docs/eduguard-design-tokens-preview.html`: badge, toast, sidebar active state, user trigger, avatar fallback và shell surface chuyển về palette phẳng, bỏ gradient/tone xanh riêng ở các thành phần này.
+
+Changed files:
+
+- `frontend/src/components/dashboard/StatCard.jsx`
+- `frontend/src/components/dashboard/MetricBarList.jsx`
+- `frontend/src/components/dashboard/TimelineList.jsx`
+- `frontend/src/components/common/Avatar.jsx`
+- `frontend/src/components/common/ToastViewport.jsx`
+- `frontend/src/features/dashboard/pages/AdminDashboardPage.jsx`
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/features/dashboard/pages/StudentDashboardPage.jsx`
+- `frontend/src/features/classrooms/components/ClassroomCard.jsx`
+- `frontend/src/features/classrooms/components/CreateClassroomForm.jsx`
+- `frontend/src/features/classrooms/components/JoinClassroomForm.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/classrooms/pages/JoinClassroomPage.jsx`
+- `frontend/src/features/exams/components/ExamCard.jsx`
+- `frontend/src/features/exams/components/ExamForm.jsx`
+- `frontend/src/features/exams/components/QuestionForm.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/features/users/pages/UserManagementPage.jsx`
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `frontend/src/index.css`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- Auth screens và các thành phần ngoài workspace role-based chưa được re-theme trong thay đổi này; nếu muốn toàn bộ frontend dùng cùng hệ màu token, cần thêm một lượt cleanup riêng.
+
+## Feature: Frontend integration for classroom, exam, attempt, and anti-cheat APIs
+
+Date: 2026-06-11
+
+Branch/source: `devH`
+
+Description:
+
+- Chuyển các màn frontend lớp học và bài kiểm tra từ `mockDatabase/localStorage` sang gọi backend thật qua `axiosClient`, bám theo các endpoint đã có trong `docs/apiList.md`.
+- Thêm lớp adapter ở FE để chuẩn hóa DTO backend về shape UI hiện tại: classroom có `memberCount` khi role được phép xem thành viên; exam có `statusLabel`, `canEdit`, `canViewQuestionBank`, và tự suy ra `totalQuestionScore`.
+- Sửa các form để khớp contract backend thật: tạo lớp không còn nhập `joinCode` thủ công; đề thi không đổi được classroom sau khi tạo; publish dùng endpoint riêng và chỉ xuất hiện ở ngữ cảnh phù hợp.
+- Bổ sung API client cho `assignment`, `exam attempt`, `anti-cheat`; đồng thời tận dụng `exam attempt` + `anti-cheat summary` ngay trên trang chi tiết đề thi để teacher xem điểm trung bình và số liệu giám sát thật.
+- Giữ rõ trạng thái mock cho các phần backend chưa có endpoint tương ứng như `user/profile` và `dashboard`, đồng thời cập nhật todo/docs để nhóm nhìn đúng tiến độ tích hợp.
+
+Changed files:
+
+- `frontend/src/api/apiHelpers.js`
+- `frontend/src/api/classroomApi.js`
+- `frontend/src/api/examApi.js`
+- `frontend/src/api/assignmentApi.js`
+- `frontend/src/api/examAttemptApi.js`
+- `frontend/src/api/antiCheatApi.js`
+- `frontend/src/api/mockDatabase.js`
+- `frontend/src/hooks/useAuth.jsx`
+- `frontend/src/features/classrooms/components/ClassroomCard.jsx`
+- `frontend/src/features/classrooms/components/CreateClassroomForm.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/classrooms/pages/JoinClassroomPage.jsx`
+- `frontend/src/features/exams/components/ExamCard.jsx`
+- `frontend/src/features/exams/components/ExamForm.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/features/users/pages/UserManagementPage.jsx`
+- `Todo List.md`
+- `docs/05_API_FRONTEND_INTEGRATION.md`
+- `docs/apiList.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+
+Unresolved questions:
+
+- Backend hiện chưa có user/profile CRUD, dashboard, notification và admin classroom aggregation tương ứng với toàn bộ màn FE hiện có, nên các khu vực đó vẫn đang mock hoặc chỉ hiển thị dữ liệu giới hạn theo quyền endpoint thật.
+
 ## Feature: Backend Phase 7 — Anti-cheat Monitoring APIs
 
 Date: 2026-06-11

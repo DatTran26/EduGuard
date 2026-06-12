@@ -22,6 +22,7 @@ export const routeConfig = {
   studentClassroomDetail: "/student/classrooms/:classroomId",
   studentExams: "/student/exams",
   studentExamDetail: "/student/exams/:examId",
+  studentExamAttempt: "/student/attempts/:attemptId",
   studentProfile: "/student/profile",
 };
 
@@ -72,6 +73,11 @@ export function getExamListPathByRole(role) {
 // Hàm này tạo route chi tiết đề thi đúng theo role hiện tại để điều hướng không bị sai path.
 export function buildExamDetailPathByRole(role, examId) {
   return `${getExamListPathByRole(role)}/${examId}`;
+}
+
+// Ham nay tao route phong lam bai cua student tu attempt id de flow bat dau / tiep tuc thong nhat.
+export function buildStudentExamAttemptPath(attemptId) {
+  return `/student/attempts/${attemptId}`;
 }
 
 // Hàm này trả về route profile phù hợp với từng vai trò trong app.

@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { classroomApi } from "../../../api/classroomApi";
-import Card from "../../../components/common/Card";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { buildClassroomDetailPathByRole } from "../../../routes/routeConfig";
 import JoinClassroomForm from "../components/JoinClassroomForm";
 
-// Trang này phụ trách flow student nhập mã lớp và join classroom bằng mock API.
+// Trang này phụ trách flow student nhập mã lớp và gọi backend thật để tham gia classroom.
 export default function JoinClassroomPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -49,20 +48,10 @@ export default function JoinClassroomPage() {
       <PageHeader
         eyebrow="Sinh viên"
         title="Tham gia lớp học"
-        description="Nhập mã lớp để vào đúng lớp giảng viên đã tạo."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+      <div className="max-w-xl">
         <JoinClassroomForm isSubmitting={isSubmitting} onJoinClassroom={handleJoinClassroom} />
-
-        <Card className="space-y-4">
-          <h3 className="text-lg font-semibold text-primary">Lưu ý nhanh</h3>
-          <div className="space-y-3 text-sm leading-6 text-secondary">
-            <p>Mã lớp phải trùng với mã mà giảng viên cung cấp.</p>
-            <p>Sau khi tham gia thành công, bạn sẽ xem được danh sách thành viên của lớp đó.</p>
-            <p>Mock API hiện đang lưu dữ liệu bằng localStorage để mô phỏng database thật.</p>
-          </div>
-        </Card>
       </div>
     </div>
   );

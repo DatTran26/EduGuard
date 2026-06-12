@@ -210,7 +210,6 @@ export default function ProfilePage() {
       <PageHeader
         eyebrow={getRoleLabel(user?.role)}
         title="Hồ sơ cá nhân"
-        description="Xem và cập nhật thông tin cơ bản của tài khoản."
       />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.8fr]">
@@ -249,9 +248,7 @@ export default function ProfilePage() {
                 />
                 <div className="min-w-0 flex-1 space-y-1">
                   <p className="truncate text-sm font-semibold text-primary">{avatarStatusText}</p>
-                  <p className="text-sm leading-6 text-secondary">
-                    Hỗ trợ PNG, JPG, WEBP. Dung lượng tối đa 700 KB.
-                  </p>
+                  <p className="text-sm text-secondary">PNG, JPG, WEBP • 700 KB tối đa</p>
                 </div>
               </div>
 
@@ -283,13 +280,7 @@ export default function ProfilePage() {
                 </Button>
               </div>
 
-              {avatarUploadError ? (
-                <p className="eg-error-text">{avatarUploadError}</p>
-              ) : (
-                <p className="eg-helper-text">
-                  Ảnh được lưu cục bộ trong trình duyệt ở phiên bản mock hiện tại.
-                </p>
-              )}
+              {avatarUploadError ? <p className="eg-error-text">{avatarUploadError}</p> : null}
             </div>
 
             <Button className="w-full sm:w-auto" disabled={isSubmitting} type="submit">

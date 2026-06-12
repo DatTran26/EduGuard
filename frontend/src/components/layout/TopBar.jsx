@@ -14,7 +14,10 @@ function buildUserMenuItems(isDarkMode) {
   return [
     { label: "Thông tin", action: "profile" },
     { label: "Đổi mật khẩu", action: "password" },
-    { label: isDarkMode ? "Trở về chế độ sáng" : "Bật chế độ tối", action: "theme" },
+    {
+      label: isDarkMode ? "Trở về chế độ sáng" : "Bật chế độ tối",
+      action: "theme",
+    },
     { label: "EduGuard Premium", action: "premium" },
   ];
 }
@@ -172,7 +175,7 @@ export default function TopBar() {
               EduGuard Workspace
             </h2>
             <p className="max-w-2xl text-sm leading-6 text-secondary">
-              {`Chào ${user?.fullName ?? "Người dùng EduGuard"}, tiếp tục công việc nhé.`}
+              {`Chào ${user?.fullName ?? "Người dùng EduGuard"}, tiếp tục công việc nhé!`}
             </p>
           </div>
         </div>

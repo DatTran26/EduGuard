@@ -54,18 +54,18 @@
   --radius-lg: 20px;
   --page-max-width: 1280px;
   --card-padding: 24px;
-  --color-surface-elevated: #fcfcfd;
-  --color-surface-muted: rgb(255 255 255 / 55%);
-  --color-hover-muted: rgb(20 35 60 / 5%);
-  --color-user-trigger-bg: linear-gradient(180deg, #ffffff, #f7fbff);
-  --color-user-trigger-border-hover: #d5e2f2;
-  --color-sidebar-active-bg: linear-gradient(135deg, #e8f1ff, #d8e8ff);
-  --color-sidebar-active-text: #14233c;
-  --shadow-soft: 0 14px 30px rgb(15 23 42 / 6%);
-  --shadow-lift: 0 16px 32px rgb(15 23 42 / 8%);
-  --shadow-card: 0 22px 46px rgb(15 23 42 / 6%);
-  --shadow-popover: 0 26px 52px rgb(15 23 42 / 16%);
-  --shadow-sidebar-active: 0 10px 22px rgb(37 99 235 / 10%);
+  --color-surface-elevated: var(--color-surface);
+  --color-surface-muted: var(--color-neutral);
+  --color-hover-muted: var(--color-surface-sunken);
+  --color-user-trigger-bg: var(--color-surface);
+  --color-user-trigger-border-hover: var(--color-border);
+  --color-sidebar-active-bg: var(--color-info-muted);
+  --color-sidebar-active-text: var(--color-link);
+  --shadow-soft: none;
+  --shadow-lift: none;
+  --shadow-card: none;
+  --shadow-popover: 0 18px 40px rgb(15 23 42 / 10%);
+  --shadow-sidebar-active: none;
 }
 
 [data-theme="dark"] {
@@ -92,15 +92,15 @@
   --color-surface-elevated: #151b24;
   --color-surface-muted: rgb(15 19 25 / 72%);
   --color-hover-muted: rgb(148 163 184 / 12%);
-  --color-user-trigger-bg: linear-gradient(180deg, rgb(18 24 35 / 96%), rgb(10 14 22 / 98%));
-  --color-user-trigger-border-hover: rgb(255 255 255 / 18%);
-  --color-sidebar-active-bg: linear-gradient(135deg, rgb(96 165 250 / 24%), rgb(56 189 248 / 16%));
+  --color-user-trigger-bg: var(--color-surface);
+  --color-user-trigger-border-hover: var(--color-border);
+  --color-sidebar-active-bg: rgb(96 165 250 / 12%);
   --color-sidebar-active-text: #f8fafc;
-  --shadow-soft: 0 14px 30px rgb(0 0 0 / 36%);
-  --shadow-lift: 0 16px 32px rgb(0 0 0 / 42%);
-  --shadow-card: 0 22px 46px rgb(0 0 0 / 38%);
-  --shadow-popover: 0 26px 52px rgb(0 0 0 / 52%);
-  --shadow-sidebar-active: 0 10px 24px rgb(96 165 250 / 18%);
+  --shadow-soft: none;
+  --shadow-lift: none;
+  --shadow-card: none;
+  --shadow-popover: 0 22px 46px rgb(0 0 0 / 34%);
+  --shadow-sidebar-active: none;
 }
 
 * {
@@ -312,27 +312,27 @@ button {
 }
 
 .eg-badge-neutral {
-  background: rgb(110 110 115 / 10%);
+  background: var(--color-surface-sunken);
   color: var(--color-secondary);
 }
 
 .eg-badge-success {
-  background: rgb(22 163 74 / 10%);
+  background: var(--color-success-muted);
   color: var(--color-success);
 }
 
 .eg-badge-caution {
-  background: rgb(182 68 0 / 10%);
+  background: var(--color-caution-muted);
   color: var(--color-caution);
 }
 
 .eg-badge-danger {
-  background: rgb(220 38 38 / 10%);
+  background: var(--color-danger-muted);
   color: var(--color-danger);
 }
 
 .eg-badge-info {
-  background: rgb(37 99 235 / 10%);
+  background: var(--color-info-muted);
   color: var(--color-info);
 }
 
@@ -371,45 +371,46 @@ button {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  border: 1px solid rgb(255 255 255 / 18%);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
-  color: white;
+  background: var(--color-surface);
+  color: var(--color-primary);
   padding: 14px 16px;
-  backdrop-filter: blur(10px);
-  box-shadow:
-    0 22px 46px rgb(16 24 40 / 18%),
-    0 10px 22px rgb(16 24 40 / 12%);
+  box-shadow: var(--shadow-popover);
   animation: toast-slide-in 220ms ease-out;
 }
 
 .eg-toast-success {
-  background: linear-gradient(135deg, #7ecf95, #5eaa76);
+  background: var(--color-success-muted);
+  border-color: var(--color-success);
 }
 
 .eg-toast-info {
-  background: linear-gradient(135deg, #78b698, #5eaa76);
+  background: var(--color-info-muted);
+  border-color: var(--color-info);
 }
 
 .eg-toast-danger {
-  background: linear-gradient(135deg, #d46868, #bf5353);
+  background: var(--color-danger-muted);
+  border-color: var(--color-danger);
 }
 
 .eg-toast-close {
   border: 0;
   background: transparent;
-  color: rgb(255 255 255 / 78%);
+  color: var(--color-secondary);
   font-size: 14px;
   font-weight: 600;
   line-height: 1;
 }
 
 .eg-toast-close:hover {
-  color: white;
+  color: var(--color-primary);
 }
 
 .eg-toast-close:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgb(255 255 255 / 24%);
+  box-shadow: 0 0 0 3px rgb(29 78 216 / 18%);
   border-radius: 999px;
 }
 
@@ -437,6 +438,7 @@ button {
 
 .eg-user-trigger:hover {
   border-color: var(--color-user-trigger-border-hover);
+  background: var(--color-surface-sunken);
   box-shadow: var(--shadow-lift);
 }
 

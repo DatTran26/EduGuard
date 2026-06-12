@@ -3,8 +3,8 @@
 > Lộ trình: `docs/06_DEVELOPMENT_ROADMAP.md` · Quy tắc: `docs/07_DEVELOPMENT_RULES.md`  
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
-**Branch làm việc:** `release`  
-**Cập nhật:** 2026-06-11 (backend Phase 7 anti-cheat xong; Phase 3–6 backend xong; frontend auth đã nối backend thật cho register/login/me/logout; dashboard/classroom/exam/profile vẫn còn bridge/mock ở nhiều màn; đã làm lại workspace header, dọn sidebar Admin, thêm upload avatar, tinh chỉnh auth UI, thêm dark mode thật trong dropdown cá nhân và gắn comment nhận diện các module mock để dễ rà tiến độ tích hợp backend)  
+**Branch làm việc:** `devH`  
+**Cập nhật:** 2026-06-11 (backend Phase 7 anti-cheat xong; Phase 3–6 backend xong; frontend auth + classroom + exam đã nối backend thật ở các màn hiện có; classroom detail nay đã có assignment thật, student đã có màn làm bài riêng với timer + auto submit, teacher exam detail đã có attempt monitor và anti-cheat REST cơ bản; dashboard và user/profile vẫn còn bridge/mock ở những phần backend chưa cung cấp endpoint tương ứng; role UI đã được giản lược theo hướng title-only cho block/chức năng chính và workspace màu sáng đã rà lại theo design tokens preview; auth session giờ tự refresh token khi role backend đổi để tránh 403 lệch quyền ở các màn Teacher/Admin)  
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -15,12 +15,12 @@
 |-----------|-----|------------|
 | 0 | Khởi tạo project | ✅ Hoàn thành |
 | 1 | Database + Entity nền tảng | ✅ Hoàn thành |
-| 2 | Authentication & Authorization | 🟡 Backend xong, FE auth thật xong — các màn khác còn mock |
-| 3 | Classroom Management | 🟡 Backend xong (8/8 API), FE mock xong — chưa nối thật |
-| 4 | Assignment Management | 🟡 Backend xong (8/8 API), FE chưa |
-| 5 | Exam Management | 🟡 Backend xong (11/11 API), FE mock — chưa nối thật |
-| 6 | Online Testing / Exam Attempt | 🟡 Backend xong (6/6 API), FE chưa |
-| 7 | Anti-cheat Monitoring | 🟡 Backend xong (4/4 API), FE chưa |
+| 2 | Authentication & Authorization | 🟡 Backend xong, FE auth thật xong; profile/avatar vẫn còn mock |
+| 3 | Classroom Management | 🟡 Backend xong (8/8 API), FE classroom thật xong cho teacher/student; admin còn phụ thuộc giới hạn endpoint BE |
+| 4 | Assignment Management | 🟡 Backend + FE core xong; trạng thái bài nộp của student sau reload còn giới hạn do BE chưa có endpoint lấy bài nộp cá nhân |
+| 5 | Exam Management | 🟡 Backend xong (11/11 API), FE exam thật xong cho list/detail/question bank hiện có |
+| 6 | Online Testing / Exam Attempt | ✅ Backend + FE core xong (start/resume, save answer, timer, auto submit, result, teacher attempt monitor) |
+| 7 | Anti-cheat Monitoring | ✅ Backend + FE REST cơ bản xong (hook student + monitor teacher); realtime vẫn thuộc Phase 8 |
 | 8 | SignalR Realtime | ⬜ Chưa bắt đầu |
 | 9 | Redis | ⬜ Chưa bắt đầu |
 | 10 | Dashboard & Reporting | 🟡 Đang làm |
@@ -103,7 +103,7 @@
 - [x] Protected routes theo role *(đã tách route riêng cho Admin / Teacher / Student)*
 - [x] Trang hồ sơ cá nhân và cập nhật thông tin *(phiên đăng nhập lấy từ `GET /api/auth/me`; màn hồ sơ hiện vẫn dùng mock users API; đã hỗ trợ upload avatar từ máy và preview trước khi lưu)*
 - [x] Popup toast toàn app cho thông báo thao tác/lỗi *(góc trên bên phải, tự ẩn sau 3 giây, đã thêm thông báo đăng nhập/đăng xuất thành công)*
-- [x] Đồng bộ session backend vào app mock hiện tại *(user đăng nhập backend thật vẫn dùng tiếp được classroom/dashboard/exam đang còn mock)*
+- [x] Đồng bộ session backend vào app mock hiện tại *(user đăng nhập backend thật vẫn dùng tiếp được classroom/dashboard/exam đang còn mock; khi role đổi trong DB, app sẽ tự refresh token để claim quyền khớp lại với `/api/auth/me`)*
 - [x] Layout dùng chung cho khu đăng nhập theo vai trò *(đã bỏ navbar trên cùng cũ, đưa header workspace mới lên trên, thêm dropdown người dùng, dùng logo nền trong suốt `public/logo-transparent.png`, bỏ cờ Việt Nam, bỏ nút 3 gạch cạnh logo, thêm dấu `v` cho card cá nhân, phóng logo top bar ngang chiều cao chữ, dọn menu/sidebar Admin và rút sidebar còn điều hướng; dropdown cá nhân đã bật/tắt được chế độ tối thật cho khu vực app đã đăng nhập)*
 
 **Tiêu chí hoàn thành:** Đăng ký → đăng nhập → nhận JWT → gọi API được bảo vệ.
@@ -129,12 +129,12 @@
 
 ### Frontend
 
-- [x] Trang danh sách lớp *(đã đọc dữ liệu theo role từ mock API/localStorage)*
-- [x] Form tạo lớp (Teacher) *(có tên lớp, mô tả, mã lớp và nút random mã; hiện mở qua button `Tạo lớp học` thay vì hiện sẵn)*
-- [x] CRUD lớp học cho Teacher *(tạo ở list page, sửa/xóa ở detail page)*
-- [x] Form nhập mã lớp (Student) *(đã join thật vào mock database bằng join code)*
-- [x] Trang chi tiết lớp + thành viên *(đã đọc detail + members theo quyền hiện tại)*
-- [x] Route admin xem người dùng và lớp học tổng quan *(mức mock frontend, chưa có backend thật; danh sách lớp đã có tìm kiếm theo tên lớp/tên giảng viên và sắp xếp theo tên hoặc số thành viên)*
+- [x] Trang danh sách lớp *(đã gọi `GET /api/classrooms`, FE tự bù `memberCount` khi role hiện tại được xem danh sách thành viên; header/card đã bỏ mô tả phụ để ưu tiên title + dữ liệu chính)*
+- [x] Form tạo lớp (Teacher) *(gửi thẳng `name`/`description`; `joinCode` do backend tự sinh thay vì random ở local)*
+- [x] CRUD lớp học cho Teacher *(tạo ở list page, sửa/xóa ở detail page qua backend thật)*
+- [x] Form nhập mã lớp (Student) *(đã gọi `POST /api/classrooms/join` bằng join code thật)*
+- [x] Trang chi tiết lớp + thành viên *(đã đọc detail + members từ backend; admin chỉ xem được info cơ bản vì endpoint members hiện giới hạn theo BE)*
+- [x] Route admin xem người dùng và lớp học tổng quan *(user list vẫn mock; classroom section đã phản ánh đúng dữ liệu backend hiện trả về cho `/api/classrooms`)*
 
 **Tiêu chí hoàn thành:** Teacher tạo được lớp, Student tham gia được lớp.
 
@@ -155,10 +155,10 @@
 
 ### Frontend
 
-- [ ] Danh sách bài tập theo lớp
-- [ ] Form tạo bài tập (Teacher)
-- [ ] Form nộp bài (Student)
-- [ ] Form chấm điểm (Teacher)
+- [x] Danh sách bài tập theo lớp *(đã gắn trực tiếp vào classroom detail cho Teacher / Student / Admin theo quyền hiện tại)*
+- [x] Form tạo bài tập (Teacher) *(teacher tạo và sửa bài tập ngay trong classroom detail bằng API thật)*
+- [x] Form nộp bài (Student) *(student nộp bài ngay trong classroom detail; trạng thái đã nộp hiện được giữ ổn định trong local cache do BE chưa có endpoint lấy bài nộp cá nhân)*
+- [x] Form chấm điểm (Teacher) *(teacher mở danh sách bài nộp, nhập điểm/nhận xét và lưu qua API thật)*
 
 **Tiêu chí hoàn thành:** Luồng giao bài tập và nộp bài chạy được.
 
@@ -179,12 +179,12 @@
 
 ### Frontend
 
-- [x] UI danh sách bài kiểm tra theo role *(Admin / Teacher / Student)*
-- [x] UI tạo đề thi *(Teacher, mock API + localStorage)*
-- [x] UI xem chi tiết đề thi *(mọi role theo quyền truy cập)*
-- [x] UI cập nhật / xóa đề thi *(Teacher, có xác nhận xóa 2 bước)*
-- [x] UI cấu hình đề thi *(thời gian mở-đóng, anti-cheat, fullscreen, random, max attempts, show result)*
-- [x] UI quản lý câu hỏi & đáp án *(Teacher thêm/sửa/xóa câu hỏi, quản lý đáp án ngay trong exam detail; Admin xem được question bank; Student không thấy đáp án ở trang detail)*
+- [x] UI danh sách bài kiểm tra theo role *(đã gọi backend thật; FE gom đề thi bằng các classroom user đang truy cập được; card/list ưu tiên title + số liệu thay cho mô tả dài)*
+- [x] UI tạo đề thi *(Teacher, gọi `POST /api/classrooms/{id}/exams`; đề mới tạo theo đúng contract backend ở trạng thái nháp)*
+- [x] UI xem chi tiết đề thi *(mọi role theo quyền truy cập; teacher detail có thêm average score từ attempt API và anti-cheat summary khi bật giám sát)*
+- [x] UI cập nhật / xóa đề thi *(Teacher, có xác nhận xóa 2 bước và publish qua endpoint riêng)*
+- [x] UI cấu hình đề thi *(thời gian mở-đóng, anti-cheat, fullscreen, random, max attempts, show result; classroom không còn đổi được sau khi tạo vì backend chưa hỗ trợ)*
+- [x] UI quản lý câu hỏi & đáp án *(Teacher thêm/sửa/xóa câu hỏi qua backend thật; Admin xem được question bank; Student không thấy đáp án ở trang detail)*
 
 **Tiêu chí hoàn thành:** Teacher tạo được đề thi hoàn chỉnh.
 
@@ -205,9 +205,9 @@
 
 ### Frontend
 
-- [ ] Màn hình làm bài
-- [ ] Countdown timer
-- [ ] Auto submit khi hết giờ
+- [x] Màn hình làm bài *(student có route riêng `/student/attempts/:attemptId`, hỗ trợ start/resume và danh sách câu hỏi desktop/mobile)*
+- [x] Countdown timer *(timer cố định trong header, cảnh báo khi còn ít thời gian)*
+- [x] Auto submit khi hết giờ *(tự nộp khi đồng hồ về 0 và trả kết quả theo cấu hình đề thi)*
 
 **Tiêu chí hoàn thành:** Student làm bài thi online và nhận kết quả.
 
@@ -228,11 +228,11 @@
 
 ### Frontend
 
-- [ ] Bắt sự kiện chuyển tab
-- [ ] Bắt sự kiện copy/paste
-- [ ] Bắt sự kiện fullscreen
-- [ ] Bắt reload / mất kết nối cơ bản
-- [ ] Dashboard anti-cheat cho Teacher
+- [x] Bắt sự kiện chuyển tab *(ghi log `TAB_SWITCH` trong lúc làm bài)*
+- [x] Bắt sự kiện copy/paste *(ghi log `COPY_PASTE` cho copy/cut/paste)*
+- [x] Bắt sự kiện fullscreen *(ghi log `EXIT_FULLSCREEN` khi rời fullscreen)*
+- [x] Bắt reload / mất kết nối cơ bản *(ghi log `PAGE_RELOAD` bằng keepalive và `DISCONNECTED` khi kết nối quay lại)*
+- [x] Dashboard anti-cheat cho Teacher *(exam detail có attempt monitor, suspicion score và timeline log theo từng attempt)*
 
 **Tiêu chí hoàn thành:** Hệ thống ghi nhận hành vi bất thường và tính điểm nghi ngờ.
 
@@ -276,9 +276,9 @@
 - [ ] API dashboard Student
 - [ ] Thống kê số lớp, học sinh, bài tập, điểm thi
 - [ ] Thống kê cheating score
-- [x] Frontend dashboard Admin *(đã có mock API + UI tổng quan người dùng, lớp học, activity, anti-cheat; đã tách số liệu giảng viên và sinh viên thành thống kê riêng)*
-- [x] Frontend dashboard Teacher *(đã có mock API + UI lớp quản lý, nộp bài, lịch thi, sinh viên rủi ro cao; đã bỏ mục điểm trung bình khỏi dashboard tổng quan)*
-- [x] Frontend dashboard Student *(đã có mock API + UI tiến độ lớp, việc sắp tới, kết quả, thông báo; đã bỏ mục điểm trung bình khỏi dashboard tổng quan)*
+- [x] Frontend dashboard Admin *(đã có mock API + UI tổng quan người dùng, lớp học, activity, anti-cheat; đã tách số liệu giảng viên và sinh viên thành thống kê riêng; block stat/timeline/metric đã bỏ mô tả phụ)*
+- [x] Frontend dashboard Teacher *(đã có mock API + UI lớp quản lý, nộp bài, lịch thi, sinh viên rủi ro cao; đã bỏ mục điểm trung bình khỏi dashboard tổng quan; block stat/timeline/metric đã bỏ mô tả phụ)*
+- [x] Frontend dashboard Student *(đã có mock API + UI tiến độ lớp, việc sắp tới, kết quả, thông báo; đã bỏ mục điểm trung bình khỏi dashboard tổng quan; block stat/timeline/metric đã bỏ mô tả phụ)*
 - [x] Frontend biểu đồ dashboard *(mức cơ bản bằng stat card + progress bars, chưa dùng chart library)*
 
 **Tiêu chí hoàn thành:** Người dùng có trang tổng quan dữ liệu theo role.

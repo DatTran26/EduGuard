@@ -14,6 +14,7 @@ import {
   getProfilePathByRole,
 } from "../../../routes/routeConfig";
 import { formatShortDate, formatShortDateTime } from "../../../utils/formatDate";
+import AssignmentSection from "../../assignments/components/AssignmentSection";
 import CreateClassroomForm from "../components/CreateClassroomForm";
 
 // Hàm này tạo nhóm thông tin ngắn để card overview của classroom detail gọn hơn.
@@ -21,7 +22,11 @@ function buildQuickInfoItems(classroom) {
   return [
     { label: "Mã lớp", value: classroom.joinCode },
     { label: "Giảng viên", value: classroom.teacherName },
-    { label: "Thành viên", value: `${classroom.memberCount} người` },
+    {
+      label: "Thành viên",
+      value:
+        typeof classroom.memberCount === "number" ? `${classroom.memberCount} người` : "Chưa có số liệu",
+    },
     { label: "Ngày tạo", value: formatShortDate(classroom.createdAt) },
   ];
 }
@@ -51,18 +56,21 @@ export default function ClassroomDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Hàm này tải classroom detail và member list từ hai endpoint mock riêng để bám sát tài liệu API.
+  // Hàm này tải classroom detail và member list theo đúng quyền backend hiện đang mở cho role hiện tại.
   async function loadClassroomDetail() {
     setIsLoading(true);
 
     try {
-      const [classroomResponse, memberResponse] = await Promise.all([
-        classroomApi.getById(classroomId),
-        classroomApi.getMembers(classroomId),
-      ]);
+      const requestList = [classroomApi.getById(classroomId)];
+
+      if (user?.role !== "Admin") {
+        requestList.push(classroomApi.getMembers(classroomId));
+      }
+
+      const [classroomResponse, memberResponse] = await Promise.all(requestList);
 
       setClassroom(classroomResponse.data);
-      setMembers(memberResponse.data);
+      setMembers(memberResponse?.data ?? []);
       setLoadErrorMessage("");
     } catch (error) {
       setClassroom(null);
@@ -85,17 +93,20 @@ export default function ClassroomDetailPage() {
     // Hàm này tải dữ liệu lần đầu hoặc khi đổi classroom id, giữ cho detail page đúng nội dung.
     async function loadInitialDetail() {
       try {
-        const [classroomResponse, memberResponse] = await Promise.all([
-          classroomApi.getById(classroomId),
-          classroomApi.getMembers(classroomId),
-        ]);
+        const requestList = [classroomApi.getById(classroomId)];
+
+        if (user?.role !== "Admin") {
+          requestList.push(classroomApi.getMembers(classroomId));
+        }
+
+        const [classroomResponse, memberResponse] = await Promise.all(requestList);
 
         if (!isMounted) {
           return;
         }
 
         setClassroom(classroomResponse.data);
-        setMembers(memberResponse.data);
+        setMembers(memberResponse?.data ?? []);
         setLoadErrorMessage("");
       } catch (error) {
         if (!isMounted) {
@@ -123,22 +134,7 @@ export default function ClassroomDetailPage() {
     return () => {
       isMounted = false;
     };
-  }, [classroomId, showToast]);
-
-  // Hàm này xin mã lớp mới cho form chỉnh sửa nếu giảng viên muốn random lại join code.
-  async function handleGenerateJoinCode() {
-    try {
-      const response = await classroomApi.generateJoinCode();
-      return response.data.joinCode;
-    } catch (error) {
-      showToast({
-        tone: "danger",
-        title: "Không tạo được mã lớp",
-        message: error.message || "Không thể tạo mã lớp mới.",
-      });
-      return "";
-    }
-  }
+  }, [classroomId, showToast, user?.role]);
 
   // Hàm này lưu chỉnh sửa classroom dành cho giảng viên rồi tải lại detail để đồng bộ dữ liệu.
   async function handleUpdateClassroom(payload) {
@@ -226,7 +222,7 @@ export default function ClassroomDetailPage() {
     return (
       <EmptyState
         title="Không tìm thấy lớp học."
-        description={loadErrorMessage || "Lớp học này hiện không tồn tại hoặc bạn không có quyền xem."}
+        description={loadErrorMessage}
         action={
           <Link className="eg-button eg-button-primary" to={getClassroomListPathByRole(user?.role)}>
             Quay lại danh sách lớp
@@ -241,7 +237,6 @@ export default function ClassroomDetailPage() {
       <PageHeader
         eyebrow="Chi tiết lớp học"
         title={classroom.name}
-        description={classroom.description || "Chưa có mô tả cho lớp học này."}
         actions={
           user?.role !== "Student" ? (
             <Button onClick={handleCopyJoinCode} variant="secondary">
@@ -281,16 +276,12 @@ export default function ClassroomDetailPage() {
                 key={`${classroom.id}-${classroom.updatedAt || classroom.createdAt}`}
                 classroom={classroom}
                 isSubmitting={isSaving}
-                onGenerateJoinCode={handleGenerateJoinCode}
                 onSubmitClassroom={handleUpdateClassroom}
                 submitLabel="Lưu thay đổi"
                 title="Chỉnh sửa lớp học"
               />
               <Card className="space-y-4">
                 <h3 className="text-lg font-semibold text-primary">Nguy hiểm</h3>
-                <p className="text-sm leading-6 text-secondary">
-                  Xóa lớp học sẽ làm mất luôn danh sách thành viên của lớp này trong mock database.
-                </p>
                 <Button disabled={isSaving} onClick={handleDeleteClassroom} variant="danger">
                   {isSaving ? "Đang xử lý..." : "Xóa lớp học"}
                 </Button>
@@ -303,10 +294,17 @@ export default function ClassroomDetailPage() {
           <Card className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-lg font-semibold text-primary">Thành viên lớp học</h3>
-              <span className="text-sm text-secondary">{members.length} người</span>
+              <span className="text-sm text-secondary">
+                {user?.role === "Admin" ? "Theo quyền hiện tại" : `${members.length} sinh viên`}
+              </span>
             </div>
 
-            {members.length > 0 ? (
+            {user?.role === "Admin" ? (
+              <p className="text-sm leading-6 text-secondary">
+                Backend hiện chỉ cho giáo viên chủ lớp hoặc sinh viên đã tham gia xem danh sách thành
+                viên chi tiết.
+              </p>
+            ) : members.length > 0 ? (
               <div className="space-y-3">
                 {members.map((member) => (
                   <div key={member.id} className="rounded-[16px] border border-border bg-neutral p-4">
@@ -315,8 +313,8 @@ export default function ClassroomDetailPage() {
                         <p className="text-sm font-semibold text-primary">{member.fullName}</p>
                         <p className="mt-1 text-sm text-secondary">{member.email}</p>
                       </div>
-                      <Badge variant={member.role === "Giáo viên" ? "info" : "neutral"}>
-                        {member.role}
+                      <Badge variant={member.status === "Active" ? "success" : "neutral"}>
+                        {member.statusLabel}
                       </Badge>
                     </div>
                     <p className="mt-2 text-sm text-secondary">
@@ -349,6 +347,8 @@ export default function ClassroomDetailPage() {
           </Card>
         </div>
       </div>
+
+      <AssignmentSection classroom={classroom} showToast={showToast} user={user} />
     </div>
   );
 }
