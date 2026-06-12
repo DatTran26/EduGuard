@@ -9,13 +9,9 @@ export default function TimelineList({ items = [], emptyMessage = "Chưa có d�
       {items.map((item) => (
         <div key={item.id} className="rounded-[16px] border border-border bg-neutral p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-primary">{item.title}</p>
-              {item.subtitle ? <p className="mt-1 text-sm text-secondary">{item.subtitle}</p> : null}
-            </div>
+            <p className="text-sm font-semibold text-primary">{item.title}</p>
             {item.meta ? <p className="text-sm text-secondary">{item.meta}</p> : null}
           </div>
-          {item.description ? <p className="mt-3 text-sm leading-6 text-secondary">{item.description}</p> : null}
         </div>
       ))}
     </div>

@@ -13,10 +13,8 @@ import { formatShortDateTime } from "../../../utils/formatDate";
 function buildActivityTimelineItems(activities) {
   return activities.map((activity) => ({
     id: activity.id,
-    title: activity.actorName,
-    subtitle: activity.action,
+    title: `${activity.actorName} • ${activity.action}`,
     meta: formatShortDateTime(activity.createdAt),
-    description: activity.description,
   }));
 }
 
@@ -27,7 +25,6 @@ function buildClassroomOverviewBars(classroomOverview) {
   return classroomOverview.map((item) => ({
     label: item.name,
     value: `${item.memberCount} người`,
-    helperText: `${item.assignmentCount} bài tập • ${item.examCount} bài thi`,
     percentage: Math.round((item.memberCount / maxMemberCount) * 100),
   }));
 }
@@ -91,7 +88,7 @@ export default function AdminDashboardPage() {
     return (
       <EmptyState
         title="Chưa tải được dashboard admin."
-        description={loadErrorMessage || "Hiện chưa có dữ liệu dashboard admin để hiển thị."}
+        description={loadErrorMessage}
       />
     );
   }
@@ -103,16 +100,15 @@ export default function AdminDashboardPage() {
       <PageHeader
         eyebrow="Quản trị viên"
         title="Dashboard hệ thống"
-        description="Theo dõi người dùng, lớp học và các hoạt động gần đây trong EduGuard."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <StatCard label="Người dùng" value={summary.totalUsers} helperText="Tổng số tài khoản trong hệ thống mock" tone="info" />
-        <StatCard label="Giảng viên" value={summary.totalTeachers} helperText="Số tài khoản giảng viên hiện có" tone="neutral" />
-        <StatCard label="Sinh viên" value={summary.totalStudents} helperText="Số tài khoản sinh viên hiện có" tone="success" />
-        <StatCard label="Lớp học" value={summary.totalClassrooms} helperText="Tổng lớp đang được lưu trong hệ thống mock" tone="neutral" />
-        <StatCard label="Bài kiểm tra" value={summary.totalExams} helperText={`${summary.totalAttempts} lượt làm bài đã ghi nhận`} tone="success" />
-        <StatCard label="Điểm nghi ngờ" value={summary.totalSuspicionPoints} helperText="Tổng suspicion point từ các lượt làm bài" tone="caution" />
+        <StatCard label="Người dùng" value={summary.totalUsers} tone="info" />
+        <StatCard label="Giảng viên" value={summary.totalTeachers} tone="neutral" />
+        <StatCard label="Sinh viên" value={summary.totalStudents} tone="success" />
+        <StatCard label="Lớp học" value={summary.totalClassrooms} tone="neutral" />
+        <StatCard label="Bài kiểm tra" value={summary.totalExams} tone="success" />
+        <StatCard label="Điểm nghi ngờ" value={summary.totalSuspicionPoints} tone="caution" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">

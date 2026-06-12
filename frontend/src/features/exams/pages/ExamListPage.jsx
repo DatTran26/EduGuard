@@ -27,25 +27,22 @@ function buildSummaryItems(exams) {
   ];
 }
 
-// Hàm này trả lời mô tả đầu trang tùy theo role đang truy cập.
+// Hàm này trả tiêu đề đầu trang tùy theo role đang truy cập.
 function getPageCopyByRole(role) {
   if (role === "Admin") {
     return {
       title: "Bài kiểm tra toàn hệ thống",
-      description: "Theo dõi nhanh các đề thi đang có và trạng thái publish hiện tại.",
     };
   }
 
   if (role === "Teacher") {
     return {
       title: "Quản lý bài kiểm tra",
-      description: "Tạo, chỉnh sửa và theo dõi các bài kiểm tra trong lớp học bạn phụ trách.",
     };
   }
 
   return {
     title: "Bài kiểm tra của bạn",
-    description: "Xem những bài kiểm tra đã được giảng viên publish trong các lớp bạn tham gia.",
   };
 }
 
@@ -214,7 +211,6 @@ export default function ExamListPage() {
       <PageHeader
         eyebrow={getRoleLabel(user?.role)}
         title={pageCopy.title}
-        description={pageCopy.description}
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -227,10 +223,7 @@ export default function ExamListPage() {
       </div>
 
       <Card className="space-y-4">
-        <div className="space-y-1">
-          <h3 className="text-lg font-semibold text-primary">Bộ lọc</h3>
-          <p className="text-sm text-secondary">Lọc nhanh theo lớp học để dễ tìm đề thi hơn.</p>
-        </div>
+        <h3 className="text-lg font-semibold text-primary">Bộ lọc</h3>
         <div className="max-w-md">
           <Select
             id="exam-list-classroom-filter"
@@ -256,7 +249,6 @@ export default function ExamListPage() {
         ) : (
           <EmptyState
             title="Bạn chưa có lớp học để tạo đề thi."
-            description="Hãy tạo lớp học trước rồi quay lại khu vực bài kiểm tra."
             action={
               <Link className="eg-button eg-button-primary" to={getClassroomListPathByRole(user?.role)}>
                 Đi tới lớp học
@@ -279,10 +271,7 @@ export default function ExamListPage() {
       ) : (
         <EmptyState
           title="Chưa có bài kiểm tra nào."
-          description={
-            loadErrorMessage ||
-            "Danh sách đề thi sẽ xuất hiện tại đây khi có dữ liệu phù hợp với quyền hiện tại."
-          }
+          description={loadErrorMessage}
         />
       )}
     </div>

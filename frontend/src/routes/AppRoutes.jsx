@@ -10,6 +10,7 @@ import JoinClassroomPage from "../features/classrooms/pages/JoinClassroomPage";
 import AdminDashboardPage from "../features/dashboard/pages/AdminDashboardPage";
 import StudentDashboardPage from "../features/dashboard/pages/StudentDashboardPage";
 import TeacherDashboardPage from "../features/dashboard/pages/TeacherDashboardPage";
+import ExamAttemptPage from "../features/exam-attempts/pages/ExamAttemptPage";
 import ExamDetailPage from "../features/exams/pages/ExamDetailPage";
 import ExamListPage from "../features/exams/pages/ExamListPage";
 import ProfilePage from "../features/users/pages/ProfilePage";
@@ -88,6 +89,10 @@ export default function AppRoutes() {
           />
           <Route element={<ProfilePage />} path={routeConfig.teacherProfile} />
         </Route>
+      </Route>
+
+      <Route element={<ProtectedRoute allowedRoles={["Student"]} />}>
+        <Route element={<ExamAttemptPage />} path={routeConfig.studentExamAttempt} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={["Student"]} />}>

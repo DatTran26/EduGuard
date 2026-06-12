@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import { antiCheatApi } from "../../../api/antiCheatApi";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { classroomApi } from "../../../api/classroomApi";
 import { examApi } from "../../../api/examApi";
+import { examAttemptApi } from "../../../api/examAttemptApi";
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
@@ -13,8 +15,10 @@ import {
   buildClassroomDetailPathByRole,
   getExamListPathByRole,
   getProfilePathByRole,
+  buildStudentExamAttemptPath,
 } from "../../../routes/routeConfig";
 import { formatShortDateTime } from "../../../utils/formatDate";
+import AttemptMonitorPanel from "../../anti-cheat/components/AttemptMonitorPanel";
 import ExamForm from "../components/ExamForm";
 import QuestionCard from "../components/QuestionCard";
 import QuestionForm from "../components/QuestionForm";
@@ -56,14 +60,32 @@ function buildQuestionSummaryItems(exam, questions) {
   const singleChoiceCount = questions.filter((question) => question.questionType === "SingleChoice").length;
   const multipleChoiceCount = questions.filter((question) => question.questionType === "MultipleChoice").length;
   const shortAnswerCount = questions.filter((question) => question.questionType === "ShortAnswer").length;
+  const totalQuestionScore = questions.reduce(
+    (totalValue, question) => totalValue + Number(question.score || 0),
+    0,
+  );
 
   return [
     { label: "Tổng câu hỏi", value: exam.questionCount },
-    { label: "Tổng điểm", value: exam.totalQuestionScore },
+    { label: "Tổng điểm", value: totalQuestionScore },
     { label: "Một đáp án", value: singleChoiceCount },
     { label: "Nhiều đáp án", value: multipleChoiceCount },
     { label: "Tự luận", value: shortAnswerCount },
   ];
+}
+
+// Hàm này tính điểm trung bình từ danh sách attempt đã có điểm để hiển thị đúng hơn ở exam detail.
+function calculateAverageScore(attempts = []) {
+  const scoredAttempts = attempts
+    .map((attempt) => attempt.score)
+    .filter((scoreValue) => typeof scoreValue === "number");
+
+  if (scoredAttempts.length === 0) {
+    return null;
+  }
+
+  const totalValue = scoredAttempts.reduce((sumValue, scoreValue) => sumValue + scoreValue, 0);
+  return Math.round((totalValue / scoredAttempts.length) * 10) / 10;
 }
 
 // Trang này là màn chi tiết bài kiểm tra, đồng thời là nơi teacher chỉnh sửa exam metadata và question bank.
@@ -80,9 +102,12 @@ export default function ExamDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isQuestionSubmitting, setIsQuestionSubmitting] = useState(false);
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
+  const [antiCheatSummary, setAntiCheatSummary] = useState(null);
+  const [attempts, setAttempts] = useState([]);
   const [editingQuestionId, setEditingQuestionId] = useState(null);
   const [armedDeleteQuestionId, setArmedDeleteQuestionId] = useState(null);
   const [deletingQuestionId, setDeletingQuestionId] = useState(null);
+  const [isStartingAttempt, setIsStartingAttempt] = useState(false);
 
   // Hàm này gọi song song các endpoint cần thiết cho detail page để dữ liệu metadata và question bank đi cùng nhau.
   const fetchExamDetailData = useCallback(async () => {
@@ -93,11 +118,43 @@ export default function ExamDetailPage() {
     }
 
     const [examResponse, classroomResponse, questionResponse] = await Promise.all(requestList);
+    const questions = questionResponse?.data ?? [];
+    let nextExam = {
+      ...examResponse.data,
+      totalQuestionScore: questions.length > 0 ? examApi.calculateTotalQuestionScore(questions) : null,
+    };
+    let nextAntiCheatSummary = null;
+    let nextAttempts = [];
+
+    if (nextExam.canEdit) {
+      try {
+        const attemptsResponse = await examAttemptApi.getByExam(examId);
+        nextAttempts = attemptsResponse.data;
+
+        nextExam = {
+          ...nextExam,
+          averageScore: calculateAverageScore(nextAttempts),
+        };
+      } catch {
+        // Đoạn này mình chủ động bỏ qua để trang chi tiết vẫn mở được dù API attempt tạm thời chưa phản hồi.
+      }
+    }
+
+    if (nextExam.canEdit && nextExam.enableAntiCheat) {
+      try {
+        const antiCheatResponse = await antiCheatApi.getExamSummary(examId);
+        nextAntiCheatSummary = antiCheatResponse.data;
+      } catch {
+        nextAntiCheatSummary = null;
+      }
+    }
 
     return {
       classrooms: classroomResponse.data,
-      exam: examResponse.data,
-      questions: questionResponse?.data ?? [],
+      exam: nextExam,
+      questions,
+      antiCheatSummary: nextAntiCheatSummary,
+      attempts: nextAttempts,
     };
   }, [examId, user?.role]);
 
@@ -110,10 +167,14 @@ export default function ExamDetailPage() {
       setExam(nextData.exam);
       setClassrooms(nextData.classrooms);
       setQuestions(nextData.questions);
+      setAntiCheatSummary(nextData.antiCheatSummary);
+      setAttempts(nextData.attempts);
       setLoadErrorMessage("");
     } catch (error) {
       setExam(null);
       setQuestions([]);
+      setAntiCheatSummary(null);
+      setAttempts([]);
       const nextMessage = error.message || "Không thể tải chi tiết bài kiểm tra.";
       setLoadErrorMessage(nextMessage);
       showToast({
@@ -146,6 +207,8 @@ export default function ExamDetailPage() {
         setExam(nextData.exam);
         setClassrooms(nextData.classrooms);
         setQuestions(nextData.questions);
+        setAntiCheatSummary(nextData.antiCheatSummary);
+        setAttempts(nextData.attempts);
         setLoadErrorMessage("");
       } catch (error) {
         if (!isMounted) {
@@ -154,6 +217,8 @@ export default function ExamDetailPage() {
 
         setExam(null);
         setQuestions([]);
+        setAntiCheatSummary(null);
+        setAttempts([]);
         const nextMessage = error.message || "Không thể tải chi tiết bài kiểm tra.";
         setLoadErrorMessage(nextMessage);
         showToast({
@@ -320,7 +385,27 @@ export default function ExamDetailPage() {
     }
   }
 
+  async function handleStartAttempt() {
+    setIsStartingAttempt(true);
+
+    try {
+      const response = await examAttemptApi.start(examId);
+      navigate(buildStudentExamAttemptPath(response.data.attempt.id));
+    } catch (error) {
+      showToast({
+        tone: "danger",
+        title: "Không thể vào phòng thi",
+        message: error.message || "Không thể bắt đầu làm bài lúc này.",
+      });
+    } finally {
+      setIsStartingAttempt(false);
+    }
+  }
+
   const questionSummaryItems = exam ? buildQuestionSummaryItems(exam, questions) : [];
+  const averageScoreLabel = typeof exam?.averageScore === "number" ? exam.averageScore : "--";
+  const totalQuestionScoreLabel =
+    typeof exam?.totalQuestionScore === "number" ? exam.totalQuestionScore : "--";
 
   if (isLoading) {
     return (
@@ -334,7 +419,7 @@ export default function ExamDetailPage() {
     return (
       <EmptyState
         title="Không tìm thấy bài kiểm tra."
-        description={loadErrorMessage || "Bài kiểm tra này hiện không tồn tại hoặc bạn không có quyền xem."}
+        description={loadErrorMessage}
         action={
           <Link className="eg-button eg-button-primary" to={getExamListPathByRole(user?.role)}>
             Quay lại danh sách đề thi
@@ -349,7 +434,13 @@ export default function ExamDetailPage() {
       <PageHeader
         eyebrow="Chi tiết bài kiểm tra"
         title={exam.title}
-        description={exam.description || "Chưa có mô tả cho bài kiểm tra này."}
+        actions={
+          user?.role === "Student" ? (
+            <Button disabled={isStartingAttempt} onClick={handleStartAttempt}>
+              {isStartingAttempt ? "Đang vào phòng thi..." : "Bắt đầu làm bài"}
+            </Button>
+          ) : null
+        }
       />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -416,12 +507,7 @@ export default function ExamDetailPage() {
 
           {exam.canViewQuestionBank ? (
             <Card className="space-y-5">
-              <div className="space-y-1">
-                <h3 className="text-lg font-semibold text-primary">Ngân hàng câu hỏi</h3>
-                <p className="text-sm text-secondary">
-                  Quản lý nội dung câu hỏi, đáp án và thứ tự hiển thị của đề thi này.
-                </p>
-              </div>
+              <h3 className="text-lg font-semibold text-primary">Ngân hàng câu hỏi</h3>
 
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                 {questionSummaryItems.map((item) => (
@@ -436,14 +522,7 @@ export default function ExamDetailPage() {
                 ))}
               </div>
             </Card>
-          ) : (
-            <Card className="space-y-2">
-              <h3 className="text-lg font-semibold text-primary">Nội dung đề thi</h3>
-              <p className="text-sm leading-6 text-secondary">
-                Nội dung câu hỏi và đáp án sẽ được hiển thị ở màn hình làm bài thay vì tại trang chi tiết này.
-              </p>
-            </Card>
-          )}
+          ) : null}
 
           {exam.canEdit && exam.canViewQuestionBank ? (
             <QuestionForm
@@ -494,7 +573,6 @@ export default function ExamDetailPage() {
             ) : (
               <EmptyState
                 title="Đề thi này chưa có câu hỏi nào."
-                description="Hãy thêm câu hỏi đầu tiên để hoàn thiện nội dung đề thi."
               />
             )
           ) : null}
@@ -502,9 +580,6 @@ export default function ExamDetailPage() {
           {exam.canDelete ? (
             <Card className="space-y-4">
               <h3 className="text-lg font-semibold text-primary">Nguy hiểm</h3>
-              <p className="text-sm leading-6 text-secondary">
-                Xóa bài kiểm tra sẽ làm mất luôn setting, question bank, lượt làm bài và log anti-cheat liên quan.
-              </p>
               {isDeleteArmed ? (
                 <p className="text-sm text-danger">
                   Bạn bấm thêm một lần nữa để xác nhận xóa đề thi này.
@@ -548,10 +623,10 @@ export default function ExamDetailPage() {
                 <span className="font-semibold text-primary">Số câu hỏi:</span> {exam.questionCount} câu
               </p>
               <p>
-                <span className="font-semibold text-primary">Tổng điểm:</span> {exam.totalQuestionScore}
+                <span className="font-semibold text-primary">Tổng điểm:</span> {totalQuestionScoreLabel}
               </p>
               <p>
-                <span className="font-semibold text-primary">Điểm trung bình:</span> {exam.averageScore}
+                <span className="font-semibold text-primary">Điểm trung bình:</span> {averageScoreLabel}
               </p>
               <p>
                 <span className="font-semibold text-primary">Publish:</span>{" "}
@@ -559,6 +634,30 @@ export default function ExamDetailPage() {
               </p>
             </div>
           </Card>
+
+          {exam.enableAntiCheat ? (
+            <Card className="space-y-4">
+              <h3 className="text-lg font-semibold text-primary">Tóm tắt anti-cheat</h3>
+              {antiCheatSummary ? (
+                <div className="space-y-3 text-sm text-secondary">
+                  <p>
+                    <span className="font-semibold text-primary">Tổng lượt làm:</span>{" "}
+                    {antiCheatSummary.totalAttempts}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-primary">Lượt bị gắn cờ:</span>{" "}
+                    {antiCheatSummary.flaggedAttempts}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-primary">Tổng log:</span>{" "}
+                    {antiCheatSummary.totalLogs}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-secondary">Chưa có dữ liệu.</p>
+              )}
+            </Card>
+          ) : null}
 
           <Card className="space-y-3">
             <h3 className="text-lg font-semibold text-primary">Liên kết nhanh</h3>
@@ -579,6 +678,15 @@ export default function ExamDetailPage() {
           </Card>
         </div>
       </div>
+
+      {exam.canEdit ? (
+        <AttemptMonitorPanel
+          antiCheatSummary={antiCheatSummary}
+          exam={exam}
+          showToast={showToast}
+          attempts={attempts}
+        />
+      ) : null}
     </div>
   );
 }

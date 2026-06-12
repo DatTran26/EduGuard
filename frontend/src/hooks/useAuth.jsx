@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { authApi } from "../api/authApi";
 import { userApi } from "../api/userApi";
 import {
@@ -15,8 +15,8 @@ import {
 
 // INTEGRATION STATUS:
 // - login / register / me / logout đang gọi backend auth thật qua authApi.
-// - updateProfile và phần hydrate avatar/thông tin cá nhân vẫn tạm nối với userApi mock/localStorage.
-// - Session backend được bridge sang mock DB để dashboard/classroom/exam chưa nối backend vẫn chạy liền mạch.
+// - classroom và exam hiện đã đi backend thật; updateProfile cùng dashboard/user management vẫn còn mock.
+// - Session backend vẫn được bridge sang mock DB để các module còn mock tiếp tục hoạt động liền mạch.
 
 const AuthContext = createContext(undefined);
 
@@ -63,6 +63,18 @@ function getUserRoles(user) {
   return user?.role ? [user.role] : [];
 }
 
+// Hàm này so sánh hai tập role bất kể thứ tự để biết token hiện tại có bị lệch quyền với DB hay không.
+function hasSameRoles(firstUser, secondUser) {
+  const firstRoles = [...getUserRoles(firstUser)].sort();
+  const secondRoles = [...getUserRoles(secondUser)].sort();
+
+  if (firstRoles.length !== secondRoles.length) {
+    return false;
+  }
+
+  return firstRoles.every((role, index) => role === secondRoles[index]);
+}
+
 // Hàm này lưu session mới sau login, register hoặc refresh profile.
 function persistSession(session) {
   setStoredTokens({
@@ -104,6 +116,11 @@ function clearSessionStorage() {
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(getInitialSession);
   const [isHydrating, setIsHydrating] = useState(Boolean(getInitialSession().accessToken));
+  const sessionRef = useRef(session);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   useEffect(() => {
     let isMounted = true;
@@ -117,12 +134,15 @@ export function AuthProvider({ children }) {
 
       try {
         const response = await authApi.me();
+        const currentSession = sessionRef.current;
 
         if (!isMounted) {
           return;
         }
 
         let nextUser = response.data;
+        let nextRefreshToken = currentSession.refreshToken;
+        let nextAccessToken = currentSession.accessToken;
 
         try {
           const profileResponse = await userApi.getMyProfile();
@@ -134,6 +154,26 @@ export function AuthProvider({ children }) {
           nextUser = mergeHydratedUserProfile(response.data, profileResponse.data);
         } catch {
           nextUser = response.data;
+        }
+
+        // Nếu role trong DB đã đổi sau lúc user đăng nhập, mình refresh token để claim Role khớp lại.
+        if (currentSession.refreshToken && !hasSameRoles(currentSession.user, nextUser)) {
+          const refreshResponse = await authApi.refreshToken(currentSession.refreshToken);
+          nextAccessToken = refreshResponse.data.accessToken;
+          nextRefreshToken = refreshResponse.data.refreshToken;
+          nextUser = mergeHydratedUserProfile(refreshResponse.data.user, nextUser);
+
+          persistSession({
+            accessToken: nextAccessToken,
+            refreshToken: nextRefreshToken,
+            user: nextUser,
+          });
+          setSession({
+            accessToken: nextAccessToken,
+            refreshToken: nextRefreshToken,
+            user: nextUser,
+          });
+          return;
         }
 
         persistUserOnly(nextUser);

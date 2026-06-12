@@ -19,7 +19,7 @@ export default function Avatar({
       <div
         aria-label={alt}
         className={cn(
-          "flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#8fd3a7,#5ea873)] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(94,168,115,0.28)]",
+          "flex items-center justify-center rounded-full border border-border bg-surface-sunken text-sm font-semibold text-primary",
           sizeClassName,
           className,
         )}
@@ -32,7 +32,7 @@ export default function Avatar({
   return (
     <img
       alt={alt}
-      className={cn("rounded-full object-cover shadow-[0_10px_24px_rgba(94,168,115,0.18)]", sizeClassName, className)}
+      className={cn("rounded-full object-cover", sizeClassName, className)}
       onError={() => setFailedImageUrl(resolvedAvatarUrl)}
       src={resolvedAvatarUrl}
     />

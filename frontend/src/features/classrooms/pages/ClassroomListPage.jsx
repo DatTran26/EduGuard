@@ -24,7 +24,8 @@ const ADMIN_CLASSROOM_SORT_OPTIONS = [
 function buildSummaryItems(classrooms) {
   const teacherCount = new Set(classrooms.map((classroom) => classroom.teacherId)).size;
   const totalMembers = classrooms.reduce(
-    (totalValue, classroom) => totalValue + classroom.memberCount,
+    (totalValue, classroom) =>
+      totalValue + (typeof classroom.memberCount === "number" ? classroom.memberCount : 0),
     0,
   );
 
@@ -35,12 +36,11 @@ function buildSummaryItems(classrooms) {
   ];
 }
 
-// Hàm này trả tiêu đề, mô tả và CTA đầu trang theo role để cùng một page vẫn đúng ngữ cảnh.
+// Hàm này trả tiêu đề và CTA đầu trang theo role để cùng một page vẫn đúng ngữ cảnh.
 function getPageCopyByRole(role) {
   if (role === "Admin") {
     return {
       title: "Quản lý lớp học",
-      description: "Xem, tìm kiếm và sắp xếp toàn bộ lớp học trong hệ thống.",
       actionLabel: null,
     };
   }
@@ -48,14 +48,12 @@ function getPageCopyByRole(role) {
   if (role === "Teacher") {
     return {
       title: "Lớp học của giảng viên",
-      description: "Tạo, cập nhật và theo dõi các lớp học do bạn phụ trách.",
       actionLabel: null,
     };
   }
 
   return {
     title: "Lớp học của sinh viên",
-    description: "Xem các lớp đã tham gia và mở nhanh lớp cần học.",
     actionLabel: "Tham gia lớp",
   };
 }
@@ -82,14 +80,15 @@ function filterAndSortAdminClassrooms(classrooms, searchTerm, sortOption) {
 
     if (sortOption === "members-desc") {
       return (
-        secondClassroom.memberCount - firstClassroom.memberCount ||
+        (secondClassroom.memberCount ?? -1) - (firstClassroom.memberCount ?? -1) ||
         firstClassroom.name.localeCompare(secondClassroom.name, "vi")
       );
     }
 
     if (sortOption === "members-asc") {
       return (
-        firstClassroom.memberCount - secondClassroom.memberCount ||
+        (firstClassroom.memberCount ?? Number.MAX_SAFE_INTEGER) -
+          (secondClassroom.memberCount ?? Number.MAX_SAFE_INTEGER) ||
         firstClassroom.name.localeCompare(secondClassroom.name, "vi")
       );
     }
@@ -198,21 +197,6 @@ export default function ClassroomListPage() {
     };
   }, [showToast]);
 
-  // Hàm này xin server mock random mã lớp cho teacher dùng nhanh trong form tạo hoặc sửa classroom.
-  async function handleGenerateJoinCode() {
-    try {
-      const response = await classroomApi.generateJoinCode();
-      return response.data.joinCode;
-    } catch (error) {
-      showToast({
-        tone: "danger",
-        title: "Không tạo được mã lớp",
-        message: error.message || "Không thể tạo mã lớp ngẫu nhiên.",
-      });
-      return "";
-    }
-  }
-
   // Hàm này xử lý teacher tạo classroom mới rồi tải lại danh sách để card hiển thị đồng bộ.
   async function handleCreateClassroom(payload) {
     setIsSubmitting(true);
@@ -278,7 +262,6 @@ export default function ClassroomListPage() {
       return (
         <EmptyState
           title="Bạn chưa tạo lớp học nào."
-          description="Tạo lớp đầu tiên để bắt đầu quản lý sinh viên."
         />
       );
     }
@@ -287,7 +270,6 @@ export default function ClassroomListPage() {
       return (
         <EmptyState
           title="Bạn chưa tham gia lớp học nào."
-          description="Khi có mã lớp từ giảng viên, bạn có thể tham gia ngay."
           action={
             <Link className="eg-button eg-button-primary" to={routeConfig.studentJoinClassroom}>
               Tham gia lớp
@@ -299,8 +281,7 @@ export default function ClassroomListPage() {
 
     return (
       <EmptyState
-        title="Chưa có lớp học nào trong hệ thống."
-        description="Danh sách lớp học sẽ xuất hiện tại đây khi giảng viên bắt đầu tạo lớp."
+        title="Chưa có lớp học nào được trả về."
       />
     );
   }
@@ -310,7 +291,6 @@ export default function ClassroomListPage() {
     return (
       <EmptyState
         title="Không tìm thấy lớp học phù hợp."
-        description="Hãy thử đổi từ khóa tìm kiếm hoặc cách sắp xếp để xem lại danh sách lớp học."
         action={
           <Button variant="secondary" onClick={handleResetAdminFilters}>
             Xóa bộ lọc
@@ -325,7 +305,6 @@ export default function ClassroomListPage() {
       <PageHeader
         eyebrow={getRoleLabel(user?.role)}
         title={pageCopy.title}
-        description={pageCopy.description}
         actions={
           user?.role === "Teacher" ? (
             <Button
@@ -345,12 +324,7 @@ export default function ClassroomListPage() {
       {isAdminView ? (
         <Card className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="text-lg font-semibold text-primary">Bộ lọc lớp học</h3>
-              <p className="text-sm leading-6 text-secondary">
-                Tìm theo tên lớp học hoặc tên giảng viên, đồng thời sắp xếp danh sách theo nhu cầu.
-              </p>
-            </div>
+            <h3 className="text-lg font-semibold text-primary">Bộ lọc lớp học</h3>
             <Button
               disabled={!adminSearchTerm && adminSortOption === "name-asc"}
               variant="ghost"
@@ -407,7 +381,6 @@ export default function ClassroomListPage() {
       {user?.role === "Teacher" && isCreateFormVisible ? (
         <CreateClassroomForm
           isSubmitting={isSubmitting}
-          onGenerateJoinCode={handleGenerateJoinCode}
           onSubmitClassroom={handleCreateClassroom}
           submitLabel="Tạo lớp học"
           title="Tạo lớp học mới"

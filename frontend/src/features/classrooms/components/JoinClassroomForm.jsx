@@ -24,10 +24,7 @@ export default function JoinClassroomForm({ isSubmitting = false, onJoinClassroo
 
   return (
     <Card className="space-y-5">
-      <div className="space-y-1">
-        <h3 className="text-lg font-semibold text-primary">Tham gia lớp học</h3>
-        <p className="text-sm text-secondary">Nhập mã lớp do giảng viên cung cấp.</p>
-      </div>
+      <h3 className="text-lg font-semibold text-primary">Tham gia lớp học</h3>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <TextInput

@@ -11,14 +11,12 @@ const TONE_CLASS_NAMES = {
 export default function StatCard({
   label,
   value,
-  helperText,
   tone = "neutral",
 }) {
   return (
     <div className={cn("rounded-[20px] border p-5", TONE_CLASS_NAMES[tone] ?? TONE_CLASS_NAMES.neutral)}>
       <p className="text-[0.82rem] font-medium text-secondary">{label}</p>
       <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{value}</p>
-      {helperText ? <p className="mt-3 text-sm leading-6 text-secondary">{helperText}</p> : null}
     </div>
   );
 }

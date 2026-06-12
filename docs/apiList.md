@@ -332,4 +332,4 @@ Không phải REST — kết nối WebSocket qua `@microsoft/signalr`.
 | Đã tick `[x]` | 40 |
 | Còn lại | 17 |
 
-*Backend: Auth + Classroom + Assignment + Exam + Attempt (Phase 2–6). Frontend trên `release` vẫn mock — chưa nối API thật.*
+*Backend: Auth + Classroom + Assignment + Exam + Attempt (Phase 2–7). Frontend auth/classroom/exam đã nối API thật ở các màn hiện có; user/profile/dashboard vẫn còn mock ở những phần BE chưa cung cấp endpoint.*

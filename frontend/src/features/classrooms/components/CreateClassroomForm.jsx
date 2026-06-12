@@ -7,7 +7,6 @@ import TextInput from "../../../components/forms/TextInput";
 function buildFormValues(classroom) {
   return {
     description: classroom?.description ?? "",
-    joinCode: classroom?.joinCode ?? "",
     name: classroom?.name ?? "",
   };
 }
@@ -16,7 +15,6 @@ function buildFormValues(classroom) {
 export default function CreateClassroomForm({
   classroom = null,
   isSubmitting = false,
-  onGenerateJoinCode,
   onSubmitClassroom,
   submitLabel = "Lưu lớp học",
   title = "Thông tin lớp học",
@@ -31,34 +29,18 @@ export default function CreateClassroomForm({
     }));
   }
 
-  // Hàm này xin mã lớp random từ page cha rồi đổ ngược vào form hiện tại cho giảng viên chọn nhanh.
-  async function handleGenerateJoinCodeClick() {
-    const nextJoinCode = await onGenerateJoinCode();
-
-    if (!nextJoinCode) {
-      return;
-    }
-
-    setFormValues((previousValues) => ({
-      ...previousValues,
-      joinCode: nextJoinCode,
-    }));
-  }
-
   // Hàm này submit dữ liệu đã chuẩn hóa để page cha xử lý create hoặc update giống gọi API thật.
   async function handleSubmit(event) {
     event.preventDefault();
 
     const shouldReset = await onSubmitClassroom({
       description: formValues.description.trim(),
-      joinCode: formValues.joinCode.trim().toUpperCase(),
       name: formValues.name.trim(),
     });
 
     if (shouldReset && !classroom) {
       setFormValues({
         description: "",
-        joinCode: "",
         name: "",
       });
     }
@@ -66,10 +48,7 @@ export default function CreateClassroomForm({
 
   return (
     <Card className="space-y-5">
-      <div className="space-y-1">
-        <h3 className="text-lg font-semibold text-primary">{title}</h3>
-        <p className="text-sm text-secondary">Tên lớp, mã lớp và mô tả ngắn.</p>
-      </div>
+      <h3 className="text-lg font-semibold text-primary">{title}</h3>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <TextInput
@@ -81,23 +60,11 @@ export default function CreateClassroomForm({
           value={formValues.name}
         />
 
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-          <TextInput
-            id="classroom-join-code"
-            label="Mã lớp"
-            onChange={(event) => handleFieldChange("joinCode", event.target.value)}
-            placeholder="Ví dụ: WEB2B9"
-            required
-            value={formValues.joinCode}
-          />
-          <Button
-            className="w-full sm:w-auto"
-            onClick={handleGenerateJoinCodeClick}
-            type="button"
-            variant="secondary"
-          >
-            Random mã
-          </Button>
+        <div className="rounded-[18px] border border-border bg-neutral px-4 py-4">
+          <p className="text-sm font-semibold text-primary">Mã lớp</p>
+          <p className="mt-2 font-mono text-sm text-primary">
+            {classroom?.joinCode || "Sẽ được backend tạo sau khi lưu lớp học"}
+          </p>
         </div>
 
         <TextInput

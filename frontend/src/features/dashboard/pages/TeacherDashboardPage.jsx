@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { dashboardApi } from "../../../api/dashboardApi";
-import Badge from "../../../components/common/Badge";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
 import MetricBarList from "../../../components/dashboard/MetricBarList";
@@ -14,10 +13,8 @@ import { formatShortDateTime } from "../../../utils/formatDate";
 function buildUpcomingExamItems(upcomingExams) {
   return upcomingExams.map((exam) => ({
     id: exam.id,
-    title: exam.title,
-    subtitle: exam.classroomName,
-    meta: formatShortDateTime(exam.startTime),
-    description: `${exam.durationMinutes} phút • ${exam.enableAntiCheat ? "Bật anti-cheat" : "Không bật anti-cheat"}`,
+    title: `${exam.title} • ${exam.classroomName}`,
+    meta: `${formatShortDateTime(exam.startTime)} • ${exam.durationMinutes} phút`,
   }));
 }
 
@@ -26,7 +23,6 @@ function buildPerformanceBars(classroomPerformance) {
   return classroomPerformance.map((item) => ({
     label: item.name,
     value: `${item.submissionRate}%`,
-    helperText: `${item.studentCount} SV • ${item.assignmentCount} bài tập • ${item.riskCount} cảnh báo`,
     percentage: item.submissionRate,
   }));
 }
@@ -35,10 +31,8 @@ function buildPerformanceBars(classroomPerformance) {
 function buildRiskStudentItems(highRiskStudents) {
   return highRiskStudents.map((item) => ({
     id: item.id,
-    title: item.studentName,
-    subtitle: item.email,
+    title: `${item.studentName} • ${item.latestExamTitle}`,
     meta: `${item.totalSuspicion} điểm nghi ngờ`,
-    description: `${item.attemptCount} lượt có cảnh báo • Gần nhất: ${item.latestExamTitle}`,
   }));
 }
 
@@ -101,7 +95,7 @@ export default function TeacherDashboardPage() {
     return (
       <EmptyState
         title="Chưa tải được dashboard giảng viên."
-        description={loadErrorMessage || "Hiện chưa có dữ liệu dashboard giảng viên để hiển thị."}
+        description={loadErrorMessage}
       />
     );
   }
@@ -113,22 +107,18 @@ export default function TeacherDashboardPage() {
       <PageHeader
         eyebrow="Giảng viên"
         title="Dashboard lớp học"
-        description="Theo dõi tiến độ lớp, mức độ nộp bài, điểm thi và các cảnh báo gian lận."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Lớp quản lý" value={summary.managedClassrooms} helperText="Số lớp do bạn phụ trách" tone="info" />
-        <StatCard label="Sinh viên" value={summary.totalStudents} helperText="Tổng sinh viên active trong các lớp của bạn" tone="neutral" />
-        <StatCard label="Bài tập" value={summary.totalAssignments} helperText={`${summary.submissionRate}% tỷ lệ nộp bài trung bình`} tone="success" />
-        <StatCard label="Bài kiểm tra" value={summary.totalExams} helperText="Số đề thi bạn đã chuẩn bị cho các lớp" tone="caution" />
+        <StatCard label="Lớp quản lý" value={summary.managedClassrooms} tone="info" />
+        <StatCard label="Sinh viên" value={summary.totalStudents} tone="neutral" />
+        <StatCard label="Bài tập" value={summary.totalAssignments} tone="success" />
+        <StatCard label="Bài kiểm tra" value={summary.totalExams} tone="caution" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <Card className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-primary">Hiệu suất theo lớp</h3>
-            <Badge variant="info">Theo tỷ lệ nộp bài</Badge>
-          </div>
+          <h3 className="text-lg font-semibold text-primary">Hiệu suất theo lớp</h3>
           <MetricBarList
             items={buildPerformanceBars(classroomPerformance)}
             emptyMessage="Bạn chưa có lớp học nào để thống kê."
@@ -136,10 +126,7 @@ export default function TeacherDashboardPage() {
         </Card>
 
         <Card className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-primary">Sinh viên rủi ro cao</h3>
-            <Badge variant="caution">Anti-cheat</Badge>
-          </div>
+          <h3 className="text-lg font-semibold text-primary">Sinh viên rủi ro cao</h3>
           <TimelineList
             items={buildRiskStudentItems(highRiskStudents)}
             emptyMessage="Chưa có sinh viên nào vượt ngưỡng nghi ngờ."

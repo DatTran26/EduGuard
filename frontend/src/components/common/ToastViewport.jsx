@@ -17,8 +17,8 @@ export default function ToastViewport({ toasts = [], onDismiss }) {
           role="status"
         >
           <div className="space-y-1">
-            {toast.title ? <p className="text-sm font-semibold text-white">{toast.title}</p> : null}
-            <p className="text-sm leading-6 text-white/88">{toast.message}</p>
+            {toast.title ? <p className="text-sm font-semibold text-primary">{toast.title}</p> : null}
+            <p className="text-sm leading-6 text-secondary">{toast.message}</p>
           </div>
           <button
             aria-label="Đóng thông báo"

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { dashboardApi } from "../../../api/dashboardApi";
-import Badge from "../../../components/common/Badge";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
 import MetricBarList from "../../../components/dashboard/MetricBarList";
@@ -14,10 +13,8 @@ import { formatShortDateTime } from "../../../utils/formatDate";
 function buildUpcomingItems(upcomingItems) {
   return upcomingItems.map((item) => ({
     id: item.id,
-    title: item.title,
-    subtitle: item.classroomName,
+    title: `${item.title} • ${item.classroomName}`,
     meta: formatShortDateTime(item.date),
-    description: item.type,
   }));
 }
 
@@ -25,10 +22,8 @@ function buildUpcomingItems(upcomingItems) {
 function buildRecentResultItems(recentResults) {
   return recentResults.map((item) => ({
     id: item.id,
-    title: item.title,
-    subtitle: item.classroomName,
-    meta: `${item.score} điểm`,
-    description: `Nộp lúc ${formatShortDateTime(item.submittedAt)} • Suspicion ${item.suspicionScore}`,
+    title: `${item.title} • ${item.classroomName}`,
+    meta: `${item.score} điểm • Suspicion ${item.suspicionScore}`,
   }));
 }
 
@@ -36,10 +31,8 @@ function buildRecentResultItems(recentResults) {
 function buildNotificationItems(notifications) {
   return notifications.map((notification) => ({
     id: notification.id,
-    title: notification.title,
-    subtitle: notification.type,
+    title: `${notification.title} • ${notification.type}`,
     meta: formatShortDateTime(notification.createdAt),
-    description: notification.message,
   }));
 }
 
@@ -48,7 +41,6 @@ function buildClassProgressBars(classProgress) {
   return classProgress.map((item) => ({
     label: item.name,
     value: `${item.submissionProgress}%`,
-    helperText: `${item.submissionCount}/${item.assignmentCount} bài tập đã nộp`,
     percentage: item.submissionProgress,
   }));
 }
@@ -112,7 +104,7 @@ export default function StudentDashboardPage() {
     return (
       <EmptyState
         title="Chưa tải được dashboard sinh viên."
-        description={loadErrorMessage || "Hiện chưa có dữ liệu dashboard sinh viên để hiển thị."}
+        description={loadErrorMessage}
       />
     );
   }
@@ -124,22 +116,18 @@ export default function StudentDashboardPage() {
       <PageHeader
         eyebrow="Sinh viên"
         title="Dashboard cá nhân"
-        description="Theo dõi bài tập, lịch sắp tới, kết quả thi và các nhắc việc liên quan đến lớp học."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Lớp đã tham gia" value={summary.joinedClassrooms} helperText="Số lớp học bạn đang tham gia" tone="info" />
-        <StatCard label="Bài chưa nộp" value={summary.pendingAssignments} helperText={`${summary.completedAssignments} bài đã hoàn thành`} tone="caution" />
-        <StatCard label="Cảnh báo cao" value={summary.warningCount} helperText="Số lượt làm bài cần chú ý thêm" tone="success" />
-        <StatCard label="Việc sắp tới" value={summary.upcomingItems} helperText="Bao gồm bài tập và bài kiểm tra gần hạn" tone="neutral" />
+        <StatCard label="Lớp đã tham gia" value={summary.joinedClassrooms} tone="info" />
+        <StatCard label="Bài chưa nộp" value={summary.pendingAssignments} tone="caution" />
+        <StatCard label="Cảnh báo cao" value={summary.warningCount} tone="success" />
+        <StatCard label="Việc sắp tới" value={summary.upcomingItems} tone="neutral" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <Card className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-primary">Tiến độ theo lớp</h3>
-            <Badge variant="info">Theo bài tập</Badge>
-          </div>
+          <h3 className="text-lg font-semibold text-primary">Tiến độ theo lớp</h3>
           <MetricBarList
             items={buildClassProgressBars(classProgress)}
             emptyMessage="Bạn chưa tham gia lớp nào."

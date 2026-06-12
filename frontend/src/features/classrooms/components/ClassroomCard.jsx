@@ -23,6 +23,8 @@ function getCardBadgeLabel(classroom, role) {
 export default function ClassroomCard({ classroom, onCopyCode }) {
   const { user } = useAuth();
   const detailPath = buildClassroomDetailPathByRole(user?.role, classroom.id);
+  const memberCountLabel =
+    typeof classroom.memberCount === "number" ? `${classroom.memberCount} người` : "Chưa có số liệu";
 
   // Hàm này bắn callback lên page cha khi người dùng muốn sao chép mã lớp hiện tại.
   function handleCopyCodeClick() {
@@ -43,12 +45,7 @@ export default function ClassroomCard({ classroom, onCopyCode }) {
         <p className="text-sm text-secondary">Tạo ngày {formatShortDate(classroom.createdAt)}</p>
       </div>
 
-      <div className="space-y-2">
-        <h3 className="text-xl font-semibold text-primary">{classroom.name}</h3>
-        <p className="text-sm leading-6 text-secondary">
-          {classroom.description || "Chưa có mô tả cho lớp học này."}
-        </p>
-      </div>
+      <h3 className="text-xl font-semibold text-primary">{classroom.name}</h3>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-[16px] border border-border bg-neutral p-4">
@@ -57,7 +54,7 @@ export default function ClassroomCard({ classroom, onCopyCode }) {
         </div>
         <div className="rounded-[16px] border border-border bg-neutral p-4">
           <p className="text-[0.82rem] font-medium text-secondary">Thành viên</p>
-          <p className="mt-2 text-sm font-semibold text-primary">{classroom.memberCount} người</p>
+          <p className="mt-2 text-sm font-semibold text-primary">{memberCountLabel}</p>
         </div>
         <div className="rounded-[16px] border border-border bg-neutral p-4">
           <p className="text-[0.82rem] font-medium text-secondary">Cập nhật</p>

@@ -3,7 +3,7 @@ import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import Select from "../../../components/forms/Select";
 import TextInput from "../../../components/forms/TextInput";
-import { QUESTION_TYPE_OPTIONS, getQuestionTypeLabel } from "../examHelpers";
+import { QUESTION_TYPE_OPTIONS } from "../examHelpers";
 
 // Hàm này dựng 1 dòng đáp án mặc định để form thêm/sửa câu hỏi có shape ổn định ngay từ đầu.
 function buildAnswerFormValue(answer = {}, fallbackContent = "") {
@@ -72,23 +72,6 @@ function allowsMultipleCorrectAnswers(questionType) {
 // Hàm này cho biết form hiện tại đang nhập đáp án mẫu tự luận thay vì option trắc nghiệm.
 function isShortAnswerQuestion(questionType) {
   return questionType === "ShortAnswer";
-}
-
-// Hàm này trả copy ngắn cho khu vực đáp án để teacher nhìn là hiểu đang nhập kiểu gì.
-function getAnswerSectionCopy(questionType) {
-  if (questionType === "ShortAnswer") {
-    return "Nhập các đáp án mẫu hoặc từ khóa chấp nhận cho câu tự luận ngắn.";
-  }
-
-  if (questionType === "TrueFalse") {
-    return "Chỉ cần chọn đáp án đúng, nội dung Đúng/Sai sẽ được cố định theo chuẩn.";
-  }
-
-  if (questionType === "MultipleChoice") {
-    return "Bạn có thể đánh dấu nhiều đáp án đúng cho câu hỏi này.";
-  }
-
-  return "Chọn đúng 1 đáp án đúng trong các lựa chọn bên dưới.";
 }
 
 // Form này dùng chung cho cả tạo và sửa câu hỏi để teacher không phải học lại nhiều luồng thao tác khác nhau.
@@ -217,12 +200,7 @@ export default function QuestionForm({
 
   return (
     <Card className="space-y-5">
-      <div className="space-y-1">
-        <h3 className="text-lg font-semibold text-primary">{title}</h3>
-        <p className="text-sm text-secondary">
-          {`Loại hiện tại: ${getQuestionTypeLabel(formValues.questionType)}.`}
-        </p>
-      </div>
+      <h3 className="text-lg font-semibold text-primary">{title}</h3>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <TextInput
@@ -266,10 +244,7 @@ export default function QuestionForm({
         </div>
 
         <div className="space-y-3">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-primary">Đáp án</p>
-            <p className="text-sm text-secondary">{getAnswerSectionCopy(formValues.questionType)}</p>
-          </div>
+          <p className="text-sm font-semibold text-primary">Đáp án</p>
 
           <div className="space-y-3">
             {formValues.answers.map((answer, index) => (
