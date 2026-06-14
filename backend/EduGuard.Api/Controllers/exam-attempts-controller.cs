@@ -26,7 +26,7 @@ public class ExamAttemptsController : ControllerBase
 
         try
         {
-            var data = await _attemptService.StartAsync(examId, userId.Value, ct);
+            var data = await _attemptService.StartAsync(examId, userId, ct);
             return Ok(ApiResponse<StartExamResponse>.CreateSuccess(data, "Bắt đầu làm bài thành công."));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<StartExamResponse>.CreateFailure(ex.Message)); }
@@ -67,7 +67,7 @@ public class ExamAttemptsController : ControllerBase
 
         try
         {
-            await _attemptService.SaveAnswerAsync(attemptId, request, userId.Value, ct);
+            await _attemptService.SaveAnswerAsync(attemptId, request, userId, ct);
             return Ok(ApiResponse<object>.CreateSuccess(new { }, "Lưu đáp án thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<object>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -89,7 +89,7 @@ public class ExamAttemptsController : ControllerBase
 
         try
         {
-            var data = await _attemptService.SubmitAsync(attemptId, userId.Value, ct);
+            var data = await _attemptService.SubmitAsync(attemptId, userId, ct);
             return Ok(ApiResponse<ExamResultDto>.CreateSuccess(data, "Nộp bài thành công."));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<ExamResultDto>.CreateFailure(ex.Message)); }
@@ -130,7 +130,7 @@ public class ExamAttemptsController : ControllerBase
 
         try
         {
-            var data = await _attemptService.GetAttemptsByExamAsync(examId, userId.Value, ct);
+            var data = await _attemptService.GetAttemptsByExamAsync(examId, userId, ct);
             return Ok(ApiResponse<IReadOnlyList<ExamAttemptDto>>.CreateSuccess(data));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<IReadOnlyList<ExamAttemptDto>>.CreateFailure(ex.Message)); }
@@ -140,19 +140,19 @@ public class ExamAttemptsController : ControllerBase
         }
     }
 
-    private int? GetCurrentUserId()
+    private string? GetCurrentUserId()
     {
         var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return int.TryParse(id, out var userId) ? userId : null;
+        return string.IsNullOrWhiteSpace(id) ? null : id;
     }
 
-    private (int userId, List<string> roles)? GetCurrentUser()
+    private (string userId, List<string> roles)? GetCurrentUser()
     {
         var userId = GetCurrentUserId();
         if (userId is null)
             return null;
 
         var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-        return (userId.Value, roles);
+        return (userId, roles);
     }
 }

@@ -13,7 +13,7 @@ public class ExamAntiCheatSummaryDto
 public class AttemptSuspicionSummaryDto
 {
     public int AttemptId { get; set; }
-    public int StudentId { get; set; }
+    public string StudentId { get; set; } = string.Empty;
     public string StudentName { get; set; } = string.Empty;
     public int SuspicionScore { get; set; }
     public int LogCount { get; set; }

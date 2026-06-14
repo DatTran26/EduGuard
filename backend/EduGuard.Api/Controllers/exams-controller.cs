@@ -46,7 +46,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.CreateAsync(classroomId, request, userId.Value, ct);
+            var data = await _examService.CreateAsync(classroomId, request, userId, ct);
             return Ok(ApiResponse<ExamDto>.CreateSuccess(data, "Tạo đề thi thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<ExamDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -86,7 +86,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.UpdateAsync(id, request, userId.Value, ct);
+            var data = await _examService.UpdateAsync(id, request, userId, ct);
             return Ok(ApiResponse<ExamDto>.CreateSuccess(data, "Cập nhật đề thi thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<ExamDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -108,7 +108,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.PatchAsync(id, request, userId.Value, ct);
+            var data = await _examService.PatchAsync(id, request, userId, ct);
             return Ok(ApiResponse<ExamDto>.CreateSuccess(data, "Cập nhật đề thi thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<ExamDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -130,7 +130,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            await _examService.DeleteAsync(id, userId.Value, ct);
+            await _examService.DeleteAsync(id, userId, ct);
             return Ok(ApiResponse<object>.CreateSuccess(new { }, "Xóa đề thi thành công."));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<object>.CreateFailure(ex.Message)); }
@@ -150,7 +150,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.PublishAsync(id, userId.Value, ct);
+            var data = await _examService.PublishAsync(id, userId, ct);
             return Ok(ApiResponse<ExamDto>.CreateSuccess(data, "Publish đề thi thành công."));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<ExamDto>.CreateFailure(ex.Message)); }
@@ -191,7 +191,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.AddQuestionAsync(id, request, userId.Value, ct);
+            var data = await _examService.AddQuestionAsync(id, request, userId, ct);
             return Ok(ApiResponse<QuestionDto>.CreateSuccess(data, "Thêm câu hỏi thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<QuestionDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -214,7 +214,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.UpdateQuestionAsync(id, request, userId.Value, ct);
+            var data = await _examService.UpdateQuestionAsync(id, request, userId, ct);
             return Ok(ApiResponse<QuestionDto>.CreateSuccess(data, "Cập nhật câu hỏi thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<QuestionDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -237,7 +237,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.PatchQuestionAsync(id, request, userId.Value, ct);
+            var data = await _examService.PatchQuestionAsync(id, request, userId, ct);
             return Ok(ApiResponse<QuestionDto>.CreateSuccess(data, "Cập nhật câu hỏi thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<QuestionDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -259,7 +259,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            await _examService.DeleteQuestionAsync(id, userId.Value, ct);
+            await _examService.DeleteQuestionAsync(id, userId, ct);
             return Ok(ApiResponse<object>.CreateSuccess(new { }, "Xóa câu hỏi thành công."));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<object>.CreateFailure(ex.Message)); }
@@ -280,7 +280,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.AddAnswerAsync(id, request, userId.Value, ct);
+            var data = await _examService.AddAnswerAsync(id, request, userId, ct);
             return Ok(ApiResponse<AnswerDto>.CreateSuccess(data, "Thêm đáp án thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<AnswerDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -303,7 +303,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.UpdateAnswerAsync(id, request, userId.Value, ct);
+            var data = await _examService.UpdateAnswerAsync(id, request, userId, ct);
             return Ok(ApiResponse<AnswerDto>.CreateSuccess(data, "Cập nhật đáp án thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<AnswerDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -325,7 +325,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.PatchAnswerAsync(id, request, userId.Value, ct);
+            var data = await _examService.PatchAnswerAsync(id, request, userId, ct);
             return Ok(ApiResponse<AnswerDto>.CreateSuccess(data, "Cập nhật đáp án thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<AnswerDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -336,19 +336,19 @@ public class ExamsController : ControllerBase
         }
     }
 
-    private int? GetCurrentUserId()
+    private string? GetCurrentUserId()
     {
         var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return int.TryParse(id, out var userId) ? userId : null;
+        return string.IsNullOrWhiteSpace(id) ? null : id;
     }
 
-    private (int userId, List<string> roles)? GetCurrentUser()
+    private (string userId, List<string> roles)? GetCurrentUser()
     {
         var userId = GetCurrentUserId();
         if (userId is null)
             return null;
 
         var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-        return (userId.Value, roles);
+        return (userId, roles);
     }
 }

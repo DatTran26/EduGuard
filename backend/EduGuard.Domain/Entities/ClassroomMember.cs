@@ -6,7 +6,7 @@ public class ClassroomMember
 {
     public int Id { get; set; }
     public int ClassroomId { get; set; }
-    public int StudentId { get; set; }
+    public string StudentId { get; set; } = string.Empty;
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
     public string Status { get; set; } = ClassroomMemberStatus.Active;
 

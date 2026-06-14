@@ -28,14 +28,14 @@ public class ClassroomRepository : IClassroomRepository
     public Task<bool> JoinCodeExistsAsync(string joinCode, CancellationToken ct = default) =>
         _db.Classrooms.AnyAsync(x => x.JoinCode == joinCode, ct);
 
-    public Task<List<Classroom>> GetByTeacherIdAsync(int teacherId, CancellationToken ct = default) =>
+    public Task<List<Classroom>> GetByTeacherIdAsync(string teacherId, CancellationToken ct = default) =>
         _db.Classrooms
             .Include(x => x.Teacher)
             .Where(x => x.TeacherId == teacherId)
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(ct);
 
-    public Task<List<Classroom>> GetByStudentIdAsync(int studentId, CancellationToken ct = default) =>
+    public Task<List<Classroom>> GetByStudentIdAsync(string studentId, CancellationToken ct = default) =>
         _db.ClassroomMembers
             .Where(x => x.StudentId == studentId && x.Status == ClassroomMemberStatus.Active)
             .Include(x => x.Classroom)
@@ -44,7 +44,7 @@ public class ClassroomRepository : IClassroomRepository
             .Select(x => x.Classroom)
             .ToListAsync(ct);
 
-    public Task<ClassroomMember?> GetMemberAsync(int classroomId, int studentId, CancellationToken ct = default) =>
+    public Task<ClassroomMember?> GetMemberAsync(int classroomId, string studentId, CancellationToken ct = default) =>
         _db.ClassroomMembers
             .FirstOrDefaultAsync(x => x.ClassroomId == classroomId && x.StudentId == studentId, ct);
 

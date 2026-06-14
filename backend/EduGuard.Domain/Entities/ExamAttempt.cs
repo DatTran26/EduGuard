@@ -6,7 +6,7 @@ public class ExamAttempt
 {
     public int Id { get; set; }
     public int ExamId { get; set; }
-    public int StudentId { get; set; }
+    public string StudentId { get; set; } = string.Empty;
     public DateTime StartedAt { get; set; } = DateTime.UtcNow;
     public DateTime? SubmittedAt { get; set; }
     public decimal? Score { get; set; }

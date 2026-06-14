@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace EduGuard.Domain.Entities;
 
-public class ApplicationUser : IdentityUser<int>
+public class ApplicationUser : IdentityUser
 {
     public string FullName { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }

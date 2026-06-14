@@ -40,7 +40,7 @@ EduGuard dùng **ASP.NET Core Identity** cho tài khoản/mật khẩu/vai trò 
 
 ### 3.1. ApplicationUser
 
-Kế thừa `IdentityUser<int>` — ánh xạ bảng `Users` (schema Identity).
+Kế thừa `IdentityUser` (khóa `string` GUID — mặc định Microsoft Identity) — ánh xạ bảng `Users` (schema Identity).
 
 Field mở rộng (Domain):
 
@@ -56,7 +56,7 @@ Field do Identity quản lý (không tự implement):
 
 | Field | Ý nghĩa |
 |---|---|
-| Id | Khóa chính `int` |
+| Id | Khóa chính `string` (GUID) |
 | UserName / Email | Đăng nhập |
 | PasswordHash | Hash mật khẩu (Identity) |
 | EmailConfirmed | Xác nhận email (tuỳ chọn) |
@@ -70,7 +70,7 @@ Ghi chú:
 
 ### 3.2. Role (Identity)
 
-Dùng `IdentityRole<int>` — bảng `Roles`.
+Dùng `IdentityRole` — bảng `Roles`. Seed `Id` là GUID cố định (`RoleIds` trong Domain).
 
 Seed ban đầu:
 
@@ -91,7 +91,7 @@ Bảng custom — làm mới JWT access token (rotate/revoke).
 | Field | Kiểu | Ý nghĩa |
 |---|---|---|
 | Id | int | Khóa chính |
-| UserId | int | FK → Users (ApplicationUser) |
+| UserId | string | FK → Users (ApplicationUser) |
 | Token | string | Refresh token (hash hoặc random) |
 | ExpiresAt | DateTime | Thời gian hết hạn |
 | CreatedAt | DateTime | Ngày tạo |
@@ -119,7 +119,7 @@ Field đề xuất:
 | Name | string | Tên lớp |
 | Description | string? | Mô tả lớp học |
 | JoinCode | string | Mã tham gia lớp |
-| TeacherId | int | Giáo viên tạo lớp |
+| TeacherId | string | Giáo viên tạo lớp (FK → Users) |
 | CreatedAt | DateTime | Ngày tạo |
 | UpdatedAt | DateTime? | Ngày cập nhật |
 
@@ -142,7 +142,7 @@ Field đề xuất:
 |---|---|---|
 | Id | int | Khóa chính |
 | ClassroomId | int | FK đến Classroom |
-| StudentId | int | FK đến User |
+| StudentId | string | FK đến User (ApplicationUser) |
 | JoinedAt | DateTime | Ngày tham gia |
 | Status | string | Active / Removed |
 
@@ -165,7 +165,7 @@ Field đề xuất:
 |---|---|---|
 | Id | int | Khóa chính |
 | ClassroomId | int | Lớp nhận bài tập |
-| TeacherId | int | Giáo viên tạo |
+| TeacherId | string | Giáo viên tạo |
 | Title | string | Tiêu đề bài tập |
 | Description | string? | Mô tả |
 | Deadline | DateTime? | Hạn nộp |
@@ -189,7 +189,7 @@ Field đề xuất:
 |---|---|---|
 | Id | int | Khóa chính |
 | AssignmentId | int | FK đến Assignment |
-| StudentId | int | Người nộp |
+| StudentId | string | Người nộp |
 | Content | string? | Nội dung bài nộp |
 | Score | decimal? | Điểm |
 | Feedback | string? | Nhận xét giáo viên |
@@ -223,7 +223,7 @@ Field đề xuất:
 |---|---|---|
 | Id | int | Khóa chính |
 | ClassroomId | int | Lớp áp dụng |
-| TeacherId | int | Người tạo đề |
+| TeacherId | string | Người tạo đề |
 | Title | string | Tên đề thi |
 | Description | string? | Mô tả |
 | DurationMinutes | int | Thời gian làm bài |
@@ -306,7 +306,7 @@ Field đề xuất:
 |---|---|---|
 | Id | int | Khóa chính |
 | ExamId | int | FK đến Exam |
-| StudentId | int | Học sinh làm bài |
+| StudentId | string | Học sinh làm bài |
 | StartedAt | DateTime | Thời gian bắt đầu |
 | SubmittedAt | DateTime? | Thời gian nộp |
 | Score | decimal? | Điểm đạt được |
@@ -380,7 +380,7 @@ Field đề xuất:
 | Field | Kiểu | Ý nghĩa |
 |---|---|---|
 | Id | int | Khóa chính |
-| UserId | int | Người nhận |
+| UserId | string | Người nhận |
 | Title | string | Tiêu đề |
 | Message | string | Nội dung |
 | Type | string | Loại thông báo |
@@ -398,7 +398,7 @@ Field đề xuất:
 | Field | Kiểu | Ý nghĩa |
 |---|---|---|
 | Id | int | Khóa chính |
-| UserId | int? | Người thực hiện |
+| UserId | string? | Người thực hiện |
 | Action | string | Hành động |
 | Description | string | Mô tả |
 | IpAddress | string? | IP |
@@ -448,7 +448,7 @@ Nên tạo theo thứ tự:
 
 ```csharp
 public class AppDbContext
-    : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
+    : IdentityDbContext<ApplicationUser>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 

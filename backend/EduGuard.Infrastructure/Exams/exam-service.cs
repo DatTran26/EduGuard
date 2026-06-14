@@ -47,7 +47,7 @@ public class ExamService : IExamService
         _patchAnswerValidator = patchAnswerValidator;
     }
 
-    public async Task<ExamDto> CreateAsync(int classroomId, CreateExamRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<ExamDto> CreateAsync(int classroomId, CreateExamRequest request, string teacherId, CancellationToken ct = default)
     {
         await _createValidator.ValidateAndThrowAsync(request, ct);
         var classroom = await ClassroomAccessHelper.RequireClassroomAsync(_classroomRepository, classroomId, ct);
@@ -73,7 +73,7 @@ public class ExamService : IExamService
     }
 
     public async Task<IReadOnlyList<ExamDto>> GetByClassroomAsync(
-        int classroomId, int userId, IReadOnlyList<string> roles, CancellationToken ct = default)
+        int classroomId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
     {
         var classroom = await ClassroomAccessHelper.RequireClassroomAsync(_classroomRepository, classroomId, ct);
         await ClassroomAccessHelper.EnsureCanAccessClassroomAsync(_classroomRepository, classroom, userId, roles, ct);
@@ -87,13 +87,13 @@ public class ExamService : IExamService
             .ToList();
     }
 
-    public async Task<ExamDto> GetByIdAsync(int examId, int userId, IReadOnlyList<string> roles, CancellationToken ct = default)
+    public async Task<ExamDto> GetByIdAsync(int examId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
     {
         var exam = await RequireAccessibleExamAsync(examId, userId, roles, ct);
         return ExamMapper.MapExam(exam);
     }
 
-    public async Task<ExamDto> UpdateAsync(int examId, UpdateExamRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<ExamDto> UpdateAsync(int examId, UpdateExamRequest request, string teacherId, CancellationToken ct = default)
     {
         await _updateValidator.ValidateAndThrowAsync(request, ct);
         var exam = await RequireTeacherOwnedExamAsync(examId, teacherId, ct);
@@ -105,7 +105,7 @@ public class ExamService : IExamService
         return ExamMapper.MapExam(exam);
     }
 
-    public async Task<ExamDto> PatchAsync(int examId, PatchExamRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<ExamDto> PatchAsync(int examId, PatchExamRequest request, string teacherId, CancellationToken ct = default)
     {
         await _patchValidator.ValidateAndThrowAsync(request, ct);
         var exam = await RequireTeacherOwnedExamAsync(examId, teacherId, ct);
@@ -143,14 +143,14 @@ public class ExamService : IExamService
         return ExamMapper.MapExam(exam);
     }
 
-    public async Task DeleteAsync(int examId, int teacherId, CancellationToken ct = default)
+    public async Task DeleteAsync(int examId, string teacherId, CancellationToken ct = default)
     {
         var exam = await RequireTeacherOwnedExamAsync(examId, teacherId, ct);
         _examRepository.Remove(exam);
         await _examRepository.SaveChangesAsync(ct);
     }
 
-    public async Task<ExamDto> PublishAsync(int examId, int teacherId, CancellationToken ct = default)
+    public async Task<ExamDto> PublishAsync(int examId, string teacherId, CancellationToken ct = default)
     {
         var exam = await RequireTeacherOwnedExamAsync(examId, teacherId, ct);
         if (exam.Questions.Count == 0)
@@ -164,14 +164,14 @@ public class ExamService : IExamService
     }
 
     public async Task<IReadOnlyList<QuestionDto>> GetQuestionsAsync(
-        int examId, int userId, IReadOnlyList<string> roles, CancellationToken ct = default)
+        int examId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
     {
         var exam = await RequireAccessibleExamAsync(examId, userId, roles, ct);
         EnsureQuestionBankAccess(exam, userId, roles);
         return exam.Questions.OrderBy(x => x.OrderIndex).ThenBy(x => x.Id).Select(x => ExamMapper.MapQuestion(x)).ToList();
     }
 
-    public async Task<QuestionDto> AddQuestionAsync(int examId, CreateQuestionRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<QuestionDto> AddQuestionAsync(int examId, CreateQuestionRequest request, string teacherId, CancellationToken ct = default)
     {
         await _createQuestionValidator.ValidateAndThrowAsync(request, ct);
         var exam = await RequireTeacherOwnedExamWithQuestionsAsync(examId, teacherId, ct);
@@ -206,7 +206,7 @@ public class ExamService : IExamService
         return ExamMapper.MapQuestion(saved);
     }
 
-    public async Task<QuestionDto> UpdateQuestionAsync(int questionId, UpdateQuestionRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<QuestionDto> UpdateQuestionAsync(int questionId, UpdateQuestionRequest request, string teacherId, CancellationToken ct = default)
     {
         await _updateQuestionValidator.ValidateAndThrowAsync(request, ct);
         var question = await RequireTeacherOwnedQuestionAsync(questionId, teacherId, ct);
@@ -238,7 +238,7 @@ public class ExamService : IExamService
     }
 
     public async Task<QuestionDto> PatchQuestionAsync(
-        int questionId, PatchQuestionRequest request, int teacherId, CancellationToken ct = default)
+        int questionId, PatchQuestionRequest request, string teacherId, CancellationToken ct = default)
     {
         await _patchQuestionValidator.ValidateAndThrowAsync(request, ct);
         var question = await RequireTeacherOwnedQuestionAsync(questionId, teacherId, ct);
@@ -267,7 +267,7 @@ public class ExamService : IExamService
         return ExamMapper.MapQuestion(saved);
     }
 
-    public async Task DeleteQuestionAsync(int questionId, int teacherId, CancellationToken ct = default)
+    public async Task DeleteQuestionAsync(int questionId, string teacherId, CancellationToken ct = default)
     {
         var question = await RequireTeacherOwnedQuestionAsync(questionId, teacherId, ct);
         var exam = await _examRepository.GetByIdWithDetailsAsync(question.ExamId, ct)
@@ -279,7 +279,7 @@ public class ExamService : IExamService
         await _examRepository.SaveChangesAsync(ct);
     }
 
-    public async Task<AnswerDto> AddAnswerAsync(int questionId, CreateAnswerRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<AnswerDto> AddAnswerAsync(int questionId, CreateAnswerRequest request, string teacherId, CancellationToken ct = default)
     {
         await _createAnswerValidator.ValidateAndThrowAsync(request, ct);
         var question = await RequireTeacherOwnedQuestionAsync(questionId, teacherId, ct);
@@ -299,7 +299,7 @@ public class ExamService : IExamService
         return ExamMapper.MapAnswer(answer);
     }
 
-    public async Task<AnswerDto> UpdateAnswerAsync(int answerId, UpdateAnswerRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<AnswerDto> UpdateAnswerAsync(int answerId, UpdateAnswerRequest request, string teacherId, CancellationToken ct = default)
     {
         await _updateAnswerValidator.ValidateAndThrowAsync(request, ct);
         var answer = await _examRepository.GetAnswerByIdAsync(answerId, ct)
@@ -317,7 +317,7 @@ public class ExamService : IExamService
     }
 
     public async Task<AnswerDto> PatchAnswerAsync(
-        int answerId, PatchAnswerRequest request, int teacherId, CancellationToken ct = default)
+        int answerId, PatchAnswerRequest request, string teacherId, CancellationToken ct = default)
     {
         await _patchAnswerValidator.ValidateAndThrowAsync(request, ct);
         var answer = await _examRepository.GetAnswerByIdAsync(answerId, ct)
@@ -395,7 +395,7 @@ public class ExamService : IExamService
             throw new InvalidOperationException("Thời gian đóng đề phải sau thời gian mở đề.");
     }
 
-    private async Task<Exam> RequireAccessibleExamAsync(int examId, int userId, IReadOnlyList<string> roles, CancellationToken ct)
+    private async Task<Exam> RequireAccessibleExamAsync(int examId, string userId, IReadOnlyList<string> roles, CancellationToken ct)
     {
         var exam = await _examRepository.GetByIdWithDetailsAsync(examId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
@@ -411,7 +411,7 @@ public class ExamService : IExamService
         return exam;
     }
 
-    private async Task<Exam> RequireTeacherOwnedExamAsync(int examId, int teacherId, CancellationToken ct)
+    private async Task<Exam> RequireTeacherOwnedExamAsync(int examId, string teacherId, CancellationToken ct)
     {
         var exam = await _examRepository.GetByIdWithDetailsAsync(examId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
@@ -420,10 +420,10 @@ public class ExamService : IExamService
         return exam;
     }
 
-    private Task<Exam> RequireTeacherOwnedExamWithQuestionsAsync(int examId, int teacherId, CancellationToken ct) =>
+    private Task<Exam> RequireTeacherOwnedExamWithQuestionsAsync(int examId, string teacherId, CancellationToken ct) =>
         RequireTeacherOwnedExamAsync(examId, teacherId, ct);
 
-    private async Task<Question> RequireTeacherOwnedQuestionAsync(int questionId, int teacherId, CancellationToken ct)
+    private async Task<Question> RequireTeacherOwnedQuestionAsync(int questionId, string teacherId, CancellationToken ct)
     {
         var question = await _examRepository.GetQuestionByIdAsync(questionId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy câu hỏi.");
@@ -432,7 +432,7 @@ public class ExamService : IExamService
         return question;
     }
 
-    private static void EnsureQuestionBankAccess(Exam exam, int userId, IReadOnlyList<string> roles)
+    private static void EnsureQuestionBankAccess(Exam exam, string userId, IReadOnlyList<string> roles)
     {
         if (roles.Contains("Admin") || exam.TeacherId == userId)
             return;

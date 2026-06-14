@@ -1,5 +1,38 @@
 # Project Changelog
 
+## Feature: Identity keys — int → string (GUID)
+
+Date: 2026-06-13
+
+Branch/source: local workspace
+
+Description:
+
+- Chuyển ASP.NET Core Identity sang mặc định Microsoft: `IdentityUser` / `IdentityRole` với khóa `string` (GUID).
+- Các FK liên quan user (`TeacherId`, `StudentId`, `UserId` trên Classroom, Assignment, Exam, …) đổi sang `string`.
+- Role seed dùng GUID cố định (`RoleIds.Admin/Teacher/Student`).
+- JWT `NameIdentifier` và API DTO `UserDto.Id` trả GUID string.
+- Migration `20260613065925_ConvertIdentityKeysToString` dùng raw SQL (drop/recreate PK + indexes) vì SQL Server không cho `AlterColumn` trên cột IDENTITY.
+- **Breaking:** DB dev đã drop/recreate; user cũ (id int) không migrate được — cần đăng ký lại.
+
+Changed files:
+
+- `backend/EduGuard.Domain/Entities/ApplicationUser.cs`, `Constants/role-ids.cs`, entity FK fields
+- `backend/EduGuard.Infrastructure/Data/app-db-context.cs`, `dependency-injection.cs`, Auth services, repositories, services
+- `backend/EduGuard.Application/DTOs/**`, service/repository interfaces
+- `backend/EduGuard.Api/Controllers/*.cs`
+- `backend/EduGuard.Infrastructure/Data/Migrations/20260613065925_ConvertIdentityKeysToString.cs`
+- `docs/04_DATABASE_ENTITIES.md`
+
+Validation:
+
+- `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` — 0 errors
+- `dotnet ef database drop --force` + `dotnet ef database update` — applied all migrations including `ConvertIdentityKeysToString`
+
+Unresolved questions:
+
+- Production DB có dữ liệu thật cần script migrate int→GUID riêng (không dùng migration dev hiện tại).
+
 ## Feature: Frontend assignment, exam attempt, and anti-cheat REST workflows
 
 Date: 2026-06-11
