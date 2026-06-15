@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devB`
-**Cập nhật:** 2026-06-15 (Phase 8 SignalR realtime xong: đã có `NotificationHub`, `ExamMonitoringHub`, JWT cho hub qua `access_token`, notifier realtime, frontend notification listener và teacher attempt monitor nhận cảnh báo anti-cheat realtime; Notifications REST/entity vẫn thuộc feature riêng chưa triển khai; dashboard và user/profile vẫn còn bridge/mock ở những phần backend chưa cung cấp endpoint tương ứng)
+**Cập nhật:** 2026-06-15 (đã bổ sung checklist tách Backend/Frontend cho phần cấu hình bài kiểm tra, xử lý timezone Việt Nam và validate trắc nghiệm MVP trước khi test luồng thi thật; Phase 8 SignalR realtime đã xong; Notifications REST/entity, dashboard và user/profile vẫn còn phụ thuộc endpoint backend chưa triển khai)
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -18,7 +18,7 @@
 | 2 | Authentication & Authorization | 🟡 Backend xong, FE auth thật xong; profile/avatar vẫn còn mock |
 | 3 | Classroom Management | 🟡 Backend xong (8/8 API), FE classroom thật xong cho teacher/student; admin còn phụ thuộc giới hạn endpoint BE |
 | 4 | Assignment Management | 🟡 Backend + FE core xong; trạng thái bài nộp của student sau reload còn giới hạn do BE chưa có endpoint lấy bài nộp cá nhân |
-| 5 | Exam Management | 🟡 Backend xong (11/11 API), FE exam thật xong cho list/detail/question bank hiện có |
+| 5 | Exam Management | 🟡 Backend/FE core xong; đang bổ sung cấu hình bài kiểm tra, timezone Việt Nam và validate trắc nghiệm MVP |
 | 6 | Online Testing / Exam Attempt | ✅ Backend + FE core xong (start/resume, save answer, timer, auto submit, result, teacher attempt monitor) |
 | 7 | Anti-cheat Monitoring | ✅ Backend + FE REST cơ bản xong; realtime warning đã xử lý ở Phase 8 |
 | 8 | SignalR Realtime | ✅ Hoàn thành |
@@ -186,7 +186,30 @@
 - [x] UI cấu hình đề thi *(thời gian mở-đóng, anti-cheat, fullscreen, random, max attempts, show result; classroom không còn đổi được sau khi tạo vì backend chưa hỗ trợ)*
 - [x] UI quản lý câu hỏi & đáp án *(Teacher thêm/sửa/xóa câu hỏi qua backend thật; Admin xem được question bank; Student không thấy đáp án ở trang detail)*
 
-**Tiêu chí hoàn thành:** Teacher tạo được đề thi hoàn chỉnh.
+### Backend — Cấu hình bài kiểm tra & trắc nghiệm MVP cần bổ sung
+
+- [ ] Chuẩn hóa timezone bài kiểm tra: database lưu UTC, API trả `StartTime` / `EndTime` theo UTC rõ ràng để frontend không lệch giờ Việt Nam.
+- [ ] Đảm bảo backend kiểm tra thời gian mở/đóng đề bằng `DateTime.UtcNow` và cùng chuẩn UTC đã lưu.
+- [ ] Siết validation cấu hình exam: `DurationMinutes > 0`, `MaxAttempts > 0`, `EndTime > StartTime` khi có đủ hai mốc.
+- [ ] Siết điều kiện publish: đề phải có ít nhất một câu hỏi hợp lệ trước khi publish.
+- [ ] Validate publish cho `SingleChoice`: ít nhất 2 đáp án và đúng chính xác 1 đáp án đúng.
+- [ ] Validate publish cho `MultipleChoice`: ít nhất 2 đáp án và có ít nhất 1 đáp án đúng.
+- [ ] Validate publish cho `TrueFalse`: cố định/chuẩn hóa 2 đáp án Đúng/Sai và đúng chính xác 1 đáp án đúng.
+- [ ] Trả lỗi publish rõ ràng theo từng câu hỏi/cấu hình để frontend hiển thị được nguyên nhân.
+- [ ] Giữ `Question` / `Answer` gắn trực tiếp với `Exam` cho MVP; chưa triển khai `QuestionBank`, import file, chống trùng và batch import ở bước này.
+
+### Frontend — Cấu hình bài kiểm tra & trắc nghiệm MVP cần bổ sung
+
+- [ ] Chuẩn hóa helper `datetime-local`: người dùng nhập giờ Việt Nam, gửi backend theo UTC, khi nhận API hiển thị lại đúng giờ Việt Nam.
+- [ ] Hiển thị nhãn rõ ràng cho lịch thi: `Theo giờ Việt Nam (UTC+7)`.
+- [ ] Tách UI cấu hình bài kiểm tra thành nhóm: thông tin cơ bản, lịch thi, cấu hình làm bài, giám sát.
+- [ ] Thay checkbox `Publish sau khi lưu` bằng hành động rõ ràng hơn: `Lưu nháp` và `Publish đề`.
+- [ ] Hiển thị trạng thái đủ/chưa đủ điều kiện publish trên trang chi tiết đề thi.
+- [ ] Chặn hoặc cảnh báo ở frontend khi cấu hình lịch thi/duration/max attempts không hợp lệ trước khi gửi API.
+- [ ] Hiển thị lỗi publish từ backend theo cách teacher biết cần sửa câu hỏi/cấu hình nào.
+- [ ] Ưu tiên UI quản lý câu hỏi trắc nghiệm trước: một đáp án, nhiều đáp án, đúng/sai; chưa mở rộng tự luận/import file trong bước này.
+
+**Tiêu chí hoàn thành:** Teacher cấu hình được đề trắc nghiệm theo giờ Việt Nam, publish được đề hợp lệ và Student bắt đầu làm bài đúng thời gian mở đề.
 
 ---
 
