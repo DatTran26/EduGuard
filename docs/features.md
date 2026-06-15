@@ -412,10 +412,10 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 - [ ] F-DASH-03 Student dashboard API
 - [ ] F-DASH-04 Class/exam stats
 - [ ] F-DASH-05 Score stats
-- [ ] F-DASH-06 Cheating stats
-- [ ] F-DASH-07 FE Admin
-- [ ] F-DASH-08 FE Teacher
-- [ ] F-DASH-09 FE Student
+- [x] F-DASH-06 Cheating stats
+- [x] F-DASH-07 FE Admin
+- [x] F-DASH-08 FE Teacher
+- [x] F-DASH-09 FE Student
 - [ ] F-DASH-10 Export report
 
 ---
