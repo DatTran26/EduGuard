@@ -62,7 +62,7 @@ public class ClassroomsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateClassroomRequest request)
     {
-        int teacherId = 1; // Sau này lấy từ JWT
+        string teacherId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var result = await _classroomService.CreateAsync(request, teacherId);
         return Ok(result);
     }
@@ -96,7 +96,7 @@ public class ClassroomService : IClassroomService
         _classroomRepository = classroomRepository;
     }
 
-    public async Task<ClassroomDto> CreateAsync(CreateClassroomRequest request, int teacherId)
+    public async Task<ClassroomDto> CreateAsync(CreateClassroomRequest request, string teacherId)
     {
         var classroom = new Classroom
         {
@@ -206,7 +206,7 @@ Ví dụ:
 
 ```csharp
 public class AppDbContext
-    : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
+    : IdentityDbContext<ApplicationUser>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
@@ -344,7 +344,7 @@ Implementation: `backend/EduGuard.Infrastructure/dependency-injection.cs` (class
 
 ```csharp
 // Ví dụ sau Giai đoạn 2 — trong AddInfrastructure, chưa có trong repo
-services.AddIdentity<ApplicationUser, IdentityRole<int>>(...).AddEntityFrameworkStores<AppDbContext>();
+services.AddIdentity<ApplicationUser, IdentityRole>(...).AddEntityFrameworkStores<AppDbContext>();
 services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(...);
 services.AddAuthorization();
 services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -374,7 +374,7 @@ RefreshToken lưu qua DbContext / IRefreshTokenRepository
 |---|---|
 | `UserManager<ApplicationUser>` | Register, đổi mật khẩu, lockout |
 | `SignInManager<ApplicationUser>` | Login, kiểm tra password |
-| `RoleManager<IdentityRole<int>>` | Seed/gán role |
+| `RoleManager<IdentityRole>` | Seed/gán role |
 | `IJwtTokenService` | Access token JWT |
 | `AuthService` | Orchestrate register/login/refresh |
 

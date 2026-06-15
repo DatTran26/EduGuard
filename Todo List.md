@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devH`  
-**Cập nhật:** 2026-06-13 (backend Phase 7 anti-cheat xong; Phase 3–6 backend xong; frontend auth + classroom + exam đã nối backend thật ở các màn hiện có; teacher tạo đề có thể publish ngay khi tạo, thời gian đóng đề tự tính theo thời gian mở + số phút làm bài nhưng vẫn cho chỉnh tay; classroom detail nay đã có assignment thật, student đã có màn làm bài riêng với timer + auto submit, teacher exam detail đã có attempt monitor và anti-cheat REST cơ bản; dashboard và user/profile vẫn còn bridge/mock ở những phần backend chưa cung cấp endpoint tương ứng; role UI đã được giản lược theo hướng title-only cho block/chức năng chính và workspace màu sáng đã rà lại theo design tokens preview; auth session giờ tự refresh token khi role backend đổi để tránh 403 lệch quyền ở các màn Teacher/Admin)  
+**Cập nhật:** 2026-06-15 (backend Phase 7 anti-cheat xong; Phase 3–6 backend xong; frontend auth + classroom + exam đã nối backend thật ở các màn hiện có; Identity/user id hiện dùng string GUID và frontend adapters đã giữ `UserDto.Id`/`TeacherId`/`StudentId` dạng string để không bị ép về `0`; teacher tạo đề có thể publish ngay khi tạo, thời gian đóng đề tự tính theo thời gian mở + số phút làm bài nhưng vẫn cho chỉnh tay; classroom detail nay đã có assignment thật, student đã có màn làm bài riêng với timer + auto submit, teacher exam detail đã có attempt monitor và anti-cheat REST cơ bản; dashboard và user/profile vẫn còn bridge/mock ở những phần backend chưa cung cấp endpoint tương ứng; role UI đã được giản lược theo hướng title-only cho block/chức năng chính và workspace màu sáng đã rà lại theo design tokens preview; auth session giờ tự refresh token khi role backend đổi để tránh 403 lệch quyền ở các màn Teacher/Admin; app shell đã dùng chung cho các role, sidebar lấy menu động theo role và drawer mobile có toggle/overlay/transition trượt từ cạnh trái)
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -41,11 +41,11 @@
 - [x] Tạo React Vite project trong `frontend/`
 - [x] Cấu hình TailwindCSS (deps + `@import "tailwindcss"` trong `index.css`)
 - [x] Cấu hình Swagger (mặc định ASP.NET Core, dev)
-- [x] Cấu hình CORS cho React dev server (`http://localhost:5173`)
+- [x] Cấu hình CORS cho React dev server (`http://localhost:5173`, `http://127.0.0.1:5173`)
 - [x] Tạo `TestController` → `GET /api/Test`
 - [x] React gọi thử `GET /api/test` và hiển thị kết quả JSON
 
-**Tiêu chí hoàn thành:** ✅ Mở React → gọi API → nhận response JSON từ backend (đã verify 2026-06-10).
+**Tiêu chí hoàn thành:** ✅ Mở React → gọi API → nhận response JSON từ backend (đã verify 2026-06-10; local Development HTTP không ép redirect HTTPS để Vite proxy không lỗi Network Error khi login).
 
 ---
 
@@ -55,7 +55,7 @@
 
 ### Domain — Entity
 
-- [x] `ApplicationUser` (kế thừa `IdentityUser<int>`)
+- [x] `ApplicationUser` (kế thừa `IdentityUser` với khóa `string` GUID)
 - [x] `RefreshToken` (custom — rotate/revoke JWT)
 - [x] `Classroom`
 - [x] `ClassroomMember`
@@ -63,7 +63,7 @@
 
 ### Infrastructure
 
-- [x] `AppDbContext` kế thừa `IdentityDbContext<ApplicationUser, IdentityRole<int>, int>`
+- [x] `AppDbContext` kế thừa `IdentityDbContext<ApplicationUser>` với `IdentityRole` khóa `string`
 - [x] Map tên bảng: `Users`, `Roles`, `UserRoles` (tuỳ chọn)
 - [x] Seed roles: Admin, Teacher, Student
 - [x] EF Fluent API: RefreshToken, Classroom, ClassroomMember
@@ -104,9 +104,10 @@
 - [x] Trang hồ sơ cá nhân và cập nhật thông tin *(phiên đăng nhập lấy từ `GET /api/auth/me`; màn hồ sơ hiện vẫn dùng mock users API; đã hỗ trợ upload avatar từ máy và preview trước khi lưu)*
 - [x] Popup toast toàn app cho thông báo thao tác/lỗi *(góc trên bên phải, tự ẩn sau 3 giây, đã thêm thông báo đăng nhập/đăng xuất thành công)*
 - [x] Đồng bộ session backend vào app mock hiện tại *(user đăng nhập backend thật vẫn dùng tiếp được classroom/dashboard/exam đang còn mock; khi role đổi trong DB, app sẽ tự refresh token để claim quyền khớp lại với `/api/auth/me`)*
-- [x] Layout dùng chung cho khu đăng nhập theo vai trò *(đã bỏ navbar trên cùng cũ, đưa header workspace mới lên trên, thêm dropdown người dùng, dùng logo nền trong suốt `public/logo-transparent.png`, bỏ cờ Việt Nam, bỏ nút 3 gạch cạnh logo, thêm dấu `v` cho card cá nhân, phóng logo top bar ngang chiều cao chữ, dọn menu/sidebar Admin và rút sidebar còn điều hướng; dropdown cá nhân đã bật/tắt được chế độ tối thật cho khu vực app đã đăng nhập)*
+- [x] Tương thích Identity string GUID *(session chấp nhận `UserDto.Id` dạng string; classroom/exam/assignment/attempt/anti-cheat adapters giữ `TeacherId`/`StudentId` dạng string để so sánh quyền và cache không bị sai)*
+- [x] Layout dùng chung cho khu đăng nhập theo vai trò *(đã bỏ navbar trên cùng cũ, đưa header workspace mới lên trên, thêm dropdown người dùng, dùng logo nền trong suốt `public/logo-transparent.png`, bỏ cờ Việt Nam, thêm dấu `v` cho card cá nhân, phóng logo top bar ngang chiều cao chữ, dọn menu/sidebar Admin và rút sidebar còn điều hướng; AppShell hiện dùng chung cho mọi role, menu bên trái lấy động từ role config, nút 3 gạch mở/đóng drawer mobile, overlay mờ click để đóng, panel trượt từ cạnh trái bằng transform/transition; dropdown cá nhân đã bật/tắt được chế độ tối thật cho khu vực app đã đăng nhập)*
 
-**Tiêu chí hoàn thành:** Đăng ký → đăng nhập → nhận JWT → gọi API được bảo vệ.
+**Tiêu chí hoàn thành:** Đăng ký → đăng nhập → nhận JWT → gọi API được bảo vệ; auth E2E qua Vite proxy đã verify 2026-06-15 sau migration Identity string.
 
 ---
 

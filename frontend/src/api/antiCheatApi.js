@@ -1,5 +1,5 @@
 import axiosClient from "./axiosClient";
-import { requestApi } from "./apiHelpers";
+import { normalizeUserId, requestApi } from "./apiHelpers";
 import { normalizeAntiCheatEventType } from "../features/anti-cheat/antiCheatHelpers";
 
 // INTEGRATION STATUS:
@@ -21,7 +21,7 @@ function normalizeCheatingLogDto(logItem) {
 function normalizeAttemptSummaryDto(attempt) {
   return {
     attemptId: Number(attempt?.attemptId) || 0,
-    studentId: Number(attempt?.studentId) || 0,
+    studentId: normalizeUserId(attempt?.studentId),
     studentName: attempt?.studentName ?? "",
     suspicionScore: Number(attempt?.suspicionScore) || 0,
     logCount: Number(attempt?.logCount) || 0,

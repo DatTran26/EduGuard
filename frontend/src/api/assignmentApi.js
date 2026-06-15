@@ -1,5 +1,5 @@
 import axiosClient from "./axiosClient";
-import { requestApi } from "./apiHelpers";
+import { normalizeUserId, requestApi } from "./apiHelpers";
 
 // INTEGRATION STATUS:
 // - File này đã map sẵn toàn bộ assignment endpoints thật của backend.
@@ -9,7 +9,7 @@ function normalizeAssignmentDto(assignment) {
   return {
     id: Number(assignment?.id) || 0,
     classroomId: Number(assignment?.classroomId) || 0,
-    teacherId: Number(assignment?.teacherId) || 0,
+    teacherId: normalizeUserId(assignment?.teacherId),
     title: assignment?.title ?? "",
     description: assignment?.description ?? "",
     deadline: assignment?.deadline ?? null,
@@ -23,7 +23,7 @@ function normalizeSubmissionDto(submission) {
   return {
     id: Number(submission?.id) || 0,
     assignmentId: Number(submission?.assignmentId) || 0,
-    studentId: Number(submission?.studentId) || 0,
+    studentId: normalizeUserId(submission?.studentId),
     studentName: submission?.studentName ?? "",
     studentEmail: submission?.studentEmail ?? "",
     content: submission?.content ?? "",

@@ -41,8 +41,33 @@ function DropdownChevronIcon({ isOpen }) {
   );
 }
 
+function MenuToggleIcon({ isOpen }) {
+  return (
+    <span aria-hidden="true" className="relative block h-5 w-5 text-current">
+      <span
+        className={cn(
+          "absolute left-0 top-[3px] h-[2px] w-5 rounded-full bg-current transition-all duration-200 ease-out",
+          isOpen && "top-1/2 -translate-y-1/2 rotate-45",
+        )}
+      />
+      <span
+        className={cn(
+          "absolute left-0 top-1/2 h-[2px] w-5 -translate-y-1/2 rounded-full bg-current transition-all duration-150 ease-out",
+          isOpen && "opacity-0",
+        )}
+      />
+      <span
+        className={cn(
+          "absolute left-0 top-[15px] h-[2px] w-5 rounded-full bg-current transition-all duration-200 ease-out",
+          isOpen && "top-1/2 -translate-y-1/2 -rotate-45",
+        )}
+      />
+    </span>
+  );
+}
+
 // Component này là header chính của khu đã đăng nhập, gom logo, user menu và hành động đăng xuất.
-export default function TopBar() {
+export default function TopBar({ isSidebarOpen = false, onToggleSidebar }) {
   const navigate = useNavigate();
   const userMenuRef = useRef(null);
   const { logout, user } = useAuth();
@@ -155,6 +180,17 @@ export default function TopBar() {
     <header className="eg-shell-panel rounded-[32px] px-5 py-5 md:px-6">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] xl:items-center">
         <div className="flex min-w-0 items-center gap-3">
+          <button
+            aria-controls="app-sidebar"
+            aria-expanded={isSidebarOpen}
+            aria-label={isSidebarOpen ? "Đóng menu điều hướng" : "Mở menu điều hướng"}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border border-border bg-surface text-primary transition-all duration-200 ease-out hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tertiary focus-visible:ring-offset-2 focus-visible:ring-offset-neutral lg:hidden"
+            type="button"
+            onClick={onToggleSidebar}
+          >
+            <MenuToggleIcon isOpen={isSidebarOpen} />
+          </button>
+
           <div
             className={cn(
               "flex shrink-0 items-center justify-center overflow-hidden transition-all duration-200",

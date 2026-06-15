@@ -1,3 +1,4 @@
+import { areUserIdsEqual } from "./apiHelpers";
 import {
   appendActivityLog,
   buildApiResponse,
@@ -31,7 +32,7 @@ function updateCurrentUserProfile(database, currentUser, payload) {
 
   const normalizedEmail = normalizeEmail(payload.email);
   const emailExists = database.users.some(
-    (user) => normalizeEmail(user.email) === normalizedEmail && user.id !== currentUser.id,
+    (user) => normalizeEmail(user.email) === normalizedEmail && !areUserIdsEqual(user.id, currentUser.id),
   );
 
   if (emailExists) {

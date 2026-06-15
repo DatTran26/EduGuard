@@ -1,5 +1,155 @@
 # Project Changelog
 
+## Bug fix: Local login Network Error from HTTPS redirect
+
+Date: 2026-06-15
+
+Branch/source: `devH`
+
+Description:
+
+- **Bug fix:** Sửa lỗi frontend login có thể báo axios `Network Error` khi Vite proxy gọi backend HTTP local `5157` nhưng ASP.NET Core redirect request sang HTTPS dev port `7168`.
+- Giữ `UseHttpsRedirection` cho môi trường ngoài Development, nhưng không ép redirect trong Development để proxy `/api` dùng HTTP local trả response trực tiếp.
+- Bổ sung CORS origin `http://127.0.0.1:5173` bên cạnh `http://localhost:5173` để frontend mở bằng loopback IP vẫn hợp lệ nếu gọi API trực tiếp.
+- Cập nhật checklist Phase 0 để phản ánh cấu hình CORS/local HTTP hiện tại.
+
+Changed files:
+
+- `backend/EduGuard.Api/Program.cs`
+- `backend/EduGuard.Api/appsettings.json`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore --configuration Release` — 0 warnings, 0 errors.
+- Local smoke test with `ASPNETCORE_ENVIRONMENT=Development` on `http://127.0.0.1:5057/api/Test` — `HTTP/1.1 200 OK`, no `307 Location` HTTPS redirect.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore` — 0 warnings, 0 errors.
+- `npm test` — passed.
+
+Unresolved questions:
+
+- If the API is already running from Visual Studio or an old terminal, restart that backend process so the updated Development redirect behavior is loaded.
+
+## Bug fix: FE auth API 500 during login
+
+Date: 2026-06-15
+
+Branch/source: `devH`
+
+Description:
+
+- Xác định lỗi FE báo `500 (API)` khi đăng nhập đến từ chuỗi local dev, không phải form login: Vite proxy đang trỏ HTTPS `7168` trong khi backend chạy được bằng HTTP `5157`, backend local có thể fail vì Windows EventLog provider, và database `EduGuardExam` chưa apply migration Identity key string.
+- Sửa Vite dev proxy mặc định sang `http://127.0.0.1:5157`, vẫn cho override bằng `VITE_API_PROXY_TARGET` khi cần chạy HTTPS.
+- Tách Vite optimizer cache vào `temp/vite-cache`, với cache development theo process để tránh lỗi Windows `EPERM unlink` trên cache cũ bị lock.
+- Sửa logging backend để dùng Console/Debug thay vì default Windows EventLog provider, tránh request API chết khi user hiện tại không ghi được `.NET Runtime` event log source.
+- Bổ sung `Encrypt=False` vào connection string SQL Server local hiện tại để tránh SqlClient/ODBC mặc định bật encryption trong môi trường dev.
+- Apply migration `20260613065925_ConvertIdentityKeysToString` lên DB local `EduGuardExam`, đổi `Users.Id` và `Roles.Id` từ `int IDENTITY` sang `nvarchar(450)` để khớp code `IdentityUser` string GUID.
+
+Changed files:
+
+- `.gitignore`
+- `backend/EduGuard.Api/Program.cs`
+- `backend/EduGuard.Api/appsettings.json`
+- `frontend/vite.config.js`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore` — 0 warnings, 0 errors
+- `sqlcmd` migration/schema check — `20260613065925_ConvertIdentityKeysToString` applied; `Users.Id` and `Roles.Id` are `nvarchar`, `IsIdentity = 0`
+- `temp\dotnet-tools\dotnet-ef.exe database update --project backend\EduGuard.Infrastructure\EduGuard.Infrastructure.csproj --startup-project backend\EduGuard.Api\EduGuard.Api.csproj` — applied migration successfully
+- Direct backend E2E on `http://localhost:5157`: `POST /api/auth/register` 200, `POST /api/auth/login` 200
+- Vite proxy E2E on `http://127.0.0.1:5173/api`: register 200, login 200
+- `npm --prefix frontend run lint` — passed
+- `npm --prefix frontend run build` — passed
+
+Unresolved questions:
+
+- Migration `ConvertIdentityKeysToString` intentionally deletes dev auth/classroom/exam data before changing Identity keys; old local users must be registered again.
+- HTTPS profile `7168` still requires a trusted ASP.NET dev certificate if the team chooses to set `VITE_API_PROXY_TARGET=https://127.0.0.1:7168`.
+
+## Bug fix: Identity string user ID compatibility
+
+Date: 2026-06-15
+
+Branch/source: `devH`
+
+Description:
+
+- Rà lại tác động của migration Identity key từ `int` sang `string` GUID trên backend và frontend integration.
+- Backend source hiện đã dùng `string` cho `UserDto.Id`, `TeacherId`, `StudentId`, service/repository signatures và JWT `NameIdentifier`; các `IdentityRole<int>` còn lại chỉ nằm trong migration lịch sử cũ.
+- Sửa frontend API adapters không ép `UserDto.Id`, `TeacherId`, `StudentId` qua `Number(...)`, tránh GUID bị biến thành `0` làm sai quyền Teacher, danh sách member, submission, attempt monitor và anti-cheat summary.
+- Sửa session guard để user id dạng GUID string vẫn hợp lệ sau khi reload, và giữ lại backend auth id khi update profile/avatar qua mock profile bridge.
+- Sửa cache submission theo student để dùng key string user id thay vì `Number(userId)`.
+- Sửa các so sánh user id trong dashboard/profile/mock bridge qua helper string-safe để dữ liệu localStorage cũ không lệch quyền khi lẫn numeric string/GUID.
+- Cập nhật tài liệu backend/feature/roadmap hiện hành sang Identity string key để không hướng dẫn sai contract mới.
+
+Changed files:
+
+- `frontend/src/api/apiHelpers.js`
+- `frontend/src/api/authApi.js`
+- `frontend/src/api/classroomApi.js`
+- `frontend/src/api/assignmentApi.js`
+- `frontend/src/api/examApi.js`
+- `frontend/src/api/examAttemptApi.js`
+- `frontend/src/api/antiCheatApi.js`
+- `frontend/src/api/dashboardApi.js`
+- `frontend/src/api/mockDatabase.js`
+- `frontend/src/api/userApi.js`
+- `frontend/src/hooks/useAuth.jsx`
+- `frontend/src/features/assignments/assignmentHelpers.js`
+- `docs/01_PROJECT_OVERVIEW.md`
+- `docs/02_SETUP_AND_PROJECT_STRUCTURE.md`
+- `docs/03_BACKEND_ARCHITECTURE.md`
+- `docs/06_DEVELOPMENT_ROADMAP.md`
+- `docs/features.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `rg` scan for backend `int` user id assumptions — no active source matches outside historical migrations.
+- `npm --prefix frontend run lint` — passed
+- `npm --prefix frontend run build` — passed
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore --configuration Release` — 0 warnings, 0 errors
+- `npm test` — passed after allowing NuGet restore
+
+Unresolved questions:
+
+- Frontend profile/user management vẫn dùng mock bridge cho phần backend chưa có endpoint profile/avatar thật; bridge hiện giữ backend GUID auth id trong session.
+
+## Feature: Shared role sidebar layout and drawer motion
+
+Date: 2026-06-15
+
+Branch/source: `devH`
+
+Description:
+
+- Tách layout đăng nhập về một `AppShell` dùng chung, để sidebar/menu không còn được khai báo lặp theo từng role route group.
+- Giữ menu bên trái được quản lý động bằng `getNavigationItemsByRole`, đồng thời truyền nhãn role vào sidebar để người dùng nhận biết đúng workspace hiện tại.
+- Bổ sung nút menu 3 gạch trên top bar với trạng thái mở/đóng rõ ràng, `aria-expanded`, và icon chuyển động theo state.
+- Tách overlay và panel sidebar thành hai lớp riêng: click overlay mờ đóng drawer, panel trượt từ sát mép trái bằng transform/opacity transition và khóa scroll nền khi mở.
+- Thêm xử lý đóng drawer khi đổi route hoặc bấm Escape để trải nghiệm mobile/tablet ổn định hơn.
+
+Changed files:
+
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/components/layout/AppShell.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint` — passed
+- `npm --prefix frontend run build` — passed
+
+Unresolved questions:
+
+- Chưa có kiểm thử tự động bằng viewport/screenshot cho drawer mobile; đã giữ thay đổi trong phạm vi layout hiện có.
+
 ## Feature: Identity keys — int → string (GUID)
 
 Date: 2026-06-13

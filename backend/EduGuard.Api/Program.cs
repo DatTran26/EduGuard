@@ -9,6 +9,12 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Avoid the Windows EventLog provider breaking local API requests when the
+// current user cannot write to the .NET Runtime event log source.
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -48,7 +54,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? new[] { "http://localhost:5173" };
+    ?? new[] { "http://localhost:5173", "http://127.0.0.1:5173" };
 
 builder.Services.AddCors(options =>
 {
@@ -68,7 +74,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("FrontendPolicy");
 
 app.UseAuthentication();

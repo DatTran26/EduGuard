@@ -1,4 +1,5 @@
 import axiosClient from "./axiosClient";
+import { normalizeUserId } from "./apiHelpers";
 
 const DEFAULT_ROLE = "Student";
 const ROLE_PRIORITY = ["Admin", "Teacher", "Student"];
@@ -19,7 +20,7 @@ function normalizeAuthUser(user) {
   const roles = Array.isArray(user?.roles) ? user.roles.filter(Boolean) : [];
 
   return {
-    id: Number(user?.id) || 0,
+    id: normalizeUserId(user?.id),
     fullName: user?.fullName ?? "",
     email: user?.email ?? "",
     roles,

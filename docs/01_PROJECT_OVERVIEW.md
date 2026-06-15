@@ -491,8 +491,8 @@ Có thể chia thành các nhóm:
 ## 7.1. Nhóm User / Auth
 
 ```txt
-ApplicationUser (IdentityUser<int>)
-IdentityRole<int> + AspNetUserRoles (Identity)
+ApplicationUser (IdentityUser, string GUID key)
+IdentityRole + AspNetUserRoles (Identity string key)
 RefreshToken
 ```
 

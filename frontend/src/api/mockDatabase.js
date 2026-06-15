@@ -1,4 +1,5 @@
 import { getStoredRefreshToken, getStoredUser } from "../utils/tokenStorage";
+import { areUserIdsEqual } from "./apiHelpers";
 
 // MOCK STATUS:
 // - Đây là mock database trung tâm của frontend, đang lưu toàn bộ dữ liệu bằng localStorage.
@@ -697,7 +698,7 @@ export function toUserDto(user) {
 function buildShadowUserFromSession(database, storedUser) {
   const normalizedEmail = normalizeEmail(storedUser.email ?? "");
   const preferredUserId = Number(storedUser.id) || getNextNumericId(database.users);
-  const nextUserId = database.users.some((user) => user.id === preferredUserId)
+  const nextUserId = database.users.some((user) => areUserIdsEqual(user.id, preferredUserId))
     ? getNextNumericId(database.users)
     : preferredUserId;
 
@@ -734,7 +735,7 @@ function applyStoredUserSnapshot(targetUser, storedUser) {
 
 // Hàm này đồng bộ user trong session sang mock DB để các module chưa nối backend vẫn dùng tiếp được.
 function syncStoredUserIntoMockDatabase(database, storedUser) {
-  const matchedById = database.users.find((user) => user.id === storedUser.id);
+  const matchedById = database.users.find((user) => areUserIdsEqual(user.id, storedUser.id));
 
   if (matchedById) {
     applyStoredUserSnapshot(matchedById, storedUser);
@@ -872,11 +873,11 @@ export function revokeRefreshToken(database, refreshToken) {
 
 // Hàm này gộp teacher và student thành danh sách thành viên mà UI có thể hiển thị trực tiếp.
 export function buildClassroomMembers(classroom, database) {
-  const teacher = database.users.find((user) => user.id === classroom.teacherId);
+  const teacher = database.users.find((user) => areUserIdsEqual(user.id, classroom.teacherId));
   const activeMembers = database.classroomMembers
     .filter((member) => member.classroomId === classroom.id && member.status === "Active")
     .map((member) => {
-      const student = database.users.find((user) => user.id === member.studentId);
+      const student = database.users.find((user) => areUserIdsEqual(user.id, member.studentId));
 
       if (!student) {
         return null;
@@ -922,27 +923,27 @@ export function canUserViewClassroom(currentUser, classroom, database) {
   }
 
   if (currentUser.role === "Teacher") {
-    return classroom.teacherId === currentUser.id;
+    return areUserIdsEqual(classroom.teacherId, currentUser.id);
   }
 
   return database.classroomMembers.some(
     (member) =>
       member.classroomId === classroom.id &&
-      member.studentId === currentUser.id &&
+      areUserIdsEqual(member.studentId, currentUser.id) &&
       member.status === "Active",
   );
 }
 
 // Hàm này dựng DTO classroom để page chỉ việc render mà không phải tự nối quan hệ thủ công.
 export function toClassroomDto(classroom, database, currentUser) {
-  const teacher = database.users.find((user) => user.id === classroom.teacherId);
+  const teacher = database.users.find((user) => areUserIdsEqual(user.id, classroom.teacherId));
   const members = buildClassroomMembers(classroom, database);
   const isJoined =
     currentUser?.role === "Student"
       ? database.classroomMembers.some(
           (member) =>
             member.classroomId === classroom.id &&
-            member.studentId === currentUser.id &&
+            areUserIdsEqual(member.studentId, currentUser.id) &&
             member.status === "Active",
         )
       : false;
@@ -959,8 +960,8 @@ export function toClassroomDto(classroom, database, currentUser) {
     memberCount: members.length,
     members,
     isJoined,
-    canEdit: currentUser?.role === "Teacher" && currentUser.id === classroom.teacherId,
-    canDelete: currentUser?.role === "Teacher" && currentUser.id === classroom.teacherId,
+    canEdit: currentUser?.role === "Teacher" && areUserIdsEqual(currentUser.id, classroom.teacherId),
+    canDelete: currentUser?.role === "Teacher" && areUserIdsEqual(currentUser.id, classroom.teacherId),
   };
 }
 
@@ -1017,7 +1018,7 @@ export function rotateRefreshToken(database, currentRefreshToken) {
 export function buildRefreshResponse(database, currentRefreshToken) {
   const nextRefreshToken = rotateRefreshToken(database, currentRefreshToken);
   const tokenRecord = database.refreshTokens.find((tokenItem) => tokenItem.token === nextRefreshToken);
-  const user = database.users.find((userItem) => userItem.id === tokenRecord?.userId);
+  const user = database.users.find((userItem) => areUserIdsEqual(userItem.id, tokenRecord?.userId));
 
   if (!user) {
     throw createApiError("Không tìm thấy người dùng của refresh token.", 404);

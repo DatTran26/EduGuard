@@ -1,3 +1,4 @@
+import { areUserIdsEqual } from "./apiHelpers";
 import {
   buildApiResponse,
   createApiError,
@@ -53,7 +54,7 @@ function buildRecentActivities(database) {
     })
     .slice(0, 6)
     .map((logItem) => {
-      const actor = database.users.find((user) => user.id === logItem.userId);
+      const actor = database.users.find((user) => areUserIdsEqual(user.id, logItem.userId));
 
       return {
         id: logItem.id,
@@ -204,7 +205,7 @@ function buildHighRiskStudents(database, teacherExamIds) {
 
   return Object.values(groupedStudents)
     .map((studentRiskItem) => {
-      const student = database.users.find((user) => user.id === studentRiskItem.studentId);
+      const student = database.users.find((user) => areUserIdsEqual(user.id, studentRiskItem.studentId));
 
       return {
         id: studentRiskItem.studentId,
@@ -272,13 +273,13 @@ function buildTeacherUpcomingExams(database, teacherExams) {
 // Hàm này dựng dashboard cho teacher bằng cách lọc các bảng thuộc quyền của giảng viên hiện tại.
 function buildTeacherDashboardData(database, currentUser) {
   const managedClassrooms = database.classrooms.filter(
-    (classroom) => classroom.teacherId === currentUser.id,
+    (classroom) => areUserIdsEqual(classroom.teacherId, currentUser.id),
   );
   const classroomIds = managedClassrooms.map((classroom) => classroom.id);
   const teacherAssignments = database.assignments.filter(
-    (assignment) => assignment.teacherId === currentUser.id,
+    (assignment) => areUserIdsEqual(assignment.teacherId, currentUser.id),
   );
-  const teacherExams = database.exams.filter((exam) => exam.teacherId === currentUser.id);
+  const teacherExams = database.exams.filter((exam) => areUserIdsEqual(exam.teacherId, currentUser.id));
   const teacherExamIds = teacherExams.map((exam) => exam.id);
   const teacherAttempts = database.examAttempts.filter((attempt) => teacherExamIds.includes(attempt.examId));
   const studentIds = [
@@ -352,14 +353,14 @@ function buildStudentClassProgress(database, currentUser, joinedClassrooms) {
     );
     const submissionCount = database.submissions.filter(
       (submission) =>
-        submission.studentId === currentUser.id &&
+        areUserIdsEqual(submission.studentId, currentUser.id) &&
         classroomAssignments.some((assignment) => assignment.id === submission.assignmentId),
     ).length;
     const classroomExams = database.exams.filter((exam) => exam.classroomId === classroom.id);
     const attemptScores = database.examAttempts
       .filter(
         (attempt) =>
-          attempt.studentId === currentUser.id &&
+          areUserIdsEqual(attempt.studentId, currentUser.id) &&
           classroomExams.some((exam) => exam.id === attempt.examId) &&
           typeof attempt.score === "number",
       )
@@ -382,7 +383,7 @@ function buildStudentClassProgress(database, currentUser, joinedClassrooms) {
 // Hàm này gom kết quả gần đây của student để dashboard có khu vực theo dõi điểm số.
 function buildStudentRecentResults(database, currentUser) {
   return database.examAttempts
-    .filter((attempt) => attempt.studentId === currentUser.id && typeof attempt.score === "number")
+    .filter((attempt) => areUserIdsEqual(attempt.studentId, currentUser.id) && typeof attempt.score === "number")
     .sort((firstAttempt, secondAttempt) => {
       return new Date(secondAttempt.submittedAt) - new Date(firstAttempt.submittedAt);
     })
@@ -404,7 +405,7 @@ function buildStudentRecentResults(database, currentUser) {
 // Hàm này dựng dashboard cho student từ các lớp đã tham gia, bài tập chưa nộp và kết quả thi.
 function buildStudentDashboardData(database, currentUser) {
   const joinedMemberships = database.classroomMembers.filter(
-    (member) => member.studentId === currentUser.id && member.status === "Active",
+    (member) => areUserIdsEqual(member.studentId, currentUser.id) && member.status === "Active",
   );
   const joinedClassIds = joinedMemberships.map((member) => member.classroomId);
   const joinedClassrooms = database.classrooms.filter((classroom) => joinedClassIds.includes(classroom.id));
@@ -412,9 +413,11 @@ function buildStudentDashboardData(database, currentUser) {
     joinedClassIds.includes(assignment.classroomId),
   );
   const studentSubmissions = database.submissions.filter(
-    (submission) => submission.studentId === currentUser.id,
+    (submission) => areUserIdsEqual(submission.studentId, currentUser.id),
   );
-  const studentExamAttempts = database.examAttempts.filter((attempt) => attempt.studentId === currentUser.id);
+  const studentExamAttempts = database.examAttempts.filter((attempt) =>
+    areUserIdsEqual(attempt.studentId, currentUser.id),
+  );
   const scoredAttempts = studentExamAttempts
     .map((attempt) => attempt.score)
     .filter((scoreValue) => typeof scoreValue === "number");
@@ -435,7 +438,7 @@ function buildStudentDashboardData(database, currentUser) {
     upcomingItems: buildStudentUpcomingItems(database, joinedClassIds),
     recentResults: buildStudentRecentResults(database, currentUser),
     notifications: database.notifications
-      .filter((notification) => notification.userId === currentUser.id)
+      .filter((notification) => areUserIdsEqual(notification.userId, currentUser.id))
       .sort((firstNotification, secondNotification) => {
         return new Date(secondNotification.createdAt) - new Date(firstNotification.createdAt);
       })

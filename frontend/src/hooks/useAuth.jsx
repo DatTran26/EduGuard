@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { authApi } from "../api/authApi";
 import { userApi } from "../api/userApi";
+import { normalizeUserId } from "../api/apiHelpers";
 import {
   clearStoredTokens,
   clearStoredUser,
@@ -26,9 +27,9 @@ function hasValidStoredSessionShape() {
   const accessToken = getStoredAccessToken();
 
   return Boolean(
-    storedUser &&
+      storedUser &&
       accessToken &&
-      typeof storedUser.id === "number" &&
+      normalizeUserId(storedUser.id).length > 0 &&
       typeof storedUser.email === "string" &&
       typeof storedUser.role === "string",
   );
@@ -238,10 +239,8 @@ export function AuthProvider({ children }) {
   // Hàm này cập nhật hồ sơ cá nhân xong thì đồng bộ lại session user đang lưu ở local.
   async function updateProfile(payload) {
     const response = await userApi.updateMyProfile(payload);
-    const nextUser = {
-      ...response.data,
-      roles: getUserRoles(session.user),
-    };
+    const nextUser = mergeHydratedUserProfile(session.user, response.data);
+    nextUser.roles = getUserRoles(session.user);
 
     persistUserOnly(nextUser);
     setSession((previousSession) => ({

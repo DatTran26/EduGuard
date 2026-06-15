@@ -1,5 +1,11 @@
 import axiosClient from "./axiosClient";
-import { getCurrentSessionUser, hasAnyRole, requestApi } from "./apiHelpers";
+import {
+  areUserIdsEqual,
+  getCurrentSessionUser,
+  hasAnyRole,
+  normalizeUserId,
+  requestApi,
+} from "./apiHelpers";
 
 // INTEGRATION STATUS:
 // - File này đã nối classroom API thật của backend cho teacher/student/admin theo các endpoint hiện có.
@@ -14,13 +20,13 @@ function normalizeClassroomDto(classroom, currentUser, memberCount = null) {
     name: classroom?.name ?? "",
     description: classroom?.description ?? "",
     joinCode: classroom?.joinCode ?? "",
-    teacherId: Number(classroom?.teacherId) || 0,
+    teacherId: normalizeUserId(classroom?.teacherId),
     teacherName: classroom?.teacherName ?? "Giảng viên chưa xác định",
     createdAt: classroom?.createdAt ?? null,
     updatedAt: classroom?.createdAt ?? null,
     memberCount: normalizedMemberCount,
     canEdit:
-      currentUser?.role === "Teacher" && Number(currentUser.id) === Number(classroom?.teacherId),
+      currentUser?.role === "Teacher" && areUserIdsEqual(currentUser.id, classroom?.teacherId),
     isJoined: currentUser?.role === "Student",
   };
 }
@@ -40,7 +46,7 @@ function normalizeMemberStatus(status) {
 function normalizeClassroomMemberDto(member) {
   return {
     id: Number(member?.id) || 0,
-    studentId: Number(member?.studentId) || 0,
+    studentId: normalizeUserId(member?.studentId),
     fullName: member?.fullName ?? "",
     email: member?.email ?? "",
     joinedAt: member?.joinedAt ?? null,
