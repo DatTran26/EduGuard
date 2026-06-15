@@ -669,12 +669,32 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 
 ## Kiểm thử hệ thống (QA)
 
-Checklist thực hiện & giám sát:
+Checklist thực hiện & giám sát — **master** + **16 file chi tiết** (~1.116 TC):
 
-- [ ] [`docs/test-checklists/eduguard-system-test-checklist.md`](docs/test-checklists/eduguard-system-test-checklist.md) — master ~332 TC toàn hệ thống
-- [ ] [`docs/test-checklists/dashboard-reporting-system-test-checklist.md`](docs/test-checklists/dashboard-reporting-system-test-checklist.md) — chi tiết Dashboard (78 TC)
+- [ ] [`docs/test-checklists/eduguard-system-test-checklist.md`](docs/test-checklists/eduguard-system-test-checklist.md) — master (tiến độ + smoke + sign-off)
+- [ ] [`docs/test-checklists/README.md`](docs/test-checklists/README.md) — mục lục đầy đủ
+
+**File chi tiết theo module:**
+
+- [ ] [`system-infrastructure-system-test-checklist.md`](docs/test-checklists/system-infrastructure-system-test-checklist.md) — §0 System (50 TC)
+- [ ] [`database-entity-system-test-checklist.md`](docs/test-checklists/database-entity-system-test-checklist.md) — §1 Database (56 TC)
+- [ ] [`authentication-system-test-checklist.md`](docs/test-checklists/authentication-system-test-checklist.md) — §2 Auth (85 TC)
+- [ ] [`user-management-system-test-checklist.md`](docs/test-checklists/user-management-system-test-checklist.md) — §3 User (62 TC)
+- [ ] [`classroom-system-test-checklist.md`](docs/test-checklists/classroom-system-test-checklist.md) — §4 Classroom (79 TC)
+- [ ] [`assignment-system-test-checklist.md`](docs/test-checklists/assignment-system-test-checklist.md) — §5 Assignment (78 TC)
+- [ ] [`exam-management-system-test-checklist.md`](docs/test-checklists/exam-management-system-test-checklist.md) — §6 Exam (88 TC)
+- [ ] [`exam-attempt-system-test-checklist.md`](docs/test-checklists/exam-attempt-system-test-checklist.md) — §7 Attempt (95 TC)
+- [ ] [`anti-cheat-system-test-checklist.md`](docs/test-checklists/anti-cheat-system-test-checklist.md) — §8 Anti-cheat (73 TC)
+- [ ] [`notification-system-test-checklist.md`](docs/test-checklists/notification-system-test-checklist.md) — §9 Notification (58 TC)
+- [ ] [`dashboard-reporting-system-test-checklist.md`](docs/test-checklists/dashboard-reporting-system-test-checklist.md) — §10 Dashboard (78 TC)
+- [ ] [`signalr-realtime-system-test-checklist.md`](docs/test-checklists/signalr-realtime-system-test-checklist.md) — §11 SignalR (67 TC)
+- [ ] [`redis-cache-system-test-checklist.md`](docs/test-checklists/redis-cache-system-test-checklist.md) — §12 Redis (60 TC)
+- [ ] [`logging-activity-system-test-checklist.md`](docs/test-checklists/logging-activity-system-test-checklist.md) — §13 Logging (49 TC)
+- [ ] [`docker-deploy-system-test-checklist.md`](docs/test-checklists/docker-deploy-system-test-checklist.md) — §14 Docker (58 TC)
+- [ ] [`cross-cutting-system-test-checklist.md`](docs/test-checklists/cross-cutting-system-test-checklist.md) — §X Cross-cutting (80 TC)
+
 - [ ] Smoke hệ thống (mục cuối file master) trước mỗi build
-- [ ] Cập nhật bảng tiến độ + defect log trong file master sau mỗi phiên QA
+- [ ] Cập nhật bảng tiến độ + defect log sau mỗi phiên QA
 
 ---
 

@@ -1,11 +1,12 @@
 # Dashboard & Reporting — System Test Checklist
 
+> **Submodule** của [`eduguard-system-test-checklist.md`](eduguard-system-test-checklist.md) — Mục **§10 Dashboard**  
 > Module: **Dashboard & Reporting** (Phase 10 · `F-DASH-01` → `F-DASH-10`)  
 > Cập nhật: 2026-06-15  
 > Tham chiếu API: `GET /api/dashboard/admin` · `/teacher` · `/student` (`docs/apiList.md`)  
 > Trạng thái triển khai: FE + mock API ✓ · BE `DashboardController` ⬜
 
-**Cách dùng:** Đánh dấu `[x]` khi pass. Ghi **Fail** + Test ID vào bảng Defects bên dưới. Chạy P1 trước release.
+**Cách dùng:** Đánh dấu `[x]` khi pass. Ghi **Fail** + Test ID vào bảng Defects bên dưới (hoặc defect log file master). Chạy P1 trước release.
 
 ---
 
@@ -250,6 +251,8 @@ Chạy nhanh ~15 phút nếu không đủ thời gian full suite:
 
 ## Liên kết
 
+- [`eduguard-system-test-checklist.md`](eduguard-system-test-checklist.md) — master toàn hệ thống
+- [`README.md`](README.md) — mục lục checklists
 - `docs/apiList.md` — §10 Dashboard
 - `docs/features.md` — F-DASH-*
 - `frontend/src/api/dashboardApi.js` — mock aggregation (hiện tại)
