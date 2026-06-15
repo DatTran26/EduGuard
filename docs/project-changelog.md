@@ -1,5 +1,38 @@
 # Project Changelog
 
+## Feature: Teacher exam publish and schedule defaults
+
+Date: 2026-06-13
+
+Branch/source: `devH`
+
+Description:
+
+- Sửa luồng tạo bài kiểm tra cho Teacher để có thể chọn publish ngay khi tạo, thay vì luôn tạo ở trạng thái nháp.
+- Cho phép backend publish metadata đề thi trước khi có câu hỏi, nhưng chặn Student bắt đầu làm bài nếu đề chưa có câu hỏi để không tạo attempt rỗng.
+- Tối ưu form lịch thi: khi nhập thời gian làm bài và chọn thời gian mở đề, frontend tự set thời gian đóng đề bằng `startTime + durationMinutes`; field đóng đề vẫn là input thường để giảng viên chỉnh tay khi cần.
+- Đồng bộ lại tài liệu API/test guide để không còn mô tả publish bắt buộc phải có câu hỏi.
+
+Changed files:
+
+- `frontend/src/features/exams/components/ExamForm.jsx`
+- `backend/EduGuard.Infrastructure/Exams/exam-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-attempt-service.cs`
+- `docs/apiList.md`
+- `docs/swagger-api-testing-guide.md`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint` — passed
+- `npm --prefix frontend run build` — passed
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore` — 0 warnings, 0 errors
+
+Unresolved questions:
+
+- Publish hiện công khai metadata đề thi; đề chưa có câu hỏi vẫn không cho Student bắt đầu làm bài.
+
 ## Feature: Frontend assignment, exam attempt, and anti-cheat REST workflows
 
 Date: 2026-06-11

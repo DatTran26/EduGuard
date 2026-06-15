@@ -6,6 +6,23 @@ import Select from "../../../components/forms/Select";
 import TextInput from "../../../components/forms/TextInput";
 import { toDateTimeLocalInputValue } from "../examHelpers";
 
+function calculateEndTimeInputValue(startTimeValue, durationMinutesValue) {
+  const durationMinutes = Number(durationMinutesValue);
+
+  if (!startTimeValue || !Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+    return "";
+  }
+
+  const startDate = new Date(startTimeValue);
+
+  if (Number.isNaN(startDate.getTime())) {
+    return "";
+  }
+
+  const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000);
+  return toDateTimeLocalInputValue(endDate);
+}
+
 // Hàm này dựng state form từ exam hiện tại hoặc từ classroom mặc định khi teacher đang tạo đề mới.
 function buildExamFormValues(exam, defaultClassroomId = "") {
   return {
@@ -38,6 +55,7 @@ export default function ExamForm({
   title = "Thông tin bài kiểm tra",
 }) {
   const [formValues, setFormValues] = useState(() => buildExamFormValues(exam, defaultClassroomId));
+  const [isEndTimeManuallyEdited, setIsEndTimeManuallyEdited] = useState(false);
   const isEditingExam = Boolean(exam);
 
   // Hàm này cập nhật một field đơn giản trong form để code phần JSX gọn hơn.
@@ -46,6 +64,43 @@ export default function ExamForm({
       ...previousValues,
       [fieldName]: value,
     }));
+  }
+
+  function handleDurationChange(value) {
+    setFormValues((previousValues) => {
+      const nextValues = {
+        ...previousValues,
+        durationMinutes: value,
+      };
+
+      if (!isEndTimeManuallyEdited) {
+        const nextEndTime = calculateEndTimeInputValue(nextValues.startTime, nextValues.durationMinutes);
+        nextValues.endTime = nextEndTime || previousValues.endTime;
+      }
+
+      return nextValues;
+    });
+  }
+
+  function handleStartTimeChange(value) {
+    setFormValues((previousValues) => {
+      const nextValues = {
+        ...previousValues,
+        startTime: value,
+      };
+
+      if (!isEndTimeManuallyEdited) {
+        const nextEndTime = calculateEndTimeInputValue(nextValues.startTime, nextValues.durationMinutes);
+        nextValues.endTime = nextEndTime || "";
+      }
+
+      return nextValues;
+    });
+  }
+
+  function handleEndTimeChange(value) {
+    setIsEndTimeManuallyEdited(true);
+    handleFieldChange("endTime", value);
   }
 
   // Hàm này cập nhật nhóm setting boolean/number của exam mà không làm mất các field khác.
@@ -61,7 +116,7 @@ export default function ExamForm({
 
   // Hàm này gom dữ liệu hiện tại về shape mà examApi đang mong đợi.
   function buildSubmitPayload() {
-    const shouldPublishAfterSave = Boolean(exam) && !exam.isPublished && Boolean(formValues.isPublished);
+    const shouldPublishAfterSave = Boolean(formValues.isPublished) && (!exam || !exam.isPublished);
 
     return {
       classroomId: Number(formValues.classroomId),
@@ -89,6 +144,7 @@ export default function ExamForm({
     const shouldReset = await onSubmitExam(buildSubmitPayload());
 
     if (shouldReset && !exam) {
+      setIsEndTimeManuallyEdited(false);
       setFormValues(buildExamFormValues(null, defaultClassroomId));
     }
   }
@@ -139,7 +195,7 @@ export default function ExamForm({
             id="exam-duration"
             label="Thời gian làm bài (phút)"
             min="1"
-            onChange={(event) => handleFieldChange("durationMinutes", event.target.value)}
+            onChange={(event) => handleDurationChange(event.target.value)}
             required
             type="number"
             value={formValues.durationMinutes}
@@ -147,14 +203,14 @@ export default function ExamForm({
           <TextInput
             id="exam-start-time"
             label="Thời gian mở đề"
-            onChange={(event) => handleFieldChange("startTime", event.target.value)}
+            onChange={(event) => handleStartTimeChange(event.target.value)}
             type="datetime-local"
             value={formValues.startTime}
           />
           <TextInput
             id="exam-end-time"
             label="Thời gian đóng đề"
-            onChange={(event) => handleFieldChange("endTime", event.target.value)}
+            onChange={(event) => handleEndTimeChange(event.target.value)}
             type="datetime-local"
             value={formValues.endTime}
           />
@@ -170,28 +226,21 @@ export default function ExamForm({
             type="number"
             value={formValues.settings.maxAttempts}
           />
-          {isEditingExam ? (
-            <div className="rounded-[16px] border border-border bg-neutral px-4 py-4">
-              <p className="text-sm font-semibold text-primary">Trạng thái hiển thị</p>
-              {exam?.isPublished ? (
-                <p className="mt-2 text-sm text-secondary">Đã publish</p>
-              ) : (
-                <div className="mt-3">
-                  <CheckboxField
-                    checked={formValues.isPublished}
-                    id="exam-is-published"
-                    label="Publish sau khi lưu"
-                    onChange={(event) => handleFieldChange("isPublished", event.target.checked)}
-                  />
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-[16px] border border-border bg-neutral px-4 py-4">
-              <p className="text-sm font-semibold text-primary">Trạng thái hiển thị</p>
-              <p className="mt-2 text-sm text-secondary">Bản nháp</p>
-            </div>
-          )}
+          <div className="rounded-[16px] border border-border bg-neutral px-4 py-4">
+            <p className="text-sm font-semibold text-primary">Trạng thái hiển thị</p>
+            {exam?.isPublished ? (
+              <p className="mt-2 text-sm text-secondary">Đã publish</p>
+            ) : (
+              <div className="mt-3">
+                <CheckboxField
+                  checked={formValues.isPublished}
+                  id="exam-is-published"
+                  label={isEditingExam ? "Publish sau khi lưu" : "Publish ngay khi tạo"}
+                  onChange={(event) => handleFieldChange("isPublished", event.target.checked)}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="space-y-3">
