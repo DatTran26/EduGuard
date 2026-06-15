@@ -161,9 +161,12 @@ public class ExamAttemptService : IExamAttemptService
     private static void EnsureExamWindowOpen(Exam exam)
     {
         var now = DateTime.UtcNow;
-        if (exam.StartTime.HasValue && now < exam.StartTime.Value)
+        var startTime = ExamDateTimeHelper.MarkNullableAsUtc(exam.StartTime);
+        var endTime = ExamDateTimeHelper.MarkNullableAsUtc(exam.EndTime);
+
+        if (startTime.HasValue && now < startTime.Value)
             throw new InvalidOperationException("Đề thi chưa mở.");
-        if (exam.EndTime.HasValue && now > exam.EndTime.Value)
+        if (endTime.HasValue && now > endTime.Value)
             throw new InvalidOperationException("Đề thi đã đóng.");
     }
 

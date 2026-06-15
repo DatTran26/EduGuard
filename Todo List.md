@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devB`
-**Cập nhật:** 2026-06-15 (đã bổ sung checklist tách Backend/Frontend cho phần cấu hình bài kiểm tra, xử lý timezone Việt Nam và validate trắc nghiệm MVP trước khi test luồng thi thật; Phase 8 SignalR realtime đã xong; Notifications REST/entity, dashboard và user/profile vẫn còn phụ thuộc endpoint backend chưa triển khai)
+**Cập nhật:** 2026-06-15 (backend cấu hình bài kiểm tra đã chuẩn hóa UTC cho lịch thi, siết validation cấu hình và điều kiện publish trắc nghiệm MVP; frontend cấu hình bài kiểm tra/timezone Việt Nam vẫn là bước tiếp theo; Phase 8 SignalR realtime đã xong)
 **Branch làm việc:** `devH`  
 **Cập nhật:** 2026-06-13 (backend Phase 7 anti-cheat xong; Phase 3–6 backend xong; frontend auth + classroom + exam đã nối backend thật ở các màn hiện có; teacher tạo đề có thể publish ngay khi tạo, thời gian đóng đề tự tính theo thời gian mở + số phút làm bài nhưng vẫn cho chỉnh tay; classroom detail nay đã có assignment thật, student đã có màn làm bài riêng với timer + auto submit, teacher exam detail đã có attempt monitor và anti-cheat REST cơ bản; dashboard và user/profile vẫn còn bridge/mock ở những phần backend chưa cung cấp endpoint tương ứng; role UI đã được giản lược theo hướng title-only cho block/chức năng chính và workspace màu sáng đã rà lại theo design tokens preview; auth session giờ tự refresh token khi role backend đổi để tránh 403 lệch quyền ở các màn Teacher/Admin)  
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
@@ -190,15 +190,15 @@
 
 ### Backend — Cấu hình bài kiểm tra & trắc nghiệm MVP cần bổ sung
 
-- [ ] Chuẩn hóa timezone bài kiểm tra: database lưu UTC, API trả `StartTime` / `EndTime` theo UTC rõ ràng để frontend không lệch giờ Việt Nam.
-- [ ] Đảm bảo backend kiểm tra thời gian mở/đóng đề bằng `DateTime.UtcNow` và cùng chuẩn UTC đã lưu.
-- [ ] Siết validation cấu hình exam: `DurationMinutes > 0`, `MaxAttempts > 0`, `EndTime > StartTime` khi có đủ hai mốc.
-- [ ] Siết điều kiện publish: đề phải có ít nhất một câu hỏi hợp lệ trước khi publish.
-- [ ] Validate publish cho `SingleChoice`: ít nhất 2 đáp án và đúng chính xác 1 đáp án đúng.
-- [ ] Validate publish cho `MultipleChoice`: ít nhất 2 đáp án và có ít nhất 1 đáp án đúng.
-- [ ] Validate publish cho `TrueFalse`: cố định/chuẩn hóa 2 đáp án Đúng/Sai và đúng chính xác 1 đáp án đúng.
-- [ ] Trả lỗi publish rõ ràng theo từng câu hỏi/cấu hình để frontend hiển thị được nguyên nhân.
-- [ ] Giữ `Question` / `Answer` gắn trực tiếp với `Exam` cho MVP; chưa triển khai `QuestionBank`, import file, chống trùng và batch import ở bước này.
+- [x] Chuẩn hóa timezone bài kiểm tra: database lưu UTC, API trả `StartTime` / `EndTime` theo UTC rõ ràng để frontend không lệch giờ Việt Nam.
+- [x] Đảm bảo backend kiểm tra thời gian mở/đóng đề bằng `DateTime.UtcNow` và cùng chuẩn UTC đã lưu.
+- [x] Siết validation cấu hình exam: `DurationMinutes > 0`, `MaxAttempts > 0`, `EndTime > StartTime` khi có đủ hai mốc.
+- [x] Siết điều kiện publish: đề phải có ít nhất một câu hỏi hợp lệ trước khi publish.
+- [x] Validate publish cho `SingleChoice`: ít nhất 2 đáp án và đúng chính xác 1 đáp án đúng.
+- [x] Validate publish cho `MultipleChoice`: ít nhất 2 đáp án và có ít nhất 1 đáp án đúng.
+- [x] Validate publish cho `TrueFalse`: cố định/chuẩn hóa 2 đáp án Đúng/Sai và đúng chính xác 1 đáp án đúng.
+- [x] Trả lỗi publish rõ ràng theo từng câu hỏi/cấu hình để frontend hiển thị được nguyên nhân.
+- [x] Giữ `Question` / `Answer` gắn trực tiếp với `Exam` cho MVP; chưa triển khai `QuestionBank`, import file, chống trùng và batch import ở bước này.
 
 ### Frontend — Cấu hình bài kiểm tra & trắc nghiệm MVP cần bổ sung
 

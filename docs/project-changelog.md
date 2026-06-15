@@ -1,5 +1,49 @@
 # Project Changelog
 
+## Feature: Backend exam configuration validation
+
+Date: 2026-06-15
+
+Branch/source: `devB`
+
+Description:
+
+- Chuẩn hóa backend cho cấu hình bài kiểm tra trước khi làm tiếp frontend: thời gian mở/đóng đề được lưu và trả về theo UTC rõ ràng để frontend có thể hiển thị đúng giờ Việt Nam.
+- Siết validation cấu hình exam ở tầng request/service: duration, max attempts và cửa sổ mở/đóng đề phải hợp lệ.
+- Siết điều kiện publish để đề chỉ được publish khi có câu hỏi hợp lệ; lỗi publish trả về message rõ theo từng câu/cấu hình để frontend hiển thị cho teacher.
+- Bổ sung validation publish cho trắc nghiệm MVP: `SingleChoice`, `MultipleChoice`, `TrueFalse`; giữ mô hình `Question` / `Answer` gắn trực tiếp với `Exam`, chưa triển khai `QuestionBank` hoặc import file trong bước này.
+
+Changed files:
+
+- `backend/EduGuard.Application/Validators/create-exam-request-validator.cs`
+- `backend/EduGuard.Application/Validators/update-exam-request-validator.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-attempt-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-date-time-helper.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-mapper.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-service.cs`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Added `ExamDateTimeHelper` to normalize incoming exam schedule values to UTC and mark DB-loaded schedule values as UTC before JSON serialization.
+- `ExamMapper.MapExam` now returns UTC-marked `StartTime`, `EndTime`, and `CreatedAt` so serialized API responses include the correct UTC kind.
+- `ExamAttemptService.EnsureExamWindowOpen` now normalizes stored schedule values before comparing them with `DateTime.UtcNow`.
+- `CreateExamRequestValidator` and `UpdateExamRequestValidator` now guard null settings and compare schedule windows after UTC normalization.
+- `ExamService.PublishAsync` now calls publish validation before setting `IsPublished`, checking exam config and question/answer correctness.
+
+Validation:
+
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -o temp\backend-exam-config-build` — succeeded, 0 warnings, 0 errors. Used separate output because a running `EduGuard.Api` process locked the default build DLLs.
+- `npm.cmd test` — passed; current script runs `dotnet test backend/EduGuard.Api/EduGuard.Api.slnx` and the solution currently has no test project output.
+- `git diff --check` — passed; only existing LF/CRLF conversion warnings were reported.
+
+Unresolved questions:
+
+- Frontend still needs the matching timezone helper and UI changes so `datetime-local` inputs show `Asia/Ho_Chi_Minh` consistently.
+- Manual Swagger/browser publish tests should cover invalid no-question exam, invalid answer counts, invalid correct-answer counts and valid trắc nghiệm exam before commit.
+- Question bank/import file remains a later feature; this change keeps questions attached directly to exams for MVP.
+
 ## Feature: SignalR realtime monitoring
 
 Date: 2026-06-15
