@@ -302,9 +302,9 @@
 - [ ] Thống kê số lớp, học sinh, bài tập, điểm thi
 - [ ] Thống kê cheating score
 - [x] Frontend dashboard Admin *(đã có mock API + UI tổng quan người dùng, lớp học, activity, anti-cheat; đã tách số liệu giảng viên và sinh viên thành thống kê riêng; block stat/timeline/metric đã bỏ mô tả phụ)*
-- [x] Frontend dashboard Teacher *(đã có mock API + UI lớp quản lý, nộp bài, lịch thi, sinh viên rủi ro cao; đã bỏ mục điểm trung bình khỏi dashboard tổng quan; block stat/timeline/metric đã bỏ mô tả phụ)*
+- [x] Frontend dashboard Teacher *(đã có mock API + UI lớp quản lý, nộp bài, lịch thi, sinh viên rủi ro cao, proctoring streams placeholder; thiết kế thanh điều hướng Nav bar chuyên nghiệp; block stat/timeline/metric đã bỏ mô tả phụ)*
 - [x] Frontend dashboard Student *(đã có mock API + UI tiến độ lớp, việc sắp tới, kết quả, thông báo; đã bỏ mục điểm trung bình khỏi dashboard tổng quan; block stat/timeline/metric đã bỏ mô tả phụ)*
-- [x] Frontend biểu đồ dashboard *(mức cơ bản bằng stat card + progress bars, chưa dùng chart library)*
+- [x] Frontend biểu đồ dashboard *(tích hợp thư viện Recharts để vẽ trực quan Classroom Performance và Anti-cheat Incidents)*
 
 **Tiêu chí hoàn thành:** Người dùng có trang tổng quan dữ liệu theo role.
 
