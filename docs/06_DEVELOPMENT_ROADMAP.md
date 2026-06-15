@@ -315,12 +315,12 @@ Mục tiêu:
 Checklist:
 
 ```txt
-[ ] Tạo NotificationHub
-[ ] Tạo ExamMonitoringHub
-[ ] Frontend kết nối SignalR
-[ ] Backend gửi notification
-[ ] Backend gửi anti-cheat warning
-[ ] Teacher dashboard nhận cảnh báo realtime
+[x] Tạo NotificationHub
+[x] Tạo ExamMonitoringHub
+[x] Frontend kết nối SignalR
+[x] Backend gửi notification
+[x] Backend gửi anti-cheat warning
+[x] Teacher dashboard nhận cảnh báo realtime
 ```
 
 Kết quả cần đạt:

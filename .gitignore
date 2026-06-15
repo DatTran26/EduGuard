@@ -304,3 +304,8 @@ release-manifest.json
 .repomixignore
 plans/
 .cursor/    
+
+# ASP.NET Core local settings
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/appsettings.*.local.json

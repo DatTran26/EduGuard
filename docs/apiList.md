@@ -2,7 +2,7 @@
 
 > **Mục đích:** Registry toàn bộ REST endpoint + SignalR hub — tick khi đã implement và test.  
 > **Liên quan:** `05_API_FRONTEND_INTEGRATION.md` (Axios, JWT, luồng FE) · [`swagger-api-testing-guide.md`](swagger-api-testing-guide.md) · [`features.md`](features.md) · [`../Todo List.md`](../Todo%20List.md)  
-> **Cập nhật:** 2026-06-11 · **Branch:** `release` (backend Phase 3–6)
+> **Cập nhật:** 2026-06-15 · **Branch:** `devB` (SignalR Phase 8)
 
 ---
 
@@ -60,8 +60,8 @@ Tick `- [ ]` khi endpoint **có controller + Swagger + test cơ bản**.
 | Anti-cheat | 4 | 4 |
 | Notifications | 3 | 0 |
 | Dashboard | 3 | 0 |
-| SignalR Hubs | 2 | 0 |
-| **Tổng** | **57** | **44** |
+| SignalR Hubs | 2 | 2 |
+| **Tổng** | **57** | **46** |
 
 ---
 
@@ -193,7 +193,7 @@ Tick `- [ ]` khi endpoint **có controller + Swagger + test cơ bản**.
 | API-EXM-04 | PUT | `/api/exams/{id}` | Bearer | Teacher | ✓ | F-EXM-06 | Sửa đề (thay thế đầy đủ) |
 | API-EXM-04P | PATCH | `/api/exams/{id}` | Bearer | Teacher | ✓ | F-EXM-06 | Sửa một phần đề |
 | API-EXM-05 | DELETE | `/api/exams/{id}` | Bearer | Teacher | ✓ | F-EXM-07 | Xóa đề |
-| API-EXM-06 | POST | `/api/exams/{id}/publish` | Bearer | Teacher | ✓ | F-EXM-08 | Publish — học sinh làm được |
+| API-EXM-06 | POST | `/api/exams/{id}/publish` | Bearer | Teacher | ✓ | F-EXM-08 | Công khai metadata đề thi |
 | API-EXM-07 | POST | `/api/exams/{id}/questions` | Bearer | Teacher | ✓ | F-EXM-09 | Thêm câu hỏi |
 | API-EXM-08 | PUT | `/api/questions/{id}` | Bearer | Teacher | ✓ | F-EXM-10 | Sửa câu hỏi + đáp án (đầy đủ) |
 | API-EXM-08P | PATCH | `/api/questions/{id}` | Bearer | Teacher | ✓ | F-EXM-10 | Sửa một phần câu hỏi (không đổi đáp án) |
@@ -302,8 +302,8 @@ Không phải REST — kết nối WebSocket qua `@microsoft/signalr`.
 | API-SR-01 | `/hubs/notifications` | Bearer | All | | F-SR-01 | `ReceiveNotification` |
 | API-SR-02 | `/hubs/exam-monitoring` | Bearer | Teacher | ✓ | F-SR-02 | `ReceiveAntiCheatWarning` |
 
-- [ ] API-SR-01 NotificationHub
-- [ ] API-SR-02 ExamMonitoringHub
+- [x] API-SR-01 NotificationHub
+- [x] API-SR-02 ExamMonitoringHub
 
 ---
 
@@ -318,9 +318,11 @@ Không phải REST — kết nối WebSocket qua `@microsoft/signalr`.
 | `AssignmentsController` | `/api/assignments`, nested classroom | ASG (8/8) | ✓ |
 | `ExamsController` | `/api/exams`, nested classroom | EXM (11/11) | ✓ |
 | `ExamAttemptsController` | `/api/attempts`, `/api/exams/{id}/start` | ATT (6/6) | ✓ |
-| `AntiCheatController` | `/api/anti-cheat` | AC | — |
+| `AntiCheatController` | `/api/anti-cheat` | AC (4/4) | ✓ |
 | `NotificationsController` | `/api/notifications` | NOT | — |
 | `DashboardController` | `/api/dashboard` | DASH | — |
+| `NotificationHub` | `/hubs/notifications` | SR | ✓ |
+| `ExamMonitoringHub` | `/hubs/exam-monitoring` | SR | ✓ |
 
 ---
 
@@ -329,7 +331,7 @@ Không phải REST — kết nối WebSocket qua `@microsoft/signalr`.
 | Trạng thái | Số lượng |
 |------------|----------|
 | Tổng REST + Hub | 57 |
-| Đã tick `[x]` | 40 |
-| Còn lại | 17 |
+| Đã tick `[x]` | 46 |
+| Còn lại | 11 |
 
-*Backend: Auth + Classroom + Assignment + Exam + Attempt (Phase 2–7). Frontend auth/classroom/exam đã nối API thật ở các màn hiện có; user/profile/dashboard vẫn còn mock ở những phần BE chưa cung cấp endpoint.*
+*Backend: Auth + Classroom + Assignment + Exam + Attempt + Anti-cheat REST + SignalR hubs (Phase 2–8). Frontend auth/classroom/exam/attempt/anti-cheat realtime đã nối API thật ở các màn hiện có; user/profile/dashboard vẫn còn mock ở những phần BE chưa cung cấp endpoint.*

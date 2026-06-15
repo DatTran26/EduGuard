@@ -58,6 +58,16 @@ public static class DependencyInjection
 
                 options.Events = new JwtBearerEvents
                 {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+
+                        if (!string.IsNullOrWhiteSpace(accessToken) && path.StartsWithSegments("/hubs"))
+                            context.Token = accessToken;
+
+                        return Task.CompletedTask;
+                    },
                     OnChallenge = async context =>
                     {
                         context.HandleResponse();
@@ -87,6 +97,7 @@ public static class DependencyInjection
         services.AddScoped<IExamRepository, ExamRepository>();
         services.AddScoped<IExamService, ExamService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
+        services.AddScoped<IExamMonitoringService, ExamMonitoringService>();
         services.AddScoped<ICheatingLogRepository, CheatingLogRepository>();
         services.AddScoped<IAntiCheatService, AntiCheatService>();
 
