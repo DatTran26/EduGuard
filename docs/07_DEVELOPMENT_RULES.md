@@ -3,7 +3,7 @@
 > Tài liệu bắt buộc đọc cho developer và agent trước khi commit, push, hoặc ship release.  
 > Checklist theo giai đoạn: `Todo List.md` (root). Chính sách Git tóm tắt: `AGENTS.md`.
 
-**Cập nhật:** 2026-06-09
+**Cập nhật:** 2026-06-14
 
 ---
 
@@ -55,6 +55,38 @@ làm việc với Git/`gh` theo `.agents/references/powershell-windows.md`.
 **Không** chạy github-release, code-reviewer, merge `release`, hay PR `main`.
 
 Chi tiết thực thi: `.agents/skills/push-code/SKILL.md`
+
+---
+
+## Workflow merge to release (tích hợp release)
+
+**Kích hoạt:** `merge to release`, `merge vào release`, `đưa code lên release`, hoặc
+`lấy code mới nhất từ release về nhánh hiện tại` (luồng đầy đủ: đưa dev lên release **và** sync về dev).
+
+**Không** nhầm với push code (chỉ lưu dev) hay ship (version + PR `main`).
+
+```txt
+dev (WIP)  →  verify  →  commit trên dev  →  merge dev → release  →  push origin/release
+           →  checkout dev  →  merge origin/release  →  push origin/dev
+```
+
+| Bước | Việc làm |
+|------|----------|
+| 1 | `git status` — xác định nhánh dev (`devD` / `devH` / `devB`), **không** `main` |
+| 2 | `dotnet build` (backend) — sửa lỗi trước commit |
+| 3 | **Commit toàn bộ WIP** trên nhánh dev (conventional commit) |
+| 4 | `git checkout release` → `git pull origin release` |
+| 5 | `git merge <dev-branch>` → resolve conflict nếu có |
+| 6 | `git push origin release` |
+| 7 | `git checkout <dev-branch>` → `git merge origin/release` → `git push origin <dev-branch>` |
+
+### Anti-pattern (agent / developer)
+
+- **Sai:** merge `origin/release` vào dev trong khi WIP chưa commit, rồi coi là “đã merge to release”.
+- **Sai:** hiểu “merge to release xong lấy code từ release về” = chỉ pull release, bỏ qua bước đưa dev lên release.
+- **Đúng:** commit trên dev trước → merge dev → release → push → sync `origin/release` về dev.
+
+Chi tiết thực thi: `.agents/skills/merge-release/SKILL.md`
 
 ---
 
@@ -129,5 +161,6 @@ Chi tiết thực thi: `.agents/skills/ship-code/SKILL.md`, `.agents/skills/gith
 | `AGENTS.md` | Chính sách Git, Husky, changelog — entry point cho agent |
 | `docs/project-changelog.md` | Lịch sử thay đổi theo feature |
 | `.agents/skills/push-code/SKILL.md` | Thực thi push lưu repo |
+| `.agents/skills/merge-release/SKILL.md` | Merge dev → release, sync release về dev |
 | `.agents/skills/ship-code/SKILL.md` | Thực thi ship / release |
 | `.agents/references/powershell-windows.md` | Lệnh Git/gh đúng trên Windows |

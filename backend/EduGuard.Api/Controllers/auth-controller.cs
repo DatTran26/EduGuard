@@ -98,7 +98,7 @@ public class AuthController : ControllerBase
 
         try
         {
-            var data = await _authService.GetMeAsync(int.Parse(userId), ct);
+            var data = await _authService.GetMeAsync(userId, ct);
             return Ok(ApiResponse<UserDto>.CreateSuccess(data));
         }
         catch (UnauthorizedAccessException ex)

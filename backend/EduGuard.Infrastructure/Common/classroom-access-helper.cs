@@ -18,7 +18,7 @@ public static class ClassroomAccessHelper
     public static async Task EnsureCanAccessClassroomAsync(
         IClassroomRepository repository,
         Classroom classroom,
-        int userId,
+        string userId,
         IReadOnlyList<string> roles,
         CancellationToken ct)
     {
@@ -35,7 +35,7 @@ public static class ClassroomAccessHelper
         throw new UnauthorizedAccessException("Bạn không có quyền truy cập lớp học này.");
     }
 
-    public static void EnsureTeacherOwnsClassroom(Classroom classroom, int userId)
+    public static void EnsureTeacherOwnsClassroom(Classroom classroom, string userId)
     {
         if (classroom.TeacherId != userId)
             throw new UnauthorizedAccessException("Chỉ giáo viên chủ lớp mới được thực hiện thao tác này.");

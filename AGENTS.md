@@ -56,7 +56,8 @@ Full rules (implementation order, push vs ship, Todo List maintenance): **`docs/
 | User says | Purpose | Skill |
 |-----------|---------|--------|
 | **push code**, đẩy code, lưu lên repo | Backup / sync dev branch | `.agents/skills/push-code/SKILL.md` |
-| **ship**, ship code, **release** | Version cut → production | `.agents/skills/ship-code/SKILL.md` |
+| **merge to release**, merge vào release, đưa code lên release, lấy code từ release về dev | Commit WIP → merge dev → `release` → sync về dev | `.agents/skills/merge-release/SKILL.md` |
+| **ship**, ship code, **release** (production) | Version cut → production | `.agents/skills/ship-code/SKILL.md` |
 
 - `Todo List.md` (root): live checklist only — update per `docs/07_DEVELOPMENT_RULES.md`.
 - Do not push to `main` in either workflow.

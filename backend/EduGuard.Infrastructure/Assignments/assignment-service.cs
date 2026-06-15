@@ -39,7 +39,7 @@ public class AssignmentService : IAssignmentService
     public async Task<AssignmentDto> CreateAsync(
         int classroomId,
         CreateAssignmentRequest request,
-        int teacherId,
+        string teacherId,
         CancellationToken ct = default)
     {
         await _createValidator.ValidateAndThrowAsync(request, ct);
@@ -65,7 +65,7 @@ public class AssignmentService : IAssignmentService
 
     public async Task<IReadOnlyList<AssignmentDto>> GetByClassroomAsync(
         int classroomId,
-        int userId,
+        string userId,
         IReadOnlyList<string> roles,
         CancellationToken ct = default)
     {
@@ -78,7 +78,7 @@ public class AssignmentService : IAssignmentService
 
     public async Task<AssignmentDto> GetByIdAsync(
         int assignmentId,
-        int userId,
+        string userId,
         IReadOnlyList<string> roles,
         CancellationToken ct = default)
     {
@@ -91,7 +91,7 @@ public class AssignmentService : IAssignmentService
     public async Task<AssignmentDto> UpdateAsync(
         int assignmentId,
         UpdateAssignmentRequest request,
-        int teacherId,
+        string teacherId,
         CancellationToken ct = default)
     {
         await _updateValidator.ValidateAndThrowAsync(request, ct);
@@ -114,7 +114,7 @@ public class AssignmentService : IAssignmentService
     public async Task<AssignmentDto> PatchAsync(
         int assignmentId,
         PatchAssignmentRequest request,
-        int teacherId,
+        string teacherId,
         CancellationToken ct = default)
     {
         await _patchValidator.ValidateAndThrowAsync(request, ct);
@@ -145,7 +145,7 @@ public class AssignmentService : IAssignmentService
         return MapAssignment(assignment);
     }
 
-    public async Task DeleteAsync(int assignmentId, int teacherId, CancellationToken ct = default)
+    public async Task DeleteAsync(int assignmentId, string teacherId, CancellationToken ct = default)
     {
         var assignment = await RequireAssignmentAsync(assignmentId, ct);
         if (assignment.TeacherId != teacherId)
@@ -158,7 +158,7 @@ public class AssignmentService : IAssignmentService
     public async Task<SubmissionDto> SubmitAsync(
         int assignmentId,
         SubmitAssignmentRequest request,
-        int studentId,
+        string studentId,
         CancellationToken ct = default)
     {
         await _submitValidator.ValidateAndThrowAsync(request, ct);
@@ -190,7 +190,7 @@ public class AssignmentService : IAssignmentService
 
     public async Task<IReadOnlyList<SubmissionDto>> GetSubmissionsAsync(
         int assignmentId,
-        int teacherId,
+        string teacherId,
         CancellationToken ct = default)
     {
         var assignment = await RequireAssignmentAsync(assignmentId, ct);
@@ -204,7 +204,7 @@ public class AssignmentService : IAssignmentService
     public async Task<SubmissionDto> GradeAsync(
         int submissionId,
         GradeSubmissionRequest request,
-        int teacherId,
+        string teacherId,
         CancellationToken ct = default)
     {
         await _gradeValidator.ValidateAndThrowAsync(request, ct);
@@ -231,7 +231,7 @@ public class AssignmentService : IAssignmentService
         await _assignmentRepository.GetByIdAsync(assignmentId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy bài tập.");
 
-    private async Task EnsureActiveStudentInClassroomAsync(int classroomId, int studentId, CancellationToken ct)
+    private async Task EnsureActiveStudentInClassroomAsync(int classroomId, string studentId, CancellationToken ct)
     {
         var membership = await _classroomRepository.GetMemberAsync(classroomId, studentId, ct);
         if (membership?.Status != ClassroomMemberStatus.Active)

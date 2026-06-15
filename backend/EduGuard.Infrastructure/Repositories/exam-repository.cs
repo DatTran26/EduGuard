@@ -66,10 +66,10 @@ public class ExamRepository : IExamRepository
             .Include(x => x.StudentAnswers)
             .FirstOrDefaultAsync(x => x.Id == attemptId, ct);
 
-    public Task<int> CountAttemptsAsync(int examId, int studentId, CancellationToken ct = default) =>
+    public Task<int> CountAttemptsAsync(int examId, string studentId, CancellationToken ct = default) =>
         _db.ExamAttempts.CountAsync(x => x.ExamId == examId && x.StudentId == studentId, ct);
 
-    public Task<ExamAttempt?> GetInProgressAttemptAsync(int examId, int studentId, CancellationToken ct = default) =>
+    public Task<ExamAttempt?> GetInProgressAttemptAsync(int examId, string studentId, CancellationToken ct = default) =>
         _db.ExamAttempts
             .Include(x => x.StudentAnswers)
             .FirstOrDefaultAsync(

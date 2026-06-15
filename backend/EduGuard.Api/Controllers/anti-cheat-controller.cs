@@ -28,7 +28,7 @@ public class AntiCheatController : ControllerBase
 
         try
         {
-            var data = await _antiCheatService.LogAsync(request, userId.Value, ct);
+            var data = await _antiCheatService.LogAsync(request, userId, ct);
             return Ok(ApiResponse<CheatingLogDto>.CreateSuccess(data, "Ghi log anti-cheat thành công."));
         }
         catch (ValidationException ex)
@@ -100,7 +100,7 @@ public class AntiCheatController : ControllerBase
 
         try
         {
-            var data = await _antiCheatService.GetExamSummaryAsync(examId, userId.Value, ct);
+            var data = await _antiCheatService.GetExamSummaryAsync(examId, userId, ct);
             return Ok(ApiResponse<ExamAntiCheatSummaryDto>.CreateSuccess(data));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<ExamAntiCheatSummaryDto>.CreateFailure(ex.Message)); }
@@ -110,19 +110,19 @@ public class AntiCheatController : ControllerBase
         }
     }
 
-    private int? GetCurrentUserId()
+    private string? GetCurrentUserId()
     {
         var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return int.TryParse(id, out var userId) ? userId : null;
+        return string.IsNullOrWhiteSpace(id) ? null : id;
     }
 
-    private (int userId, List<string> roles)? GetCurrentUser()
+    private (string userId, List<string> roles)? GetCurrentUser()
     {
         var userId = GetCurrentUserId();
         if (userId is null)
             return null;
 
         var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-        return (userId.Value, roles);
+        return (userId, roles);
     }
 }

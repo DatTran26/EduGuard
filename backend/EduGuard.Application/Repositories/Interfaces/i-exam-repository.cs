@@ -11,8 +11,8 @@ public interface IExamRepository
     Task<Answer?> GetAnswerByIdAsync(int answerId, CancellationToken ct = default);
     Task<ExamAttempt?> GetAttemptByIdAsync(int attemptId, CancellationToken ct = default);
     Task<ExamAttempt?> GetAttemptWithAnswersAsync(int attemptId, CancellationToken ct = default);
-    Task<int> CountAttemptsAsync(int examId, int studentId, CancellationToken ct = default);
-    Task<ExamAttempt?> GetInProgressAttemptAsync(int examId, int studentId, CancellationToken ct = default);
+    Task<int> CountAttemptsAsync(int examId, string studentId, CancellationToken ct = default);
+    Task<ExamAttempt?> GetInProgressAttemptAsync(int examId, string studentId, CancellationToken ct = default);
     Task<List<ExamAttempt>> GetAttemptsByExamIdAsync(int examId, CancellationToken ct = default);
     Task AddAsync(Exam exam, CancellationToken ct = default);
     Task AddQuestionAsync(Question question, CancellationToken ct = default);

@@ -26,7 +26,7 @@ public class AntiCheatService : IAntiCheatService
     }
 
     public async Task<CheatingLogDto> LogAsync(
-        CreateCheatingLogRequest request, int studentId, CancellationToken ct = default)
+        CreateCheatingLogRequest request, string studentId, CancellationToken ct = default)
     {
         await _createLogValidator.ValidateAndThrowAsync(request, ct);
 
@@ -58,7 +58,7 @@ public class AntiCheatService : IAntiCheatService
     }
 
     public async Task<IReadOnlyList<CheatingLogDto>> GetLogsByAttemptAsync(
-        int attemptId, int userId, IReadOnlyList<string> roles, CancellationToken ct = default)
+        int attemptId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
     {
         await EnsureTeacherCanViewAttemptAsync(attemptId, userId, roles, ct);
 
@@ -67,7 +67,7 @@ public class AntiCheatService : IAntiCheatService
     }
 
     public async Task<SuspicionScoreDto> GetSuspicionScoreAsync(
-        int attemptId, int userId, IReadOnlyList<string> roles, CancellationToken ct = default)
+        int attemptId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
     {
         var attempt = await EnsureTeacherCanViewAttemptAsync(attemptId, userId, roles, ct);
         var logCount = await _cheatingLogRepository.CountByAttemptIdAsync(attemptId, ct);
@@ -81,7 +81,7 @@ public class AntiCheatService : IAntiCheatService
     }
 
     public async Task<ExamAntiCheatSummaryDto> GetExamSummaryAsync(
-        int examId, int teacherId, CancellationToken ct = default)
+        int examId, string teacherId, CancellationToken ct = default)
     {
         var exam = await _examRepository.GetByIdAsync(examId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
@@ -119,7 +119,7 @@ public class AntiCheatService : IAntiCheatService
         };
     }
 
-    private static void EnsureStudentCanLog(ExamAttempt attempt, int studentId)
+    private static void EnsureStudentCanLog(ExamAttempt attempt, string studentId)
     {
         if (attempt.StudentId != studentId)
             throw new UnauthorizedAccessException("Bạn không có quyền ghi log cho lượt thi này.");
@@ -132,7 +132,7 @@ public class AntiCheatService : IAntiCheatService
     }
 
     private async Task<ExamAttempt> EnsureTeacherCanViewAttemptAsync(
-        int attemptId, int userId, IReadOnlyList<string> roles, CancellationToken ct)
+        int attemptId, string userId, IReadOnlyList<string> roles, CancellationToken ct)
     {
         var attempt = await _examRepository.GetAttemptByIdAsync(attemptId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy lượt thi.");
