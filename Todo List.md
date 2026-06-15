@@ -1,0 +1,332 @@
+# EduGuard — Todo List
+
+> Lộ trình: `docs/06_DEVELOPMENT_ROADMAP.md` · Quy tắc: `docs/07_DEVELOPMENT_RULES.md`  
+> Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
+
+**Branch làm việc:** `devH`  
+**Cập nhật:** 2026-06-11 (backend Phase 7 anti-cheat xong; Phase 3–6 backend xong; frontend auth + classroom + exam đã nối backend thật ở các màn hiện có; classroom detail nay đã có assignment thật, student đã có màn làm bài riêng với timer + auto submit, teacher exam detail đã có attempt monitor và anti-cheat REST cơ bản; dashboard và user/profile vẫn còn bridge/mock ở những phần backend chưa cung cấp endpoint tương ứng; role UI đã được giản lược theo hướng title-only cho block/chức năng chính và workspace màu sáng đã rà lại theo design tokens preview; auth session giờ tự refresh token khi role backend đổi để tránh 403 lệch quyền ở các màn Teacher/Admin)  
+**Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
+
+---
+
+## Trạng thái tổng quan
+
+| Giai đoạn | Tên | Trạng thái |
+|-----------|-----|------------|
+| 0 | Khởi tạo project | ✅ Hoàn thành |
+| 1 | Database + Entity nền tảng | ✅ Hoàn thành |
+| 2 | Authentication & Authorization | 🟡 Backend xong, FE auth thật xong; profile/avatar vẫn còn mock |
+| 3 | Classroom Management | 🟡 Backend xong (8/8 API), FE classroom thật xong cho teacher/student; admin còn phụ thuộc giới hạn endpoint BE |
+| 4 | Assignment Management | 🟡 Backend + FE core xong; trạng thái bài nộp của student sau reload còn giới hạn do BE chưa có endpoint lấy bài nộp cá nhân |
+| 5 | Exam Management | 🟡 Backend xong (11/11 API), FE exam thật xong cho list/detail/question bank hiện có |
+| 6 | Online Testing / Exam Attempt | ✅ Backend + FE core xong (start/resume, save answer, timer, auto submit, result, teacher attempt monitor) |
+| 7 | Anti-cheat Monitoring | ✅ Backend + FE REST cơ bản xong (hook student + monitor teacher); realtime vẫn thuộc Phase 8 |
+| 8 | SignalR Realtime | ⬜ Chưa bắt đầu |
+| 9 | Redis | ⬜ Chưa bắt đầu |
+| 10 | Dashboard & Reporting | 🟡 Đang làm |
+| 11 | Docker Compose | ⬜ Chưa bắt đầu |
+
+---
+
+## Giai đoạn 0 — Khởi tạo project
+
+**Mục tiêu:** Frontend gọi được backend thành công.
+
+- [x] Tạo repo EduGuard
+- [x] Tạo folder `backend/`
+- [x] Tạo solution `EduGuard.slnx`
+- [x] Tạo 4 project backend (Api, Application, Domain, Infrastructure)
+- [x] Tạo cấu trúc folder `frontend/` (scaffold)
+- [x] Thêm bộ tài liệu `docs/`
+- [x] Tạo React Vite project trong `frontend/`
+- [x] Cấu hình TailwindCSS (deps + `@import "tailwindcss"` trong `index.css`)
+- [x] Cấu hình Swagger (mặc định ASP.NET Core, dev)
+- [x] Cấu hình CORS cho React dev server (`http://localhost:5173`)
+- [x] Tạo `TestController` → `GET /api/Test`
+- [x] React gọi thử `GET /api/test` và hiển thị kết quả JSON
+
+**Tiêu chí hoàn thành:** ✅ Mở React → gọi API → nhận response JSON từ backend (đã verify 2026-06-10).
+
+---
+
+## Giai đoạn 1 — Database + Entity nền tảng
+
+**Mục tiêu:** SQL Server có database và các bảng cơ bản.
+
+### Domain — Entity
+
+- [x] `ApplicationUser` (kế thừa `IdentityUser<int>`)
+- [x] `RefreshToken` (custom — rotate/revoke JWT)
+- [x] `Classroom`
+- [x] `ClassroomMember`
+- [x] Package Domain: `Microsoft.Extensions.Identity.Stores`
+
+### Infrastructure
+
+- [x] `AppDbContext` kế thừa `IdentityDbContext<ApplicationUser, IdentityRole<int>, int>`
+- [x] Map tên bảng: `Users`, `Roles`, `UserRoles` (tuỳ chọn)
+- [x] Seed roles: Admin, Teacher, Student
+- [x] EF Fluent API: RefreshToken, Classroom, ClassroomMember
+- [x] Package: `Microsoft.AspNetCore.Identity.EntityFrameworkCore`
+- [x] Connection string SQL Server (`appsettings.json` → `EduGuardExam`)
+- [x] `Add-Migration InitialIdentityAndClassroom`
+- [x] `Update-Database`
+
+**Tiêu chí hoàn thành:** ✅ Database `EduGuardExam` có schema Identity + `RefreshTokens` + `Classrooms` + `ClassroomMembers`; 3 role seed (đã verify 2026-06-10).
+
+---
+
+## Giai đoạn 2 — Authentication & Authorization
+
+**Mục tiêu:** User đăng ký/đăng nhập được và nhận JWT token.
+
+### Backend
+
+- [x] `AddIdentity` + `AddEntityFrameworkStores<AppDbContext>`
+- [x] `IJwtTokenService` + `JwtTokenService` (access token)
+- [x] `IRefreshTokenService` hoặc logic refresh trong `AuthService`
+- [x] `IAuthService` + `AuthService` (`UserManager`, `SignInManager`, `RoleManager`)
+- [x] DTOs: `RegisterRequest`, `LoginRequest`, `LoginResponse`, `UserDto`
+- [x] FluentValidation cho Register/Login
+- [x] `AuthController`: register, login, refresh, logout, me
+- [x] JwtBearer trong `AddInfrastructure` + Swagger Bearer
+- [x] `[Authorize(Roles = "...")]` — `GET /api/Test/teacher-only`
+- [x] Test qua Swagger (manual) — đã verify 2026-06-10
+
+*(Không dùng `IUserRepository` / hash password thủ công cho auth.)*
+
+### Frontend
+
+- [x] Trang Login / Register *(đã gọi backend thật theo `POST /api/auth/register` và `POST /api/auth/login`; đã thiết kế lại layout xác thực theo bố cục 2 cột, thêm checkbox ghi nhớ đăng nhập và link quên mật khẩu dạng UI placeholder, tăng logo và tách thông điệp hero thành 2 dòng chữ không xuống hàng)*
+- [x] Axios client + interceptor gắn `Authorization` *(đã gắn Bearer token thật cho request protected)*
+- [x] Lưu `accessToken` *(đã lưu access token và refresh token backend theo shape JWT flow)*
+- [x] Protected routes theo role *(đã tách route riêng cho Admin / Teacher / Student)*
+- [x] Trang hồ sơ cá nhân và cập nhật thông tin *(phiên đăng nhập lấy từ `GET /api/auth/me`; màn hồ sơ hiện vẫn dùng mock users API; đã hỗ trợ upload avatar từ máy và preview trước khi lưu)*
+- [x] Popup toast toàn app cho thông báo thao tác/lỗi *(góc trên bên phải, tự ẩn sau 3 giây, đã thêm thông báo đăng nhập/đăng xuất thành công)*
+- [x] Đồng bộ session backend vào app mock hiện tại *(user đăng nhập backend thật vẫn dùng tiếp được classroom/dashboard/exam đang còn mock; khi role đổi trong DB, app sẽ tự refresh token để claim quyền khớp lại với `/api/auth/me`)*
+- [x] Layout dùng chung cho khu đăng nhập theo vai trò *(đã bỏ navbar trên cùng cũ, đưa header workspace mới lên trên, thêm dropdown người dùng, dùng logo nền trong suốt `public/logo-transparent.png`, bỏ cờ Việt Nam, bỏ nút 3 gạch cạnh logo, thêm dấu `v` cho card cá nhân, phóng logo top bar ngang chiều cao chữ, dọn menu/sidebar Admin và rút sidebar còn điều hướng; dropdown cá nhân đã bật/tắt được chế độ tối thật cho khu vực app đã đăng nhập)*
+
+**Tiêu chí hoàn thành:** Đăng ký → đăng nhập → nhận JWT → gọi API được bảo vệ.
+
+---
+
+## Giai đoạn 3 — Classroom Management
+
+**Mục tiêu:** Teacher tạo lớp, Student tham gia bằng mã lớp.
+
+### Backend
+
+- [x] `ClassroomRepository` + `ClassroomService`
+- [x] DTOs: `CreateClassroomRequest`, `ClassroomDto`, `JoinClassroomRequest`, `ClassroomMemberDto`
+- [x] `POST /api/classrooms` — tạo lớp
+- [x] `GET /api/classrooms` — danh sách lớp
+- [x] `GET /api/classrooms/{id}` — chi tiết lớp
+- [x] `PUT /api/classrooms/{id}` — cập nhật lớp
+- [x] `DELETE /api/classrooms/{id}` — xóa lớp
+- [x] `POST /api/classrooms/join` — tham gia bằng mã
+- [x] `GET /api/classrooms/{id}/members` — danh sách thành viên
+- [x] `DELETE /api/classrooms/{id}/members/{studentId}` — xóa thành viên
+
+### Frontend
+
+- [x] Trang danh sách lớp *(đã gọi `GET /api/classrooms`, FE tự bù `memberCount` khi role hiện tại được xem danh sách thành viên; header/card đã bỏ mô tả phụ để ưu tiên title + dữ liệu chính)*
+- [x] Form tạo lớp (Teacher) *(gửi thẳng `name`/`description`; `joinCode` do backend tự sinh thay vì random ở local)*
+- [x] CRUD lớp học cho Teacher *(tạo ở list page, sửa/xóa ở detail page qua backend thật)*
+- [x] Form nhập mã lớp (Student) *(đã gọi `POST /api/classrooms/join` bằng join code thật)*
+- [x] Trang chi tiết lớp + thành viên *(đã đọc detail + members từ backend; admin chỉ xem được info cơ bản vì endpoint members hiện giới hạn theo BE)*
+- [x] Route admin xem người dùng và lớp học tổng quan *(user list vẫn mock; classroom section đã phản ánh đúng dữ liệu backend hiện trả về cho `/api/classrooms`)*
+
+**Tiêu chí hoàn thành:** Teacher tạo được lớp, Student tham gia được lớp.
+
+---
+
+## Giai đoạn 4 — Assignment Management
+
+**Mục tiêu:** Luồng giao bài tập → nộp bài → chấm điểm.
+
+### Backend
+
+- [x] Entity `Assignment`, `Submission`
+- [x] Migration `AddAssignmentsExamsAndAttempts`
+- [x] `AssignmentsController` + Service + Repository (8 API)
+- [x] API tạo / sửa / xóa / xem bài tập theo lớp
+- [x] API nộp bài + danh sách bài nộp
+- [x] API chấm điểm (`POST /api/submissions/{id}/grade`)
+
+### Frontend
+
+- [x] Danh sách bài tập theo lớp *(đã gắn trực tiếp vào classroom detail cho Teacher / Student / Admin theo quyền hiện tại)*
+- [x] Form tạo bài tập (Teacher) *(teacher tạo và sửa bài tập ngay trong classroom detail bằng API thật)*
+- [x] Form nộp bài (Student) *(student nộp bài ngay trong classroom detail; trạng thái đã nộp hiện được giữ ổn định trong local cache do BE chưa có endpoint lấy bài nộp cá nhân)*
+- [x] Form chấm điểm (Teacher) *(teacher mở danh sách bài nộp, nhập điểm/nhận xét và lưu qua API thật)*
+
+**Tiêu chí hoàn thành:** Luồng giao bài tập và nộp bài chạy được.
+
+---
+
+## Giai đoạn 5 — Exam Management
+
+**Mục tiêu:** Teacher tạo đề thi hoàn chỉnh.
+
+### Backend
+
+- [x] Entity `Exam`, `ExamSetting`, `Question`, `Answer`
+- [x] Migration `AddAssignmentsExamsAndAttempts`
+- [x] `ExamsController` + Service + Repository (11 API + question bank)
+- [x] API CRUD đề thi theo lớp
+- [x] API thêm / sửa / xóa câu hỏi & đáp án
+- [x] API publish đề thi (yêu cầu ≥1 câu hỏi)
+
+### Frontend
+
+- [x] UI danh sách bài kiểm tra theo role *(đã gọi backend thật; FE gom đề thi bằng các classroom user đang truy cập được; card/list ưu tiên title + số liệu thay cho mô tả dài)*
+- [x] UI tạo đề thi *(Teacher, gọi `POST /api/classrooms/{id}/exams`; đề mới tạo theo đúng contract backend ở trạng thái nháp)*
+- [x] UI xem chi tiết đề thi *(mọi role theo quyền truy cập; teacher detail có thêm average score từ attempt API và anti-cheat summary khi bật giám sát)*
+- [x] UI cập nhật / xóa đề thi *(Teacher, có xác nhận xóa 2 bước và publish qua endpoint riêng)*
+- [x] UI cấu hình đề thi *(thời gian mở-đóng, anti-cheat, fullscreen, random, max attempts, show result; classroom không còn đổi được sau khi tạo vì backend chưa hỗ trợ)*
+- [x] UI quản lý câu hỏi & đáp án *(Teacher thêm/sửa/xóa câu hỏi qua backend thật; Admin xem được question bank; Student không thấy đáp án ở trang detail)*
+
+**Tiêu chí hoàn thành:** Teacher tạo được đề thi hoàn chỉnh.
+
+---
+
+## Giai đoạn 6 — Online Testing / Exam Attempt
+
+**Mục tiêu:** Student làm bài thi online và nhận kết quả.
+
+### Backend
+
+- [x] Entity `ExamAttempt`, `StudentAnswer`
+- [x] `POST /api/exams/{id}/start` (resume in-progress, shuffle Q/A)
+- [x] Random câu hỏi / đáp án theo `ExamSetting`
+- [x] `POST /api/attempts/{id}/answers` — lưu đáp án từng câu
+- [x] `POST /api/attempts/{id}/submit` — chấm tự động + tổng điểm
+- [x] `GET /api/attempts/{id}/result` + `GET /api/exams/{id}/attempts` (teacher)
+
+### Frontend
+
+- [x] Màn hình làm bài *(student có route riêng `/student/attempts/:attemptId`, hỗ trợ start/resume và danh sách câu hỏi desktop/mobile)*
+- [x] Countdown timer *(timer cố định trong header, cảnh báo khi còn ít thời gian)*
+- [x] Auto submit khi hết giờ *(tự nộp khi đồng hồ về 0 và trả kết quả theo cấu hình đề thi)*
+
+**Tiêu chí hoàn thành:** Student làm bài thi online và nhận kết quả.
+
+---
+
+## Giai đoạn 7 — Anti-cheat Monitoring
+
+**Mục tiêu:** Ghi nhận hành vi bất thường và tính suspicion score.
+
+### Backend
+
+- [x] Entity `CheatingLog`
+- [x] `AntiCheatController` + Service + Repository
+- [x] API ghi log anti-cheat
+- [x] API xem log theo attempt
+- [x] API xem suspicion score
+- [x] API tổng hợp anti-cheat theo đề thi (`GET /api/anti-cheat/exams/{examId}/summary`)
+
+### Frontend
+
+- [x] Bắt sự kiện chuyển tab *(ghi log `TAB_SWITCH` trong lúc làm bài)*
+- [x] Bắt sự kiện copy/paste *(ghi log `COPY_PASTE` cho copy/cut/paste)*
+- [x] Bắt sự kiện fullscreen *(ghi log `EXIT_FULLSCREEN` khi rời fullscreen)*
+- [x] Bắt reload / mất kết nối cơ bản *(ghi log `PAGE_RELOAD` bằng keepalive và `DISCONNECTED` khi kết nối quay lại)*
+- [x] Dashboard anti-cheat cho Teacher *(exam detail có attempt monitor, suspicion score và timeline log theo từng attempt)*
+
+**Tiêu chí hoàn thành:** Hệ thống ghi nhận hành vi bất thường và tính điểm nghi ngờ.
+
+---
+
+## Giai đoạn 8 — SignalR Realtime
+
+**Mục tiêu:** Teacher nhận cảnh báo ngay khi student có hành vi bất thường.
+
+- [ ] `NotificationHub`
+- [ ] `ExamMonitoringHub`
+- [ ] Frontend kết nối SignalR
+- [ ] Backend gửi notification
+- [ ] Backend gửi anti-cheat warning
+- [ ] Teacher dashboard nhận cảnh báo realtime
+
+**Tiêu chí hoàn thành:** Cảnh báo realtime hiển thị trên dashboard Teacher.
+
+---
+
+## Giai đoạn 9 — Redis
+
+**Mục tiêu:** Cache và trạng thái phiên thi tạm thời.
+
+- [ ] Cấu hình Redis connection string
+- [ ] `RedisCacheService`
+- [ ] Cache exam questions
+- [ ] Cache dashboard summary
+- [ ] Lưu heartbeat attempt
+
+**Tiêu chí hoàn thành:** Redis được dùng đúng mục đích, không chỉ thêm cho có.
+
+---
+
+## Giai đoạn 10 — Dashboard & Reporting
+
+**Mục tiêu:** Trang tổng quan cho Admin, Teacher, Student.
+
+- [ ] API dashboard Admin
+- [ ] API dashboard Teacher
+- [ ] API dashboard Student
+- [ ] Thống kê số lớp, học sinh, bài tập, điểm thi
+- [ ] Thống kê cheating score
+- [x] Frontend dashboard Admin *(đã có mock API + UI tổng quan người dùng, lớp học, activity, anti-cheat; đã tách số liệu giảng viên và sinh viên thành thống kê riêng; block stat/timeline/metric đã bỏ mô tả phụ)*
+- [x] Frontend dashboard Teacher *(đã có mock API + UI lớp quản lý, nộp bài, lịch thi, sinh viên rủi ro cao; đã bỏ mục điểm trung bình khỏi dashboard tổng quan; block stat/timeline/metric đã bỏ mô tả phụ)*
+- [x] Frontend dashboard Student *(đã có mock API + UI tiến độ lớp, việc sắp tới, kết quả, thông báo; đã bỏ mục điểm trung bình khỏi dashboard tổng quan; block stat/timeline/metric đã bỏ mô tả phụ)*
+- [x] Frontend biểu đồ dashboard *(mức cơ bản bằng stat card + progress bars, chưa dùng chart library)*
+
+**Tiêu chí hoàn thành:** Người dùng có trang tổng quan dữ liệu theo role.
+
+---
+
+## Giai đoạn 11 — Docker Compose
+
+**Mục tiêu:** Chạy toàn hệ thống bằng `docker compose up`.
+
+- [ ] `Dockerfile` backend
+- [ ] `Dockerfile` frontend
+- [ ] `docker-compose.yml`
+- [ ] Container SQL Server
+- [ ] Container Redis
+- [ ] Container backend
+- [ ] Container frontend
+- [ ] Test `docker compose up`
+
+**Tiêu chí hoàn thành:** Hệ thống chạy được hoàn toàn trong Docker.
+
+---
+
+## Thứ tự ưu tiên MVP (thời gian gấp)
+
+```txt
+1. Hoàn thiện Giai đoạn 0 (FE ↔ BE kết nối)
+2. Auth Identity + JWT
+3. Classroom
+4. Exam CRUD
+5. Start Exam → Submit Exam
+6. Anti-cheat log
+7. Dashboard anti-cheat cơ bản
+8. SignalR warning
+9. Redis cache
+10. Docker Compose
+```
+
+> Assignment (Giai đoạn 4) có thể làm song song hoặc sau Classroom.
+
+---
+
+## Hướng phát triển (ngoài MVP)
+
+- AI Proctoring
+- Facial Recognition
+- AI Auto Grading
+- Mobile App
+- Multi-school Management
+- Advanced Learning Analytics
+- Cloud Deployment

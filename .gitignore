@@ -49,6 +49,10 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 
+# Local dotnet build workaround dirs (not committed)
+backend/.build-check/
+backend/.build-patch-check/
+
 *_i.c
 *_p.c
 *_i.h
@@ -201,6 +205,10 @@ ClientBin/
 *.pfx
 *.publishsettings
 node_modules/
+.env
+.env.*
+frontend/.env
+frontend/.env.local
 orleans.codegen.cs
 
 # Since there are multiple workflows, uncomment next line to ignore bower_components
@@ -289,3 +297,10 @@ sketch
 # End of https://www.toptal.com/developers/gitignore/api/react,aspnetcore
 
 .devcontainer
+
+
+.claude/
+release-manifest.json
+.repomixignore
+plans/
+.cursor/    

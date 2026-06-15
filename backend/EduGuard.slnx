@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="EduGuard.Api/EduGuard.Api.csproj" />
+  <Project Path="EduGuard.Application/EduGuard.Application.csproj" />
+  <Project Path="EduGuard.Domain/EduGuard.Domain.csproj" />
+  <Project Path="EduGuard.Infrastructure/EduGuard.Infrastructure.csproj" />
+</Solution>

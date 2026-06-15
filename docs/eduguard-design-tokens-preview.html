@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduGuard — Design Tokens Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --color-primary: #0f172a;
+      --color-secondary: #64748b;
+      --color-tertiary: #1d4ed8;
+      --color-tertiary-hover: #1e3a8a;
+      --color-link: #1e40af;
+      --color-neutral: #f8fafc;
+      --color-surface: #ffffff;
+      --color-surface-sunken: #f1f5f9;
+      --color-border: #e2e8f0;
+      --color-border-subtle: #f1f5f9;
+      --color-on-primary: #ffffff;
+      --color-obsidian: #0b1120;
+      --color-success: #047857;
+      --color-success-muted: #ecfdf5;
+      --color-caution: #b45309;
+      --color-caution-muted: #fffbeb;
+      --color-danger: #dc2626;
+      --color-danger-muted: #fef2f2;
+      --color-info: #0369a1;
+      --color-info-muted: #eff6ff;
+      --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+      --radius-pill: 999px;
+      --page-max-width: 1280px;
+      --card-padding: 24px;
+      --section-gap: 24px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--color-primary);
+      background: var(--color-neutral);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      max-width: var(--page-max-width);
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    /* Typography */
+    .display {
+      font-size: 80px;
+      line-height: 1.04;
+      font-weight: 600;
+      letter-spacing: -0.035em;
+    }
+    .h1 {
+      font-size: 42px;
+      line-height: 1.17;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+    }
+    .subheading {
+      font-size: 20px;
+      line-height: 1.4;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+    }
+    .body-sm {
+      font-size: 14px;
+      line-height: 1.43;
+      font-weight: 400;
+      letter-spacing: -0.003em;
+    }
+    .label {
+      font-size: 13px;
+      line-height: 1.43;
+      font-weight: 500;
+    }
+    .caption {
+      font-size: 12px;
+      line-height: 1.33;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+    }
+    .text-secondary { color: var(--color-secondary); }
+    .mono { font-family: var(--font-mono); }
+
+    /* Layout */
+    .hero {
+      margin-bottom: 48px;
+    }
+    .hero-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-secondary);
+      margin-bottom: 16px;
+    }
+    .hero p {
+      margin-top: 12px;
+      max-width: 640px;
+      color: var(--color-secondary);
+      font-size: 20px;
+      line-height: 1.4;
+      font-weight: 500;
+    }
+
+    section {
+      margin-bottom: var(--section-gap);
+    }
+    .section-title {
+      margin-bottom: 8px;
+    }
+    .section-desc {
+      color: var(--color-secondary);
+      margin-bottom: 24px;
+      max-width: 720px;
+    }
+
+    .card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--card-padding);
+    }
+    .card + .card { margin-top: var(--section-gap); }
+
+    /* Color swatches */
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .swatch {
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+    }
+    .swatch-color {
+      height: 88px;
+      display: flex;
+      align-items: flex-end;
+      padding: 12px;
+    }
+    .swatch-color span {
+      font-size: 12px;
+      font-weight: 500;
+      font-family: var(--font-mono);
+    }
+    .swatch-meta {
+      padding: 12px 14px;
+      border-top: 1px solid var(--color-border);
+    }
+    .swatch-meta strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+    .swatch-meta code {
+      font-size: 11px;
+      color: var(--color-secondary);
+      font-family: var(--font-mono);
+    }
+    .swatch-meta p {
+      font-size: 12px;
+      color: var(--color-secondary);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    /* Semantic section label */
+    .group-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 32px 0 16px;
+    }
+    .group-label:first-child { margin-top: 0; }
+
+    /* Surfaces */
+    .surface-demo {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 768px) {
+      .surface-demo { grid-template-columns: 1fr 1fr; }
+      .display { font-size: 48px; }
+      .h1 { font-size: 32px; }
+    }
+    .surface-block {
+      border-radius: var(--radius-md);
+      padding: 20px;
+      border: 1px solid var(--color-border);
+      min-height: 100px;
+    }
+    .surface-block .level {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-secondary);
+      margin-bottom: 4px;
+    }
+    .surface-block .token {
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    /* Typography specimens */
+    .type-specimen {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--color-border);
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 16px;
+      align-items: baseline;
+    }
+    .type-specimen:last-child { border-bottom: none; }
+    .type-meta {
+      font-size: 12px;
+      color: var(--color-secondary);
+      font-family: var(--font-mono);
+      line-height: 1.5;
+    }
+
+    /* Components */
+    .component-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .component-row:last-child { margin-bottom: 0; }
+
+    .btn-primary {
+      background: var(--color-tertiary);
+      color: var(--color-on-primary);
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 12px 20px;
+      min-height: 44px;
+      font-size: 16px;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      transition: background-color 180ms ease-out;
+    }
+    .btn-primary:hover { background: var(--color-tertiary-hover); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--color-primary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 12px 20px;
+      min-height: 44px;
+      font-size: 16px;
+      font-family: var(--font-sans);
+      cursor: pointer;
+    }
+    .link {
+      color: var(--color-link);
+      text-decoration: none;
+      font-size: 16px;
+    }
+    .link:hover { text-decoration: underline; }
+
+    .input {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 16px;
+      font-family: var(--font-sans);
+      color: var(--color-primary);
+      min-width: 280px;
+      outline: none;
+    }
+    .input::placeholder { color: var(--color-secondary); }
+    .input:focus {
+      border-color: var(--color-tertiary);
+      box-shadow: 0 0 0 3px rgb(29 78 216 / 18%);
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .badge-success { background: var(--color-success-muted); color: var(--color-success); }
+    .badge-caution { background: var(--color-caution-muted); color: var(--color-caution); }
+    .badge-danger { background: var(--color-danger-muted); color: var(--color-danger); }
+    .badge-info { background: var(--color-info-muted); color: var(--color-info); }
+
+    /* Radius demo */
+    .radius-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .radius-item {
+      text-align: center;
+    }
+    .radius-box {
+      width: 72px;
+      height: 72px;
+      background: var(--color-tertiary);
+      margin-bottom: 8px;
+    }
+    .radius-item span {
+      font-size: 12px;
+      color: var(--color-secondary);
+      font-family: var(--font-mono);
+    }
+
+    /* App mock card */
+    .app-mock {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 900px) {
+      .app-mock { grid-template-columns: 1fr; }
+    }
+    .exam-card h3 {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .exam-card .meta {
+      font-size: 14px;
+      color: var(--color-secondary);
+      margin-bottom: 16px;
+    }
+    .exam-card .inset {
+      background: var(--color-surface-sunken);
+      border: 1px solid var(--color-border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .exam-card .inset .mono {
+      font-size: 14px;
+      color: var(--color-secondary);
+    }
+    .exam-card .countdown {
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 8px 0 16px;
+    }
+    .obsidian-card {
+      background: var(--color-obsidian);
+      color: var(--color-on-primary);
+      border: none;
+    }
+    .obsidian-card .text-secondary { color: #94a3b8; }
+
+    /* Upgrade strip */
+    .upgrade-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .upgrade-item {
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1px solid var(--color-border);
+    }
+    .upgrade-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .upgrade-swatch {
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      font-weight: 500;
+    }
+    .upgrade-label {
+      padding: 8px 10px;
+      font-size: 11px;
+      color: var(--color-secondary);
+      border-top: 1px solid var(--color-border);
+      background: var(--color-surface);
+    }
+    .contrast-tag {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      background: var(--color-surface-sunken);
+      color: var(--color-secondary);
+    }
+
+    /* Rules */
+    .rules {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 768px) {
+      .rules { grid-template-columns: 1fr; }
+    }
+    .rules ul {
+      list-style: none;
+      padding: 0;
+    }
+    .rules li {
+      padding: 8px 0;
+      font-size: 14px;
+      line-height: 1.43;
+      border-bottom: 1px solid var(--color-border);
+      padding-left: 20px;
+      position: relative;
+    }
+    .rules li::before {
+      position: absolute;
+      left: 0;
+      font-weight: 600;
+    }
+    .rules-do li::before { content: "✓"; color: var(--color-success); }
+    .rules-dont li::before { content: "✕"; color: var(--color-danger); }
+    .rules h4 {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 12px;
+      color: var(--color-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--color-border);
+      font-size: 12px;
+      color: var(--color-secondary);
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <span class="hero-badge">design.md v1.1.0 · Institutional Slate</span>
+      <h1 class="h1">EduGuard Design Tokens</h1>
+      <p>Premium B2B education palette — slate authority, institutional blue CTA, semantic muted surfaces. Flat, một accent, không box-shadow.</p>
+    </header>
+
+    <section>
+      <div class="card">
+        <h2 class="subheading section-title">Nâng cấp v1.0 → v1.1</h2>
+        <p class="section-desc body-sm">Chuyển từ Apple Gray sang Slate (trust SaaS). CTA sâu hơn, contrast tốt hơn, badge dùng token <code class="mono">*-muted</code>.</p>
+        <div class="upgrade-strip">
+          <div class="upgrade-item">
+            <div class="upgrade-pair">
+              <div class="upgrade-swatch" style="background:#1D1D1F;color:#fff">v1.0</div>
+              <div class="upgrade-swatch" style="background:#0F172A;color:#fff">v1.1</div>
+            </div>
+            <div class="upgrade-label">primary</div>
+          </div>
+          <div class="upgrade-item">
+            <div class="upgrade-pair">
+              <div class="upgrade-swatch" style="background:#0071E3;color:#fff">v1.0</div>
+              <div class="upgrade-swatch" style="background:#1D4ED8;color:#fff">v1.1</div>
+            </div>
+            <div class="upgrade-label">tertiary (CTA)</div>
+          </div>
+          <div class="upgrade-item">
+            <div class="upgrade-pair">
+              <div class="upgrade-swatch" style="background:#F5F5F7;color:#1D1D1F">v1.0</div>
+              <div class="upgrade-swatch" style="background:#F8FAFC;color:#0F172A">v1.1</div>
+            </div>
+            <div class="upgrade-label">neutral</div>
+          </div>
+          <div class="upgrade-item">
+            <div class="upgrade-pair">
+              <div class="upgrade-swatch" style="background:#E8E8ED;color:#1D1D1F">v1.0</div>
+              <div class="upgrade-swatch" style="background:#E2E8F0;color:#0F172A">v1.1</div>
+            </div>
+            <div class="upgrade-label">border</div>
+          </div>
+          <div class="upgrade-item">
+            <div class="upgrade-pair">
+              <div class="upgrade-swatch" style="background:#16A34A;color:#fff">v1.0</div>
+              <div class="upgrade-swatch" style="background:#047857;color:#fff">v1.1</div>
+            </div>
+            <div class="upgrade-label">success</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Core palette -->
+    <section>
+      <div class="card">
+        <h2 class="subheading section-title">1. Core palette</h2>
+        <p class="section-desc body-sm">Màu nền tảng cho toàn bộ app LMS + thi + anti-cheat. <code class="mono">tertiary</code> chỉ dùng cho CTA button và focus ring.</p>
+
+        <p class="group-label">Core (app)</p>
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="swatch-color" style="background:#0F172A;color:#fff"><span>#0F172A</span></div>
+            <div class="swatch-meta"><strong>primary</strong><code>--color-primary</code><p>Headlines, body — slate authority<span class="contrast-tag">AA 15.8:1 on white</span></p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#64748B;color:#fff"><span>#64748B</span></div>
+            <div class="swatch-meta"><strong>secondary</strong><code>--color-secondary</code><p>Caption, metadata, placeholder</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#1D4ED8;color:#fff"><span>#1D4ED8</span></div>
+            <div class="swatch-meta"><strong>tertiary</strong><code>--color-tertiary</code><p>CTA button, focus ring<span class="contrast-tag">AA 6.7:1</span></p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#1E3A8A;color:#fff"><span>#1E3A8A</span></div>
+            <div class="swatch-meta"><strong>tertiary-hover</strong><code>--color-tertiary-hover</code><p>Hover / pressed CTA</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#1E40AF;color:#fff"><span>#1E40AF</span></div>
+            <div class="swatch-meta"><strong>link</strong><code>--color-link</code><p>Link inline — không dùng cho button fill</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#F8FAFC;color:#0F172A"><span>#F8FAFC</span></div>
+            <div class="swatch-meta"><strong>neutral</strong><code>--color-neutral</code><p>Nền trang (canvas)</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#FFFFFF;color:#0F172A;border-bottom:1px solid #E2E8F0"><span>#FFFFFF</span></div>
+            <div class="swatch-meta"><strong>surface</strong><code>--color-surface</code><p>Card, panel, modal, input</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#F1F5F9;color:#0F172A"><span>#F1F5F9</span></div>
+            <div class="swatch-meta"><strong>surface-sunken</strong><code>--color-surface-sunken</code><p>Inset trong card trắng</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#E2E8F0;color:#0F172A"><span>#E2E8F0</span></div>
+            <div class="swatch-meta"><strong>border</strong><code>--color-border</code><p>Viền card, divider, input</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#0B1120;color:#fff"><span>#0B1120</span></div>
+            <div class="swatch-meta"><strong>obsidian</strong><code>--color-obsidian</code><p>Dark card / monitor panel — midnight</p></div>
+          </div>
+        </div>
+
+        <p class="group-label">Semantic (status only — không thay CTA)</p>
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="swatch-color" style="background:#047857;color:#fff"><span>#047857</span></div>
+            <div class="swatch-meta"><strong>success</strong><code>--color-success</code><p>Đã nộp, hoàn thành, pass</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#ECFDF5;color:#047857;border-bottom:1px solid #E2E8F0"><span>#ECFDF5</span></div>
+            <div class="swatch-meta"><strong>success-muted</strong><code>--color-success-muted</code><p>Nền badge success</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#B45309;color:#fff"><span>#B45309</span></div>
+            <div class="swatch-meta"><strong>caution</strong><code>--color-caution</code><p>Sắp hết giờ, cảnh báo nhẹ</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#FFFBEB;color:#B45309"><span>#FFFBEB</span></div>
+            <div class="swatch-meta"><strong>caution-muted</strong><code>--color-caution-muted</code><p>Nền badge caution</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#DC2626;color:#fff"><span>#DC2626</span></div>
+            <div class="swatch-meta"><strong>danger</strong><code>--color-danger</code><p>Lỗi, vi phạm nghiêm trọng</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#FEF2F2;color:#DC2626"><span>#FEF2F2</span></div>
+            <div class="swatch-meta"><strong>danger-muted</strong><code>--color-danger-muted</code><p>Nền badge danger</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#0369A1;color:#fff"><span>#0369A1</span></div>
+            <div class="swatch-meta"><strong>info</strong><code>--color-info</code><p>Ghi nhận sự kiện — tách khỏi CTA</p></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#EFF6FF;color:#0369A1"><span>#EFF6FF</span></div>
+            <div class="swatch-meta"><strong>info-muted</strong><code>--color-info-muted</code><p>Nền badge info</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Surfaces -->
+    <section>
+      <div class="card">
+        <h2 class="subheading section-title">2. Surfaces — elevation bằng màu</h2>
+        <p class="section-desc body-sm">Không dùng box-shadow. Phân tầng bằng chênh lệch <code class="mono">neutral</code> / <code class="mono">surface</code> / <code class="mono">border</code>.</p>
+        <div class="surface-demo">
+          <div class="surface-block" style="background:#F8FAFC">
+            <div class="level">Level 0</div>
+            <div class="token">neutral</div>
+            <p class="caption text-secondary" style="margin-top:8px">Page canvas</p>
+          </div>
+          <div class="surface-block" style="background:#FFFFFF">
+            <div class="level">Level 1</div>
+            <div class="token">surface</div>
+            <p class="caption text-secondary" style="margin-top:8px">Card trên canvas</p>
+          </div>
+          <div class="surface-block" style="background:#F1F5F9;border-color:#E2E8F0">
+            <div class="level">Level 2</div>
+            <div class="token">surface-sunken</div>
+            <p class="caption text-secondary" style="margin-top:8px">Vùng lõm trong card</p>
+          </div>
+          <div class="surface-block" style="background:#FFFFFF;border:2px solid #E2E8F0">
+            <div class="level">Divider</div>
+            <div class="token">border</div>
+            <p class="caption text-secondary" style="margin-top:8px">Phân tách viền</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Typography -->
+    <section>
+      <div class="card">
+        <h2 class="subheading section-title">3. Typography — Inter</h2>
+        <p class="section-desc body-sm">Thay SF Pro trên web, hỗ trợ tiếng Việt. <code class="mono">display</code> chỉ dùng hero login/landing.</p>
+
+        <div class="type-specimen">
+          <div class="type-meta">display<br>80px / 600</div>
+          <div class="display" style="font-size:56px">EduGuard</div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">h1<br>42px / 600</div>
+          <div class="h1">Bảng điều khiển lớp học</div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">subheading<br>20px / 500</div>
+          <div class="subheading">Danh sách bài thi đang diễn ra</div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">body<br>16px / 400</div>
+          <div>Học sinh cần hoàn thành bài kiểm tra trước 23:59 ngày 15/06/2026.</div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">body-sm<br>14px / 400</div>
+          <div class="body-sm">Lớp 10A1 · 32 học sinh · Cập nhật 2 phút trước</div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">label<br>13px / 500</div>
+          <div class="label">Mã lớp tham gia</div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">caption<br>12px / 400</div>
+          <div class="caption text-secondary">Phiên bản 1.1.0 · design.md</div>
+        </div>
+        <div class="type-specimen">
+          <div class="type-meta">mono</div>
+          <div class="mono body-sm text-secondary">EXAM-2026-0611-0042 · log_id: a8f3c2</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Components -->
+    <section>
+      <div class="card">
+        <h2 class="subheading section-title">4. Components</h2>
+        <p class="section-desc body-sm">Một primary CTA mỗi section. Link <code class="mono">#1E40AF</code>, button <code class="mono">#1D4ED8</code>, hover <code class="mono">#1E3A8A</code>.</p>
+
+        <p class="group-label">Buttons &amp; link</p>
+        <div class="component-row">
+          <button type="button" class="btn-primary">Bắt đầu làm bài</button>
+          <button type="button" class="btn-secondary">Xem lại đề</button>
+          <a href="#" class="link" onclick="return false">Quên mật khẩu?</a>
+        </div>
+
+        <p class="group-label">Input</p>
+        <div class="component-row">
+          <input class="input" type="text" placeholder="Nhập mã lớp (VD: ABC123)" />
+        </div>
+
+        <p class="group-label">Status badges</p>
+        <div class="component-row">
+          <span class="badge badge-success">✓ Đã nộp bài</span>
+          <span class="badge badge-caution">⚠ Còn 5 phút</span>
+          <span class="badge badge-danger">✕ Chuyển tab</span>
+          <span class="badge badge-info">ℹ Sự kiện ghi nhận</span>
+        </div>
+
+        <p class="group-label">Border radius</p>
+        <div class="radius-row">
+          <div class="radius-item">
+            <div class="radius-box" style="border-radius:8px"></div>
+            <span>sm · 8px<br>input, badge</span>
+          </div>
+          <div class="radius-item">
+            <div class="radius-box" style="border-radius:12px"></div>
+            <span>md · 12px<br>button</span>
+          </div>
+          <div class="radius-item">
+            <div class="radius-box" style="border-radius:20px"></div>
+            <span>lg · 20px<br>card</span>
+          </div>
+          <div class="radius-item">
+            <div class="radius-box" style="border-radius:28px"></div>
+            <span>xl · 28px<br>login hero</span>
+          </div>
+          <div class="radius-item">
+            <div class="radius-box" style="border-radius:999px;width:120px"></div>
+            <span>pill · 999px<br>landing CTA</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- App context mock -->
+    <section>
+      <div class="card">
+        <h2 class="subheading section-title">5. Trong ngữ cảnh app</h2>
+        <p class="section-desc body-sm">Ví dụ màn thi và card tối — tokens áp dụng thực tế, không gradient, không shadow.</p>
+
+        <div class="app-mock">
+          <div class="card exam-card" style="padding:24px;margin:0">
+            <span class="badge badge-caution" style="margin-bottom:12px">Đang thi</span>
+            <h3>Kiểm tra Toán — Chương 3</h3>
+            <p class="meta">Lớp 10A1 · 40 câu · Tự luận + trắc nghiệm</p>
+            <div class="inset">
+              <div class="mono">Thời gian còn lại</div>
+              <div class="countdown">00:42:17</div>
+              <div class="mono">Mã phiên: EXAM-2026-0611-0042</div>
+            </div>
+            <div class="component-row" style="margin:0">
+              <button type="button" class="btn-primary">Nộp bài</button>
+              <button type="button" class="btn-secondary">Lưu tạm</button>
+            </div>
+          </div>
+
+          <div class="card obsidian-card" style="padding:24px;margin:0">
+            <p class="caption text-secondary">Anti-cheat monitor</p>
+            <h3 class="subheading" style="color:#fff;margin:8px 0 16px">3 cảnh báo trong phiên</h3>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:rgba(255,255,255,0.06);border-radius:8px">
+                <span class="body-sm" style="color:#fff">Chuyển tab</span>
+                <span class="badge badge-danger">2 lần</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:rgba(255,255,255,0.06);border-radius:8px">
+                <span class="body-sm" style="color:#fff">Thoát fullscreen</span>
+                <span class="badge badge-caution">1 lần</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:rgba(255,255,255,0.06);border-radius:8px">
+                <span class="body-sm" style="color:#fff">Nộp bài thành công</span>
+                <span class="badge badge-success">OK</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rules -->
+    <section>
+      <div class="card">
+        <h2 class="subheading section-title">6. Do's &amp; Don'ts</h2>
+        <div class="rules">
+          <div class="rules-do">
+            <h4>Nên làm</h4>
+            <ul>
+              <li>Một primary CTA (<code class="mono">tertiary</code>) mỗi section</li>
+              <li>Link text <code class="mono">#1E40AF</code>, button <code class="mono">#1D4ED8</code></li>
+              <li>Elevation bằng neutral / surface / border</li>
+              <li>Semantic + icon + text cho mọi badge</li>
+              <li>Negative space — <code class="mono">neutral</code> là feature</li>
+            </ul>
+          </div>
+          <div class="rules-dont">
+            <h4>Không làm</h4>
+            <ul>
+              <li>Gradient theatrical (Citrus, Indigo, Blush)</li>
+              <li>Box-shadow trên card/container</li>
+              <li><code class="mono">tertiary</code> cho link inline hoặc accent thứ hai</li>
+              <li>Hardcode hex trong component — dùng CSS var</li>
+              <li>Màu swatch trang trí làm UI chrome</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p>EduGuard Design Tokens Preview — nguồn: <code class="mono">design.md</code> v1.1.0 Institutional Slate · Mở file trực tiếp trong trình duyệt.</p>
+    </footer>
+  </div>
+</body>
+</html>
