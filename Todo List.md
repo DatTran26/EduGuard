@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD` (hoặc `devH` / `devB` — nhánh dev đang làm việc)  
-**Cập nhật:** 2026-06-15 (Phase 9 Redis — bổ sung kế hoạch chi tiết theo codebase; kiểm thử Redis để sau triển khai)  
+**Cập nhật:** 2026-06-15 (README hệ thống: root + frontend + backend + docs/README hoàn thành; Phase 9 Redis — kế hoạch chi tiết)  
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -664,6 +664,17 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 ```
 
 > Assignment (Giai đoạn 4) có thể làm song song hoặc sau Classroom.
+
+---
+
+## Kiểm thử hệ thống (QA)
+
+Checklist thực hiện & giám sát:
+
+- [ ] [`docs/test-checklists/eduguard-system-test-checklist.md`](docs/test-checklists/eduguard-system-test-checklist.md) — master ~332 TC toàn hệ thống
+- [ ] [`docs/test-checklists/dashboard-reporting-system-test-checklist.md`](docs/test-checklists/dashboard-reporting-system-test-checklist.md) — chi tiết Dashboard (78 TC)
+- [ ] Smoke hệ thống (mục cuối file master) trước mỗi build
+- [ ] Cập nhật bảng tiến độ + defect log trong file master sau mỗi phiên QA
 
 ---
 
