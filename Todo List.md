@@ -25,7 +25,7 @@
 | 9 | Redis | ⬜ Chưa bắt đầu |
 | 10 | Dashboard & Reporting | 🟡 Đang làm |
 | 11 | Docker Compose | ⬜ Chưa bắt đầu |
-| DOC | README giới thiệu hệ thống | ⬜ Chưa bắt đầu |
+| DOC | README giới thiệu hệ thống | ✅ Hoàn thành |
 
 ---
 
@@ -566,9 +566,9 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 | File | Vấn đề |
 |------|--------|
 | `README.md` (root) | ✅ Đã cấu hình lại (2026-06-15) — giới thiệu hệ thống, không tiến độ phase |
-| `docs/README.md` | Ổn làm mục lục; cần phân vai rõ README vs checklist tiến độ |
-| `frontend/README.md` | Vẫn template Vite mặc định — chưa mô tả EduGuard |
-| `backend/README.md` | **Chưa có** — cần tạo |
+| `docs/README.md` | ✅ Đã bổ sung phân vai README vs tiến độ, điểm nổi bật, hướng đọc |
+| `frontend/README.md` | ✅ Đã thay template Vite bằng README EduGuard |
+| `backend/README.md` | ✅ Đã tạo |
 
 **Nguyên tắc nội dung README:**
 
@@ -588,26 +588,26 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 
 ### `docs/README.md`
 
-- [ ] Thêm mục **README vs tài liệu tiến độ** (README = giới thiệu; `Todo List` / `features.md` / `apiList.md` = checklist)
-- [ ] Bổ sung **Điểm nổi bật hệ thống** (tóm tắt 5–8 bullet, không phase status)
-- [ ] Cập nhật **Cách đọc nhanh** — dev mới vs đọc sâu kiến trúc/API
+- [x] Thêm mục **README vs tài liệu tiến độ** (README = giới thiệu; `Todo List` / `features.md` / `apiList.md` = checklist)
+- [x] Bổ sung **Điểm nổi bật hệ thống** (tóm tắt 5–8 bullet, không phase status)
+- [x] Cập nhật **Cách đọc nhanh** — dev mới vs đọc sâu kiến trúc/API
 
 ### `frontend/README.md`
 
-- [ ] Thay template Vite bằng README EduGuard frontend
-- [ ] Vai trò SPA, stack (React, Vite, Tailwind, Axios, SignalR client)
-- [ ] Cấu trúc `src/` (`features/`, `api/`, `signalr/`, `hooks/`, theme)
-- [ ] `npm install`, `npm run dev`, `npm run build`; proxy/CORS với backend
-- [ ] Link `docs/design-guidelines.md`, `docs/05_API_FRONTEND_INTEGRATION.md`
-- [ ] Không ghi tiến độ phase
+- [x] Thay template Vite bằng README EduGuard frontend
+- [x] Vai trò SPA, stack (React, Vite, Tailwind, Axios, SignalR client)
+- [x] Cấu trúc `src/` (`features/`, `api/`, `signalr/`, `hooks/`, theme)
+- [x] `npm install`, `npm run dev`, `npm run build`; proxy/CORS với backend
+- [x] Link `docs/design-guidelines.md`, `docs/05_API_FRONTEND_INTEGRATION.md`
+- [x] Không ghi tiến độ phase
 
 ### `backend/README.md` (tạo mới)
 
-- [ ] Tạo file — giới thiệu solution 4 project (Api, Application, Domain, Infrastructure)
-- [ ] Sơ đồ layer `Controller → Service → Repository → DbContext`
-- [ ] `dotnet run`, migration EF, connection string SQL Server / Redis
-- [ ] Module chính: Auth, Classroom, Assignment, Exam, Attempt, AntiCheat, SignalR hubs
-- [ ] Link `docs/03_BACKEND_ARCHITECTURE.md`, `docs/02_SETUP_AND_PROJECT_STRUCTURE.md`
+- [x] Tạo file — giới thiệu solution 4 project (Api, Application, Domain, Infrastructure)
+- [x] Sơ đồ layer `Controller → Service → Repository → DbContext`
+- [x] `dotnet run`, migration EF, connection string SQL Server / Redis
+- [x] Module chính: Auth, Classroom, Assignment, Exam, Attempt, AntiCheat, SignalR hubs
+- [x] Link `docs/03_BACKEND_ARCHITECTURE.md`, `docs/02_SETUP_AND_PROJECT_STRUCTURE.md`
 
 **Tiêu chí hoàn thành:** Dev mới đọc README (root + frontend/backend) hiểu hệ thống, chạy được local, biết điểm nổi bật — không cần đọc Todo List để hiểu sản phẩm là gì.
 
