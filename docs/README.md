@@ -1,15 +1,44 @@
 # EduGuard Documentation
 
-Bộ tài liệu này mô tả tổng thể hệ thống **EduGuard – Hệ thống quản lý học tập và thi trực tuyến có giám sát chống gian lận**.
+Bộ tài liệu mô tả hệ thống **EduGuard – Hệ thống quản lý học tập và thi trực tuyến có giám sát chống gian lận**.
 
-Hệ thống được thiết kế theo kiến trúc **Client - Server**, sử dụng:
+Hệ thống theo kiến trúc **Client – Server**:
 
-- **Backend:** ASP.NET Core Web API
-- **Frontend:** ReactJS + TailwindCSS
-- **Database:** SQL Server
-- **Cache / Realtime support:** Redis
-- **Realtime:** SignalR
-- **Authentication:** ASP.NET Core Identity + JWT Bearer + Role-based Authorization
+- **Backend:** ASP.NET Core 8 Web API (Clean Architecture 4 lớp)
+- **Frontend:** React + Vite + Tailwind CSS
+- **Database:** SQL Server + Entity Framework Core
+- **Realtime:** SignalR (notification, exam monitoring)
+- **Cache:** Redis *(đang triển khai — connection string đã chuẩn bị)*
+- **Auth:** ASP.NET Core Identity + JWT Bearer + refresh token
+
+> Cổng vào repo (giới thiệu + chạy nhanh): [`../README.md`](../README.md)
+
+---
+
+## README vs tài liệu tiến độ
+
+| Loại | File | Mục đích |
+|------|------|----------|
+| **Giới thiệu hệ thống** | [`../README.md`](../README.md), [`../frontend/README.md`](../frontend/README.md), [`../backend/README.md`](../backend/README.md) | Hệ thống làm gì, cấu trúc, cách chạy, điểm nổi bật — **không** ghi % phase |
+| **Checklist tiến độ** | [`../Todo List.md`](../Todo%20List.md) | Trạng thái implementation theo giai đoạn |
+| **Checklist API / feature** | `apiList.md`, `features.md` | Tick endpoint và chức năng khi hoàn thành |
+| **Thiết kế & kiến trúc** | `01`–`05`, `03`, `04` | Spec mục tiêu, có thể đi trước code |
+| **Lịch sử** | `project-changelog.md` | Thay đổi theo feature đã ship |
+
+---
+
+## Điểm nổi bật hệ thống
+
+- LMS + thi trực tuyến trong một nền tảng (lớp học, bài tập, đề thi, làm bài).
+- Clean Architecture backend — tách Api / Application / Domain / Infrastructure.
+- JWT + refresh token, phân quyền Admin / Teacher / Student.
+- Exam attempt: timer, auto-save đáp án, auto-submit, chấm trắc nghiệm.
+- Anti-cheat: chuyển tab, fullscreen, focus window — log + điểm rủi ro.
+- SignalR realtime: thông báo và cảnh báo giám sát đề cho giáo viên.
+- Frontend SPA theo role, proxy dev Vite → API + WebSocket hubs.
+- Husky: test trước commit, conventional commits, chặn push lên `main`.
+
+---
 
 ## Danh sách tài liệu
 
@@ -73,15 +102,26 @@ EduGuard/
 
 ## Cách đọc nhanh
 
-Nếu mới bắt đầu, nên đọc theo thứ tự:
+### Dev mới — chạy được trong 30 phút
 
-1. `01_PROJECT_OVERVIEW.md`
-2. `02_SETUP_AND_PROJECT_STRUCTURE.md`
-3. `03_BACKEND_ARCHITECTURE.md`
-4. `04_DATABASE_ENTITIES.md`
-5. `05_API_FRONTEND_INTEGRATION.md`
-6. `apiList.md` / `features.md` — tick tiến độ API & chức năng
-7. `06_DEVELOPMENT_ROADMAP.md`
-8. `07_DEVELOPMENT_RULES.md` (trước khi commit/push)
+1. [`../README.md`](../README.md) — tổng quan + lệnh chạy BE/FE
+2. [`02_SETUP_AND_PROJECT_STRUCTURE.md`](02_SETUP_AND_PROJECT_STRUCTURE.md) — connection string, migration, CORS
+3. [`05_API_FRONTEND_INTEGRATION.md`](05_API_FRONTEND_INTEGRATION.md) — nếu làm frontend
+4. [`07_DEVELOPMENT_RULES.md`](07_DEVELOPMENT_RULES.md) — trước khi commit
+
+### Đọc sâu — kiến trúc & nghiệp vụ
+
+1. [`01_PROJECT_OVERVIEW.md`](01_PROJECT_OVERVIEW.md) — use case, vai trò user, module
+2. [`03_BACKEND_ARCHITECTURE.md`](03_BACKEND_ARCHITECTURE.md) — layer, service, repository
+3. [`04_DATABASE_ENTITIES.md`](04_DATABASE_ENTITIES.md) — schema & quan hệ
+4. [`05_API_FRONTEND_INTEGRATION.md`](05_API_FRONTEND_INTEGRATION.md) — contract API + SignalR
+5. [`../backend/README.md`](../backend/README.md) / [`../frontend/README.md`](../frontend/README.md) — cấu trúc code từng phía
+
+### Theo dõi tiến độ (không đọc để hiểu sản phẩm)
+
+1. [`../Todo List.md`](../Todo%20List.md) — phase đang làm
+2. [`apiList.md`](apiList.md) / [`features.md`](features.md) — tick API & chức năng
+3. [`06_DEVELOPMENT_ROADMAP.md`](06_DEVELOPMENT_ROADMAP.md) — lộ trình MVP (thiết kế)
+4. [`project-changelog.md`](project-changelog.md) — đã thay đổi gì
 
 

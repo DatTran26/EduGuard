@@ -27,6 +27,7 @@
 | 9 | Redis | ⬜ Chưa bắt đầu |
 | 10 | Dashboard & Reporting | 🟡 Đang làm |
 | 11 | Docker Compose | ⬜ Chưa bắt đầu |
+| DOC | README giới thiệu hệ thống | ✅ Hoàn thành |
 
 ---
 
@@ -343,6 +344,62 @@
 ```
 
 > Assignment (Giai đoạn 4) có thể làm song song hoặc sau Classroom.
+
+---
+
+## Tài liệu — README giới thiệu hệ thống
+
+**Mục tiêu:** README là cổng vào repo — giới thiệu hệ thống làm gì, cấu trúc ra sao, cách chạy, điểm nổi bật. **Không** ghi tiến độ phase (để `Todo List.md`, `docs/project-changelog.md`, `docs/features.md`).
+
+**Rà soát hiện trạng (2026-06-15):**
+
+| File | Vấn đề |
+|------|--------|
+| `README.md` (root) | ✅ Đã cấu hình lại (2026-06-15) — giới thiệu hệ thống, không tiến độ phase |
+| `docs/README.md` | ✅ Đã bổ sung phân vai README vs tiến độ, điểm nổi bật, hướng đọc |
+| `frontend/README.md` | ✅ Đã thay template Vite bằng README EduGuard |
+| `backend/README.md` | ✅ Đã tạo |
+
+**Nguyên tắc nội dung README:**
+
+- **Có:** mục đích hệ thống, vai trò user, tech stack, kiến trúc tóm tắt, cấu trúc thư mục, hướng dẫn chạy local, điểm nổi bật / cải tiến, link sang `docs/` chi tiết
+- **Không:** bảng tiến độ phase, checkbox giai đoạn, "đang làm / chưa bắt đầu" — trỏ sang `Todo List.md`
+
+### Root `README.md`
+
+- [x] Gỡ hoặc rút gọn mục **Trạng thái dự án** / **Lộ trình** — thay bằng 1 dòng link `Todo List.md` cho tiến độ
+- [x] Cập nhật **Tính năng** → mô tả capability (LMS, thi online, anti-cheat, SignalR…), không bảng % hoàn thành
+- [x] Thêm **Điểm nổi bật** (Clean Architecture 4 layer, Identity+JWT, giám sát thi realtime, exam attempt + timer, anti-cheat scoring…)
+- [x] Cập nhật **Tech stack** — bỏ "dự kiến" cho phần đã có (React/Vite/Tailwind, EF Core, SQL Server, SignalR)
+- [x] Cập nhật **Cấu trúc thư mục** — `frontend/` đã là app Vite đầy đủ; liệt kê module backend chính
+- [x] Cập nhật **Cài đặt / Chạy** — `dotnet run` backend + `npm run dev` frontend, URL Swagger & Vite
+- [x] Thêm **Kiến trúc tóm tắt** (ASCII hoặc link `docs/03_BACKEND_ARCHITECTURE.md`, `docs/01_PROJECT_OVERVIEW.md`)
+- [x] Giữ **Phát triển** (nhánh, commit, workflow) — không trùng nội dung tiến độ feature
+
+### `docs/README.md`
+
+- [x] Thêm mục **README vs tài liệu tiến độ** (README = giới thiệu; `Todo List` / `features.md` / `apiList.md` = checklist)
+- [x] Bổ sung **Điểm nổi bật hệ thống** (tóm tắt 5–8 bullet, không phase status)
+- [x] Cập nhật **Cách đọc nhanh** — dev mới vs đọc sâu kiến trúc/API
+
+### `frontend/README.md`
+
+- [x] Thay template Vite bằng README EduGuard frontend
+- [x] Vai trò SPA, stack (React, Vite, Tailwind, Axios, SignalR client)
+- [x] Cấu trúc `src/` (`features/`, `api/`, `signalr/`, `hooks/`, theme)
+- [x] `npm install`, `npm run dev`, `npm run build`; proxy/CORS với backend
+- [x] Link `docs/design-guidelines.md`, `docs/05_API_FRONTEND_INTEGRATION.md`
+- [x] Không ghi tiến độ phase
+
+### `backend/README.md` (tạo mới)
+
+- [x] Tạo file — giới thiệu solution 4 project (Api, Application, Domain, Infrastructure)
+- [x] Sơ đồ layer `Controller → Service → Repository → DbContext`
+- [x] `dotnet run`, migration EF, connection string SQL Server / Redis
+- [x] Module chính: Auth, Classroom, Assignment, Exam, Attempt, AntiCheat, SignalR hubs
+- [x] Link `docs/03_BACKEND_ARCHITECTURE.md`, `docs/02_SETUP_AND_PROJECT_STRUCTURE.md`
+
+**Tiêu chí hoàn thành:** Dev mới đọc README (root + frontend/backend) hiểu hệ thống, chạy được local, biết điểm nổi bật — không cần đọc Todo List để hiểu sản phẩm là gì.
 
 ---
 
