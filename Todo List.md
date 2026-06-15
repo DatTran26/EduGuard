@@ -3,10 +3,8 @@
 > Lộ trình: `docs/06_DEVELOPMENT_ROADMAP.md` · Quy tắc: `docs/07_DEVELOPMENT_RULES.md`  
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
-**Branch làm việc:** `devB`
-**Cập nhật:** 2026-06-15 (đã bổ sung checklist tách Backend/Frontend cho phần cấu hình bài kiểm tra, xử lý timezone Việt Nam và validate trắc nghiệm MVP trước khi test luồng thi thật; Phase 8 SignalR realtime đã xong; Notifications REST/entity, dashboard và user/profile vẫn còn phụ thuộc endpoint backend chưa triển khai)
-**Branch làm việc:** `devH`  
-**Cập nhật:** 2026-06-13 (backend Phase 7 anti-cheat xong; Phase 3–6 backend xong; frontend auth + classroom + exam đã nối backend thật ở các màn hiện có; teacher tạo đề có thể publish ngay khi tạo, thời gian đóng đề tự tính theo thời gian mở + số phút làm bài nhưng vẫn cho chỉnh tay; classroom detail nay đã có assignment thật, student đã có màn làm bài riêng với timer + auto submit, teacher exam detail đã có attempt monitor và anti-cheat REST cơ bản; dashboard và user/profile vẫn còn bridge/mock ở những phần backend chưa cung cấp endpoint tương ứng; role UI đã được giản lược theo hướng title-only cho block/chức năng chính và workspace màu sáng đã rà lại theo design tokens preview; auth session giờ tự refresh token khi role backend đổi để tránh 403 lệch quyền ở các màn Teacher/Admin)  
+**Branch làm việc:** `devD` (hoặc `devH` / `devB` — nhánh dev đang làm việc)  
+**Cập nhật:** 2026-06-15 (Phase 9 Redis — bổ sung kế hoạch chi tiết theo codebase; kiểm thử Redis để sau triển khai)  
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -27,6 +25,7 @@
 | 9 | Redis | ⬜ Chưa bắt đầu |
 | 10 | Dashboard & Reporting | 🟡 Đang làm |
 | 11 | Docker Compose | ⬜ Chưa bắt đầu |
+| DOC | README giới thiệu hệ thống | ⬜ Chưa bắt đầu |
 
 ---
 
@@ -280,15 +279,337 @@
 
 ## Giai đoạn 9 — Redis
 
-**Mục tiêu:** Cache và trạng thái phiên thi tạm thời.
+**Mục tiêu:** Giảm truy vấn SQL lặp trên luồng **thi + giám sát** (đã chạy Phase 6–8); lưu **presence** tạm thời (student còn online) không ghi DB mỗi 30 giây.
 
-- [ ] Cấu hình Redis connection string
-- [ ] `RedisCacheService`
-- [ ] Cache exam questions
-- [ ] Cache dashboard summary
-- [ ] Lưu heartbeat attempt
+**Map feature:** `docs/features.md` → F-REDIS-01 … F-REDIS-06.
 
-**Tiêu chí hoàn thành:** Redis được dùng đúng mục đích, không chỉ thêm cho có.
+---
+
+### Hiện trạng codebase (đã kiểm tra 2026-06-15)
+
+| Hạng mục | Trạng thái | Ghi chú |
+|----------|------------|---------|
+| `StackExchange.Redis` 2.12.14 | ✅ Đã khai báo | `backend/EduGuard.Infrastructure/EduGuard.Infrastructure.csproj` |
+| `ConnectionStrings:Redis` | ✅ Có mẫu | `backend/EduGuard.Api/appsettings.json` → `localhost:6379` |
+| `ConnectionMultiplexer` / DI | ❌ Chưa có | `dependency-injection.cs` chưa đăng ký Redis |
+| `Infrastructure/Redis/` | ❌ Chỉ `.gitkeep` | Chưa có `redis-cache-service.cs` |
+| SignalR backplane | ❌ Chưa | Hubs chạy in-process (`NotificationHub`, `ExamMonitoringHub`) |
+| SQL source of truth | ✅ | `ExamRepository`, `CheatingLogRepository` — Redis **không** thay persistence |
+
+**Điểm nóng hiện tại (mỗi request đều hit DB):**
+
+| Luồng | Code | Vấn đề |
+|-------|------|--------|
+| Teacher mở chi tiết đề | FE `ExamDetailPage` → `examApi.getQuestions` + `antiCheatApi.getExamSummary` | 2 round-trip; summary join attempts + logs |
+| `GET /api/exams/{id}/questions` | `ExamService.GetQuestionsAsync` → `GetByIdWithDetailsAsync` | Load cả Exam + Questions + Answers + Setting dù chỉ cần list câu hỏi |
+| `GET /api/anti-cheat/exams/{id}/summary` | `AntiCheatService.GetExamSummaryAsync` | `GetAttemptsByExamIdAsync` + `GetByExamIdAsync` (logs), group in-memory |
+| Student làm bài | `ExamAttemptService.GetAttemptAsync` | **Không cache** — shuffle theo `ExamShuffleHelper`, đáp án đúng ẩn theo attempt |
+| Presence online | Chưa có | FE chỉ gửi anti-cheat log (`DISCONNECTED`, `PAGE_RELOAD`…); teacher không biết attempt còn “sống” nếu không có log |
+
+---
+
+### Phạm vi Phase 9 (IN) vs để sau (OUT)
+
+**Làm trong phase này (MVP Redis):**
+
+- Cache-aside **question bank** (teacher/admin) — UC-1
+- Cache TTL ngắn **anti-cheat summary** — UC-2
+- **Heartbeat + presence** Hash theo attempt — UC-3
+- `Redis:Enabled=false` → `NullCacheService` / no-op presence (dev không bắt buộc chạy Redis)
+- Graceful degradation: Redis down → log warning, fallback DB
+
+**Không làm trong phase này:**
+
+| Hạng mục | Lý do |
+|----------|--------|
+| SignalR Redis backplane | Chỉ cần khi ≥ 2 instance API |
+| Cache `GetByClassroomAsync`, dashboard Phase 10 | API dashboard BE chưa có |
+| Cache JWT blacklist / refresh token | Auth đủ MVP |
+| Lưu draft đáp án Redis | `SaveAnswerAsync` đã persist `StudentAnswer` SQL |
+| Distributed lock `StartAsync` | `GetInProgressAttemptAsync` + DB đủ MVP |
+| Rate limit API bằng Redis | Chưa yêu cầu |
+
+---
+
+### Nguyên tắc thiết kế
+
+1. **Cache-aside:** `GET` cache → miss → DB → `SET`; mọi mutation **invalidate** (hoặc `SET` lại) — không write-through phức tạp.
+2. **Key namespace:** `{InstanceName}:` prefix, mặc định `eduguard:` (config `Redis:InstanceName`).
+3. **Serialize:** `System.Text.Json` — cùng shape DTO API (`QuestionDto`, `ExamAntiCheatSummaryDto`).
+4. **Cấu trúc Redis:** String (JSON) cho cache; Hash cho presence; Set phụ cho index presence theo exam (tùy chọn UC-3b).
+5. **Không cache dữ liệu đã shuffle / theo attempt** — chỉ cache “question bank gốc” của đề.
+6. **Invalidation rõ ràng** — tập trung helper `ExamCacheInvalidator` (hoặc method trên `ICacheService`) tránh quên khi thêm API câu hỏi.
+
+---
+
+### Sơ đồ luồng (cache-aside — UC-1)
+
+```txt
+Client GET /exams/{id}/questions
+    → ExamService.GetQuestionsAsync
+        → ICacheService.GetAsync<List<QuestionDto>>("eduguard:exam:{id}:questions")
+            HIT  → return
+            MISS → ExamRepository.GetByIdWithDetailsAsync
+                 → map QuestionDto[]
+                 → SetAsync (TTL 30 phút)
+                 → return
+```
+
+```txt
+Teacher POST /exams/{id}/questions (hoặc PUT/DELETE question/answer)
+    → ExamService.*Async
+        → SaveChanges SQL
+        → ICacheService.RemoveAsync("eduguard:exam:{id}:questions")
+```
+
+---
+
+### Bảng key Redis (chuẩn dự án)
+
+| Key | Kiểu | TTL | Payload / field | Ghi chú |
+|-----|------|-----|-----------------|--------|
+| `eduguard:exam:{examId}:questions` | String (JSON) | 30 phút hoặc none + invalidate | `QuestionDto[]` đủ `Answers` | UC-1; **có đáp án đúng** — chỉ teacher/admin qua auth |
+| `eduguard:exam:{examId}:anticheat:summary` | String (JSON) | 45 giây | `ExamAntiCheatSummaryDto` | UC-2; `FlaggedAttempts` threshold = 10 (`AntiCheatService`) |
+| `eduguard:attempt:{attemptId}:presence` | Hash | 120s sliding | `studentId`, `examId`, `lastSeenUtc`, `client` | UC-3 |
+| `eduguard:exam:{examId}:presence:attempts` | Set | không TTL riêng | member = `attemptId` | UC-3b tùy chọn — index để teacher list online |
+
+**Lệnh Redis tham chiếu (presence):**
+
+```txt
+HSET eduguard:attempt:42:presence studentId "..." examId "7" lastSeenUtc "2026-06-15T10:00:00Z" client "web"
+EXPIRE eduguard:attempt:42:presence 120
+SADD eduguard:exam:7:presence:attempts 42
+```
+
+---
+
+### Ma trận invalidate cache câu hỏi (UC-1)
+
+Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` sau `SaveChangesAsync` thành công:
+
+| Service method | File | `examId` lấy từ |
+|----------------|------|-----------------|
+| `UpdateAsync` | `exam-service.cs` | tham số |
+| `PatchAsync` | `exam-service.cs` | tham số |
+| `DeleteAsync` | `exam-service.cs` | tham số (+ xóa luôn summary key) |
+| `PublishAsync` | `exam-service.cs` | tham số |
+| `AddQuestionAsync` | `exam-service.cs` | tham số |
+| `UpdateQuestionAsync` | `exam-service.cs` | `question.ExamId` |
+| `PatchQuestionAsync` | `exam-service.cs` | `question.ExamId` |
+| `DeleteQuestionAsync` | `exam-service.cs` | `question.ExamId` |
+| `AddAnswerAsync` | `exam-service.cs` | `question.ExamId` |
+| `UpdateAnswerAsync` | `exam-service.cs` | `answer.Question.ExamId` |
+| `PatchAnswerAsync` | `exam-service.cs` | `answer.Question.ExamId` |
+
+**Không invalidate từ:** `GetQuestionsAsync`, `GetByIdAsync`, `StartAsync`, `SaveAnswerAsync`, `LogAsync` (chỉ đọc hoặc không đổi question bank).
+
+---
+
+### Ma trận invalidate / TTL summary (UC-2)
+
+| Sự kiện | Hành vi đề xuất |
+|---------|------------------|
+| `GetExamSummaryAsync` | Đọc cache; miss → query DB như hiện tại → set TTL 45s |
+| `LogAsync` (sau persist + SignalR) | `RemoveAsync` summary key **hoặc** chỉ rely TTL (MVP: **remove** để teacher thấy score mới ngay khi reload REST) |
+| `SubmitAsync` attempt | Không bắt buộc invalidate summary (TTL ngắn đủ); có thể remove nếu muốn chính xác tức thì |
+| `DeleteAsync` exam | Remove summary key |
+
+---
+
+### Artifact cần tạo (file mới)
+
+**Application layer:**
+
+| File | Nội dung |
+|------|----------|
+| `Application/Services/Interfaces/i-cache-service.cs` | `GetAsync<T>`, `SetAsync<T>`, `RemoveAsync`, `RemoveByPrefixAsync` (optional) |
+| `Application/Services/Interfaces/i-attempt-presence-service.cs` | `TouchAsync(attemptId, studentId, examId, ct)`, `RemoveAsync(attemptId)`, `GetByExamAsync(examId)` |
+| `Application/Redis/redis-key-names.cs` | `ExamQuestions(examId)`, `ExamAntiCheatSummary(examId)`, `AttemptPresence(attemptId)`, `ExamPresenceIndex(examId)` |
+| `Application/Options/redis-options.cs` | Bind section `Redis` |
+
+**Infrastructure layer:**
+
+| File | Nội dung |
+|------|----------|
+| `Infrastructure/Redis/redis-cache-service.cs` | `ICacheService` — `IDatabase.StringGet/Set`, JSON, try/catch → null on failure |
+| `Infrastructure/Redis/null-cache-service.cs` | No-op khi `Redis:Enabled=false` |
+| `Infrastructure/Redis/redis-attempt-presence-service.cs` | Hash + EXPIRE + Set index |
+| `Infrastructure/Redis/exam-cache-invalidator.cs` | `InvalidateExamQuestionsAsync`, `InvalidateExamAntiCheatSummaryAsync` — inject vào Exam/AntiCheat services |
+
+---
+
+### Artifact cần sửa (file hiện có)
+
+| File | Thay đổi |
+|------|----------|
+| `Infrastructure/dependency-injection.cs` | `AddSingleton<IConnectionMultiplexer>`, `AddScoped<ICacheService>`, `AddScoped<IAttemptPresenceService>`, bind `RedisOptions` |
+| `Infrastructure/Exams/exam-service.cs` | Inject `ICacheService` + invalidator; bọc `GetQuestionsAsync`; gọi invalidate ở bảng trên |
+| `Infrastructure/AntiCheat/anti-cheat-service.cs` | Bọc `GetExamSummaryAsync`; `RemoveAsync` summary trong `LogAsync` |
+| `Infrastructure/Exams/exam-attempt-service.cs` | `SubmitAsync` → `presence.RemoveAsync`; (tùy chọn) `StartAsync` → touch presence |
+| `Api/Controllers/exam-attempts-controller.cs` | `POST api/attempts/{id}/heartbeat` |
+| `Api/appsettings.json` | Thêm section `Redis` (xem mẫu 9.0) |
+| `Api/Program.cs` | (Tùy chọn) `AddHealthChecks().AddRedis(...)` |
+
+**Frontend:**
+
+| File | Thay đổi |
+|------|----------|
+| `frontend/src/api/examAttemptApi.js` | `sendHeartbeat(attemptId)` |
+| `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx` | `setInterval` 30s gọi heartbeat khi `status === InProgress`; clear on submit/unmount |
+| `frontend/src/features/anti-cheat/components/AttemptMonitorPanel.jsx` | (Tùy chọn) badge “Online” nếu BE trả `isOnline` / API presence |
+| `frontend/src/api/antiCheatApi.js` | (Tùy chọn) `getExamPresence(examId)` nếu thêm `GET` cho teacher |
+
+---
+
+### Cấu hình (`appsettings.json` — bổ sung)
+
+```json
+"Redis": {
+  "Enabled": true,
+  "InstanceName": "eduguard",
+  "QuestionCacheMinutes": 30,
+  "AntiCheatSummarySeconds": 45,
+  "PresenceTtlSeconds": 120,
+  "AbortOnConnectFail": false
+}
+```
+
+- `ConnectionStrings:Redis` giữ `localhost:6379` (dev).
+- Production: password qua `localhost:6379,password=***` — **không** commit secret.
+- `AbortOnConnectFail: false` để API vẫn start khi Redis chưa bật (degrade).
+
+---
+
+### 9.0 — Môi trường & smoke test
+
+- [ ] Chạy Redis local: `docker run -d --name eduguard-redis -p 6379:6379 redis:7-alpine`
+- [ ] Smoke: `redis-cli PING` → `PONG`; `SET eduguard:smoke 1` / `GET`
+- [ ] Xác nhận `appsettings.json` có `ConnectionStrings:Redis` (đã có) + section `Redis` như trên
+- [ ] Document trong `docs/02_SETUP_AND_PROJECT_STRUCTURE.md` (mục Redis) nếu lệnh Docker khác README — **chỉ khi dev hỏi setup**
+
+### 9.1 — Hạ tầng DI & abstraction
+
+- [ ] Tạo `ICacheService` + `RedisCacheService` + `NullCacheService` (F-REDIS-02)
+- [ ] Tạo `redis-key-names.cs` — không hardcode string trong service
+- [ ] Đăng ký `ConnectionMultiplexer.Connect(configuration["ConnectionStrings:Redis"])` **singleton** trong `dependency-injection.cs` (F-REDIS-01)
+- [ ] Đọc `Redis:Enabled` — false → đăng ký `NullCacheService`
+- [ ] Log `Information` khi connect OK; `Warning` khi operation fail (không throw ra controller)
+- [ ] (Tùy chọn) Health check `/health` tag `redis`
+
+### 9.2 — UC-1: Cache question bank
+
+- [ ] Bọc `ExamService.GetQuestionsAsync` — key `eduguard:exam:{examId}:questions`
+- [ ] Sau auth (`RequireAccessibleExamAsync` + `EnsureQuestionBankAccess`) mới trả cache — student không có quyền question bank vẫn 403 như cũ
+- [ ] Implement invalidate đủ ma trận (11 method `exam-service.cs`)
+- [ ] `DeleteAsync` exam: remove cả `questions` + `anticheat:summary` keys
+- [ ] Verify FE `ExamDetailPage` / `examApi.getQuestions` — teacher sửa câu hỏi → reload thấy data mới
+
+### 9.3 — UC-2: Cache anti-cheat summary
+
+- [ ] Bọc `AntiCheatService.GetExamSummaryAsync` — TTL `AntiCheatSummarySeconds`
+- [ ] `LogAsync`: sau `SaveChangesAsync` + `SendAntiCheatWarningAsync`, gọi `InvalidateExamAntiCheatSummaryAsync(examId)`
+- [ ] Giữ nguyên authorization: chỉ `exam.TeacherId == teacherId`
+- [ ] SignalR realtime **không** thay REST summary — cache giảm tải khi teacher refresh trang
+
+### 9.4 — UC-3: Heartbeat & presence
+
+**Backend**
+
+- [ ] Tạo `IAttemptPresenceService` + `RedisAttemptPresenceService` (F-REDIS-05)
+- [ ] `POST /api/attempts/{attemptId}/heartbeat` — `[Authorize(Roles = Student)]`, attempt `InProgress`, owner đúng `studentId`
+- [ ] Body optional: `{ "client": "web" }` — lưu vào Hash
+- [ ] `ExamAttemptService.SubmitAsync` → `RemoveAsync(attemptId)` + `SREM` exam index
+- [ ] (Tùy chọn) `GET /api/exams/{examId}/presence` — Teacher owner — trả `attemptId[]` còn TTL
+
+**Frontend**
+
+- [ ] `examAttemptApi.sendHeartbeat(attemptId)` — gọi mỗi **30s** trong `ExamAttemptPage` (cùng lifecycle anti-cheat, `visibilitychange` pause khi tab hidden nếu muốn tiết kiệm)
+- [ ] Dừng interval khi submit / unmount / `status !== InProgress`
+- [ ] (Tùy chọn) `AttemptMonitorPanel`: hiển thị “Đang online” khi attempt ∈ presence set
+
+### 9.5 — Kiểm thử *(để sau — không chặn 9.0–9.4)*
+
+> Thực hiện khi implementation xong; không ghi vào tiêu chí “hoàn thành phase” lúc này.
+
+- [ ] Manual: mở Redis CLI `MONITOR` — thấy GET/SET questions khi reload `ExamDetailPage`
+- [ ] Manual: sửa câu hỏi → key questions bị DEL → GET miss → DB
+- [ ] Manual: gửi anti-cheat log → summary key invalidate hoặc TTL hết → `flaggedAttempts` khớp DB
+- [ ] Manual: heartbeat → TTL refresh; submit → key biến mất
+- [ ] Redis tắt, `Enabled=true` → API vẫn 200 (degrade)
+- [ ] `dotnet test` pass
+
+---
+
+### Tiêu chí hoàn thành (triển khai)
+
+1. Teacher reload trang chi tiết đề **ít query SQL hơn** (cache questions + summary).
+2. Student làm bài **không** đổi hành vi shuffle / lưu đáp án.
+3. Redis tắt → hệ thống vẫn chạy (degrade).
+4. Có ít nhất một đường presence (heartbeat) để teacher biết attempt còn online.
+5. Không thêm Redis chỉ để “có trong stack” — mỗi key map tới bảng use case trên.
+
+**Rủi ro / lưu ý:**
+
+- Cache `questions` chứa `IsCorrect` — **không** expose cho student (đã chặn bởi `EnsureQuestionBankAccess`).
+- Stale cache nếu quên invalidate — ưu tiên `ExamCacheInvalidator` gọi tập trung.
+- Phase 11 Docker sẽ thêm container Redis — connection string đồng bộ `docker-compose` sau.
+
+
+---
+
+## Tài liệu — README giới thiệu hệ thống
+
+**Mục tiêu:** README là cổng vào repo — giới thiệu hệ thống làm gì, cấu trúc ra sao, cách chạy, điểm nổi bật. **Không** ghi tiến độ phase (để `Todo List.md`, `docs/project-changelog.md`, `docs/features.md`).
+
+**Rà soát hiện trạng (2026-06-15):**
+
+| File | Vấn đề |
+|------|--------|
+| `README.md` (root) | ✅ Đã cấu hình lại (2026-06-15) — giới thiệu hệ thống, không tiến độ phase |
+| `docs/README.md` | Ổn làm mục lục; cần phân vai rõ README vs checklist tiến độ |
+| `frontend/README.md` | Vẫn template Vite mặc định — chưa mô tả EduGuard |
+| `backend/README.md` | **Chưa có** — cần tạo |
+
+**Nguyên tắc nội dung README:**
+
+- **Có:** mục đích hệ thống, vai trò user, tech stack, kiến trúc tóm tắt, cấu trúc thư mục, hướng dẫn chạy local, điểm nổi bật / cải tiến, link sang `docs/` chi tiết
+- **Không:** bảng tiến độ phase, checkbox giai đoạn, "đang làm / chưa bắt đầu" — trỏ sang `Todo List.md`
+
+### Root `README.md`
+
+- [x] Gỡ hoặc rút gọn mục **Trạng thái dự án** / **Lộ trình** — thay bằng 1 dòng link `Todo List.md` cho tiến độ
+- [x] Cập nhật **Tính năng** → mô tả capability (LMS, thi online, anti-cheat, SignalR…), không bảng % hoàn thành
+- [x] Thêm **Điểm nổi bật** (Clean Architecture 4 layer, Identity+JWT, giám sát thi realtime, exam attempt + timer, anti-cheat scoring…)
+- [x] Cập nhật **Tech stack** — bỏ "dự kiến" cho phần đã có (React/Vite/Tailwind, EF Core, SQL Server, SignalR)
+- [x] Cập nhật **Cấu trúc thư mục** — `frontend/` đã là app Vite đầy đủ; liệt kê module backend chính
+- [x] Cập nhật **Cài đặt / Chạy** — `dotnet run` backend + `npm run dev` frontend, URL Swagger & Vite
+- [x] Thêm **Kiến trúc tóm tắt** (ASCII hoặc link `docs/03_BACKEND_ARCHITECTURE.md`, `docs/01_PROJECT_OVERVIEW.md`)
+- [x] Giữ **Phát triển** (nhánh, commit, workflow) — không trùng nội dung tiến độ feature
+
+### `docs/README.md`
+
+- [ ] Thêm mục **README vs tài liệu tiến độ** (README = giới thiệu; `Todo List` / `features.md` / `apiList.md` = checklist)
+- [ ] Bổ sung **Điểm nổi bật hệ thống** (tóm tắt 5–8 bullet, không phase status)
+- [ ] Cập nhật **Cách đọc nhanh** — dev mới vs đọc sâu kiến trúc/API
+
+### `frontend/README.md`
+
+- [ ] Thay template Vite bằng README EduGuard frontend
+- [ ] Vai trò SPA, stack (React, Vite, Tailwind, Axios, SignalR client)
+- [ ] Cấu trúc `src/` (`features/`, `api/`, `signalr/`, `hooks/`, theme)
+- [ ] `npm install`, `npm run dev`, `npm run build`; proxy/CORS với backend
+- [ ] Link `docs/design-guidelines.md`, `docs/05_API_FRONTEND_INTEGRATION.md`
+- [ ] Không ghi tiến độ phase
+
+### `backend/README.md` (tạo mới)
+
+- [ ] Tạo file — giới thiệu solution 4 project (Api, Application, Domain, Infrastructure)
+- [ ] Sơ đồ layer `Controller → Service → Repository → DbContext`
+- [ ] `dotnet run`, migration EF, connection string SQL Server / Redis
+- [ ] Module chính: Auth, Classroom, Assignment, Exam, Attempt, AntiCheat, SignalR hubs
+- [ ] Link `docs/03_BACKEND_ARCHITECTURE.md`, `docs/02_SETUP_AND_PROJECT_STRUCTURE.md`
+
+**Tiêu chí hoàn thành:** Dev mới đọc README (root + frontend/backend) hiểu hệ thống, chạy được local, biết điểm nổi bật — không cần đọc Todo List để hiểu sản phẩm là gì.
 
 ---
 
@@ -302,9 +623,9 @@
 - [ ] Thống kê số lớp, học sinh, bài tập, điểm thi
 - [ ] Thống kê cheating score
 - [x] Frontend dashboard Admin *(đã có mock API + UI tổng quan người dùng, lớp học, activity, anti-cheat; đã tách số liệu giảng viên và sinh viên thành thống kê riêng; block stat/timeline/metric đã bỏ mô tả phụ)*
-- [x] Frontend dashboard Teacher *(đã có mock API + UI lớp quản lý, nộp bài, lịch thi, sinh viên rủi ro cao; đã bỏ mục điểm trung bình khỏi dashboard tổng quan; block stat/timeline/metric đã bỏ mô tả phụ)*
+- [x] Frontend dashboard Teacher *(đã có mock API + UI lớp quản lý, nộp bài, lịch thi, sinh viên rủi ro cao, proctoring streams placeholder; thiết kế thanh điều hướng Nav bar chuyên nghiệp; block stat/timeline/metric đã bỏ mô tả phụ)*
 - [x] Frontend dashboard Student *(đã có mock API + UI tiến độ lớp, việc sắp tới, kết quả, thông báo; đã bỏ mục điểm trung bình khỏi dashboard tổng quan; block stat/timeline/metric đã bỏ mô tả phụ)*
-- [x] Frontend biểu đồ dashboard *(mức cơ bản bằng stat card + progress bars, chưa dùng chart library)*
+- [x] Frontend biểu đồ dashboard *(tích hợp thư viện Recharts để vẽ trực quan Classroom Performance và Anti-cheat Incidents)*
 
 **Tiêu chí hoàn thành:** Người dùng có trang tổng quan dữ liệu theo role.
 

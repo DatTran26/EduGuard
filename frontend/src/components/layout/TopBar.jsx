@@ -8,7 +8,6 @@ import { useTheme } from "../../hooks/useTheme";
 import { useToast } from "../../hooks/useToast";
 import { getProfileRouteByRole, getRoleLabel } from "../../routes/roleRoutes";
 import { routeConfig } from "../../routes/routeConfig";
-import { cn } from "../../utils/cn";
 
 function buildUserMenuItems(isDarkMode) {
   return [
@@ -42,7 +41,7 @@ function DropdownChevronIcon({ isOpen }) {
 }
 
 // Component này là header chính của khu đã đăng nhập, gom logo, user menu và hành động đăng xuất.
-export default function TopBar() {
+export default function TopBar({ onOpenSidebar }) {
   const navigate = useNavigate();
   const userMenuRef = useRef(null);
   const { logout, user } = useAuth();
@@ -152,108 +151,109 @@ export default function TopBar() {
   }
 
   return (
-    <header className="eg-shell-panel rounded-[32px] px-5 py-5 md:px-6">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] xl:items-center">
-        <div className="flex min-w-0 items-center gap-3">
-          <div
-            className={cn(
-              "flex shrink-0 items-center justify-center overflow-hidden transition-all duration-200",
-              isDarkMode
-                ? "rounded-[20px] border border-white/12 bg-white/6 p-2 shadow-[0_14px_28px_rgba(0,0,0,0.26)]"
-                : "rounded-none border-transparent bg-transparent p-0 shadow-none",
-            )}
-          >
-            <img
-              alt="Logo EduGuard"
-              className="h-11 w-auto shrink-0 object-contain md:h-[3rem]"
-              src="/logo.png"
-            />
-          </div>
+    <header className="z-10 flex h-16 shrink-0 items-center justify-between border-b border-border bg-surface px-6 py-3">
+      <div className="flex items-center gap-3">
+        {/* Nút menu trên mobile */}
+        <button
+          type="button"
+          className="rounded-[10px] border border-border p-2 text-primary lg:hidden hover:bg-surface-sunken transition-all duration-200"
+          onClick={onOpenSidebar}
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
 
-          <div className="min-w-0 space-y-1">
-            <h2 className="text-xl font-semibold tracking-tight text-primary md:text-[2rem]">
-              EduGuard Workspace
-            </h2>
-            <p className="max-w-2xl text-sm leading-6 text-secondary">
-              {`Chào ${user?.fullName ?? "Người dùng EduGuard"}, tiếp tục công việc nhé!`}
-            </p>
-          </div>
+        {/* Logo trên mobile */}
+        <img
+          alt="Logo EduGuard"
+          className="h-8 w-auto object-contain lg:hidden"
+          src="/logo.png"
+        />
+
+        {/* Thanh tìm kiếm trên desktop */}
+        <div className="relative hidden md:block w-72">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-secondary">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </span>
+          <input
+            type="text"
+            placeholder="Tìm kiếm lớp học, sinh viên, bài thi..."
+            className="w-full bg-surface-sunken border border-border rounded-full py-1.5 pl-9 pr-4 text-xs focus:outline-none focus:ring-1 focus:ring-tertiary focus:border-tertiary text-primary"
+          />
         </div>
+      </div>
 
-        <div className="flex flex-wrap items-center justify-start gap-3 xl:justify-end">
-          <Badge variant="info">{getRoleLabel(user?.role)}</Badge>
+      <div className="flex items-center gap-4">
+        <Badge variant="info">{getRoleLabel(user?.role)}</Badge>
 
-          <div
-            className="relative min-w-0 basis-full sm:basis-auto"
-            ref={userMenuRef}
+        <div className="relative" ref={userMenuRef}>
+          <button
+            aria-expanded={isUserMenuOpen}
+            aria-haspopup="menu"
+            className="eg-user-trigger flex items-center gap-3 rounded-full px-3 py-1.5 text-left transition-all duration-200"
+            type="button"
+            onClick={toggleUserMenu}
           >
-            <button
-              aria-expanded={isUserMenuOpen}
-              aria-haspopup="menu"
-              className="eg-user-trigger flex w-full min-w-0 items-center gap-3 rounded-full px-3 py-2 text-left sm:min-w-[300px]"
-              type="button"
-              onClick={toggleUserMenu}
+            <Avatar
+              alt={`Ảnh đại diện của ${user?.fullName ?? "người dùng"}`}
+              name={user?.fullName ?? ""}
+              sizeClassName="h-8 w-8"
+              src={user?.avatarUrl ?? ""}
+            />
+            <div className="hidden sm:block min-w-0">
+              <p className="truncate text-xs font-semibold text-primary">
+                {user?.fullName ?? "Người dùng EduGuard"}
+              </p>
+            </div>
+            <DropdownChevronIcon isOpen={isUserMenuOpen} />
+          </button>
+
+          {isUserMenuOpen ? (
+            <div
+              className="eg-dropdown-panel absolute right-0 top-[calc(100%+8px)] z-20 w-[260px] overflow-hidden rounded-[20px] p-2"
+              role="menu"
             >
-              <Avatar
-                alt={`Ảnh đại diện của ${user?.fullName ?? "người dùng"}`}
-                name={user?.fullName ?? ""}
-                sizeClassName="h-11 w-11"
-                src={user?.avatarUrl ?? ""}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-primary">
-                  {user?.fullName ?? "Người dùng EduGuard"}
+              <div className="border-b border-border px-3 py-2">
+                <p className="truncate text-xs font-semibold text-primary">
+                  {user?.fullName ?? "Người dùng"}
                 </p>
-                <p className="truncate text-xs text-secondary">
+                <p className="truncate pt-0.5 text-[10px] text-secondary">
                   {user?.email ?? "user@eduguard.local"}
                 </p>
               </div>
-              <DropdownChevronIcon isOpen={isUserMenuOpen} />
-            </button>
 
-            {isUserMenuOpen ? (
-              <div
-                className="eg-dropdown-panel absolute right-0 top-[calc(100%+12px)] z-20 w-[min(320px,calc(100vw-2.5rem))] overflow-hidden rounded-[26px] p-2"
-                role="menu"
-              >
-                <div className="border-b border-border px-3 py-3">
-                  <p className="truncate text-sm font-semibold text-primary">
-                    {user?.fullName ?? "Người dùng EduGuard"}
-                  </p>
-                  <p className="truncate pt-1 text-xs text-secondary">
-                    {user?.email ?? "user@eduguard.local"}
-                  </p>
-                </div>
-
-                <div className="space-y-1 p-2">
-                  {userMenuItems.map((item) => (
-                    <button
-                      key={item.label}
-                      className="eg-user-menu-item flex w-full items-center justify-between rounded-[18px] px-4 py-3 text-left text-sm font-medium"
-                      role="menuitem"
-                      type="button"
-                      onClick={() => handleUserMenuItemClick(item.action)}
-                    >
-                      <span>{item.label}</span>
-                      <span className="text-xs text-secondary">›</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="border-t border-border px-2 pb-2 pt-3">
-                  <Button
-                    className="w-full rounded-[18px]"
-                    variant="secondary"
-                    onClick={handleLogoutClick}
+              <div className="space-y-0.5 p-1">
+                {userMenuItems.map((item) => (
+                  <button
+                    key={item.label}
+                    className="eg-user-menu-item flex w-full items-center justify-between rounded-[12px] px-3 py-2 text-left text-xs font-medium"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => handleUserMenuItemClick(item.action)}
                   >
-                    Đăng xuất
-                  </Button>
-                </div>
+                    <span>{item.label}</span>
+                    <span className="text-xs text-secondary">›</span>
+                  </button>
+                ))}
               </div>
-            ) : null}
-          </div>
+
+              <div className="border-t border-border px-1 pb-1 pt-2">
+                <Button
+                  className="w-full rounded-[12px] py-2 min-h-0 text-xs"
+                  variant="secondary"
+                  onClick={handleLogoutClick}
+                >
+                  Đăng xuất
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </header>
   );
 }
+

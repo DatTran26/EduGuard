@@ -383,7 +383,7 @@ Checklist:
 [ ] Thống kê bài tập
 [ ] Thống kê điểm thi
 [ ] Thống kê cheating score
-[ ] Frontend biểu đồ dashboard
+[x] Frontend biểu đồ dashboard (Recharts: Classroom performance & Anti-cheat breakdown)
 ```
 
 Kết quả cần đạt:
