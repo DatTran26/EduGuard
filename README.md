@@ -231,6 +231,8 @@ Không dùng: `chore:` · Không gắn tham chiếu AI/tool trong message.
 | File | Nội dung |
 |------|----------|
 | [`docs/README.md`](docs/README.md) | Mục lục toàn bộ docs |
+| [`frontend/README.md`](frontend/README.md) | Giới thiệu SPA, cấu trúc `src/`, chạy dev |
+| [`backend/README.md`](backend/README.md) | Solution 4 lớp, module API, migration |
 | [`docs/01_PROJECT_OVERVIEW.md`](docs/01_PROJECT_OVERVIEW.md) | Tổng quan hệ thống & nghiệp vụ |
 | [`docs/02_SETUP_AND_PROJECT_STRUCTURE.md`](docs/02_SETUP_AND_PROJECT_STRUCTURE.md) | Cấu hình, cấu trúc, Docker |
 | [`docs/03_BACKEND_ARCHITECTURE.md`](docs/03_BACKEND_ARCHITECTURE.md) | Kiến trúc backend |
