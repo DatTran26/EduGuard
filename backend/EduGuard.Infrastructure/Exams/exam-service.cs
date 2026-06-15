@@ -153,9 +153,6 @@ public class ExamService : IExamService
     public async Task<ExamDto> PublishAsync(int examId, string teacherId, CancellationToken ct = default)
     {
         var exam = await RequireTeacherOwnedExamAsync(examId, teacherId, ct);
-        if (exam.Questions.Count == 0)
-            throw new InvalidOperationException("Đề thi cần ít nhất một câu hỏi trước khi publish.");
-
         exam.IsPublished = true;
         exam.UpdatedAt = DateTime.UtcNow;
         _examRepository.Update(exam);

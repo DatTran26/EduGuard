@@ -312,7 +312,7 @@ Thực hiện **theo thứ tự**. Mỗi bước dùng ID từ response trước
 | 3 | GET | `/api/exams/{examId}` | All | Chi tiết metadata |
 | 4 | POST | `/api/exams/{examId}/questions` | Teacher | Thêm câu hỏi + đáp án |
 | 5 | GET | `/api/exams/{examId}/questions` | Teacher | Question bank (có `isCorrect`) |
-| 6 | POST | `/api/exams/{examId}/publish` | Teacher | Cần ≥ 1 câu hỏi |
+| 6 | POST | `/api/exams/{examId}/publish` | Teacher | Công khai metadata đề thi |
 | 7 | PUT | `/api/exams/{examId}` | Teacher | Sửa metadata (tùy chọn) |
 | 8 | PUT | `/api/questions/{questionId}` | Teacher | Sửa câu (tùy chọn) |
 | 9 | POST | `/api/questions/{questionId}/answers` | Teacher | Thêm đáp án (tùy chọn) |
@@ -359,7 +359,7 @@ Thực hiện **theo thứ tự**. Mỗi bước dùng ID từ response trước
 
 ### 4.5. Exam Attempt (Phase 6)
 
-Dùng **Student token**, student đã join lớp, đề đã **published**.
+Dùng **Student token**, student đã join lớp, đề đã **published** và có ít nhất một câu hỏi.
 
 | Bước | Method | Path | Ghi chú |
 |------|--------|------|---------|
@@ -446,7 +446,7 @@ Dùng khi verify release hoặc sau migration mới.
 [ ] Teacher: POST classroom → lưu classroomId, joinCode
 [ ] Student: POST join
 [ ] Teacher: POST assignment → Student submit → Teacher grade
-[ ] Teacher: POST exam → POST question → POST publish
+[ ] Teacher: POST exam → POST publish → POST question
 [ ] Student: POST start → POST answers → POST submit → GET result
 [ ] Teacher: GET exam attempts
 [ ] Student: POST anti-cheat log (exam bật anti-cheat, attempt InProgress)
@@ -467,7 +467,7 @@ Dùng khi verify release hoặc sau migration mới.
 | 403 tạo lớp/đề | User chỉ có role Student | Gán Teacher (§3.3), login lại; response có `message` tiếng Việt |
 | 403 body rỗng | API cũ / chưa restart server | Restart API sau khi cập nhật handler auth |
 | 403 join lớp | Dùng token Teacher | Đổi sang Student |
-| 400 publish | Chưa có câu hỏi | POST question trước |
+| 400 start exam | Đề chưa có câu hỏi | Teacher thêm câu hỏi trước khi student bắt đầu làm bài |
 | 400 submit assignment | Đã nộp rồi | Dùng assignment mới hoặc student khác |
 | SSL certificate | HTTPS local | Chấp nhận cert dev hoặc dùng profile `http` |
 | Connection DB fail | Sai connection string | Sửa `appsettings.json` / `appsettings.Development.json` |

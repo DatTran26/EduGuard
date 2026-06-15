@@ -153,6 +153,9 @@ public class ExamAttemptService : IExamAttemptService
         var membership = await _classroomRepository.GetMemberAsync(exam.ClassroomId, studentId, ct);
         if (membership?.Status != ClassroomMemberStatus.Active)
             throw new UnauthorizedAccessException("Bạn chưa tham gia lớp học này.");
+
+        if (exam.Questions.Count == 0)
+            throw new InvalidOperationException("Đề thi chưa có câu hỏi.");
     }
 
     private static void EnsureExamWindowOpen(Exam exam)

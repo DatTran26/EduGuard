@@ -193,7 +193,7 @@ Tick `- [ ]` khi endpoint **có controller + Swagger + test cơ bản**.
 | API-EXM-04 | PUT | `/api/exams/{id}` | Bearer | Teacher | ✓ | F-EXM-06 | Sửa đề (thay thế đầy đủ) |
 | API-EXM-04P | PATCH | `/api/exams/{id}` | Bearer | Teacher | ✓ | F-EXM-06 | Sửa một phần đề |
 | API-EXM-05 | DELETE | `/api/exams/{id}` | Bearer | Teacher | ✓ | F-EXM-07 | Xóa đề |
-| API-EXM-06 | POST | `/api/exams/{id}/publish` | Bearer | Teacher | ✓ | F-EXM-08 | Publish — học sinh làm được |
+| API-EXM-06 | POST | `/api/exams/{id}/publish` | Bearer | Teacher | ✓ | F-EXM-08 | Công khai metadata đề thi |
 | API-EXM-07 | POST | `/api/exams/{id}/questions` | Bearer | Teacher | ✓ | F-EXM-09 | Thêm câu hỏi |
 | API-EXM-08 | PUT | `/api/questions/{id}` | Bearer | Teacher | ✓ | F-EXM-10 | Sửa câu hỏi + đáp án (đầy đủ) |
 | API-EXM-08P | PATCH | `/api/questions/{id}` | Bearer | Teacher | ✓ | F-EXM-10 | Sửa một phần câu hỏi (không đổi đáp án) |

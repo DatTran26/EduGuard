@@ -5,6 +5,8 @@
 
 **Branch làm việc:** `devB`
 **Cập nhật:** 2026-06-15 (đã bổ sung checklist tách Backend/Frontend cho phần cấu hình bài kiểm tra, xử lý timezone Việt Nam và validate trắc nghiệm MVP trước khi test luồng thi thật; Phase 8 SignalR realtime đã xong; Notifications REST/entity, dashboard và user/profile vẫn còn phụ thuộc endpoint backend chưa triển khai)
+**Branch làm việc:** `devH`  
+**Cập nhật:** 2026-06-13 (backend Phase 7 anti-cheat xong; Phase 3–6 backend xong; frontend auth + classroom + exam đã nối backend thật ở các màn hiện có; teacher tạo đề có thể publish ngay khi tạo, thời gian đóng đề tự tính theo thời gian mở + số phút làm bài nhưng vẫn cho chỉnh tay; classroom detail nay đã có assignment thật, student đã có màn làm bài riêng với timer + auto submit, teacher exam detail đã có attempt monitor và anti-cheat REST cơ bản; dashboard và user/profile vẫn còn bridge/mock ở những phần backend chưa cung cấp endpoint tương ứng; role UI đã được giản lược theo hướng title-only cho block/chức năng chính và workspace màu sáng đã rà lại theo design tokens preview; auth session giờ tự refresh token khi role backend đổi để tránh 403 lệch quyền ở các màn Teacher/Admin)  
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -175,12 +177,12 @@
 - [x] `ExamsController` + Service + Repository (11 API + question bank)
 - [x] API CRUD đề thi theo lớp
 - [x] API thêm / sửa / xóa câu hỏi & đáp án
-- [x] API publish đề thi (yêu cầu ≥1 câu hỏi)
+- [x] API publish đề thi *(cho phép công khai metadata trước; student chỉ start khi đề đã có câu hỏi)*
 
 ### Frontend
 
 - [x] UI danh sách bài kiểm tra theo role *(đã gọi backend thật; FE gom đề thi bằng các classroom user đang truy cập được; card/list ưu tiên title + số liệu thay cho mô tả dài)*
-- [x] UI tạo đề thi *(Teacher, gọi `POST /api/classrooms/{id}/exams`; đề mới tạo theo đúng contract backend ở trạng thái nháp)*
+- [x] UI tạo đề thi *(Teacher, gọi `POST /api/classrooms/{id}/exams`; có thể chọn publish ngay khi tạo; thời gian đóng đề tự tính theo thời gian mở + số phút làm bài và vẫn chỉnh tay được)*
 - [x] UI xem chi tiết đề thi *(mọi role theo quyền truy cập; teacher detail có thêm average score từ attempt API và anti-cheat summary khi bật giám sát)*
 - [x] UI cập nhật / xóa đề thi *(Teacher, có xác nhận xóa 2 bước và publish qua endpoint riêng)*
 - [x] UI cấu hình đề thi *(thời gian mở-đóng, anti-cheat, fullscreen, random, max attempts, show result; classroom không còn đổi được sau khi tạo vì backend chưa hỗ trợ)*
