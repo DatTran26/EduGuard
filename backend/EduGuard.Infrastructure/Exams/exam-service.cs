@@ -2,6 +2,7 @@ using EduGuard.Application.DTOs.Exams;
 using EduGuard.Application.Repositories.Interfaces;
 using EduGuard.Application.Services.Interfaces;
 using EduGuard.Domain.Entities;
+using EduGuard.Domain.Enums;
 using EduGuard.Infrastructure.Common;
 using FluentValidation;
 
@@ -60,8 +61,8 @@ public class ExamService : IExamService
             Title = request.Title.Trim(),
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             DurationMinutes = request.DurationMinutes,
-            StartTime = request.StartTime?.ToUniversalTime(),
-            EndTime = request.EndTime?.ToUniversalTime(),
+            StartTime = ExamDateTimeHelper.NormalizeNullableUtc(request.StartTime),
+            EndTime = ExamDateTimeHelper.NormalizeNullableUtc(request.EndTime),
             EnableAntiCheat = request.EnableAntiCheat,
             CreatedAt = DateTime.UtcNow,
             Setting = BuildSetting(request.Settings)
@@ -124,10 +125,10 @@ public class ExamService : IExamService
             exam.DurationMinutes = request.DurationMinutes.Value;
 
         if (request.StartTime.IsSpecified)
-            exam.StartTime = request.StartTime.Value?.ToUniversalTime();
+            exam.StartTime = ExamDateTimeHelper.NormalizeNullableUtc(request.StartTime.Value);
 
         if (request.EndTime.IsSpecified)
-            exam.EndTime = request.EndTime.Value?.ToUniversalTime();
+            exam.EndTime = ExamDateTimeHelper.NormalizeNullableUtc(request.EndTime.Value);
 
         if (request.EnableAntiCheat.IsSpecified)
             exam.EnableAntiCheat = request.EnableAntiCheat.Value;
@@ -153,6 +154,8 @@ public class ExamService : IExamService
     public async Task<ExamDto> PublishAsync(int examId, string teacherId, CancellationToken ct = default)
     {
         var exam = await RequireTeacherOwnedExamAsync(examId, teacherId, ct);
+        EnsureCanPublishExam(exam);
+
         exam.IsPublished = true;
         exam.UpdatedAt = DateTime.UtcNow;
         _examRepository.Update(exam);
@@ -351,8 +354,8 @@ public class ExamService : IExamService
         exam.Title = request.Title.Trim();
         exam.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
         exam.DurationMinutes = request.DurationMinutes;
-        exam.StartTime = request.StartTime?.ToUniversalTime();
-        exam.EndTime = request.EndTime?.ToUniversalTime();
+        exam.StartTime = ExamDateTimeHelper.NormalizeNullableUtc(request.StartTime);
+        exam.EndTime = ExamDateTimeHelper.NormalizeNullableUtc(request.EndTime);
         exam.EnableAntiCheat = request.EnableAntiCheat;
     }
 
@@ -390,6 +393,84 @@ public class ExamService : IExamService
     {
         if (startTime.HasValue && endTime.HasValue && endTime <= startTime)
             throw new InvalidOperationException("Thời gian đóng đề phải sau thời gian mở đề.");
+    }
+
+    private static void EnsureCanPublishExam(Exam exam)
+    {
+        var errors = new List<string>();
+
+        if (exam.DurationMinutes <= 0)
+            errors.Add("Thời gian làm bài phải lớn hơn 0 phút.");
+
+        if ((exam.Setting?.MaxAttempts ?? 1) <= 0)
+            errors.Add("Số lần làm tối đa phải lớn hơn 0.");
+
+        if (exam.StartTime.HasValue && exam.EndTime.HasValue && exam.EndTime <= exam.StartTime)
+            errors.Add("Thời gian đóng đề phải sau thời gian mở đề.");
+
+        var questions = exam.Questions
+            .OrderBy(x => x.OrderIndex)
+            .ThenBy(x => x.Id)
+            .ToList();
+
+        if (questions.Count == 0)
+            errors.Add("Đề thi cần ít nhất một câu hỏi trước khi publish.");
+
+        foreach (var question in questions)
+            AddQuestionPublishErrors(question, errors);
+
+        if (errors.Count > 0)
+            throw new InvalidOperationException("Đề thi chưa đủ điều kiện publish: " + string.Join(" ", errors));
+    }
+
+    private static void AddQuestionPublishErrors(Question question, List<string> errors)
+    {
+        var label = $"Câu {question.OrderIndex}";
+        var answers = question.Answers
+            .Where(x => !string.IsNullOrWhiteSpace(x.Content))
+            .OrderBy(x => x.OrderIndex)
+            .ThenBy(x => x.Id)
+            .ToList();
+        var correctCount = answers.Count(x => x.IsCorrect);
+
+        if (string.IsNullOrWhiteSpace(question.Content))
+            errors.Add($"{label}: nội dung câu hỏi không được để trống.");
+
+        if (question.Score <= 0)
+            errors.Add($"{label}: điểm câu hỏi phải lớn hơn 0.");
+
+        switch (question.QuestionType)
+        {
+            case QuestionType.SingleChoice:
+                if (answers.Count < 2)
+                    errors.Add($"{label}: câu một đáp án cần ít nhất 2 lựa chọn.");
+                if (correctCount != 1)
+                    errors.Add($"{label}: câu một đáp án phải có đúng 1 đáp án đúng.");
+                break;
+
+            case QuestionType.MultipleChoice:
+                if (answers.Count < 2)
+                    errors.Add($"{label}: câu nhiều đáp án cần ít nhất 2 lựa chọn.");
+                if (correctCount == 0)
+                    errors.Add($"{label}: câu nhiều đáp án cần ít nhất 1 đáp án đúng.");
+                break;
+
+            case QuestionType.TrueFalse:
+                if (answers.Count != 2)
+                    errors.Add($"{label}: câu đúng/sai phải có đúng 2 lựa chọn Đúng và Sai.");
+                if (correctCount != 1)
+                    errors.Add($"{label}: câu đúng/sai phải có đúng 1 đáp án đúng.");
+                break;
+
+            case QuestionType.ShortAnswer:
+                if (answers.Count == 0)
+                    errors.Add($"{label}: câu tự luận ngắn cần ít nhất 1 đáp án mẫu.");
+                break;
+
+            default:
+                errors.Add($"{label}: loại câu hỏi chưa được hỗ trợ.");
+                break;
+        }
     }
 
     private async Task<Exam> RequireAccessibleExamAsync(int examId, string userId, IReadOnlyList<string> roles, CancellationToken ct)
