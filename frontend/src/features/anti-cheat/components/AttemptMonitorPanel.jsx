@@ -1,13 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { antiCheatApi } from "../../../api/antiCheatApi";
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
+import {
+  createExamMonitoringConnection,
+  EXAM_MONITORING_EVENTS,
+  EXAM_MONITORING_METHODS,
+} from "../../../signalr/examMonitoringConnection";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import {
   getAntiCheatEventMeta,
   getSuspicionScoreMeta,
+  normalizeAntiCheatEventType,
 } from "../antiCheatHelpers";
 
 function buildAttemptSummaryItems(attempts = [], antiCheatSummary = null) {
@@ -61,9 +67,44 @@ function getAttemptStatusMeta(status) {
   };
 }
 
+function getRealtimeStatusMeta(status) {
+  if (status === "connected") {
+    return { label: "Đang trực tiếp", variant: "success" };
+  }
+
+  if (status === "connecting" || status === "reconnecting") {
+    return { label: "Đang kết nối", variant: "info" };
+  }
+
+  if (status === "disconnected") {
+    return { label: "Tạm ngắt", variant: "caution" };
+  }
+
+  return { label: "Chưa kết nối", variant: "neutral" };
+}
+
+function normalizeRealtimeAntiCheatWarning(warning) {
+  return {
+    id: Number(warning?.logId) || Number(warning?.id) || 0,
+    logId: Number(warning?.logId) || Number(warning?.id) || 0,
+    examId: Number(warning?.examId) || 0,
+    examAttemptId: Number(warning?.examAttemptId) || 0,
+    studentId: warning?.studentId ?? "",
+    studentName: warning?.studentName ?? "",
+    type: normalizeAntiCheatEventType(warning?.type),
+    description: warning?.description ?? "",
+    suspicionPoint: Number(warning?.suspicionPoint) || 0,
+    suspicionScore: Number(warning?.suspicionScore) || 0,
+    logCount: Number(warning?.logCount) || 0,
+    metadata: warning?.metadata ?? "",
+    occurredAt: warning?.occurredAt ?? new Date().toISOString(),
+  };
+}
+
 export default function AttemptMonitorPanel({
   antiCheatSummary = null,
   exam,
+  onAntiCheatWarning,
   showToast,
   attempts = [],
 }) {
@@ -71,6 +112,8 @@ export default function AttemptMonitorPanel({
   const [selectedAttemptLogs, setSelectedAttemptLogs] = useState([]);
   const [selectedAttemptScore, setSelectedAttemptScore] = useState(null);
   const [isLoadingAttemptDetail, setIsLoadingAttemptDetail] = useState(false);
+  const [realtimeStatus, setRealtimeStatus] = useState("idle");
+  const selectedAttemptIdRef = useRef(selectedAttemptId);
 
   const summaryItems = useMemo(
     () => buildAttemptSummaryItems(attempts, antiCheatSummary),
@@ -82,6 +125,98 @@ export default function AttemptMonitorPanel({
   );
   const selectedAttempt = monitorItems.find((attempt) => attempt.id === selectedAttemptId) ?? null;
   const selectedScoreMeta = getSuspicionScoreMeta(selectedAttemptScore?.suspicionScore ?? 0);
+  const realtimeStatusMeta = getRealtimeStatusMeta(realtimeStatus);
+
+  useEffect(() => {
+    selectedAttemptIdRef.current = selectedAttemptId;
+  }, [selectedAttemptId]);
+
+  useEffect(() => {
+    if (!exam?.enableAntiCheat || !exam?.id) {
+      return undefined;
+    }
+
+    let isMounted = true;
+    const connection = createExamMonitoringConnection();
+
+    function handleWarning(rawWarning) {
+      const warning = normalizeRealtimeAntiCheatWarning(rawWarning);
+      const eventMeta = getAntiCheatEventMeta(warning.type);
+
+      onAntiCheatWarning?.(warning);
+
+      if (selectedAttemptIdRef.current === warning.examAttemptId) {
+        setSelectedAttemptScore({
+          examAttemptId: warning.examAttemptId,
+          suspicionScore: warning.suspicionScore,
+          logCount: warning.logCount,
+        });
+        setSelectedAttemptLogs((previousLogs) => [
+          warning,
+          ...previousLogs.filter((logItem) => logItem.id !== warning.id),
+        ]);
+      }
+
+      showToast({
+        tone: eventMeta.variant === "danger" ? "danger" : "info",
+        title: "Cảnh báo phòng thi",
+        message: `${warning.studentName || "Học sinh"}: ${eventMeta.label}`,
+      });
+    }
+
+    async function startConnection() {
+      try {
+        setRealtimeStatus("connecting");
+        connection.on(EXAM_MONITORING_EVENTS.receiveAntiCheatWarning, handleWarning);
+        connection.onreconnecting(() => {
+          if (isMounted) {
+            setRealtimeStatus("reconnecting");
+          }
+        });
+        connection.onreconnected(async () => {
+          try {
+            await connection.invoke(EXAM_MONITORING_METHODS.joinExam, Number(exam.id));
+            if (isMounted) {
+              setRealtimeStatus("connected");
+            }
+          } catch {
+            if (isMounted) {
+              setRealtimeStatus("disconnected");
+            }
+          }
+        });
+        connection.onclose(() => {
+          if (isMounted) {
+            setRealtimeStatus("disconnected");
+          }
+        });
+
+        await connection.start();
+        await connection.invoke(EXAM_MONITORING_METHODS.joinExam, Number(exam.id));
+
+        if (isMounted) {
+          setRealtimeStatus("connected");
+        }
+      } catch {
+        if (isMounted) {
+          setRealtimeStatus("disconnected");
+        }
+      }
+    }
+
+    startConnection();
+
+    return () => {
+      isMounted = false;
+      connection.off(EXAM_MONITORING_EVENTS.receiveAntiCheatWarning, handleWarning);
+      connection
+        .invoke(EXAM_MONITORING_METHODS.leaveExam, Number(exam.id))
+        .catch(() => {})
+        .finally(() => {
+          connection.stop().catch(() => {});
+        });
+    };
+  }, [exam?.enableAntiCheat, exam?.id, onAntiCheatWarning, showToast]);
 
   async function handleInspectAttempt(attemptId) {
     if (!exam.enableAntiCheat) {
@@ -123,11 +258,16 @@ export default function AttemptMonitorPanel({
       <Card className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-lg font-semibold text-primary">Lượt làm bài</h3>
-          {exam.enableAntiCheat ? (
-            <Badge variant="caution">Anti-cheat bật</Badge>
-          ) : (
-            <Badge variant="neutral">Anti-cheat tắt</Badge>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {exam.enableAntiCheat ? (
+              <Badge variant="caution">Anti-cheat bật</Badge>
+            ) : (
+              <Badge variant="neutral">Anti-cheat tắt</Badge>
+            )}
+            {exam.enableAntiCheat ? (
+              <Badge variant={realtimeStatusMeta.variant}>{realtimeStatusMeta.label}</Badge>
+            ) : null}
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

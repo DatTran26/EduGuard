@@ -1,5 +1,73 @@
 # Project Changelog
 
+## Feature: SignalR realtime monitoring
+
+Date: 2026-06-15
+
+Branch/source: `devB`
+
+Description:
+
+- Hoàn thiện Phase 8 SignalR realtime để teacher nhận cảnh báo anti-cheat ngay khi student phát sinh log hợp lệ trong lúc làm bài.
+- Bổ sung `NotificationHub` và `ExamMonitoringHub`; hub dùng JWT Bearer qua query `access_token`, join group theo exam và chỉ teacher sở hữu đề mới được monitor.
+- Thêm abstraction notifier trong Application để `AntiCheatService` gửi realtime warning sau khi lưu `CheatingLog` thành công mà không phụ thuộc trực tiếp vào API/Hub.
+- Frontend cài `@microsoft/signalr`, thêm connection factory cho notification/exam monitoring, listener notification toàn app và cập nhật `AttemptMonitorPanel` để nhận `ReceiveAntiCheatWarning`, cập nhật score/log realtime và hiển thị toast cho teacher.
+- Cập nhật registry/todo feature SignalR; notification realtime hiện có hub/notifier/listener, còn entity/API lưu notification vẫn thuộc Notification System riêng.
+
+Changed files:
+
+- `backend/EduGuard.Api/Program.cs`
+- `backend/EduGuard.Api/Hubs/exam-monitoring-hub.cs`
+- `backend/EduGuard.Api/Hubs/notification-hub.cs`
+- `backend/EduGuard.Api/Realtime/signalr-exam-monitoring-notifier.cs`
+- `backend/EduGuard.Api/Realtime/signalr-notification-notifier.cs`
+- `backend/EduGuard.Application/DTOs/AntiCheat/anti-cheat-warning-dto.cs`
+- `backend/EduGuard.Application/DTOs/Notifications/realtime-notification-dto.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-exam-monitoring-notifier.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-exam-monitoring-service.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-notification-notifier.cs`
+- `backend/EduGuard.Infrastructure/AntiCheat/anti-cheat-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-monitoring-service.cs`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `frontend/vite.config.js`
+- `frontend/src/App.jsx`
+- `frontend/src/features/anti-cheat/components/AttemptMonitorPanel.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/features/notifications/components/RealtimeNotificationListener.jsx`
+- `frontend/src/signalr/signalrConnection.js`
+- `frontend/src/signalr/examMonitoringConnection.js`
+- `frontend/src/signalr/notificationConnection.js`
+- `Todo List.md`
+- `README.md`
+- `docs/06_DEVELOPMENT_ROADMAP.md`
+- `docs/apiList.md`
+- `docs/features.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- `ExamMonitoringHub` exposes `JoinExam` / `LeaveExam` and uses group name `exam:{examId}` so warning is scoped per exam.
+- `ExamMonitoringService` checks exam ownership before allowing a teacher connection to join an exam group.
+- `AntiCheatService.LogAsync` now maps the saved log to `AntiCheatWarningDto`, counts logs for the attempt and sends `ReceiveAntiCheatWarning` after `SaveChangesAsync` succeeds; SignalR send failures are logged as warnings and do not invalidate the REST log response.
+- `JwtBearerEvents.OnMessageReceived` accepts hub tokens from `access_token` for `/hubs/*`; CORS allows credentials for SignalR dev connections.
+- Frontend uses `accessTokenFactory`, automatic reconnect, Vite `/hubs` WebSocket proxy and realtime state updates in the teacher monitor panel.
+
+Validation:
+
+- `npm.cmd --prefix frontend install @microsoft/signalr` — installed `@microsoft/signalr@10.0.0`, audit found 0 vulnerabilities.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj` — succeeded, 0 warnings, 0 errors.
+- `npm.cmd --prefix frontend run lint` — passed.
+- `npm.cmd --prefix frontend run build` — passed; Vite/Rolldown emitted non-blocking warnings from `@microsoft/signalr` pure annotations and bundle size.
+- `npm.cmd test` — passed (`dotnet test backend/EduGuard.Api/EduGuard.Api.slnx`).
+
+Unresolved questions:
+
+- Browser E2E with two logged-in users was not run in this environment; verify manually with teacher exam detail open and student triggering anti-cheat events.
+- Notification persistence/list/read APIs are still not implemented; current Phase 8 covers realtime hub/notifier/listener only.
+- Frontend production bundle now crosses Vite's default 500 kB chunk warning after adding SignalR; consider route-based code splitting later if bundle size becomes a release concern.
+
 ## Feature: Identity keys — int → string (GUID)
 
 Date: 2026-06-13

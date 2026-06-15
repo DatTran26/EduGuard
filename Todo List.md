@@ -3,8 +3,8 @@
 > Lộ trình: `docs/06_DEVELOPMENT_ROADMAP.md` · Quy tắc: `docs/07_DEVELOPMENT_RULES.md`  
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
-**Branch làm việc:** `devH`  
-**Cập nhật:** 2026-06-11 (backend Phase 7 anti-cheat xong; Phase 3–6 backend xong; frontend auth + classroom + exam đã nối backend thật ở các màn hiện có; classroom detail nay đã có assignment thật, student đã có màn làm bài riêng với timer + auto submit, teacher exam detail đã có attempt monitor và anti-cheat REST cơ bản; dashboard và user/profile vẫn còn bridge/mock ở những phần backend chưa cung cấp endpoint tương ứng; role UI đã được giản lược theo hướng title-only cho block/chức năng chính và workspace màu sáng đã rà lại theo design tokens preview; auth session giờ tự refresh token khi role backend đổi để tránh 403 lệch quyền ở các màn Teacher/Admin)  
+**Branch làm việc:** `devB`
+**Cập nhật:** 2026-06-15 (Phase 8 SignalR realtime xong: đã có `NotificationHub`, `ExamMonitoringHub`, JWT cho hub qua `access_token`, notifier realtime, frontend notification listener và teacher attempt monitor nhận cảnh báo anti-cheat realtime; Notifications REST/entity vẫn thuộc feature riêng chưa triển khai; dashboard và user/profile vẫn còn bridge/mock ở những phần backend chưa cung cấp endpoint tương ứng)
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -20,8 +20,8 @@
 | 4 | Assignment Management | 🟡 Backend + FE core xong; trạng thái bài nộp của student sau reload còn giới hạn do BE chưa có endpoint lấy bài nộp cá nhân |
 | 5 | Exam Management | 🟡 Backend xong (11/11 API), FE exam thật xong cho list/detail/question bank hiện có |
 | 6 | Online Testing / Exam Attempt | ✅ Backend + FE core xong (start/resume, save answer, timer, auto submit, result, teacher attempt monitor) |
-| 7 | Anti-cheat Monitoring | ✅ Backend + FE REST cơ bản xong (hook student + monitor teacher); realtime vẫn thuộc Phase 8 |
-| 8 | SignalR Realtime | ⬜ Chưa bắt đầu |
+| 7 | Anti-cheat Monitoring | ✅ Backend + FE REST cơ bản xong; realtime warning đã xử lý ở Phase 8 |
+| 8 | SignalR Realtime | ✅ Hoàn thành |
 | 9 | Redis | ⬜ Chưa bắt đầu |
 | 10 | Dashboard & Reporting | 🟡 Đang làm |
 | 11 | Docker Compose | ⬜ Chưa bắt đầu |
@@ -242,12 +242,12 @@
 
 **Mục tiêu:** Teacher nhận cảnh báo ngay khi student có hành vi bất thường.
 
-- [ ] `NotificationHub`
-- [ ] `ExamMonitoringHub`
-- [ ] Frontend kết nối SignalR
-- [ ] Backend gửi notification
-- [ ] Backend gửi anti-cheat warning
-- [ ] Teacher dashboard nhận cảnh báo realtime
+- [x] `NotificationHub`
+- [x] `ExamMonitoringHub`
+- [x] Frontend kết nối SignalR
+- [x] Backend gửi notification *(notifier realtime + listener; phần lưu notification vẫn thuộc Notification System riêng)*
+- [x] Backend gửi anti-cheat warning
+- [x] Teacher dashboard nhận cảnh báo realtime
 
 **Tiêu chí hoàn thành:** Cảnh báo realtime hiển thị trên dashboard Teacher.
 

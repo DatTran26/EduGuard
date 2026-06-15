@@ -17,6 +17,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      "/hubs": {
+        target: "https://127.0.0.1:7168",
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
     },
   },
 });

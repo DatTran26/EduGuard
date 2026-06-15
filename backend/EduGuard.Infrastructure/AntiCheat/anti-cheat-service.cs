@@ -4,6 +4,7 @@ using EduGuard.Application.Services.Interfaces;
 using EduGuard.Domain.Entities;
 using EduGuard.Domain.Enums;
 using FluentValidation;
+using Microsoft.Extensions.Logging;
 
 namespace EduGuard.Infrastructure.AntiCheat;
 
@@ -12,17 +13,23 @@ public class AntiCheatService : IAntiCheatService
     private const int FlaggedSuspicionThreshold = 10;
 
     private readonly ICheatingLogRepository _cheatingLogRepository;
+    private readonly IExamMonitoringNotifier _examMonitoringNotifier;
     private readonly IExamRepository _examRepository;
     private readonly IValidator<CreateCheatingLogRequest> _createLogValidator;
+    private readonly ILogger<AntiCheatService> _logger;
 
     public AntiCheatService(
         ICheatingLogRepository cheatingLogRepository,
+        IExamMonitoringNotifier examMonitoringNotifier,
         IExamRepository examRepository,
-        IValidator<CreateCheatingLogRequest> createLogValidator)
+        IValidator<CreateCheatingLogRequest> createLogValidator,
+        ILogger<AntiCheatService> logger)
     {
         _cheatingLogRepository = cheatingLogRepository;
+        _examMonitoringNotifier = examMonitoringNotifier;
         _examRepository = examRepository;
         _createLogValidator = createLogValidator;
+        _logger = logger;
     }
 
     public async Task<CheatingLogDto> LogAsync(
@@ -54,7 +61,11 @@ public class AntiCheatService : IAntiCheatService
         _cheatingLogRepository.UpdateAttempt(attempt);
         await _cheatingLogRepository.SaveChangesAsync(ct);
 
-        return AntiCheatMapper.MapLog(log);
+        var logDto = AntiCheatMapper.MapLog(log);
+        var logCount = await _cheatingLogRepository.CountByAttemptIdAsync(attempt.Id, ct);
+        await SendAntiCheatWarningAsync(attempt, logDto, logCount, ct);
+
+        return logDto;
     }
 
     public async Task<IReadOnlyList<CheatingLogDto>> GetLogsByAttemptAsync(
@@ -129,6 +140,40 @@ public class AntiCheatService : IAntiCheatService
 
         if (!attempt.Exam.EnableAntiCheat)
             throw new InvalidOperationException("Đề thi này chưa bật anti-cheat.");
+    }
+
+    private async Task SendAntiCheatWarningAsync(
+        ExamAttempt attempt,
+        CheatingLogDto log,
+        int logCount,
+        CancellationToken ct)
+    {
+        try
+        {
+            await _examMonitoringNotifier.SendAntiCheatWarningAsync(new AntiCheatWarningDto
+            {
+                LogId = log.Id,
+                ExamId = attempt.ExamId,
+                ExamAttemptId = attempt.Id,
+                StudentId = attempt.StudentId,
+                StudentName = attempt.Student?.FullName ?? string.Empty,
+                Type = log.Type,
+                Description = log.Description,
+                SuspicionPoint = log.SuspicionPoint,
+                SuspicionScore = attempt.SuspicionScore,
+                LogCount = logCount,
+                Metadata = log.Metadata,
+                OccurredAt = log.OccurredAt
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Không thể gửi cảnh báo anti-cheat realtime cho đề thi {ExamId}, lượt làm {AttemptId}.",
+                attempt.ExamId,
+                attempt.Id);
+        }
     }
 
     private async Task<ExamAttempt> EnsureTeacherCanViewAttemptAsync(
