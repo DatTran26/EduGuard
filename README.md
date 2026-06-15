@@ -50,7 +50,8 @@ Chi tiết chức năng: [`docs/01_PROJECT_OVERVIEW.md`](docs/01_PROJECT_OVERVIE
 | Database / EF Core (Phase 1) | ✅ |
 | Auth + JWT (Phase 2 backend) | ✅ |
 | Auth UI (Phase 2 frontend) | ⬜ Chưa bắt đầu |
-| API modules, SignalR, Redis | ⬜ Chưa bắt đầu |
+| API modules + SignalR | 🟡 Core classroom/assignment/exam/attempt/anti-cheat + realtime xong; users/dashboard REST còn thiếu |
+| Redis | ⬜ Chưa bắt đầu |
 | Docker Compose | ⬜ Chưa bắt đầu |
 
 API smoke test: `GET /api/Test` → `{ "message": "EduGuard API is running" }`.
@@ -65,7 +66,7 @@ API smoke test: `GET /api/Test` → `{ "message": "EduGuard API is running" }`.
 | Frontend | React, Vite, Tailwind CSS *(dự kiến)* |
 | Database | SQL Server, Entity Framework Core *(dự kiến)* |
 | Auth | ASP.NET Core Identity + JWT Bearer *(dự kiến)* |
-| Realtime | SignalR *(dự kiến)* |
+| Realtime | SignalR |
 | Cache | Redis *(dự kiến)* |
 | Logging | Serilog *(dự kiến)* |
 | API docs | Swagger / OpenAPI |
@@ -204,7 +205,8 @@ Phase 0  Khởi tạo project          🟡 đang làm
 Phase 1  Database + Entity         ⬜
 Phase 2  Auth & Authorization      ⬜
 Phase 3–7  Lớp, bài tập, thi, anti-cheat  ⬜
-Phase 8–11  SignalR, Redis, Docker ⬜
+Phase 8  SignalR Realtime       ✅
+Phase 9–11  Redis, Docker       ⬜
 ```
 
 Nguyên tắc triển khai: **Chạy được → Đăng nhập được → Quản lý lớp → Tạo bài thi → Làm bài → Giám sát → Tối ưu**

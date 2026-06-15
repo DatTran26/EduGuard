@@ -89,6 +89,8 @@ function calculateAverageScore(attempts = []) {
 }
 
 // Trang này là màn chi tiết bài kiểm tra, đồng thời là nơi teacher chỉnh sửa exam metadata và question bank.
+const FLAGGED_SUSPICION_THRESHOLD = 10;
+
 export default function ExamDetailPage() {
   const navigate = useNavigate();
   const { examId } = useParams();
@@ -402,6 +404,58 @@ export default function ExamDetailPage() {
     }
   }
 
+  const handleRealtimeAntiCheatWarning = useCallback((warning) => {
+    setAttempts((previousAttempts) =>
+      previousAttempts.map((attempt) =>
+        attempt.id === warning.examAttemptId
+          ? {
+              ...attempt,
+              studentName: attempt.studentName || warning.studentName,
+              suspicionScore: warning.suspicionScore,
+            }
+          : attempt,
+      ),
+    );
+
+    setAntiCheatSummary((previousSummary) => {
+      if (!previousSummary || Number(previousSummary.examId) !== warning.examId) {
+        return previousSummary;
+      }
+
+      let hasMatchedAttempt = false;
+      let shouldIncreaseFlaggedCount = false;
+      const nextAttempts = previousSummary.attempts.map((attempt) => {
+        if (attempt.attemptId !== warning.examAttemptId) {
+          return attempt;
+        }
+
+        hasMatchedAttempt = true;
+        shouldIncreaseFlaggedCount =
+          Number(attempt.suspicionScore || 0) < FLAGGED_SUSPICION_THRESHOLD &&
+          warning.suspicionScore >= FLAGGED_SUSPICION_THRESHOLD;
+
+        return {
+          ...attempt,
+          logCount: warning.logCount,
+          studentName: attempt.studentName || warning.studentName,
+          suspicionScore: warning.suspicionScore,
+        };
+      });
+
+      return {
+        ...previousSummary,
+        attempts: nextAttempts,
+        flaggedAttempts: shouldIncreaseFlaggedCount
+          ? Math.min(
+              Number(previousSummary.flaggedAttempts || 0) + 1,
+              Number(previousSummary.totalAttempts || nextAttempts.length),
+            )
+          : previousSummary.flaggedAttempts,
+        totalLogs: Number(previousSummary.totalLogs || 0) + (hasMatchedAttempt ? 1 : 0),
+      };
+    });
+  }, []);
+
   const questionSummaryItems = exam ? buildQuestionSummaryItems(exam, questions) : [];
   const averageScoreLabel = typeof exam?.averageScore === "number" ? exam.averageScore : "--";
   const totalQuestionScoreLabel =
@@ -683,6 +737,7 @@ export default function ExamDetailPage() {
         <AttemptMonitorPanel
           antiCheatSummary={antiCheatSummary}
           exam={exam}
+          onAntiCheatWarning={handleRealtimeAntiCheatWarning}
           showToast={showToast}
           attempts={attempts}
         />
