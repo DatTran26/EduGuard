@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { classroomApi } from "../../../api/classroomApi";
 import Button from "../../../components/common/Button";
-import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
-import Input from "../../../components/common/Input";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
@@ -12,92 +10,14 @@ import { getRoleLabel } from "../../../routes/roleRoutes";
 import { routeConfig } from "../../../routes/routeConfig";
 import ClassroomCard from "../components/ClassroomCard";
 import CreateClassroomForm from "../components/CreateClassroomForm";
+import { SkeletonClassroomCard } from "../../../components/common/Skeleton";
+import ClassroomListAdminFilters from "./classroom-list-admin-filters";
+import {
+  buildSummaryItems,
+  getPageCopyByRole,
+  filterAndSortAdminClassrooms,
+} from "./classroom-list-helpers";
 
-const ADMIN_CLASSROOM_SORT_OPTIONS = [
-  { label: "Tên lớp học (A-Z)", value: "name-asc" },
-  { label: "Tên lớp học (Z-A)", value: "name-desc" },
-  { label: "Số thành viên (nhiều đến ít)", value: "members-desc" },
-  { label: "Số thành viên (ít đến nhiều)", value: "members-asc" },
-];
-
-// Hàm này dựng bộ số liệu nhỏ phía trên để trang classroom bớt trống và dễ quét hơn.
-function buildSummaryItems(classrooms) {
-  const teacherCount = new Set(classrooms.map((classroom) => classroom.teacherId)).size;
-  const totalMembers = classrooms.reduce(
-    (totalValue, classroom) =>
-      totalValue + (typeof classroom.memberCount === "number" ? classroom.memberCount : 0),
-    0,
-  );
-
-  return [
-    { label: "Tổng lớp học", value: classrooms.length },
-    { label: "Giảng viên", value: teacherCount },
-    { label: "Thành viên", value: totalMembers },
-  ];
-}
-
-// Hàm này trả tiêu đề và CTA đầu trang theo role để cùng một page vẫn đúng ngữ cảnh.
-function getPageCopyByRole(role) {
-  if (role === "Admin") {
-    return {
-      title: "Quản lý lớp học",
-      actionLabel: null,
-    };
-  }
-
-  if (role === "Teacher") {
-    return {
-      title: "Lớp học của giảng viên",
-      actionLabel: null,
-    };
-  }
-
-  return {
-    title: "Lớp học của sinh viên",
-    actionLabel: "Tham gia lớp",
-  };
-}
-
-// Hàm này lọc lớp học theo tên lớp hoặc tên giảng viên để admin tìm nhanh đúng dữ liệu cần xem.
-function filterAndSortAdminClassrooms(classrooms, searchTerm, sortOption) {
-  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
-
-  const filteredClassrooms = classrooms.filter((classroom) => {
-    if (!normalizedSearchTerm) {
-      return true;
-    }
-
-    const classroomName = classroom.name?.toLowerCase() ?? "";
-    const teacherName = classroom.teacherName?.toLowerCase() ?? "";
-
-    return classroomName.includes(normalizedSearchTerm) || teacherName.includes(normalizedSearchTerm);
-  });
-
-  return filteredClassrooms.slice().sort((firstClassroom, secondClassroom) => {
-    if (sortOption === "name-desc") {
-      return secondClassroom.name.localeCompare(firstClassroom.name, "vi");
-    }
-
-    if (sortOption === "members-desc") {
-      return (
-        (secondClassroom.memberCount ?? -1) - (firstClassroom.memberCount ?? -1) ||
-        firstClassroom.name.localeCompare(secondClassroom.name, "vi")
-      );
-    }
-
-    if (sortOption === "members-asc") {
-      return (
-        (firstClassroom.memberCount ?? Number.MAX_SAFE_INTEGER) -
-          (secondClassroom.memberCount ?? Number.MAX_SAFE_INTEGER) ||
-        firstClassroom.name.localeCompare(secondClassroom.name, "vi")
-      );
-    }
-
-    return firstClassroom.name.localeCompare(secondClassroom.name, "vi");
-  });
-}
-
-// Trang này hiển thị classroom list theo quyền hiện tại và cho teacher thao tác CRUD phần tạo lớp.
 export default function ClassroomListPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -136,10 +56,8 @@ export default function ClassroomListPage() {
     );
   }, [location.pathname, location.search, location.state, navigate, showToast]);
 
-  // Hàm này gọi API lấy classroom list đúng theo role đang đăng nhập rồi đổ vào state hiện tại.
   async function loadClassrooms() {
     setIsLoading(true);
-
     try {
       const response = await classroomApi.getAll();
       setClassrooms(response.data);
@@ -159,23 +77,14 @@ export default function ClassroomListPage() {
 
   useEffect(() => {
     let isMounted = true;
-
-    // Hàm này tải dữ liệu ban đầu khi trang vừa mount mà không bị warning setState trong effect.
     async function loadInitialClassrooms() {
       try {
         const response = await classroomApi.getAll();
-
-        if (!isMounted) {
-          return;
-        }
-
+        if (!isMounted) return;
         setClassrooms(response.data);
         setLoadErrorMessage("");
       } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
+        if (!isMounted) return;
         const nextMessage = error.message || "Không thể tải danh sách lớp học.";
         setLoadErrorMessage(nextMessage);
         showToast({
@@ -184,23 +93,17 @@ export default function ClassroomListPage() {
           message: nextMessage,
         });
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
     }
-
     loadInitialClassrooms();
-
     return () => {
       isMounted = false;
     };
   }, [showToast]);
 
-  // Hàm này xử lý teacher tạo classroom mới rồi tải lại danh sách để card hiển thị đồng bộ.
   async function handleCreateClassroom(payload) {
     setIsSubmitting(true);
-
     try {
       const response = await classroomApi.create(payload);
       await loadClassrooms();
@@ -223,7 +126,6 @@ export default function ClassroomListPage() {
     }
   }
 
-  // Hàm này copy mã lớp để teacher hoặc admin xử lý nhanh khi cần chia sẻ cho sinh viên.
   async function handleCopyCode(joinCode) {
     try {
       await window.navigator.clipboard.writeText(joinCode);
@@ -241,31 +143,18 @@ export default function ClassroomListPage() {
     }
   }
 
-  // Hàm này đưa bộ lọc của admin về mặc định để tìm kiếm lại từ đầu cho nhanh.
   function handleResetAdminFilters() {
     setAdminSearchTerm("");
     setAdminSortOption("name-asc");
   }
 
-  // Hàm này trả empty state phù hợp hơn với vai trò hiện tại thay vì dùng một thông điệp chung.
   function renderEmptyState() {
     if (loadErrorMessage) {
-      return (
-        <EmptyState
-          title="Không thể tải lớp học."
-          description={loadErrorMessage}
-        />
-      );
+      return <EmptyState title="Không thể tải lớp học." description={loadErrorMessage} />;
     }
-
     if (user?.role === "Teacher") {
-      return (
-        <EmptyState
-          title="Bạn chưa tạo lớp học nào."
-        />
-      );
+      return <EmptyState title="Bạn chưa tạo lớp học nào." />;
     }
-
     if (user?.role === "Student") {
       return (
         <EmptyState
@@ -278,26 +167,7 @@ export default function ClassroomListPage() {
         />
       );
     }
-
-    return (
-      <EmptyState
-        title="Chưa có lớp học nào được trả về."
-      />
-    );
-  }
-
-  // Hàm này trả trạng thái rỗng riêng khi admin đã có dữ liệu nhưng bộ lọc hiện tại không khớp lớp nào.
-  function renderAdminFilterEmptyState() {
-    return (
-      <EmptyState
-        title="Không tìm thấy lớp học phù hợp."
-        action={
-          <Button variant="secondary" onClick={handleResetAdminFilters}>
-            Xóa bộ lọc
-          </Button>
-        }
-      />
-    );
+    return <EmptyState title="Chưa có lớp học nào được trả về." />;
   }
 
   return (
@@ -308,7 +178,7 @@ export default function ClassroomListPage() {
         actions={
           user?.role === "Teacher" ? (
             <Button
-              onClick={() => setIsCreateFormVisible((previousValue) => !previousValue)}
+              onClick={() => setIsCreateFormVisible((prev) => !prev)}
               variant={isCreateFormVisible ? "secondary" : "primary"}
             >
               {isCreateFormVisible ? "Ẩn form tạo lớp" : "Tạo lớp học"}
@@ -322,51 +192,13 @@ export default function ClassroomListPage() {
       />
 
       {isAdminView ? (
-        <Card className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-primary">Bộ lọc lớp học</h3>
-            <Button
-              disabled={!adminSearchTerm && adminSortOption === "name-asc"}
-              variant="ghost"
-              onClick={handleResetAdminFilters}
-            >
-              Đặt lại
-            </Button>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-            <div>
-              <label className="eg-label" htmlFor="admin-classroom-search">
-                Tìm kiếm lớp học
-              </label>
-              <Input
-                id="admin-classroom-search"
-                placeholder="Nhập tên lớp học hoặc tên giảng viên"
-                type="search"
-                value={adminSearchTerm}
-                onChange={(event) => setAdminSearchTerm(event.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="eg-label" htmlFor="admin-classroom-sort">
-                Sắp xếp danh sách
-              </label>
-              <select
-                id="admin-classroom-sort"
-                className="eg-input"
-                value={adminSortOption}
-                onChange={(event) => setAdminSortOption(event.target.value)}
-              >
-                {ADMIN_CLASSROOM_SORT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </Card>
+        <ClassroomListAdminFilters
+          searchTerm={adminSearchTerm}
+          onSearchTermChange={setAdminSearchTerm}
+          sortOption={adminSortOption}
+          onSortOptionChange={setAdminSortOption}
+          onResetFilters={handleResetAdminFilters}
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
           {summaryItems.map((item) => (
@@ -388,21 +220,26 @@ export default function ClassroomListPage() {
       ) : null}
 
       {isLoading ? (
-        <div className="rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
-          Đang tải danh sách lớp học...
+        <div className="grid gap-6">
+          <SkeletonClassroomCard />
+          <SkeletonClassroomCard />
+          <SkeletonClassroomCard />
         </div>
       ) : visibleClassrooms.length > 0 ? (
         <div className="grid gap-6">
           {visibleClassrooms.map((classroom) => (
-            <ClassroomCard
-              key={classroom.id}
-              classroom={classroom}
-              onCopyCode={handleCopyCode}
-            />
+            <ClassroomCard key={classroom.id} classroom={classroom} onCopyCode={handleCopyCode} />
           ))}
         </div>
       ) : isAdminView && classrooms.length > 0 ? (
-        renderAdminFilterEmptyState()
+        <EmptyState
+          title="Không tìm thấy lớp học phù hợp."
+          action={
+            <Button variant="secondary" onClick={handleResetAdminFilters}>
+              Xóa bộ lọc
+            </Button>
+          }
+        />
       ) : (
         renderEmptyState()
       )}

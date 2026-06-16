@@ -12,6 +12,7 @@ import {
   CheatingBreakdownChart,
 } from "../components/teacher-dashboard-charts";
 import ProctoringStreamsPlaceholder from "../components/proctoring-streams-placeholder";
+import Skeleton, { SkeletonStatCard } from "../../../components/common/Skeleton";
 
 export default function TeacherDashboardPage() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -54,8 +55,62 @@ export default function TeacherDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px] text-sm text-secondary">
-        Đang tải dữ liệu dashboard giảng viên...
+      <div className="space-y-6 max-w-[1280px] mx-auto">
+        <PageHeader eyebrow="Giảng viên" title="Dashboard giảng dạy" />
+
+        {/* 4 Stats Cards */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <SkeletonStatCard />
+          <SkeletonStatCard />
+          <SkeletonStatCard />
+          <SkeletonStatCard />
+        </div>
+
+        {/* Recharts Visualizations */}
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="eg-card h-[320px] flex flex-col justify-between p-6">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-1/3" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+            <Skeleton className="h-[200px] w-full" />
+          </div>
+
+          <div className="eg-card h-[320px] flex flex-col justify-between p-6">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-1/2" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+            <Skeleton className="h-[200px] w-full" />
+          </div>
+        </div>
+
+        {/* Lists */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="eg-card p-6 space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-1/2" />
+              <Skeleton className="h-3 w-1/3" />
+            </div>
+            <div className="space-y-3">
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+            </div>
+          </div>
+
+          <div className="eg-card p-6 space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-1/3" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+            <div className="space-y-3">
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
