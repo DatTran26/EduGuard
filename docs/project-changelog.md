@@ -1,48 +1,44 @@
 # Project Changelog
 
-## Feature: Backend exam configuration validation
+## Feature: Teacher Dashboard Modernization & Navigation Workspace
 
 Date: 2026-06-15
 
-Branch/source: `devB`
+Branch/source: `devD`
 
 Description:
-
-- Chuẩn hóa backend cho cấu hình bài kiểm tra trước khi làm tiếp frontend: thời gian mở/đóng đề được lưu và trả về theo UTC rõ ràng để frontend có thể hiển thị đúng giờ Việt Nam.
-- Siết validation cấu hình exam ở tầng request/service: duration, max attempts và cửa sổ mở/đóng đề phải hợp lệ.
-- Siết điều kiện publish để đề chỉ được publish khi có câu hỏi hợp lệ; lỗi publish trả về message rõ theo từng câu/cấu hình để frontend hiển thị cho teacher.
-- Bổ sung validation publish cho trắc nghiệm MVP: `SingleChoice`, `MultipleChoice`, `TrueFalse`; giữ mô hình `Question` / `Answer` gắn trực tiếp với `Exam`, chưa triển khai `QuestionBank` hoặc import file trong bước này.
+- Tái cấu trúc lại giao diện Teacher từ dạng Floating Header cũ sang Nav bar chuyên nghiệp, tạo không gian làm việc đồng bộ, cố định và tối ưu trải nghiệm sử dụng (ergonomics) cho giảng viên.
+- Tích hợp thư viện Recharts để trực quan hóa dữ liệu thống kê lớp học sinh động, bao gồm biểu đồ kết hợp (Classroom Performance: Submission Rate vs. Average Score) và biểu đồ tròn (Anti-cheat Incidents breakdown) có chú thích chi tiết.
+- Bổ sung panel giám sát phòng thi realtime dưới dạng Proctoring Streams Placeholder có overlay "Coming Soon", định hình lộ trình phát triển tích hợp WebRTC và SignalR Hub trong tương lai.
 
 Changed files:
-
-- `backend/EduGuard.Application/Validators/create-exam-request-validator.cs`
-- `backend/EduGuard.Application/Validators/update-exam-request-validator.cs`
-- `backend/EduGuard.Infrastructure/Exams/exam-attempt-service.cs`
-- `backend/EduGuard.Infrastructure/Exams/exam-date-time-helper.cs`
-- `backend/EduGuard.Infrastructure/Exams/exam-mapper.cs`
-- `backend/EduGuard.Infrastructure/Exams/exam-service.cs`
-- `Todo List.md`
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/features/dashboard/components/teacher-dashboard-charts.jsx`
+- `frontend/src/features/dashboard/components/proctoring-streams-placeholder.jsx`
+- `frontend/src/components/layout/AppShell.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/package.json`
+- `frontend/package-lock.json`
 - `docs/project-changelog.md`
+- `docs/06_DEVELOPMENT_ROADMAP.md`
+- `docs/features.md`
+- `Todo List.md`
 
 Technical summary:
-
-- Added `ExamDateTimeHelper` to normalize incoming exam schedule values to UTC and mark DB-loaded schedule values as UTC before JSON serialization.
-- `ExamMapper.MapExam` now returns UTC-marked `StartTime`, `EndTime`, and `CreatedAt` so serialized API responses include the correct UTC kind.
-- `ExamAttemptService.EnsureExamWindowOpen` now normalizes stored schedule values before comparing them with `DateTime.UtcNow`.
-- `CreateExamRequestValidator` and `UpdateExamRequestValidator` now guard null settings and compare schedule windows after UTC normalization.
-- `ExamService.PublishAsync` now calls publish validation before setting `IsPublished`, checking exam config and question/answer correctness.
+- Thay thế toàn bộ layout thẻ nổi cũ bằng khung dashboard lưới (grid) linh hoạt, tuân thủ bảng màu Institutional Slate v1.1.
+- Sử dụng `<ComposedChart>` hiển thị đồng thời tỉ lệ nộp bài (Bar) và điểm trung bình (Line) của các lớp học, cùng chú giải (Tooltip) tùy biến cao.
+- Thiết kế biểu đồ `<PieChart>` với góc bo nhẹ cho từng phần, tự động ánh xạ màu sắc theo mức độ rủi ro (High/Medium/Low) của cheat log, đi kèm Custom Legend dạng nút tròn đồng bộ.
+- Xây dựng component `ProctoringStreamsPlaceholder` sử dụng các thẻ stream mô phỏng hoạt động camera giám sát, bọc bởi filter glassmorphic mờ và biểu tượng khóa/thông tin tính năng đang phát triển.
 
 Validation:
-
-- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -o temp\backend-exam-config-build` — succeeded, 0 warnings, 0 errors. Used separate output because a running `EduGuard.Api` process locked the default build DLLs.
-- `npm.cmd test` — passed; current script runs `dotnet test backend/EduGuard.Api/EduGuard.Api.slnx` and the solution currently has no test project output.
-- `git diff --check` — passed; only existing LF/CRLF conversion warnings were reported.
+- `npm install react-is` — Đã cài đặt dependency bổ sung để giải quyết vấn đề import của Recharts trên môi trường Vite/Rolldown.
+- `npm run build` — Biên dịch thành công dự án frontend, mã nguồn tối ưu hóa không có lỗi cú pháp hay import.
+- Kiểm tra trực quan cấu trúc giao diện trên trình duyệt đảm bảo responsive đầy đủ ở các độ phân giải màn hình.
 
 Unresolved questions:
-
-- Frontend still needs the matching timezone helper and UI changes so `datetime-local` inputs show `Asia/Ho_Chi_Minh` consistently.
-- Manual Swagger/browser publish tests should cover invalid no-question exam, invalid answer counts, invalid correct-answer counts and valid trắc nghiệm exam before commit.
-- Question bank/import file remains a later feature; this change keeps questions attached directly to exams for MVP.
+- Proctoring streams hiện tại mới là mock placeholder; cần kết nối với camera student thông qua WebRTC và SignalR hub giám sát trong các phase sau.
+- Tích hợp dashboard API thật từ backend khi endpoints cho vai trò Teacher được hoàn thiện đầy đủ trên service layer.
 
 ## Feature: SignalR realtime monitoring
 

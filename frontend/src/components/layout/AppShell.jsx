@@ -22,25 +22,24 @@ export default function AppShell() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral">
-      <div className="mx-auto max-w-[1380px] px-4 py-4 md:px-6 lg:px-8">
+    <div className="flex h-screen w-screen overflow-hidden bg-neutral">
+      <Sidebar
+        isOpen={isSidebarOpen}
+        navigationItems={navigationItems}
+        onNavigate={closeSidebar}
+        onClose={closeSidebar}
+      />
+
+      <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
         <TopBar onOpenSidebar={openSidebar} />
 
-        <div className="mt-6 flex min-h-[calc(100vh-10rem)] gap-6">
-          <Sidebar
-            isOpen={isSidebarOpen}
-            navigationItems={navigationItems}
-            onNavigate={closeSidebar}
-            onClose={closeSidebar}
-          />
-
-          <div className="flex min-w-0 flex-1 flex-col gap-6">
-            <main className="space-y-6 pb-10">
-              <Outlet />
-            </main>
+        <main className="flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8">
+          <div className="mx-auto max-w-[1280px] space-y-6 pb-12">
+            <Outlet />
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
 }
+
