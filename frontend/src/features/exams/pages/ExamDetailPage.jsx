@@ -23,6 +23,7 @@ import ExamForm from "../components/ExamForm";
 import QuestionCard from "../components/QuestionCard";
 import QuestionForm from "../components/QuestionForm";
 import { getExamStatusVariant } from "../examHelpers";
+import Skeleton, { SkeletonText } from "../../../components/common/Skeleton";
 
 // Hàm này dựng danh sách settings ngắn gọn để card thông tin chi tiết dễ render hơn.
 function buildSettingItems(exam) {
@@ -463,8 +464,55 @@ export default function ExamDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
-        Đang tải chi tiết bài kiểm tra...
+      <div className="space-y-6">
+        <PageHeader eyebrow="Chi tiết bài kiểm tra" title="Đang tải thông tin..." />
+
+        <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-6">
+            <div className="eg-card space-y-5">
+              <div className="flex gap-2">
+                <Skeleton className="h-6 w-20 rounded-full" />
+                <Skeleton className="h-6 w-24 rounded-full" />
+                <Skeleton className="h-6 w-28 rounded-full" />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </div>
+
+            <div className="eg-card space-y-4">
+              <Skeleton className="h-6 w-1/3" />
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="eg-card space-y-4">
+              <Skeleton className="h-6 w-1/3" />
+              <div className="space-y-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            </div>
+
+            <div className="eg-card space-y-4">
+              <Skeleton className="h-6 w-1/3" />
+              <SkeletonText lines={3} />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

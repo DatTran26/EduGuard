@@ -12,6 +12,7 @@ import { getRoleLabel } from "../../../routes/roleRoutes";
 import { getClassroomListPathByRole } from "../../../routes/routeConfig";
 import ExamCard from "../components/ExamCard";
 import ExamForm from "../components/ExamForm";
+import { SkeletonExamCard } from "../../../components/common/Skeleton";
 
 // Hàm này tính vài con số nhanh cho đầu trang danh sách đề thi để màn hình bớt khô hơn.
 function buildSummaryItems(exams) {
@@ -259,8 +260,10 @@ export default function ExamListPage() {
       ) : null}
 
       {isLoading ? (
-        <div className="rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
-          Đang tải danh sách bài kiểm tra...
+        <div className="grid gap-6">
+          <SkeletonExamCard />
+          <SkeletonExamCard />
+          <SkeletonExamCard />
         </div>
       ) : exams.length > 0 ? (
         <div className="grid gap-6">

@@ -16,12 +16,22 @@ import ExamListPage from "../features/exams/pages/ExamListPage";
 import ProfilePage from "../features/users/pages/ProfilePage";
 import UserManagementPage from "../features/users/pages/UserManagementPage";
 import { useAuth } from "../hooks/useAuth";
+import LoadingScreen from "../components/common/LoadingScreen";
 import { routeConfig } from "./routeConfig";
 import { getDefaultPathByRole } from "./roleRoutes";
 
 // Component này xử lý route gốc để người dùng được đưa thẳng về đúng khu vực theo role.
 function RootRedirect() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isHydrating, user } = useAuth();
+
+  if (isHydrating) {
+    return (
+      <LoadingScreen
+        title="Đang tải EduGuard"
+        message="Đang xác thực phiên và chuyển bạn tới đúng khu vực…"
+      />
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate replace to={routeConfig.login} />;

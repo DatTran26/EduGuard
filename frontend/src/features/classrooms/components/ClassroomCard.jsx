@@ -70,7 +70,7 @@ export default function ClassroomCard({ classroom, onCopyCode }) {
             Sao chép mã lớp
           </Button>
         ) : null}
-        <Link className="eg-button eg-button-primary" to={detailPath}>
+        <Link className="eg-button eg-button-secondary" to={detailPath}>
           Xem chi tiết
         </Link>
       </div>

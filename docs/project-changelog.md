@@ -1,5 +1,145 @@
 # Project Changelog
 
+## Feature: App shell, loading UX, and teacher pages
+
+Date: 2026-06-16
+
+Branch/source: `devD`
+
+Description:
+
+- Upgraded app shell: collapsible sidebar, TopBar with breadcrumb, notifications, centered search, and profile menu navigation to profile route.
+- Added InfinityLoader loading screen and shadcn-style UI primitives (breadcrumb, skeleton).
+- Modularized classroom list and exam/question forms into helper modules; updated teacher dashboard and related pages.
+
+Changed files:
+
+- `frontend/src/components/layout/AppShell.jsx`, `Sidebar.jsx`, `TopBar.jsx`, `ProtectedRoute.jsx`, `PublicRoute.jsx`
+- `frontend/src/components/common/LoadingScreen.jsx`, `Skeleton.jsx`
+- `frontend/src/components/ui/flexnative-breadcrumb.tsx`, `loader-13.tsx`
+- `frontend/src/features/classrooms/**`, `frontend/src/features/exams/**`, `frontend/src/features/dashboard/**`
+- `frontend/package.json`, `frontend/tsconfig.json`, `frontend/vite.config.js`, `frontend/src/index.css`
+- `docs/project-changelog.md`, `docs/SQL_Excute/Assign_Role_Teacher.sql`, `.gitignore`
+
+Technical summary:
+
+- Sidebar collapse persisted via `localStorage`; TopBar breadcrumb truncates long paths; notifications synced via `eduguard:notification` event.
+- Vite `@` alias and `lib/utils.ts` added for shadcn-compatible components.
+
+Validation:
+
+- `npm run build` — succeeded.
+- `npm test` (pre-commit) — passed.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Teacher Dashboard Navigation & Search Fix
+
+Date: 2026-06-16
+
+Branch/source: `devD`
+
+Description:
+- Resolved visual styling regressions in the Teacher Dashboard navigation bar and search interface for full compliance with the Institutional Slate v1.1.0 design system.
+- Refactored `Sidebar.jsx` to replace hardcoded utility colors with semantic CSS classes (`.eg-sidebar-link-active`, `.eg-sidebar-link-idle`) defined in `index.css`.
+- Audited and refined the `TopBar` search component styling to use `bg-surface-sunken` and `border-border` correctly with proper contrast, placeholder colors, and transition effects.
+
+Changed files:
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+
+Technical summary:
+- Removed hardcoded Tailwind colors (`bg-white/10`, `text-slate-400`, `hover:bg-white/5`) from `Sidebar.jsx` navigation links, replacing them with theme-compliant `.eg-sidebar-link-active` and `.eg-sidebar-link-idle`.
+- Enhanced search bar input styling in `TopBar.jsx` by adding `placeholder:text-secondary`, `transition-all duration-200`, and a soft focus ring (`focus:ring-3 focus:ring-tertiary/16`) to maintain design consistency with the global input states.
+
+Validation:
+- Ran `npm run lint` which completed successfully with 0 errors.
+- Ran `npm run build` which compiled Vite and Rolldown successfully.
+
+Unresolved questions:
+- None.
+
+## Feature: Modernizing Teacher Dashboard Forms & Classrooms UI
+
+Date: 2026-06-16
+
+Branch/source: `devD`
+
+Description:
+- Refactored `ExamForm.jsx` and `QuestionForm.jsx` for full compliance with the "Institutional Slate" v1.1.0 design system.
+- Replaced legacy border radius values with standardized token-based borders (`rounded-[12px]` and `rounded-[20px]`).
+- Standardized form interactions, input heights, and visual hierarchy using `eg-input` and `eg-button` classes and elements.
+- Enforced single-accent CTA rule across complex forms, ensuring visual consistency.
+- Modularized frontend components exceeding 200 lines (`ExamForm.jsx`, `QuestionForm.jsx`, `ClassroomListPage.jsx`) into smaller sub-components and pure JS helper files for better code maintenance.
+
+Changed files:
+- `frontend/src/features/exams/components/ExamForm.jsx`
+- `frontend/src/features/exams/components/QuestionForm.jsx`
+- `frontend/src/features/exams/components/exam-form-basic-section.jsx`
+- `frontend/src/features/exams/components/exam-form-config-section.jsx`
+- `frontend/src/features/exams/components/exam-form-helpers.js`
+- `frontend/src/features/exams/components/question-form-answers-section.jsx`
+- `frontend/src/features/exams/components/question-form-helpers.js`
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/pages/classroom-list-admin-filters.jsx`
+- `frontend/src/features/classrooms/pages/classroom-list-helpers.js`
+
+Technical summary:
+- Extracted basic fields and advanced configs from `ExamForm` into modularized sub-components and helper functions.
+- Extracted answer list creation and correctness options from `QuestionForm` into dynamic sub-components and helpers.
+- Modularized `ClassroomListPage.jsx` by extracting pure logic/filtering into `classroom-list-helpers.js` and sorting/searching UI inputs into `classroom-list-admin-filters.jsx`.
+- Kept all newly generated code files under 200 lines to align with the repository modularization guidelines.
+- Ensured single-accent CTA rule: each form only has exactly one primary action button (accent color blue).
+
+Validation:
+- Ran `npm run lint` which completed successfully with 0 errors.
+- Ran `npm run build` which compiled Vite and Rolldown successfully.
+
+Unresolved questions:
+- None.
+
+## Feature: Teacher Dashboard Modernization & Navigation Workspace
+
+Date: 2026-06-15
+
+Branch/source: `devD`
+
+Description:
+- Tái cấu trúc lại giao diện Teacher từ dạng Floating Header cũ sang Nav bar chuyên nghiệp, tạo không gian làm việc đồng bộ, cố định và tối ưu trải nghiệm sử dụng (ergonomics) cho giảng viên.
+- Tích hợp thư viện Recharts để trực quan hóa dữ liệu thống kê lớp học sinh động, bao gồm biểu đồ kết hợp (Classroom Performance: Submission Rate vs. Average Score) và biểu đồ tròn (Anti-cheat Incidents breakdown) có chú thích chi tiết.
+- Bổ sung panel giám sát phòng thi realtime dưới dạng Proctoring Streams Placeholder có overlay "Coming Soon", định hình lộ trình phát triển tích hợp WebRTC và SignalR Hub trong tương lai.
+
+Changed files:
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/features/dashboard/components/teacher-dashboard-charts.jsx`
+- `frontend/src/features/dashboard/components/proctoring-streams-placeholder.jsx`
+- `frontend/src/components/layout/AppShell.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `docs/project-changelog.md`
+- `docs/06_DEVELOPMENT_ROADMAP.md`
+- `docs/features.md`
+- `Todo List.md`
+
+Technical summary:
+- Thay thế toàn bộ layout thẻ nổi cũ bằng khung dashboard lưới (grid) linh hoạt, tuân thủ bảng màu Institutional Slate v1.1.
+- Sử dụng `<ComposedChart>` hiển thị đồng thời tỉ lệ nộp bài (Bar) và điểm trung bình (Line) của các lớp học, cùng chú giải (Tooltip) tùy biến cao.
+- Thiết kế biểu đồ `<PieChart>` với góc bo nhẹ cho từng phần, tự động ánh xạ màu sắc theo mức độ rủi ro (High/Medium/Low) của cheat log, đi kèm Custom Legend dạng nút tròn đồng bộ.
+- Xây dựng component `ProctoringStreamsPlaceholder` sử dụng các thẻ stream mô phỏng hoạt động camera giám sát, bọc bởi filter glassmorphic mờ và biểu tượng khóa/thông tin tính năng đang phát triển.
+
+Validation:
+- `npm install react-is` — Đã cài đặt dependency bổ sung để giải quyết vấn đề import của Recharts trên môi trường Vite/Rolldown.
+- `npm run build` — Biên dịch thành công dự án frontend, mã nguồn tối ưu hóa không có lỗi cú pháp hay import.
+- Kiểm tra trực quan cấu trúc giao diện trên trình duyệt đảm bảo responsive đầy đủ ở các độ phân giải màn hình.
+
+Unresolved questions:
+- Proctoring streams hiện tại mới là mock placeholder; cần kết nối với camera student thông qua WebRTC và SignalR hub giám sát trong các phase sau.
+- Tích hợp dashboard API thật từ backend khi endpoints cho vai trò Teacher được hoàn thiện đầy đủ trên service layer.
+
 ## Feature: Backend exam configuration validation
 
 Date: 2026-06-15

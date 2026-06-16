@@ -16,6 +16,7 @@ import {
 import { formatShortDate, formatShortDateTime } from "../../../utils/formatDate";
 import AssignmentSection from "../../assignments/components/AssignmentSection";
 import CreateClassroomForm from "../components/CreateClassroomForm";
+import Skeleton, { SkeletonText } from "../../../components/common/Skeleton";
 
 // Hàm này tạo nhóm thông tin ngắn để card overview của classroom detail gọn hơn.
 function buildQuickInfoItems(classroom) {
@@ -212,8 +213,45 @@ export default function ClassroomDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
-        Đang tải chi tiết lớp học...
+      <div className="space-y-6">
+        <PageHeader eyebrow="Lớp học" title="Đang tải thông tin..." />
+
+        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-6">
+            <div className="eg-card space-y-5">
+              <Skeleton className="h-6 w-1/4 rounded-full" />
+              <div className="grid gap-4 md:grid-cols-2">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </div>
+
+            <div className="eg-card space-y-4">
+              <Skeleton className="h-6 w-1/3" />
+              <SkeletonText lines={4} />
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="eg-card space-y-4">
+              <Skeleton className="h-6 w-1/3" />
+              <div className="space-y-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            </div>
+            <div className="eg-card space-y-3">
+              <Skeleton className="h-6 w-1/3" />
+              <div className="flex gap-3">
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-10 w-24" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

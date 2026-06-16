@@ -3,11 +3,10 @@
 > Lộ trình: `docs/06_DEVELOPMENT_ROADMAP.md` · Quy tắc: `docs/07_DEVELOPMENT_RULES.md`  
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
-**Branch làm việc:** `devB`
-**Cập nhật:** 2026-06-15 (Phase 9 Redis — kế hoạch chi tiết theo codebase; kiểm thử Redis để sau triển khai)
-**Ghi chú:** 2026-06-15 (backend cấu hình bài kiểm tra đã chuẩn hóa UTC cho lịch thi, siết validation cấu hình và điều kiện publish trắc nghiệm MVP; frontend cấu hình bài kiểm tra/timezone Việt Nam vẫn là bước tiếp theo; Phase 8 SignalR realtime đã xong)
-**Branch làm việc:** `devH`  
-**Cập nhật:** 2026-06-13 (backend Phase 7 anti-cheat xong; Phase 3–6 backend xong; frontend auth + classroom + exam đã nối backend thật ở các màn hiện có; teacher tạo đề có thể publish ngay khi tạo, thời gian đóng đề tự tính theo thời gian mở + số phút làm bài nhưng vẫn cho chỉnh tay; classroom detail nay đã có assignment thật, student đã có màn làm bài riêng với timer + auto submit, teacher exam detail đã có attempt monitor và anti-cheat REST cơ bản; dashboard và user/profile vẫn còn bridge/mock ở những phần backend chưa cung cấp endpoint tương ứng; role UI đã được giản lược theo hướng title-only cho block/chức năng chính và workspace màu sáng đã rà lại theo design tokens preview; auth session giờ tự refresh token khi role backend đổi để tránh 403 lệch quyền ở các màn Teacher/Admin)  
+**Branch làm việc:** `devD` / `devH` / `devB` (nhánh dev theo feature)
+**Cập nhật:** 2026-06-16 (devD: app shell, loading UX, teacher pages merged to release)
+**Ghi chú devB:** 2026-06-15 (backend cấu hình bài kiểm tra UTC, validation publish trắc nghiệm MVP; Phase 8 SignalR xong; Phase 9 Redis — kế hoạch chi tiết)
+**Ghi chú devH:** 2026-06-13 (backend Phase 7 anti-cheat; frontend auth/classroom/exam nối backend; auth session refresh token khi role đổi)
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
 ---
@@ -570,9 +569,9 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 - [ ] Thống kê số lớp, học sinh, bài tập, điểm thi
 - [ ] Thống kê cheating score
 - [x] Frontend dashboard Admin *(đã có mock API + UI tổng quan người dùng, lớp học, activity, anti-cheat; đã tách số liệu giảng viên và sinh viên thành thống kê riêng; block stat/timeline/metric đã bỏ mô tả phụ)*
-- [x] Frontend dashboard Teacher *(đã có mock API + UI lớp quản lý, nộp bài, lịch thi, sinh viên rủi ro cao; đã bỏ mục điểm trung bình khỏi dashboard tổng quan; block stat/timeline/metric đã bỏ mô tả phụ)*
+- [x] Frontend dashboard Teacher *(đã có mock API + UI lớp quản lý, nộp bài, lịch thi, sinh viên rủi ro cao, proctoring streams placeholder; thiết kế thanh điều hướng Nav bar chuyên nghiệp; block stat/timeline/metric đã bỏ mô tả phụ)*
 - [x] Frontend dashboard Student *(đã có mock API + UI tiến độ lớp, việc sắp tới, kết quả, thông báo; đã bỏ mục điểm trung bình khỏi dashboard tổng quan; block stat/timeline/metric đã bỏ mô tả phụ)*
-- [x] Frontend biểu đồ dashboard *(mức cơ bản bằng stat card + progress bars, chưa dùng chart library)*
+- [x] Frontend biểu đồ dashboard *(tích hợp thư viện Recharts để vẽ trực quan Classroom Performance và Anti-cheat Incidents)*
 
 **Tiêu chí hoàn thành:** Người dùng có trang tổng quan dữ liệu theo role.
 
@@ -667,6 +666,37 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 - [x] Link `docs/03_BACKEND_ARCHITECTURE.md`, `docs/02_SETUP_AND_PROJECT_STRUCTURE.md`
 
 **Tiêu chí hoàn thành:** Dev mới đọc README (root + frontend/backend) hiểu hệ thống, chạy được local, biết điểm nổi bật — không cần đọc Todo List để hiểu sản phẩm là gì.
+
+---
+
+## Kiểm thử hệ thống (QA)
+
+Checklist thực hiện & giám sát — **master** + **16 file chi tiết** (~1.116 TC):
+
+- [ ] [`docs/test-checklists/eduguard-system-test-checklist.md`](docs/test-checklists/eduguard-system-test-checklist.md) — master (tiến độ + smoke + sign-off)
+- [ ] [`docs/test-checklists/README.md`](docs/test-checklists/README.md) — mục lục đầy đủ
+
+**File chi tiết theo module:**
+
+- [ ] [`system-infrastructure-system-test-checklist.md`](docs/test-checklists/system-infrastructure-system-test-checklist.md) — §0 System (50 TC)
+- [ ] [`database-entity-system-test-checklist.md`](docs/test-checklists/database-entity-system-test-checklist.md) — §1 Database (56 TC)
+- [ ] [`authentication-system-test-checklist.md`](docs/test-checklists/authentication-system-test-checklist.md) — §2 Auth (85 TC)
+- [ ] [`user-management-system-test-checklist.md`](docs/test-checklists/user-management-system-test-checklist.md) — §3 User (62 TC)
+- [ ] [`classroom-system-test-checklist.md`](docs/test-checklists/classroom-system-test-checklist.md) — §4 Classroom (79 TC)
+- [ ] [`assignment-system-test-checklist.md`](docs/test-checklists/assignment-system-test-checklist.md) — §5 Assignment (78 TC)
+- [ ] [`exam-management-system-test-checklist.md`](docs/test-checklists/exam-management-system-test-checklist.md) — §6 Exam (88 TC)
+- [ ] [`exam-attempt-system-test-checklist.md`](docs/test-checklists/exam-attempt-system-test-checklist.md) — §7 Attempt (95 TC)
+- [ ] [`anti-cheat-system-test-checklist.md`](docs/test-checklists/anti-cheat-system-test-checklist.md) — §8 Anti-cheat (73 TC)
+- [ ] [`notification-system-test-checklist.md`](docs/test-checklists/notification-system-test-checklist.md) — §9 Notification (58 TC)
+- [ ] [`dashboard-reporting-system-test-checklist.md`](docs/test-checklists/dashboard-reporting-system-test-checklist.md) — §10 Dashboard (78 TC)
+- [ ] [`signalr-realtime-system-test-checklist.md`](docs/test-checklists/signalr-realtime-system-test-checklist.md) — §11 SignalR (67 TC)
+- [ ] [`redis-cache-system-test-checklist.md`](docs/test-checklists/redis-cache-system-test-checklist.md) — §12 Redis (60 TC)
+- [ ] [`logging-activity-system-test-checklist.md`](docs/test-checklists/logging-activity-system-test-checklist.md) — §13 Logging (49 TC)
+- [ ] [`docker-deploy-system-test-checklist.md`](docs/test-checklists/docker-deploy-system-test-checklist.md) — §14 Docker (58 TC)
+- [ ] [`cross-cutting-system-test-checklist.md`](docs/test-checklists/cross-cutting-system-test-checklist.md) — §X Cross-cutting (80 TC)
+
+- [ ] Smoke hệ thống (mục cuối file master) trước mỗi build
+- [ ] Cập nhật bảng tiến độ + defect log sau mỗi phiên QA
 
 ---
 
