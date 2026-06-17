@@ -22,7 +22,12 @@ import AttemptMonitorPanel from "../../anti-cheat/components/AttemptMonitorPanel
 import ExamForm from "../components/ExamForm";
 import QuestionCard from "../components/QuestionCard";
 import QuestionForm from "../components/QuestionForm";
-import { getExamStatusVariant } from "../examHelpers";
+import {
+  buildExamPublishIssueList,
+  getExamStatusVariant,
+  splitPublishErrorMessage,
+} from "../examHelpers";
+import Skeleton, { SkeletonText } from "../../../components/common/Skeleton";
 
 // Hàm này dựng danh sách settings ngắn gọn để card thông tin chi tiết dễ render hơn.
 function buildSettingItems(exam) {
@@ -59,6 +64,7 @@ function canRoleInspectQuestionBank(role) {
 function buildQuestionSummaryItems(exam, questions) {
   const singleChoiceCount = questions.filter((question) => question.questionType === "SingleChoice").length;
   const multipleChoiceCount = questions.filter((question) => question.questionType === "MultipleChoice").length;
+  const trueFalseCount = questions.filter((question) => question.questionType === "TrueFalse").length;
   const shortAnswerCount = questions.filter((question) => question.questionType === "ShortAnswer").length;
   const totalQuestionScore = questions.reduce(
     (totalValue, question) => totalValue + Number(question.score || 0),
@@ -66,13 +72,15 @@ function buildQuestionSummaryItems(exam, questions) {
   );
 
   return [
-    { label: "Tổng câu hỏi", value: exam.questionCount },
+    { label: "Tổng câu hỏi", value: questions.length || exam.questionCount },
     { label: "Tổng điểm", value: totalQuestionScore },
     { label: "Một đáp án", value: singleChoiceCount },
     { label: "Nhiều đáp án", value: multipleChoiceCount },
-    { label: "Tự luận", value: shortAnswerCount },
+    { label: "Đúng / Sai", value: trueFalseCount },
+    { label: "Tự luận ngắn", value: shortAnswerCount },
   ];
 }
+
 
 // Hàm này tính điểm trung bình từ danh sách attempt đã có điểm để hiển thị đúng hơn ở exam detail.
 function calculateAverageScore(attempts = []) {
@@ -88,7 +96,38 @@ function calculateAverageScore(attempts = []) {
   return Math.round((totalValue / scoredAttempts.length) * 10) / 10;
 }
 
+function getPublishStatusMeta(exam, publishIssueCount, serverIssueCount) {
+  if (exam?.isPublished) {
+    return {
+      label: "Đã publish",
+      variant: "success",
+    };
+  }
+
+  if (serverIssueCount > 0) {
+    return {
+      label: "Backend đang chặn",
+      variant: "danger",
+    };
+  }
+
+  if (publishIssueCount === 0) {
+    return {
+      label: "Sẵn sàng publish",
+      variant: "success",
+    };
+  }
+
+  return {
+    label: "Chưa đủ điều kiện",
+    variant: "caution",
+  };
+}
+
+
 // Trang này là màn chi tiết bài kiểm tra, đồng thời là nơi teacher chỉnh sửa exam metadata và question bank.
+const FLAGGED_SUSPICION_THRESHOLD = 10;
+
 export default function ExamDetailPage() {
   const navigate = useNavigate();
   const { examId } = useParams();
@@ -100,6 +139,7 @@ export default function ExamDetailPage() {
   const [loadErrorMessage, setLoadErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [isQuestionSubmitting, setIsQuestionSubmitting] = useState(false);
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
   const [antiCheatSummary, setAntiCheatSummary] = useState(null);
@@ -108,6 +148,7 @@ export default function ExamDetailPage() {
   const [armedDeleteQuestionId, setArmedDeleteQuestionId] = useState(null);
   const [deletingQuestionId, setDeletingQuestionId] = useState(null);
   const [isStartingAttempt, setIsStartingAttempt] = useState(false);
+  const [publishServerIssues, setPublishServerIssues] = useState([]);
 
   // Hàm này gọi song song các endpoint cần thiết cho detail page để dữ liệu metadata và question bank đi cùng nhau.
   const fetchExamDetailData = useCallback(async () => {
@@ -169,12 +210,14 @@ export default function ExamDetailPage() {
       setQuestions(nextData.questions);
       setAntiCheatSummary(nextData.antiCheatSummary);
       setAttempts(nextData.attempts);
+      setPublishServerIssues([]);
       setLoadErrorMessage("");
     } catch (error) {
       setExam(null);
       setQuestions([]);
       setAntiCheatSummary(null);
       setAttempts([]);
+      setPublishServerIssues([]);
       const nextMessage = error.message || "Không thể tải chi tiết bài kiểm tra.";
       setLoadErrorMessage(nextMessage);
       showToast({
@@ -209,7 +252,8 @@ export default function ExamDetailPage() {
         setQuestions(nextData.questions);
         setAntiCheatSummary(nextData.antiCheatSummary);
         setAttempts(nextData.attempts);
-        setLoadErrorMessage("");
+      setPublishServerIssues([]);
+      setLoadErrorMessage("");
       } catch (error) {
         if (!isMounted) {
           return;
@@ -219,7 +263,8 @@ export default function ExamDetailPage() {
         setQuestions([]);
         setAntiCheatSummary(null);
         setAttempts([]);
-        const nextMessage = error.message || "Không thể tải chi tiết bài kiểm tra.";
+      setPublishServerIssues([]);
+      const nextMessage = error.message || "Không thể tải chi tiết bài kiểm tra.";
         setLoadErrorMessage(nextMessage);
         showToast({
           tone: "danger",
@@ -385,6 +430,47 @@ export default function ExamDetailPage() {
     }
   }
 
+  async function handlePublishExam() {
+    if (!exam) {
+      return;
+    }
+
+    const nextPublishIssues = buildExamPublishIssueList(exam, questions);
+
+    if (nextPublishIssues.length > 0) {
+      setPublishServerIssues([]);
+      showToast({
+        tone: "danger",
+        title: "Đề chưa thể publish",
+        message: "Hoàn thiện checklist publish trước khi phát hành đề thi.",
+      });
+      return;
+    }
+
+    setIsPublishing(true);
+    setPublishServerIssues([]);
+
+    try {
+      const response = await examApi.publish(examId);
+      await loadExamDetail();
+      showToast({
+        tone: "success",
+        title: "Đã publish đề thi",
+        message: response.message,
+      });
+    } catch (error) {
+      const nextServerIssues = splitPublishErrorMessage(error.message);
+      setPublishServerIssues(nextServerIssues);
+      showToast({
+        tone: "danger",
+        title: "Publish thất bại",
+        message: nextServerIssues[0] || error.message || "Không thể publish đề thi.",
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  }
+
   async function handleStartAttempt() {
     setIsStartingAttempt(true);
 
@@ -402,15 +488,120 @@ export default function ExamDetailPage() {
     }
   }
 
+  const handleRealtimeAntiCheatWarning = useCallback((warning) => {
+    setAttempts((previousAttempts) =>
+      previousAttempts.map((attempt) =>
+        attempt.id === warning.examAttemptId
+          ? {
+              ...attempt,
+              studentName: attempt.studentName || warning.studentName,
+              suspicionScore: warning.suspicionScore,
+            }
+          : attempt,
+      ),
+    );
+
+    setAntiCheatSummary((previousSummary) => {
+      if (!previousSummary || Number(previousSummary.examId) !== warning.examId) {
+        return previousSummary;
+      }
+
+      let hasMatchedAttempt = false;
+      let shouldIncreaseFlaggedCount = false;
+      const nextAttempts = previousSummary.attempts.map((attempt) => {
+        if (attempt.attemptId !== warning.examAttemptId) {
+          return attempt;
+        }
+
+        hasMatchedAttempt = true;
+        shouldIncreaseFlaggedCount =
+          Number(attempt.suspicionScore || 0) < FLAGGED_SUSPICION_THRESHOLD &&
+          warning.suspicionScore >= FLAGGED_SUSPICION_THRESHOLD;
+
+        return {
+          ...attempt,
+          logCount: warning.logCount,
+          studentName: attempt.studentName || warning.studentName,
+          suspicionScore: warning.suspicionScore,
+        };
+      });
+
+      return {
+        ...previousSummary,
+        attempts: nextAttempts,
+        flaggedAttempts: shouldIncreaseFlaggedCount
+          ? Math.min(
+              Number(previousSummary.flaggedAttempts || 0) + 1,
+              Number(previousSummary.totalAttempts || nextAttempts.length),
+            )
+          : previousSummary.flaggedAttempts,
+        totalLogs: Number(previousSummary.totalLogs || 0) + (hasMatchedAttempt ? 1 : 0),
+      };
+    });
+  }, []);
+
   const questionSummaryItems = exam ? buildQuestionSummaryItems(exam, questions) : [];
   const averageScoreLabel = typeof exam?.averageScore === "number" ? exam.averageScore : "--";
   const totalQuestionScoreLabel =
     typeof exam?.totalQuestionScore === "number" ? exam.totalQuestionScore : "--";
+  const publishIssueList = exam ? buildExamPublishIssueList(exam, questions) : [];
+  const publishStatusMeta = getPublishStatusMeta(
+    exam,
+    publishIssueList.length,
+    publishServerIssues.length,
+  );
 
   if (isLoading) {
     return (
-      <div className="eg-feedback-panel">
-        Đang tải chi tiết bài kiểm tra...
+      <div className="space-y-6">
+        <PageHeader eyebrow="Chi tiết bài kiểm tra" title="Đang tải thông tin..." />
+
+        <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-6">
+            <div className="eg-card space-y-5">
+              <div className="flex gap-2">
+                <Skeleton className="h-6 w-20 rounded-full" />
+                <Skeleton className="h-6 w-24 rounded-full" />
+                <Skeleton className="h-6 w-28 rounded-full" />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </div>
+
+            <div className="eg-card space-y-4">
+              <Skeleton className="h-6 w-1/3" />
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+                <Skeleton className="h-20" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="eg-card space-y-4">
+              <Skeleton className="h-6 w-1/3" />
+              <div className="space-y-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            </div>
+
+            <div className="eg-card space-y-4">
+              <Skeleton className="h-6 w-1/3" />
+              <SkeletonText lines={3} />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -466,13 +657,13 @@ export default function ExamDetailPage() {
                 <p className="mt-2 text-sm leading-6 text-secondary">{exam.teacherName}</p>
               </div>
               <div className="rounded-[16px] border border-border bg-neutral p-4">
-                <p className="text-sm font-semibold text-primary">Mở đề</p>
+                <p className="text-sm font-semibold text-primary">Mở đề (UTC+7)</p>
                 <p className="mt-2 text-sm leading-6 text-secondary">
                   {exam.startTime ? formatShortDateTime(exam.startTime) : "Chưa đặt lịch"}
                 </p>
               </div>
               <div className="rounded-[16px] border border-border bg-neutral p-4">
-                <p className="text-sm font-semibold text-primary">Đóng đề</p>
+                <p className="text-sm font-semibold text-primary">Đóng đề (UTC+7)</p>
                 <p className="mt-2 text-sm leading-6 text-secondary">
                   {exam.endTime ? formatShortDateTime(exam.endTime) : "Chưa đặt lịch"}
                 </p>
@@ -509,7 +700,7 @@ export default function ExamDetailPage() {
             <Card className="space-y-5">
               <h3 className="text-lg font-semibold text-primary">Ngân hàng câu hỏi</h3>
 
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
                 {questionSummaryItems.map((item) => (
                   <div key={item.label} className="rounded-[16px] border border-border bg-neutral p-4">
                     <p className="text-xs font-medium uppercase tracking-[0.16em] text-secondary">
@@ -573,6 +764,7 @@ export default function ExamDetailPage() {
             ) : (
               <EmptyState
                 title="Đề thi này chưa có câu hỏi nào."
+                description="Thêm ít nhất một câu hỏi hợp lệ trước khi publish đề thi cho sinh viên."
               />
             )
           ) : null}
@@ -602,8 +794,67 @@ export default function ExamDetailPage() {
             </Card>
           ) : null}
         </div>
-
         <div className="space-y-6">
+          {exam.canEdit ? (
+            <Card className="space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-semibold text-primary">Trạng thái publish</h3>
+                  <p className="text-sm leading-6 text-secondary">
+                    Checklist đang dựa trên dữ liệu đã lưu hiện tại của đề và backend sẽ kiểm tra lại
+                    thêm một lần nữa khi bạn bấm publish.
+                  </p>
+                </div>
+                <Badge variant={publishStatusMeta.variant}>{publishStatusMeta.label}</Badge>
+              </div>
+
+              {exam.isPublished ? (
+                <div className="rounded-[16px] border border-success/20 bg-success-muted p-4 text-sm leading-6 text-success">
+                  Đề thi đã được publish. Sinh viên có thể vào làm bài khi đến đúng thời gian mở đề.
+                </div>
+              ) : publishIssueList.length === 0 ? (
+                <div className="rounded-[16px] border border-success/20 bg-success-muted p-4 text-sm leading-6 text-success">
+                  Đề đã đủ điều kiện publish theo checklist frontend. Bạn có thể phát hành ngay bây giờ.
+                </div>
+              ) : (
+                <div className="rounded-[16px] border border-caution/20 bg-caution-muted p-4 text-sm leading-6 text-caution">
+                  <p className="font-semibold">Cần hoàn thiện các mục sau trước khi publish:</p>
+                  <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6">
+                    {publishIssueList.map((issue) => (
+                      <li key={issue}>{issue}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {publishServerIssues.length > 0 ? (
+                <div className="rounded-[16px] border border-danger/20 bg-danger-muted p-4 text-sm leading-6 text-danger">
+                  <p className="font-semibold">Backend đang chặn publish vì các lỗi sau:</p>
+                  <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6">
+                    {publishServerIssues.map((issue) => (
+                      <li key={issue}>{issue}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {!exam.isPublished ? (
+                <Button
+                  className="w-full sm:w-auto"
+                  disabled={
+                    isPublishing ||
+                    isSaving ||
+                    isQuestionSubmitting ||
+                    publishIssueList.length > 0
+                  }
+                  onClick={handlePublishExam}
+                >
+                  {isPublishing ? "Đang publish..." : "Publish đề"}
+                </Button>
+              ) : null}
+            </Card>
+          ) : null}
+
           <Card className="space-y-4">
             <h3 className="text-lg font-semibold text-primary">Cấu hình đề thi</h3>
             <div className="space-y-3">
@@ -620,7 +871,7 @@ export default function ExamDetailPage() {
             <h3 className="text-lg font-semibold text-primary">Tóm tắt đề thi</h3>
             <div className="space-y-3 text-sm text-secondary">
               <p>
-                <span className="font-semibold text-primary">Số câu hỏi:</span> {exam.questionCount} câu
+                <span className="font-semibold text-primary">Số câu hỏi:</span> {questions.length} câu
               </p>
               <p>
                 <span className="font-semibold text-primary">Tổng điểm:</span> {totalQuestionScoreLabel}
@@ -630,7 +881,7 @@ export default function ExamDetailPage() {
               </p>
               <p>
                 <span className="font-semibold text-primary">Publish:</span>{" "}
-                {exam.isPublished ? "Đã bật" : "Chưa bật"}
+                {exam.isPublished ? "Đã bật" : "Đang ở trạng thái nháp"}
               </p>
             </div>
           </Card>
@@ -654,7 +905,7 @@ export default function ExamDetailPage() {
                   </p>
                 </div>
               ) : (
-                <p className="text-sm text-secondary">Chưa có dữ liệu.</p>
+                <p className="text-sm text-secondary">Chưa có dữ liệu anti-cheat.</p>
               )}
             </Card>
           ) : null}
@@ -683,6 +934,7 @@ export default function ExamDetailPage() {
         <AttemptMonitorPanel
           antiCheatSummary={antiCheatSummary}
           exam={exam}
+          onAntiCheatWarning={handleRealtimeAntiCheatWarning}
           showToast={showToast}
           attempts={attempts}
         />

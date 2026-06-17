@@ -412,10 +412,10 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 - [ ] F-DASH-03 Student dashboard API
 - [ ] F-DASH-04 Class/exam stats
 - [ ] F-DASH-05 Score stats
-- [ ] F-DASH-06 Cheating stats
-- [ ] F-DASH-07 FE Admin
-- [ ] F-DASH-08 FE Teacher
-- [ ] F-DASH-09 FE Student
+- [x] F-DASH-06 Cheating stats
+- [x] F-DASH-07 FE Admin
+- [x] F-DASH-08 FE Teacher
+- [x] F-DASH-09 FE Student
 - [ ] F-DASH-10 Export report
 
 ---
@@ -433,14 +433,16 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 | F-SR-07 | Event `ReceiveNotification` | BE/FE | All | |
 | F-SR-08 | Event `ReceiveAntiCheatWarning` | BE/FE | Teacher | ✓ |
 
-- [ ] F-SR-01 NotificationHub
-- [ ] F-SR-02 ExamMonitoringHub
-- [ ] F-SR-03 FE notification connection
-- [ ] F-SR-04 FE monitoring connection
-- [ ] F-SR-05 Push notification
-- [ ] F-SR-06 Push anti-cheat warning
-- [ ] F-SR-07 ReceiveNotification
-- [ ] F-SR-08 ReceiveAntiCheatWarning
+- [x] F-SR-01 NotificationHub
+- [x] F-SR-02 ExamMonitoringHub
+- [x] F-SR-03 FE notification connection
+- [x] F-SR-04 FE monitoring connection
+- [x] F-SR-05 Push notification
+- [x] F-SR-06 Push anti-cheat warning
+- [x] F-SR-07 ReceiveNotification
+- [x] F-SR-08 ReceiveAntiCheatWarning
+
+> Ghi chú: push notification realtime hiện là `NotificationHub` + notifier + frontend listener. Entity/API lưu thông báo (`NotificationsController`) vẫn thuộc feature Notification System riêng và chưa triển khai.
 
 ---
 

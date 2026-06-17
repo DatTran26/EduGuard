@@ -1,6 +1,12 @@
+import RealtimeNotificationListener from "./features/notifications/components/RealtimeNotificationListener";
 import AppRoutes from "./routes/AppRoutes";
 
-// Component gốc này chỉ còn nhiệm vụ render bộ route của toàn bộ ứng dụng.
+// Component gốc này gắn listener realtime toàn app rồi render bộ route chính.
 export default function App() {
-  return <AppRoutes />;
+  return (
+    <>
+      <RealtimeNotificationListener />
+      <AppRoutes />
+    </>
+  );
 }

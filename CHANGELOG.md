@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Teacher-facing Exam Management now uses an explicit draft-to-publish workflow instead of a publish checkbox; exam detail shows publish readiness, backend publish errors, a dedicated `Publish đề` action, and complete question-type statistics for the backend-supported exam model.
+- Exam schedule inputs are now handled in Vietnam time (`UTC+7`) on the frontend while requests still go to the backend in UTC, reducing timezone drift between create/edit and detail screens.
+- Teacher question forms now explain the validation rules for single-choice, multiple-choice, true/false, and short-answer items so the publish checklist is easier to satisfy before release.
+
+### Fixed
+
+- Synced local frontend dependencies after merging release changes so the merged `tw-animate-css` import builds correctly again.
 ## [1.1.0] - 2026-06-10
 
 Stable release promoted from `v1.1.0-rc.1` after RC validation (auth + classroom Swagger E2E).

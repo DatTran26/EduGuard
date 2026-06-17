@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { classroomApi } from "../../../api/classroomApi";
 import { examApi } from "../../../api/examApi";
-import EmptyState from "../../../components/common/EmptyState";
 import Card from "../../../components/common/Card";
+import EmptyState from "../../../components/common/EmptyState";
+import { SkeletonExamCard } from "../../../components/common/Skeleton";
 import Select from "../../../components/forms/Select";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
@@ -182,7 +183,7 @@ export default function ExamListPage() {
 
       showToast({
         tone: "success",
-        title: "Đã tạo bài kiểm tra",
+        title: "Đã tạo đề thi",
         message: response.message,
       });
       return true;
@@ -208,10 +209,7 @@ export default function ExamListPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow={getRoleLabel(user?.role)}
-        title={pageCopy.title}
-      />
+      <PageHeader eyebrow={getRoleLabel(user?.role)} title={pageCopy.title} />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {summaryItems.map((item) => (
@@ -243,7 +241,7 @@ export default function ExamListPage() {
             isSubmitting={isSubmitting}
             key={`create-${selectedClassroomId || "all"}-${classrooms.length}`}
             onSubmitExam={handleCreateExam}
-            submitLabel="Tạo bài kiểm tra"
+            submitLabel="Tạo đề nháp"
             title="Tạo bài kiểm tra mới"
           />
         ) : (
@@ -259,8 +257,10 @@ export default function ExamListPage() {
       ) : null}
 
       {isLoading ? (
-        <div className="eg-feedback-panel">
-          Đang tải danh sách bài kiểm tra...
+        <div className="grid gap-6">
+          <SkeletonExamCard />
+          <SkeletonExamCard />
+          <SkeletonExamCard />
         </div>
       ) : exams.length > 0 ? (
         <div className="grid gap-6">
@@ -269,10 +269,7 @@ export default function ExamListPage() {
           ))}
         </div>
       ) : (
-        <EmptyState
-          title="Chưa có bài kiểm tra nào."
-          description={loadErrorMessage}
-        />
+        <EmptyState title="Chưa có bài kiểm tra nào." description={loadErrorMessage} />
       )}
     </div>
   );

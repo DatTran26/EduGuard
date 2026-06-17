@@ -90,6 +90,17 @@ function createUtcDateFromVietnamInputValue(value) {
   return new Date(utcTime);
 }
 
+function buildQuestionPublishLabel(question, index) {
+  const orderIndex = Number(question?.orderIndex) || index + 1;
+  return `Câu ${orderIndex}`;
+}
+
+function getQuestionPublishAnswers(question) {
+  return Array.isArray(question?.answers)
+    ? question.answers.filter((answer) => String(answer?.content ?? "").trim().length > 0)
+    : [];
+}
+
 // Hàm này đổi status đề thi sang màu badge để danh sách và trang chi tiết nhìn thống nhất hơn.
 export function getExamStatusVariant(statusLabel) {
   if (statusLabel === "Bản nháp") {
@@ -168,4 +179,105 @@ export function hasCustomEndTimeForExam(exam) {
     exam?.durationMinutes,
     toDateTimeLocalInputValue(exam?.endTime),
   );
+}
+
+// Hàm này dựng checklist publish ở FE để teacher biết cần sửa gì trước khi gọi backend.
+export function buildExamPublishIssueList(exam, questions = []) {
+  const nextIssues = [];
+  const durationMinutes = Number(exam?.durationMinutes) || 0;
+  const maxAttempts = Number(exam?.settings?.maxAttempts) || 0;
+  const startTime = parseDateValue(exam?.startTime);
+  const endTime = parseDateValue(exam?.endTime);
+
+  if (durationMinutes <= 0) {
+    nextIssues.push("Thời gian làm bài phải lớn hơn 0 phút.");
+  }
+
+  if (maxAttempts <= 0) {
+    nextIssues.push("Số lần làm tối đa phải lớn hơn 0.");
+  }
+
+  if (startTime && endTime && endTime <= startTime) {
+    nextIssues.push("Thời gian đóng đề phải sau thời gian mở đề.");
+  }
+
+  if (!Array.isArray(questions) || questions.length === 0) {
+    nextIssues.push("Đề thi cần ít nhất một câu hỏi trước khi publish.");
+    return nextIssues;
+  }
+
+  questions.forEach((question, index) => {
+    const label = buildQuestionPublishLabel(question, index);
+    const answers = getQuestionPublishAnswers(question);
+    const correctCount = answers.filter((answer) => Boolean(answer?.isCorrect)).length;
+
+    if (!String(question?.content ?? "").trim()) {
+      nextIssues.push(`${label}: nội dung câu hỏi không được để trống.`);
+    }
+
+    if (Number(question?.score) <= 0) {
+      nextIssues.push(`${label}: điểm câu hỏi phải lớn hơn 0.`);
+    }
+
+    switch (question?.questionType) {
+      case "SingleChoice":
+        if (answers.length < 2) {
+          nextIssues.push(`${label}: câu một đáp án cần ít nhất 2 lựa chọn.`);
+        }
+
+        if (correctCount !== 1) {
+          nextIssues.push(`${label}: câu một đáp án phải có đúng 1 đáp án đúng.`);
+        }
+        break;
+
+      case "MultipleChoice":
+        if (answers.length < 2) {
+          nextIssues.push(`${label}: câu nhiều đáp án cần ít nhất 2 lựa chọn.`);
+        }
+
+        if (correctCount === 0) {
+          nextIssues.push(`${label}: câu nhiều đáp án cần ít nhất 1 đáp án đúng.`);
+        }
+        break;
+
+      case "TrueFalse":
+        if (answers.length !== 2) {
+          nextIssues.push(`${label}: câu đúng/sai phải có đúng 2 lựa chọn Đúng và Sai.`);
+        }
+
+        if (correctCount !== 1) {
+          nextIssues.push(`${label}: câu đúng/sai phải có đúng 1 đáp án đúng.`);
+        }
+        break;
+
+      case "ShortAnswer":
+        if (answers.length === 0) {
+          nextIssues.push(`${label}: câu tự luận ngắn cần ít nhất 1 đáp án mẫu.`);
+        }
+        break;
+
+      default:
+        nextIssues.push(`${label}: loại câu hỏi chưa được hỗ trợ.`);
+        break;
+    }
+  });
+
+  return nextIssues;
+}
+
+// Hàm này tách message lỗi publish dài của backend thành các dòng dễ đọc hơn trên UI.
+export function splitPublishErrorMessage(message) {
+  const normalizedMessage = String(message ?? "")
+    .replace(/^Đề thi chưa đủ điều kiện publish:\s*/i, "")
+    .trim();
+
+  if (!normalizedMessage) {
+    return [];
+  }
+
+  return normalizedMessage
+    .replace(/\.\s+/g, ".\n")
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }

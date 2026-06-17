@@ -1,31 +1,180 @@
 import { NavLink } from "react-router-dom";
 import { cn } from "../../utils/cn";
+import {
+  FiBookOpen,
+  FiClipboard,
+  FiHome,
+  FiUsers,
+  FiUser,
+  FiLogIn,
+  FiChevronsLeft,
+  FiChevronsRight,
+} from "react-icons/fi";
 
 // Hàm này trả class cho từng item trong sidebar để route đang active nhìn rõ hơn.
 function getNavigationLinkClassName({ isActive }) {
   return cn(
-    "block rounded-[18px] px-4 py-3 text-sm font-medium transition-all duration-200",
-    isActive ? "eg-sidebar-link-active" : "eg-sidebar-link-idle",
+    "relative block rounded-[14px] px-4 py-3 text-sm font-medium transition-all duration-200",
+    isActive
+      ? "eg-sidebar-link-active font-semibold after:absolute after:left-2 after:top-1/2 after:h-6 after:w-[3px] after:-translate-y-1/2 after:rounded-full after:bg-sky-300/90"
+      : "eg-sidebar-link-idle",
   );
 }
 
-// Component này là thanh điều hướng bên trái cho khu vực đã đăng nhập.
-export default function Sidebar({ navigationItems, roleLabel }) {
-  return (
-    <aside aria-label="Menu điều hướng chính" className="min-w-0 self-start">
-      <div className="eg-shell-panel flex flex-col gap-4 rounded-r-[28px] rounded-l-none p-5">
-        <p className="text-[0.82rem] font-semibold uppercase tracking-[0.16em] text-secondary">
-          {roleLabel}
-        </p>
+function SidebarCollapseToggleIcon({ isCollapsed }) {
+  return isCollapsed ? <FiChevronsRight className="h-4 w-4" /> : <FiChevronsLeft className="h-4 w-4" />;
+}
 
-        <nav className="flex flex-col gap-2">
+function getNavigationIconByLabel(label) {
+  if (label === "Lớp học" || label === "Lớp của tôi" || label === "Quản lí lớp học") {
+    return FiUsers;
+  }
+  if (label === "Bài kiểm tra" || label === "Quản lí bài kiểm tra") {
+    return FiClipboard;
+  }
+  if (label === "Tham gia lớp") {
+    return FiLogIn;
+  }
+  if (label === "Quản lí người dùng") {
+    return FiUser;
+  }
+  if (label === "Hồ sơ" || label === "Hồ sơ cá nhân") {
+    return FiUser;
+  }
+  if (label === "Dashboard") {
+    return FiHome;
+  }
+  return FiBookOpen;
+}
+
+
+// Component này là thanh điều hướng bên trái cho khu vực đã đăng nhập.
+export default function Sidebar({
+  isOpen,
+  isCollapsed,
+  navigationItems,
+  onNavigate,
+  onClose,
+  onToggleCollapse,
+}) {
+  // Hàm này đóng sidebar khi người dùng bấm ra ngoài vùng panel trên mobile.
+  function handleOverlayClick() {
+    onClose();
+  }
+
+  // Hàm này chặn sự kiện nổi bọt để click trong panel không làm sidebar bị đóng ngoài ý muốn.
+  function handlePanelClick(event) {
+    event.stopPropagation();
+  }
+
+  return (
+    <aside
+      className={cn(
+        "fixed inset-0 z-40 bg-black/40 transition-opacity duration-200 lg:static lg:block lg:bg-transparent",
+        isOpen ? "opacity-100" : "pointer-events-none opacity-0 lg:pointer-events-auto lg:opacity-100",
+      )}
+      onClick={handleOverlayClick}
+    >
+      <div
+        className={cn(
+          "flex h-full w-[280px] flex-col bg-obsidian border-r border-white/10 transition-transform duration-200 lg:h-screen lg:rounded-none lg:border-r lg:border-white/5 lg:sticky lg:top-0",
+          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          isCollapsed ? "lg:w-[92px]" : "lg:w-[280px]",
+        )}
+        onClick={handlePanelClick}
+      >
+        <div
+          className={cn(
+            "flex h-16 items-center justify-between gap-3 border-b border-white/10",
+            isCollapsed ? "px-3" : "px-5",
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <span className="absolute -inset-1 rounded-[14px] bg-white/5 blur-[10px]" aria-hidden="true" />
+              <img
+                alt="Logo EduGuard"
+                className="relative h-8 w-auto object-contain"
+                src="/logo.png"
+              />
+            </div>
+            <div className={cn(isCollapsed ? "lg:hidden" : "")}>
+              <h2 className="text-base font-bold tracking-tight text-white leading-none">EduGuard</h2>
+              <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400 mt-1">
+                Workspace
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="rounded-[12px] border border-white/10 px-3 py-1.5 text-xs text-slate-400 hover:text-white lg:hidden"
+              onClick={onClose}
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+
+        <nav
+          className={cn(
+            "flex flex-1 flex-col gap-1.5 pt-6",
+            isCollapsed ? "lg:items-stretch px-3" : "px-5",
+          )}
+        >
           {navigationItems.map((item) => (
-            <NavLink key={item.path} className={getNavigationLinkClassName} to={item.path}>
-              {item.label}
+            (() => {
+              const ItemIcon = getNavigationIconByLabel(item.label);
+              return (
+            <NavLink
+              key={item.path}
+              className={(navState) =>
+                cn(
+                  getNavigationLinkClassName(navState),
+                  isCollapsed ? "lg:px-2 lg:py-2.5 lg:rounded-[16px]" : "",
+                )
+              }
+              onClick={onNavigate}
+              to={item.path}
+              title={isCollapsed ? item.label : undefined}
+            >
+              <span className={cn("flex items-center gap-3", isCollapsed ? "lg:justify-center" : "")}>
+                <span className={cn(
+                  "inline-flex h-9 w-9 items-center justify-center rounded-[14px] border border-white/10 bg-white/6 text-white/90",
+                  isCollapsed ? "lg:flex" : "hidden lg:flex",
+                )}>
+                  <ItemIcon className="h-[18px] w-[18px]" />
+                </span>
+                <span className={cn("flex items-center gap-3", isCollapsed ? "lg:hidden" : "")}>
+                  <ItemIcon className="h-[18px] w-[18px] text-slate-300 lg:hidden" />
+                  <span>{item.label}</span>
+                </span>
+              </span>
             </NavLink>
+              );
+            })()
           ))}
         </nav>
+
+        <div className={cn("border-t border-white/10 pt-4 pb-5 mt-auto", isCollapsed ? "px-3" : "px-5")}>
+          <button
+            type="button"
+            className={cn(
+              "mx-auto flex items-center justify-center gap-2 rounded-[12px] px-3 py-2 text-[10px] font-semibold text-slate-400 transition-all duration-200 hover:bg-white/5 hover:text-white",
+              isCollapsed ? "lg:px-2" : "",
+            )}
+            onClick={onToggleCollapse}
+            title={isCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
+            aria-label={isCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
+          >
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-[12px] border border-white/10 bg-white/5 text-slate-200">
+              <SidebarCollapseToggleIcon isCollapsed={isCollapsed} />
+            </span>
+            {!isCollapsed ? <span className="hidden lg:inline">Thu gọn</span> : null}
+          </button>
+        </div>
       </div>
     </aside>
   );
 }
+

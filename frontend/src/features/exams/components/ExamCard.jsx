@@ -49,7 +49,7 @@ export default function ExamCard({ exam }) {
           {exam.startTime ? `Mở đề: ${formatShortDateTime(exam.startTime)}` : "Chưa đặt lịch mở đề"}
         </p>
         <Link
-          className="eg-button eg-button-primary"
+          className="eg-button eg-button-secondary"
           to={buildExamDetailPathByRole(user?.role, exam.id)}
         >
           Xem chi tiết

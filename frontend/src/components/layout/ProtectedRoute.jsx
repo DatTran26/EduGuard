@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import LoadingScreen from "../common/LoadingScreen";
 import { routeConfig } from "../../routes/routeConfig";
 import { getDefaultPathByRole } from "../../routes/roleRoutes";
 
@@ -10,9 +11,10 @@ export default function ProtectedRoute({ allowedRoles = [] }) {
 
   if (isHydrating) {
     return (
-      <div className="eg-feedback-panel">
-        Đang kiểm tra phiên đăng nhập...
-      </div>
+      <LoadingScreen
+        title="Đang kiểm tra phiên đăng nhập"
+        message="EduGuard đang đồng bộ phiên làm việc của bạn…"
+      />
     );
   }
 

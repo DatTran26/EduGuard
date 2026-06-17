@@ -1,464 +1,309 @@
 # Project Changelog
 
-## Feature: Student classroom list is now list-only with clearer detail hover
+## Feature: Frontend exam publish readiness and Vietnam timezone workflow
 
-Date: 2026-06-16
-
-Branch/source: `devH`
-
-Description:
-
-- Tinh gọn màn `Lớp học của sinh viên` bằng cách bỏ toàn bộ 3 ô thống kê đầu trang `Tổng số lớp`, `Giảng viên`, `Thành viên`, chỉ giữ lại danh sách lớp học thực tế.
-- Dọn logic summary card không còn dùng trong `ClassroomListPage` để view sinh viên không tạo thêm khoảng trống phía trên danh sách.
-- Tăng nhẹ hiệu ứng hover/focus trên tên lớp trong classroom card để người dùng nhận ra rõ hơn đây là điểm click để mở trang chi tiết lớp học.
-
-Changed files:
-
-- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
-- `frontend/src/features/classrooms/components/ClassroomCard.jsx`
-- `Todo List.md`
-- `docs/project-changelog.md`
-
-Validation:
-
-- `npm --prefix frontend run lint` — passed.
-- `npm --prefix frontend run build` — passed.
-
-Unresolved questions:
-
-- Hiện teacher vẫn giữ `Tổng lớp học` cạnh tiêu đề theo yêu cầu trước đó; nếu team muốn đồng bộ cả teacher sang list-only hoàn toàn thì cần xác nhận riêng.
-
-## Feature: Sidebar panel now hugs the left edge of the screen
-
-Date: 2026-06-16
+Date: 2026-06-17
 
 Branch/source: `devH`
 
 Description:
 
-- Điều chỉnh lại `AppShell` sau khi khóa cứng sidebar để cột menu không còn nằm trong khung `max-width` căn giữa của workspace.
-- Đưa panel sidebar bám sát mép trái màn hình, trong khi phần nội dung chính vẫn giữ vùng đọc riêng với `max-width` để layout không bị kéo quá rộng.
-- Bỏ bo góc trên trái và dưới trái của panel sidebar để cạnh trái đi thẳng theo mép màn hình, còn cạnh phải vẫn giữ bo góc theo phong cách hiện tại.
-- Giữ nguyên sidebar mở cố định cho mọi role, chỉ thay đổi vị trí neo của cột menu so với viewport.
+- Resolved the local `devH` pull conflict from `release` by keeping the release-side merge result, then continued implementation on top of that baseline.
+- Synced Exam Management frontend with the backend exam validation/publish flow: teacher now configures schedule in Vietnam time (`UTC+7`), saves drafts explicitly, sees publish-readiness issues on exam detail, and can call the real `POST /api/exams/{id}/publish` action only when the draft is valid.
+- Audited the current backend exam/question API surface against frontend flows and confirmed there is no remaining user-facing gap beyond the publish readiness workflow and question-management polish completed in this sync.
+- Reworked the exam form layout into clearer UI groups that match the project design docs: basic information, schedule, exam behavior, and monitoring.
+- Added frontend validation for duration, max attempts, and exam window consistency before request submission; backend publish errors are now surfaced as teacher-readable issue lists.
 
 Changed files:
 
-- `frontend/src/components/layout/AppShell.jsx`
-- `Todo List.md`
-- `docs/project-changelog.md`
-
-Validation:
-
-- `npm --prefix frontend run lint` — passed.
-- `npm --prefix frontend run build` — passed.
-
-Unresolved questions:
-
-- Nếu team muốn top bar cũng lệch trái cùng nhịp với sidebar thay vì tiếp tục ở trong khung căn giữa, cần chốt riêng vì thay đổi này hiện chỉ áp dụng cho cột menu.
-
-## Feature: Shared sidebar is now permanently pinned open for all roles
-
-Date: 2026-06-16
-
-Branch/source: `devH`
-
-Description:
-
-- Bỏ toàn bộ cơ chế drawer/collapse của sidebar trong layout dùng chung, gồm state mở/đóng, overlay, nút 3 gạch ngoài mép trái và nút toggle trong panel sidebar.
-- Chuyển `AppShell` sang bố cục grid cố định với sidebar luôn hiển thị ở cột trái cho mọi role, thay vì thay đổi theo viewport hoặc thao tác người dùng.
-- Dọn các class CSS chỉ phục vụ menu trượt ra vào để layout hiện tại chỉ còn một trạng thái sidebar cố định, dễ bảo trì hơn và tránh hiểu nhầm rằng menu còn hỗ trợ ẩn/hiện.
-
-Changed files:
-
-- `frontend/src/components/layout/AppShell.jsx`
-- `frontend/src/components/layout/Sidebar.jsx`
-- `frontend/src/index.css`
-- `Todo List.md`
-- `docs/project-changelog.md`
-
-Validation:
-
-- `npm --prefix frontend run lint` — passed.
-- `npm --prefix frontend run build` — passed.
-
-Unresolved questions:
-
-- Trên màn hình rất hẹp, sidebar hiện không còn là drawer nên sẽ chiếm một block cố định trong layout; nếu team muốn tối ưu riêng cho mobile sau này thì cần thống nhất trước giữa yêu cầu `khóa cứng` và trải nghiệm màn hình nhỏ.
-
-## Feature: Classroom member removal parity between backend and frontend
-
-Date: 2026-06-16
-
-Branch/source: `devH`
-
-Description:
-
-- Rà soát các controller backend so với route, API client và màn hình frontend để kiểm tra chênh lệch chức năng đang có ở BE nhưng người dùng chưa thao tác được ở FE.
-- Kết quả audit cho thấy phần thiếu có tác động người dùng rõ nhất là luồng xóa thành viên khỏi lớp: backend đã có `DELETE /api/classrooms/{id}/members/{studentId}` và frontend đã có API client, nhưng trang chi tiết lớp trước đó chưa render hành động này.
-- Bổ sung nút `Xóa khỏi lớp` ngay trên từng sinh viên ở màn hình classroom detail cho giảng viên chủ lớp, kèm xác nhận, trạng thái loading theo từng thành viên và reload lại detail để danh sách cùng tổng thành viên đồng bộ với backend.
-- Các endpoint backend còn lại hiện đã có luồng FE tương ứng, hoặc chỉ là biến thể kỹ thuật như `PATCH`/endpoint đáp án riêng lẻ mà FE đang bao phủ bằng flow cập nhật đầy đủ hiện tại.
-
-Changed files:
-
-- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
-- `Todo List.md`
-- `docs/project-changelog.md`
-
-Validation:
-
-- `npm --prefix frontend run lint` — passed.
-- `npm --prefix frontend run build` — passed.
-- `rg -n "classroomApi\.removeMember\(|PATCH|answers/\{id:int\}|questions/\{id:int\}/answers" frontend/src backend/EduGuard.Api/Controllers frontend/src/api` — xác nhận FE đã dùng `classroomApi.removeMember`; các endpoint còn lại chưa có UI riêng chủ yếu là biến thể `PATCH` hoặc endpoint mức thấp cho answer/question.
-
-Unresolved questions:
-
-- Nếu team muốn phơi bày riêng các endpoint `PATCH` hoặc CRUD đáp án độc lập trên UI, cần xác nhận trước xem có muốn tách form/question editor hiện tại thành thao tác mức thấp hơn hay không.
-
-## Feature: Teacher classroom list uses inline totals and title-link cards
-
-Date: 2026-06-16
-
-Branch/source: `devH`
-
-Description:
-
-- Thu gọn phần đầu trang Teacher Classrooms: giữ tiêu đề `Lớp học của giảng viên`, bỏ hai ô thống kê `Giảng viên` và `Thành viên`, đồng thời đưa `Tổng lớp học: N` lên cùng dòng tiêu đề theo dạng text trung tính.
-- Rút gọn classroom card để bớt thao tác thừa: bỏ các nút `Sao chép mã lớp` và `Xem chi tiết`, chuyển tên lớp thành link click trực tiếp vào trang chi tiết với hover/focus rõ ràng nhưng không làm toàn card clickable.
-- Đổi ô thông tin thứ ba từ `Cập nhật` sang `Mã lớp`, đồng thời bỏ badge join code cạnh `Lớp bạn quản lý` để card gọn hơn sau khi bỏ footer action.
-
-Changed files:
-
-- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
-- `frontend/src/features/classrooms/components/ClassroomCard.jsx`
-- `Todo List.md`
-- `docs/project-changelog.md`
-
-Validation:
-
-- `npm --prefix frontend run lint` — passed.
-- `npm --prefix frontend run build` — passed.
-
-Unresolved questions:
-
-- Chưa có viewport/screenshot test tự động cho Teacher classroom list; thay đổi hiện được xác nhận bằng lint/build sạch và logic route chi tiết giữ nguyên.
-
-## Bug fix: Exam time display no longer shifts after save
-
-Date: 2026-06-15
-
-Branch/source: `devH`
-
-Description:
-
-- Sửa lỗi thời gian đề thi có thể hiển thị lệch sau khi tạo hoặc cập nhật đề: người dùng nhập một giờ trong form nhưng khi quay lại danh sách hoặc màn chi tiết thì app lại hiện mốc khác.
-- Nguyên nhân là một số timestamp từ backend có dạng ISO nhưng không kèm timezone suffix, khiến frontend parse như giờ local thay vì UTC.
-- Bổ sung parser ngày giờ dùng chung ở frontend để coi các chuỗi ISO không kèm timezone là UTC trước khi format sang giờ Việt Nam; đồng thời nối parser này vào status exam, form chỉnh sửa exam và logic tính giờ kết thúc attempt.
-
-Changed files:
-
-- `frontend/src/utils/formatDate.js`
-- `frontend/src/api/apiHelpers.js`
-- `frontend/src/features/exams/examHelpers.js`
-- `frontend/src/features/exam-attempts/attemptHelpers.js`
-- `Todo List.md`
-- `docs/project-changelog.md`
-
-Validation:
-
-- `npm --prefix frontend run lint` — passed.
-- `npm --prefix frontend run build` — passed.
-
-Unresolved questions:
-
-- Các helper assignment/dashboard vẫn còn một số chỗ parse `Date` trực tiếp; bug người dùng báo ở luồng exam đã được vá, nhưng nếu team muốn đồng bộ toàn bộ app thì có thể gom nốt các chỗ còn lại sang parser dùng chung.
-
-## Feature: Sidebar collapse arrow after opening menu
-
-Date: 2026-06-15
-
-Branch/source: `devH`
-
-Description:
-
-- Giữ nút ngoài mép trái ở trạng thái đóng là biểu tượng `3 gạch`, nhưng khi người dùng đã mở sidebar thì nút toggle bên trong menu sẽ đổi sang mũi tên ngược chiều để biểu thị thao tác thu gọn rõ hơn.
-- Bỏ trạng thái dấu `X` ở icon toggle của sidebar vì nó dễ bị hiểu là đóng/hủy chung chung, không diễn đạt rõ hướng thu gọn của menu.
-
-Changed files:
-
-- `frontend/src/components/layout/Sidebar.jsx`
-- `Todo List.md`
-- `docs/project-changelog.md`
-
-Validation:
-
-- `npm --prefix frontend run lint` — passed.
-- `npm --prefix frontend run build` — passed.
-
-Unresolved questions:
-
-- Chưa có screenshot test cho trạng thái đóng/mở sidebar; thay đổi hiện được xác nhận qua lint/build sạch và logic icon toggle trong layout dùng chung.
-
-## Feature: Minimal auth brand panel on login and register
-
-Date: 2026-06-15
-
-Branch/source: `devH`
-
-Description:
-
-- Tinh gọn lại toàn bộ panel trái của khu đăng nhập/đăng ký theo hướng tối giản, hiện đại hơn thay cho hero nhiều nội dung trước đó.
-- Căn giữa logo trong panel trái, đưa chữ `EduGuard` xuống dưới logo và giữ 2 dòng thông điệp cố định `Học Tập an toàn` và `Thi trực tuyến minh bạch` trên hai dòng riêng, không bị wrap giữa chừng.
-- Làm lại nền auth hero bằng gradient sáng nhẹ và accent mờ để phần nhận diện nhìn sạch, hiện đại nhưng vẫn đồng bộ với token màu hiện có của frontend.
-
-Changed files:
-
-- `frontend/src/features/auth/components/AuthLayout.jsx`
-- `frontend/src/index.css`
-- `Todo List.md`
-- `docs/project-changelog.md`
-
-Validation:
-
-- `npm --prefix frontend run lint` — passed.
-- `npm --prefix frontend run build` — passed.
-
-Unresolved questions:
-
-- Chưa có screenshot test tự động cho auth layout; phần thay đổi hiện được xác nhận bằng lint/build sạch và cấu trúc responsive hiện tại của layout dùng chung.
-
-## Feature: Shared role drawer polish and login failure copy
-
-Date: 2026-06-15
-
-Branch/source: `devH`
-
-Description:
-
-- Chuẩn hóa lại thông báo ở màn đăng nhập: khi backend trả lỗi xác thực, frontend hiển thị đúng câu `Bạn đã nhập sai tài khoản hoặc mật khẩu` ngay trong form thay vì đẩy message kỹ thuật ra UI.
-- Giữ layout workspace dùng chung cho mọi role và tiếp tục quản lý menu điều hướng động từ cấu hình role hiện có, tránh copy-paste menu ở từng màn riêng.
-- Làm lại state mở/đóng drawer trong `AppShell` và `Sidebar` để click nút 3 gạch hoặc click overlay đều đóng/mở ổn định hơn; đồng thời chỉnh overlay fade + panel transform để sidebar trượt từ sát cạnh trái trực quan hơn.
-- Bỏ giới hạn `lg:hidden` ở nút 3 gạch và cho sidebar desktop có trạng thái thu gọn/mở rộng thật sự, để người dùng nhìn thấy ngay tác dụng ẩn/hiện menu trái trên màn hình lớn thay vì chỉ ở mobile.
-- Đưa nút 3 gạch ra khỏi top navbar, giữ sidebar bám sát mép trái viewport và thay phần chữ `Menu chức năng` trong đầu sidebar bằng chính nút toggle để tác vụ ẩn/hiện menu nhìn thấy rõ hơn.
-- Chuẩn hóa lại form tạo/sửa đề thi của giảng viên theo giờ Việt Nam (UTC+7): `datetime-local` giờ luôn được map sang/ra ISO bằng múi giờ Việt Nam, `giờ đóng đề` mặc định tự cập nhật theo `giờ mở đề + thời lượng`, nhưng giảng viên vẫn có thể nhập một mốc đóng muộn hơn khi muốn kéo dài thời gian truy cập cho sinh viên.
-
-Changed files:
-
-- `frontend/src/components/layout/AppShell.jsx`
-- `frontend/src/components/layout/Sidebar.jsx`
-- `frontend/src/components/layout/TopBar.jsx`
-- `frontend/src/features/auth/pages/LoginPage.jsx`
 - `frontend/src/features/exams/components/ExamForm.jsx`
+- `frontend/src/features/exams/components/exam-form-basic-section.jsx`
+- `frontend/src/features/exams/components/exam-form-config-section.jsx`
+- `frontend/src/features/exams/components/exam-form-helpers.js`
+- `frontend/src/features/exams/components/exam-form-schedule-section.jsx`
+- `frontend/src/features/exams/components/exam-form-monitoring-section.jsx`
+- `frontend/src/features/exams/components/QuestionForm.jsx`
+- `frontend/src/features/exams/components/question-form-helpers.js`
 - `frontend/src/features/exams/examHelpers.js`
-- `frontend/src/index.css`
-- `frontend/src/utils/formatDate.js`
-- `Todo List.md`
-- `docs/project-changelog.md`
-
-Validation:
-
-- `npm --prefix frontend run lint` — passed.
-- `npm --prefix frontend run build` — passed.
-
-Unresolved questions:
-
-- Chưa có test viewport/screenshot tự động cho animation drawer hoặc test form thời gian tự động trong exam form; hành vi hiện được xác nhận bằng lint/build sạch và logic UI cục bộ.
-
-## Feature: Frontend UI token alignment for auth and workspace
-
-Date: 2026-06-15
-
-Branch/source: `devH`
-
-Description:
-
-- Đồng bộ lại khu vực xác thực theo design system hiện tại: bỏ gradient/màu hardcode ở auth shell, render đúng `description`, dùng lại token cho input/button/link và giữ bố cục 2 cột ổn định hơn trên mobile.
-- Chuẩn hóa các surface dùng chung trong workspace đã đăng nhập như `PageHeader`, `EmptyState`, loading panel và summary card để dashboard, classroom, exam và profile nhìn nhất quán hơn.
-- Dọn các màu/shadow hardcode còn sót trong `TopBar`, `BrandNavbar` và `GoogleAuthButton`, giữ toàn bộ thay đổi trong phạm vi frontend, không chạm backend.
-
-Changed files:
-
-- `frontend/src/index.css`
-- `frontend/src/components/common/EmptyState.jsx`
-- `frontend/src/components/dashboard/StatCard.jsx`
-- `frontend/src/components/layout/BrandNavbar.jsx`
-- `frontend/src/components/layout/PageHeader.jsx`
-- `frontend/src/components/layout/ProtectedRoute.jsx`
-- `frontend/src/components/layout/TopBar.jsx`
-- `frontend/src/features/auth/components/AuthLayout.jsx`
-- `frontend/src/features/auth/components/GoogleAuthButton.jsx`
-- `frontend/src/features/auth/pages/LoginPage.jsx`
-- `frontend/src/features/auth/pages/RegisterPage.jsx`
-- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
-- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
-- `frontend/src/features/dashboard/pages/AdminDashboardPage.jsx`
-- `frontend/src/features/dashboard/pages/StudentDashboardPage.jsx`
-- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
-- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
-- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
 - `frontend/src/features/exams/pages/ExamListPage.jsx`
-- `frontend/src/features/users/pages/ProfilePage.jsx`
-- `frontend/src/features/users/pages/UserManagementPage.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/package-lock.json`
 - `Todo List.md`
 - `docs/project-changelog.md`
+- `CHANGELOG.md`
+
+Technical summary:
+
+- Reused the existing timezone helpers so `datetime-local` inputs round-trip as Vietnam local time in the UI while still sending UTC to the backend.
+- Removed the ambiguous publish checkbox from the exam form; create/update now stay draft-oriented in the UI, while publish is handled from the exam detail screen with a dedicated action and readiness card.
+- Mirrored the backend publish checks in frontend helpers to show actionable issues for missing/invalid question content, answer correctness, score, duration, max attempts, and exam window rules.
+- Added question-type guidance inside the teacher question form and surfaced full question-type statistics, including short-answer coverage already supported by the backend exam model.
+- Cleaned a few unused layout imports/props from release-side files so frontend lint could be used as a real verification step after the merge.
+- Ran `npm install` inside `frontend/` to restore the missing `tw-animate-css` dependency referenced by the merged release stylesheet.
 
 Validation:
 
-- `npm --prefix frontend run lint` — passed.
-- `npm --prefix frontend run build` — passed.
+- `npm.cmd --prefix frontend run lint` — passed.
+- `npm.cmd --prefix frontend install` — succeeded, restored missing frontend dependency state after merge.
+- `npm.cmd --prefix frontend run build` — passed.
 
 Unresolved questions:
 
-- Chưa có kiểm thử screenshot/browser tự động cho đợt polish này; việc xác nhận hiện dựa trên design token hiện hành và build sạch.
+- Vite/Rolldown still reports non-blocking warnings from `@microsoft/signalr` PURE annotations and the main bundle size remains above the default 500 kB warning threshold.
+- `Todo List.md` still contains older historical notes from other branches/releases outside the scope of this focused frontend sync.
+## Feature: App shell, loading UX, and teacher pages
 
-## Bug fix: Local login Network Error from HTTPS redirect
+Date: 2026-06-16
 
-Date: 2026-06-15
-
-Branch/source: `devH`
+Branch/source: `devD`
 
 Description:
 
-- **Bug fix:** Sửa lỗi frontend login có thể báo axios `Network Error` khi Vite proxy gọi backend HTTP local `5157` nhưng ASP.NET Core redirect request sang HTTPS dev port `7168`.
-- Giữ `UseHttpsRedirection` cho môi trường ngoài Development, nhưng không ép redirect trong Development để proxy `/api` dùng HTTP local trả response trực tiếp.
-- Bổ sung CORS origin `http://127.0.0.1:5173` bên cạnh `http://localhost:5173` để frontend mở bằng loopback IP vẫn hợp lệ nếu gọi API trực tiếp.
-- Cập nhật checklist Phase 0 để phản ánh cấu hình CORS/local HTTP hiện tại.
+- Upgraded app shell: collapsible sidebar, TopBar with breadcrumb, notifications, centered search, and profile menu navigation to profile route.
+- Added InfinityLoader loading screen and shadcn-style UI primitives (breadcrumb, skeleton).
+- Modularized classroom list and exam/question forms into helper modules; updated teacher dashboard and related pages.
 
 Changed files:
 
-- `backend/EduGuard.Api/Program.cs`
-- `backend/EduGuard.Api/appsettings.json`
-- `Todo List.md`
-- `docs/project-changelog.md`
+- `frontend/src/components/layout/AppShell.jsx`, `Sidebar.jsx`, `TopBar.jsx`, `ProtectedRoute.jsx`, `PublicRoute.jsx`
+- `frontend/src/components/common/LoadingScreen.jsx`, `Skeleton.jsx`
+- `frontend/src/components/ui/flexnative-breadcrumb.tsx`, `loader-13.tsx`
+- `frontend/src/features/classrooms/**`, `frontend/src/features/exams/**`, `frontend/src/features/dashboard/**`
+- `frontend/package.json`, `frontend/tsconfig.json`, `frontend/vite.config.js`, `frontend/src/index.css`
+- `docs/project-changelog.md`, `docs/SQL_Excute/Assign_Role_Teacher.sql`, `.gitignore`
+
+Technical summary:
+
+- Sidebar collapse persisted via `localStorage`; TopBar breadcrumb truncates long paths; notifications synced via `eduguard:notification` event.
+- Vite `@` alias and `lib/utils.ts` added for shadcn-compatible components.
 
 Validation:
 
-- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore --configuration Release` — 0 warnings, 0 errors.
-- Local smoke test with `ASPNETCORE_ENVIRONMENT=Development` on `http://127.0.0.1:5057/api/Test` — `HTTP/1.1 200 OK`, no `307 Location` HTTPS redirect.
-- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore` — 0 warnings, 0 errors.
-- `npm test` — passed.
+- `npm run build` — succeeded.
+- `npm test` (pre-commit) — passed.
 
 Unresolved questions:
 
-- If the API is already running from Visual Studio or an old terminal, restart that backend process so the updated Development redirect behavior is loaded.
+- None.
 
-## Bug fix: FE auth API 500 during login
+## Feature: Teacher Dashboard Navigation & Search Fix
 
-Date: 2026-06-15
+Date: 2026-06-16
 
-Branch/source: `devH`
+Branch/source: `devD`
 
 Description:
-
-- Xác định lỗi FE báo `500 (API)` khi đăng nhập đến từ chuỗi local dev, không phải form login: Vite proxy đang trỏ HTTPS `7168` trong khi backend chạy được bằng HTTP `5157`, backend local có thể fail vì Windows EventLog provider, và database `EduGuardExam` chưa apply migration Identity key string.
-- Sửa Vite dev proxy mặc định sang `http://127.0.0.1:5157`, vẫn cho override bằng `VITE_API_PROXY_TARGET` khi cần chạy HTTPS.
-- Tách Vite optimizer cache vào `temp/vite-cache`, với cache development theo process để tránh lỗi Windows `EPERM unlink` trên cache cũ bị lock.
-- Sửa logging backend để dùng Console/Debug thay vì default Windows EventLog provider, tránh request API chết khi user hiện tại không ghi được `.NET Runtime` event log source.
-- Bổ sung `Encrypt=False` vào connection string SQL Server local hiện tại để tránh SqlClient/ODBC mặc định bật encryption trong môi trường dev.
-- Apply migration `20260613065925_ConvertIdentityKeysToString` lên DB local `EduGuardExam`, đổi `Users.Id` và `Roles.Id` từ `int IDENTITY` sang `nvarchar(450)` để khớp code `IdentityUser` string GUID.
+- Resolved visual styling regressions in the Teacher Dashboard navigation bar and search interface for full compliance with the Institutional Slate v1.1.0 design system.
+- Refactored `Sidebar.jsx` to replace hardcoded utility colors with semantic CSS classes (`.eg-sidebar-link-active`, `.eg-sidebar-link-idle`) defined in `index.css`.
+- Audited and refined the `TopBar` search component styling to use `bg-surface-sunken` and `border-border` correctly with proper contrast, placeholder colors, and transition effects.
 
 Changed files:
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
 
-- `.gitignore`
-- `backend/EduGuard.Api/Program.cs`
-- `backend/EduGuard.Api/appsettings.json`
-- `frontend/vite.config.js`
-- `Todo List.md`
-- `docs/project-changelog.md`
+Technical summary:
+- Removed hardcoded Tailwind colors (`bg-white/10`, `text-slate-400`, `hover:bg-white/5`) from `Sidebar.jsx` navigation links, replacing them with theme-compliant `.eg-sidebar-link-active` and `.eg-sidebar-link-idle`.
+- Enhanced search bar input styling in `TopBar.jsx` by adding `placeholder:text-secondary`, `transition-all duration-200`, and a soft focus ring (`focus:ring-3 focus:ring-tertiary/16`) to maintain design consistency with the global input states.
 
 Validation:
-
-- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore` — 0 warnings, 0 errors
-- `sqlcmd` migration/schema check — `20260613065925_ConvertIdentityKeysToString` applied; `Users.Id` and `Roles.Id` are `nvarchar`, `IsIdentity = 0`
-- `temp\dotnet-tools\dotnet-ef.exe database update --project backend\EduGuard.Infrastructure\EduGuard.Infrastructure.csproj --startup-project backend\EduGuard.Api\EduGuard.Api.csproj` — applied migration successfully
-- Direct backend E2E on `http://localhost:5157`: `POST /api/auth/register` 200, `POST /api/auth/login` 200
-- Vite proxy E2E on `http://127.0.0.1:5173/api`: register 200, login 200
-- `npm --prefix frontend run lint` — passed
-- `npm --prefix frontend run build` — passed
+- Ran `npm run lint` which completed successfully with 0 errors.
+- Ran `npm run build` which compiled Vite and Rolldown successfully.
 
 Unresolved questions:
+- None.
 
-- Migration `ConvertIdentityKeysToString` intentionally deletes dev auth/classroom/exam data before changing Identity keys; old local users must be registered again.
-- HTTPS profile `7168` still requires a trusted ASP.NET dev certificate if the team chooses to set `VITE_API_PROXY_TARGET=https://127.0.0.1:7168`.
+## Feature: Modernizing Teacher Dashboard Forms & Classrooms UI
 
-## Bug fix: Identity string user ID compatibility
+Date: 2026-06-16
+
+Branch/source: `devD`
+
+Description:
+- Refactored `ExamForm.jsx` and `QuestionForm.jsx` for full compliance with the "Institutional Slate" v1.1.0 design system.
+- Replaced legacy border radius values with standardized token-based borders (`rounded-[12px]` and `rounded-[20px]`).
+- Standardized form interactions, input heights, and visual hierarchy using `eg-input` and `eg-button` classes and elements.
+- Enforced single-accent CTA rule across complex forms, ensuring visual consistency.
+- Modularized frontend components exceeding 200 lines (`ExamForm.jsx`, `QuestionForm.jsx`, `ClassroomListPage.jsx`) into smaller sub-components and pure JS helper files for better code maintenance.
+
+Changed files:
+- `frontend/src/features/exams/components/ExamForm.jsx`
+- `frontend/src/features/exams/components/QuestionForm.jsx`
+- `frontend/src/features/exams/components/exam-form-basic-section.jsx`
+- `frontend/src/features/exams/components/exam-form-config-section.jsx`
+- `frontend/src/features/exams/components/exam-form-helpers.js`
+- `frontend/src/features/exams/components/question-form-answers-section.jsx`
+- `frontend/src/features/exams/components/question-form-helpers.js`
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/pages/classroom-list-admin-filters.jsx`
+- `frontend/src/features/classrooms/pages/classroom-list-helpers.js`
+
+Technical summary:
+- Extracted basic fields and advanced configs from `ExamForm` into modularized sub-components and helper functions.
+- Extracted answer list creation and correctness options from `QuestionForm` into dynamic sub-components and helpers.
+- Modularized `ClassroomListPage.jsx` by extracting pure logic/filtering into `classroom-list-helpers.js` and sorting/searching UI inputs into `classroom-list-admin-filters.jsx`.
+- Kept all newly generated code files under 200 lines to align with the repository modularization guidelines.
+- Ensured single-accent CTA rule: each form only has exactly one primary action button (accent color blue).
+
+Validation:
+- Ran `npm run lint` which completed successfully with 0 errors.
+- Ran `npm run build` which compiled Vite and Rolldown successfully.
+
+Unresolved questions:
+- None.
+
+## Feature: Teacher Dashboard Modernization & Navigation Workspace
 
 Date: 2026-06-15
 
-Branch/source: `devH`
+Branch/source: `devD`
 
 Description:
-
-- Rà lại tác động của migration Identity key từ `int` sang `string` GUID trên backend và frontend integration.
-- Backend source hiện đã dùng `string` cho `UserDto.Id`, `TeacherId`, `StudentId`, service/repository signatures và JWT `NameIdentifier`; các `IdentityRole<int>` còn lại chỉ nằm trong migration lịch sử cũ.
-- Sửa frontend API adapters không ép `UserDto.Id`, `TeacherId`, `StudentId` qua `Number(...)`, tránh GUID bị biến thành `0` làm sai quyền Teacher, danh sách member, submission, attempt monitor và anti-cheat summary.
-- Sửa session guard để user id dạng GUID string vẫn hợp lệ sau khi reload, và giữ lại backend auth id khi update profile/avatar qua mock profile bridge.
-- Sửa cache submission theo student để dùng key string user id thay vì `Number(userId)`.
-- Sửa các so sánh user id trong dashboard/profile/mock bridge qua helper string-safe để dữ liệu localStorage cũ không lệch quyền khi lẫn numeric string/GUID.
-- Cập nhật tài liệu backend/feature/roadmap hiện hành sang Identity string key để không hướng dẫn sai contract mới.
+- Tái cấu trúc lại giao diện Teacher từ dạng Floating Header cũ sang Nav bar chuyên nghiệp, tạo không gian làm việc đồng bộ, cố định và tối ưu trải nghiệm sử dụng (ergonomics) cho giảng viên.
+- Tích hợp thư viện Recharts để trực quan hóa dữ liệu thống kê lớp học sinh động, bao gồm biểu đồ kết hợp (Classroom Performance: Submission Rate vs. Average Score) và biểu đồ tròn (Anti-cheat Incidents breakdown) có chú thích chi tiết.
+- Bổ sung panel giám sát phòng thi realtime dưới dạng Proctoring Streams Placeholder có overlay "Coming Soon", định hình lộ trình phát triển tích hợp WebRTC và SignalR Hub trong tương lai.
 
 Changed files:
-
-- `frontend/src/api/apiHelpers.js`
-- `frontend/src/api/authApi.js`
-- `frontend/src/api/classroomApi.js`
-- `frontend/src/api/assignmentApi.js`
-- `frontend/src/api/examApi.js`
-- `frontend/src/api/examAttemptApi.js`
-- `frontend/src/api/antiCheatApi.js`
-- `frontend/src/api/dashboardApi.js`
-- `frontend/src/api/mockDatabase.js`
-- `frontend/src/api/userApi.js`
-- `frontend/src/hooks/useAuth.jsx`
-- `frontend/src/features/assignments/assignmentHelpers.js`
-- `docs/01_PROJECT_OVERVIEW.md`
-- `docs/02_SETUP_AND_PROJECT_STRUCTURE.md`
-- `docs/03_BACKEND_ARCHITECTURE.md`
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/features/dashboard/components/teacher-dashboard-charts.jsx`
+- `frontend/src/features/dashboard/components/proctoring-streams-placeholder.jsx`
+- `frontend/src/components/layout/AppShell.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `docs/project-changelog.md`
 - `docs/06_DEVELOPMENT_ROADMAP.md`
+- `docs/features.md`
+- `Todo List.md`
+
+Technical summary:
+- Thay thế toàn bộ layout thẻ nổi cũ bằng khung dashboard lưới (grid) linh hoạt, tuân thủ bảng màu Institutional Slate v1.1.
+- Sử dụng `<ComposedChart>` hiển thị đồng thời tỉ lệ nộp bài (Bar) và điểm trung bình (Line) của các lớp học, cùng chú giải (Tooltip) tùy biến cao.
+- Thiết kế biểu đồ `<PieChart>` với góc bo nhẹ cho từng phần, tự động ánh xạ màu sắc theo mức độ rủi ro (High/Medium/Low) của cheat log, đi kèm Custom Legend dạng nút tròn đồng bộ.
+- Xây dựng component `ProctoringStreamsPlaceholder` sử dụng các thẻ stream mô phỏng hoạt động camera giám sát, bọc bởi filter glassmorphic mờ và biểu tượng khóa/thông tin tính năng đang phát triển.
+
+Validation:
+- `npm install react-is` — Đã cài đặt dependency bổ sung để giải quyết vấn đề import của Recharts trên môi trường Vite/Rolldown.
+- `npm run build` — Biên dịch thành công dự án frontend, mã nguồn tối ưu hóa không có lỗi cú pháp hay import.
+- Kiểm tra trực quan cấu trúc giao diện trên trình duyệt đảm bảo responsive đầy đủ ở các độ phân giải màn hình.
+
+Unresolved questions:
+- Proctoring streams hiện tại mới là mock placeholder; cần kết nối với camera student thông qua WebRTC và SignalR hub giám sát trong các phase sau.
+- Tích hợp dashboard API thật từ backend khi endpoints cho vai trò Teacher được hoàn thiện đầy đủ trên service layer.
+
+## Feature: Backend exam configuration validation
+
+Date: 2026-06-15
+
+Branch/source: `devB`
+
+Description:
+
+- Chuẩn hóa backend cho cấu hình bài kiểm tra trước khi làm tiếp frontend: thời gian mở/đóng đề được lưu và trả về theo UTC rõ ràng để frontend có thể hiển thị đúng giờ Việt Nam.
+- Siết validation cấu hình exam ở tầng request/service: duration, max attempts và cửa sổ mở/đóng đề phải hợp lệ.
+- Siết điều kiện publish để đề chỉ được publish khi có câu hỏi hợp lệ; lỗi publish trả về message rõ theo từng câu/cấu hình để frontend hiển thị cho teacher.
+- Bổ sung validation publish cho trắc nghiệm MVP: `SingleChoice`, `MultipleChoice`, `TrueFalse`; giữ mô hình `Question` / `Answer` gắn trực tiếp với `Exam`, chưa triển khai `QuestionBank` hoặc import file trong bước này.
+
+Changed files:
+
+- `backend/EduGuard.Application/Validators/create-exam-request-validator.cs`
+- `backend/EduGuard.Application/Validators/update-exam-request-validator.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-attempt-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-date-time-helper.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-mapper.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-service.cs`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Added `ExamDateTimeHelper` to normalize incoming exam schedule values to UTC and mark DB-loaded schedule values as UTC before JSON serialization.
+- `ExamMapper.MapExam` now returns UTC-marked `StartTime`, `EndTime`, and `CreatedAt` so serialized API responses include the correct UTC kind.
+- `ExamAttemptService.EnsureExamWindowOpen` now normalizes stored schedule values before comparing them with `DateTime.UtcNow`.
+- `CreateExamRequestValidator` and `UpdateExamRequestValidator` now guard null settings and compare schedule windows after UTC normalization.
+- `ExamService.PublishAsync` now calls publish validation before setting `IsPublished`, checking exam config and question/answer correctness.
+
+Validation:
+
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -o temp\backend-exam-config-build` — succeeded, 0 warnings, 0 errors. Used separate output because a running `EduGuard.Api` process locked the default build DLLs.
+- `npm.cmd test` — passed; current script runs `dotnet test backend/EduGuard.Api/EduGuard.Api.slnx` and the solution currently has no test project output.
+- `git diff --check` — passed; only existing LF/CRLF conversion warnings were reported.
+
+Unresolved questions:
+
+- Frontend still needs the matching timezone helper and UI changes so `datetime-local` inputs show `Asia/Ho_Chi_Minh` consistently.
+- Manual Swagger/browser publish tests should cover invalid no-question exam, invalid answer counts, invalid correct-answer counts and valid trắc nghiệm exam before commit.
+- Question bank/import file remains a later feature; this change keeps questions attached directly to exams for MVP.
+
+## Feature: SignalR realtime monitoring
+
+Date: 2026-06-15
+
+Branch/source: `devB`
+
+Description:
+
+- Hoàn thiện Phase 8 SignalR realtime để teacher nhận cảnh báo anti-cheat ngay khi student phát sinh log hợp lệ trong lúc làm bài.
+- Bổ sung `NotificationHub` và `ExamMonitoringHub`; hub dùng JWT Bearer qua query `access_token`, join group theo exam và chỉ teacher sở hữu đề mới được monitor.
+- Thêm abstraction notifier trong Application để `AntiCheatService` gửi realtime warning sau khi lưu `CheatingLog` thành công mà không phụ thuộc trực tiếp vào API/Hub.
+- Frontend cài `@microsoft/signalr`, thêm connection factory cho notification/exam monitoring, listener notification toàn app và cập nhật `AttemptMonitorPanel` để nhận `ReceiveAntiCheatWarning`, cập nhật score/log realtime và hiển thị toast cho teacher.
+- Cập nhật registry/todo feature SignalR; notification realtime hiện có hub/notifier/listener, còn entity/API lưu notification vẫn thuộc Notification System riêng.
+
+Changed files:
+
+- `backend/EduGuard.Api/Program.cs`
+- `backend/EduGuard.Api/Hubs/exam-monitoring-hub.cs`
+- `backend/EduGuard.Api/Hubs/notification-hub.cs`
+- `backend/EduGuard.Api/Realtime/signalr-exam-monitoring-notifier.cs`
+- `backend/EduGuard.Api/Realtime/signalr-notification-notifier.cs`
+- `backend/EduGuard.Application/DTOs/AntiCheat/anti-cheat-warning-dto.cs`
+- `backend/EduGuard.Application/DTOs/Notifications/realtime-notification-dto.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-exam-monitoring-notifier.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-exam-monitoring-service.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-notification-notifier.cs`
+- `backend/EduGuard.Infrastructure/AntiCheat/anti-cheat-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-monitoring-service.cs`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `frontend/vite.config.js`
+- `frontend/src/App.jsx`
+- `frontend/src/features/anti-cheat/components/AttemptMonitorPanel.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/features/notifications/components/RealtimeNotificationListener.jsx`
+- `frontend/src/signalr/signalrConnection.js`
+- `frontend/src/signalr/examMonitoringConnection.js`
+- `frontend/src/signalr/notificationConnection.js`
+- `Todo List.md`
+- `README.md`
+- `docs/06_DEVELOPMENT_ROADMAP.md`
+- `docs/apiList.md`
 - `docs/features.md`
 - `docs/project-changelog.md`
 
-Validation:
+Technical summary:
 
-- `rg` scan for backend `int` user id assumptions — no active source matches outside historical migrations.
-- `npm --prefix frontend run lint` — passed
-- `npm --prefix frontend run build` — passed
-- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore --configuration Release` — 0 warnings, 0 errors
-- `npm test` — passed after allowing NuGet restore
-
-Unresolved questions:
-
-- Frontend profile/user management vẫn dùng mock bridge cho phần backend chưa có endpoint profile/avatar thật; bridge hiện giữ backend GUID auth id trong session.
-
-## Feature: Shared role sidebar layout and drawer motion
-
-Date: 2026-06-15
-
-Branch/source: `devH`
-
-Description:
-
-- Tách layout đăng nhập về một `AppShell` dùng chung, để sidebar/menu không còn được khai báo lặp theo từng role route group.
-- Giữ menu bên trái được quản lý động bằng `getNavigationItemsByRole`, đồng thời truyền nhãn role vào sidebar để người dùng nhận biết đúng workspace hiện tại.
-- Bổ sung nút menu 3 gạch trên top bar với trạng thái mở/đóng rõ ràng, `aria-expanded`, và icon chuyển động theo state.
-- Tách overlay và panel sidebar thành hai lớp riêng: click overlay mờ đóng drawer, panel trượt từ sát mép trái bằng transform/opacity transition và khóa scroll nền khi mở.
-- Thêm xử lý đóng drawer khi đổi route hoặc bấm Escape để trải nghiệm mobile/tablet ổn định hơn.
-
-Changed files:
-
-- `frontend/src/routes/AppRoutes.jsx`
-- `frontend/src/components/layout/AppShell.jsx`
-- `frontend/src/components/layout/TopBar.jsx`
-- `frontend/src/components/layout/Sidebar.jsx`
-- `docs/project-changelog.md`
+- `ExamMonitoringHub` exposes `JoinExam` / `LeaveExam` and uses group name `exam:{examId}` so warning is scoped per exam.
+- `ExamMonitoringService` checks exam ownership before allowing a teacher connection to join an exam group.
+- `AntiCheatService.LogAsync` now maps the saved log to `AntiCheatWarningDto`, counts logs for the attempt and sends `ReceiveAntiCheatWarning` after `SaveChangesAsync` succeeds; SignalR send failures are logged as warnings and do not invalidate the REST log response.
+- `JwtBearerEvents.OnMessageReceived` accepts hub tokens from `access_token` for `/hubs/*`; CORS allows credentials for SignalR dev connections.
+- Frontend uses `accessTokenFactory`, automatic reconnect, Vite `/hubs` WebSocket proxy and realtime state updates in the teacher monitor panel.
 
 Validation:
 
-- `npm --prefix frontend run lint` — passed
-- `npm --prefix frontend run build` — passed
+- `npm.cmd --prefix frontend install @microsoft/signalr` — installed `@microsoft/signalr@10.0.0`, audit found 0 vulnerabilities.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj` — succeeded, 0 warnings, 0 errors.
+- `npm.cmd --prefix frontend run lint` — passed.
+- `npm.cmd --prefix frontend run build` — passed; Vite/Rolldown emitted non-blocking warnings from `@microsoft/signalr` pure annotations and bundle size.
+- `npm.cmd test` — passed (`dotnet test backend/EduGuard.Api/EduGuard.Api.slnx`).
 
 Unresolved questions:
 
-- Chưa có kiểm thử tự động bằng viewport/screenshot cho drawer mobile; đã giữ thay đổi trong phạm vi layout hiện có.
+- Browser E2E with two logged-in users was not run in this environment; verify manually with teacher exam detail open and student triggering anti-cheat events.
+- Notification persistence/list/read APIs are still not implemented; current Phase 8 covers realtime hub/notifier/listener only.
+- Frontend production bundle now crosses Vite's default 500 kB chunk warning after adding SignalR; consider route-based code splitting later if bundle size becomes a release concern.
 
 ## Feature: Identity keys — int → string (GUID)
 

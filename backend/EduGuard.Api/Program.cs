@@ -1,6 +1,9 @@
 using EduGuard.Api.Authorization;
+using EduGuard.Api.Hubs;
+using EduGuard.Api.Realtime;
 using EduGuard.Api.Swagger;
 using EduGuard.Application.DTOs.Common;
+using EduGuard.Application.Services.Interfaces;
 using EduGuard.Application.Validators;
 using EduGuard.Infrastructure;
 using FluentValidation;
@@ -23,6 +26,9 @@ builder.Services.AddControllers()
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApiAuthorizationResponses();
+builder.Services.AddSignalR();
+builder.Services.AddScoped<IExamMonitoringNotifier, SignalRExamMonitoringNotifier>();
+builder.Services.AddScoped<INotificationNotifier, SignalRNotificationNotifier>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -62,7 +68,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(corsOrigins)
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -85,5 +92,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NotificationHub>("/hubs/notifications");
+app.MapHub<ExamMonitoringHub>("/hubs/exam-monitoring");
 
 app.Run();
