@@ -55,6 +55,7 @@ export default function ClassroomDetailPage() {
   const [loadErrorMessage, setLoadErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState(null);
 
   // Hàm này tải classroom detail và member list theo đúng quyền backend hiện đang mở cho role hiện tại.
   async function loadClassroomDetail() {
@@ -188,6 +189,35 @@ export default function ClassroomDetailPage() {
     }
   }
 
+  // Hàm này cho giảng viên xóa một sinh viên khỏi lớp rồi tải lại detail để số liệu và danh sách luôn đồng bộ.
+  async function handleRemoveMember(member) {
+    const hasConfirmed = window.confirm(`Bạn có chắc muốn xóa ${member.fullName} khỏi lớp này không?`);
+
+    if (!hasConfirmed) {
+      return;
+    }
+
+    setRemovingMemberId(member.id);
+
+    try {
+      const response = await classroomApi.removeMember(classroomId, member.studentId);
+      await loadClassroomDetail();
+      showToast({
+        tone: "success",
+        title: "Đã xóa thành viên",
+        message: response.message,
+      });
+    } catch (error) {
+      showToast({
+        tone: "danger",
+        title: "Xóa thành viên thất bại",
+        message: error.message || "Không thể xóa thành viên khỏi lớp học.",
+      });
+    } finally {
+      setRemovingMemberId(null);
+    }
+  }
+
   // Hàm này copy mã lớp ở màn hình detail để teacher khỏi phải quay về list page.
   async function handleCopyJoinCode() {
     if (!classroom) {
@@ -212,7 +242,7 @@ export default function ClassroomDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
+      <div className="eg-feedback-panel">
         Đang tải chi tiết lớp học...
       </div>
     );
@@ -317,9 +347,23 @@ export default function ClassroomDetailPage() {
                         {member.statusLabel}
                       </Badge>
                     </div>
-                    <p className="mt-2 text-sm text-secondary">
-                      Tham gia: {formatShortDateTime(member.joinedAt)}
-                    </p>
+
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm text-secondary">
+                        Tham gia: {formatShortDateTime(member.joinedAt)}
+                      </p>
+
+                      {classroom.canEdit && member.status === "Active" ? (
+                        <Button
+                          className="px-4 py-2 text-sm"
+                          disabled={removingMemberId === member.id}
+                          onClick={() => handleRemoveMember(member)}
+                          variant="danger"
+                        >
+                          {removingMemberId === member.id ? "Đang xóa..." : "Xóa khỏi lớp"}
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -20,22 +20,6 @@ const ADMIN_CLASSROOM_SORT_OPTIONS = [
   { label: "Số thành viên (ít đến nhiều)", value: "members-asc" },
 ];
 
-// Hàm này dựng bộ số liệu nhỏ phía trên để trang classroom bớt trống và dễ quét hơn.
-function buildSummaryItems(classrooms) {
-  const teacherCount = new Set(classrooms.map((classroom) => classroom.teacherId)).size;
-  const totalMembers = classrooms.reduce(
-    (totalValue, classroom) =>
-      totalValue + (typeof classroom.memberCount === "number" ? classroom.memberCount : 0),
-    0,
-  );
-
-  return [
-    { label: "Tổng lớp học", value: classrooms.length },
-    { label: "Giảng viên", value: teacherCount },
-    { label: "Thành viên", value: totalMembers },
-  ];
-}
-
 // Hàm này trả tiêu đề và CTA đầu trang theo role để cùng một page vẫn đúng ngữ cảnh.
 function getPageCopyByRole(role) {
   if (role === "Admin") {
@@ -111,11 +95,21 @@ export default function ClassroomListPage() {
   const [adminSearchTerm, setAdminSearchTerm] = useState("");
   const [adminSortOption, setAdminSortOption] = useState("name-asc");
   const pageCopy = getPageCopyByRole(user?.role);
-  const summaryItems = buildSummaryItems(classrooms);
   const isAdminView = user?.role === "Admin";
+  const isTeacherView = user?.role === "Teacher";
   const visibleClassrooms = isAdminView
     ? filterAndSortAdminClassrooms(classrooms, adminSearchTerm, adminSortOption)
     : classrooms;
+  const pageTitle = isTeacherView ? (
+    <span className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:gap-4">
+      <span>{pageCopy.title}</span>
+      <span className="text-sm font-medium leading-none tracking-normal text-secondary sm:text-base">
+        Tổng lớp học: {classrooms.length}
+      </span>
+    </span>
+  ) : (
+    pageCopy.title
+  );
 
   useEffect(() => {
     if (!location.state?.message) {
@@ -223,24 +217,6 @@ export default function ClassroomListPage() {
     }
   }
 
-  // Hàm này copy mã lớp để teacher hoặc admin xử lý nhanh khi cần chia sẻ cho sinh viên.
-  async function handleCopyCode(joinCode) {
-    try {
-      await window.navigator.clipboard.writeText(joinCode);
-      showToast({
-        tone: "success",
-        title: "Đã sao chép",
-        message: `Đã sao chép mã lớp ${joinCode}.`,
-      });
-    } catch {
-      showToast({
-        tone: "danger",
-        title: "Không sao chép được",
-        message: "Không thể sao chép mã lớp trên trình duyệt này.",
-      });
-    }
-  }
-
   // Hàm này đưa bộ lọc của admin về mặc định để tìm kiếm lại từ đầu cho nhanh.
   function handleResetAdminFilters() {
     setAdminSearchTerm("");
@@ -304,9 +280,9 @@ export default function ClassroomListPage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow={getRoleLabel(user?.role)}
-        title={pageCopy.title}
+        title={pageTitle}
         actions={
-          user?.role === "Teacher" ? (
+          isTeacherView ? (
             <Button
               onClick={() => setIsCreateFormVisible((previousValue) => !previousValue)}
               variant={isCreateFormVisible ? "secondary" : "primary"}
@@ -367,16 +343,7 @@ export default function ClassroomListPage() {
             </div>
           </div>
         </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-3">
-          {summaryItems.map((item) => (
-            <div key={item.label} className="rounded-[20px] border border-border bg-surface p-5">
-              <p className="text-[0.82rem] font-medium text-secondary">{item.label}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{item.value}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      ) : null}
 
       {user?.role === "Teacher" && isCreateFormVisible ? (
         <CreateClassroomForm
@@ -388,17 +355,13 @@ export default function ClassroomListPage() {
       ) : null}
 
       {isLoading ? (
-        <div className="rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
+        <div className="eg-feedback-panel">
           Đang tải danh sách lớp học...
         </div>
       ) : visibleClassrooms.length > 0 ? (
         <div className="grid gap-6">
           {visibleClassrooms.map((classroom) => (
-            <ClassroomCard
-              key={classroom.id}
-              classroom={classroom}
-              onCopyCode={handleCopyCode}
-            />
+            <ClassroomCard key={classroom.id} classroom={classroom} />
           ))}
         </div>
       ) : isAdminView && classrooms.length > 0 ? (

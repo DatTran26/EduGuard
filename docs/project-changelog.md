@@ -1,5 +1,315 @@
 # Project Changelog
 
+## Feature: Student classroom list is now list-only with clearer detail hover
+
+Date: 2026-06-16
+
+Branch/source: `devH`
+
+Description:
+
+- Tinh gọn màn `Lớp học của sinh viên` bằng cách bỏ toàn bộ 3 ô thống kê đầu trang `Tổng số lớp`, `Giảng viên`, `Thành viên`, chỉ giữ lại danh sách lớp học thực tế.
+- Dọn logic summary card không còn dùng trong `ClassroomListPage` để view sinh viên không tạo thêm khoảng trống phía trên danh sách.
+- Tăng nhẹ hiệu ứng hover/focus trên tên lớp trong classroom card để người dùng nhận ra rõ hơn đây là điểm click để mở trang chi tiết lớp học.
+
+Changed files:
+
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/components/ClassroomCard.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint` — passed.
+- `npm --prefix frontend run build` — passed.
+
+Unresolved questions:
+
+- Hiện teacher vẫn giữ `Tổng lớp học` cạnh tiêu đề theo yêu cầu trước đó; nếu team muốn đồng bộ cả teacher sang list-only hoàn toàn thì cần xác nhận riêng.
+
+## Feature: Sidebar panel now hugs the left edge of the screen
+
+Date: 2026-06-16
+
+Branch/source: `devH`
+
+Description:
+
+- Điều chỉnh lại `AppShell` sau khi khóa cứng sidebar để cột menu không còn nằm trong khung `max-width` căn giữa của workspace.
+- Đưa panel sidebar bám sát mép trái màn hình, trong khi phần nội dung chính vẫn giữ vùng đọc riêng với `max-width` để layout không bị kéo quá rộng.
+- Bỏ bo góc trên trái và dưới trái của panel sidebar để cạnh trái đi thẳng theo mép màn hình, còn cạnh phải vẫn giữ bo góc theo phong cách hiện tại.
+- Giữ nguyên sidebar mở cố định cho mọi role, chỉ thay đổi vị trí neo của cột menu so với viewport.
+
+Changed files:
+
+- `frontend/src/components/layout/AppShell.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint` — passed.
+- `npm --prefix frontend run build` — passed.
+
+Unresolved questions:
+
+- Nếu team muốn top bar cũng lệch trái cùng nhịp với sidebar thay vì tiếp tục ở trong khung căn giữa, cần chốt riêng vì thay đổi này hiện chỉ áp dụng cho cột menu.
+
+## Feature: Shared sidebar is now permanently pinned open for all roles
+
+Date: 2026-06-16
+
+Branch/source: `devH`
+
+Description:
+
+- Bỏ toàn bộ cơ chế drawer/collapse của sidebar trong layout dùng chung, gồm state mở/đóng, overlay, nút 3 gạch ngoài mép trái và nút toggle trong panel sidebar.
+- Chuyển `AppShell` sang bố cục grid cố định với sidebar luôn hiển thị ở cột trái cho mọi role, thay vì thay đổi theo viewport hoặc thao tác người dùng.
+- Dọn các class CSS chỉ phục vụ menu trượt ra vào để layout hiện tại chỉ còn một trạng thái sidebar cố định, dễ bảo trì hơn và tránh hiểu nhầm rằng menu còn hỗ trợ ẩn/hiện.
+
+Changed files:
+
+- `frontend/src/components/layout/AppShell.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/index.css`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint` — passed.
+- `npm --prefix frontend run build` — passed.
+
+Unresolved questions:
+
+- Trên màn hình rất hẹp, sidebar hiện không còn là drawer nên sẽ chiếm một block cố định trong layout; nếu team muốn tối ưu riêng cho mobile sau này thì cần thống nhất trước giữa yêu cầu `khóa cứng` và trải nghiệm màn hình nhỏ.
+
+## Feature: Classroom member removal parity between backend and frontend
+
+Date: 2026-06-16
+
+Branch/source: `devH`
+
+Description:
+
+- Rà soát các controller backend so với route, API client và màn hình frontend để kiểm tra chênh lệch chức năng đang có ở BE nhưng người dùng chưa thao tác được ở FE.
+- Kết quả audit cho thấy phần thiếu có tác động người dùng rõ nhất là luồng xóa thành viên khỏi lớp: backend đã có `DELETE /api/classrooms/{id}/members/{studentId}` và frontend đã có API client, nhưng trang chi tiết lớp trước đó chưa render hành động này.
+- Bổ sung nút `Xóa khỏi lớp` ngay trên từng sinh viên ở màn hình classroom detail cho giảng viên chủ lớp, kèm xác nhận, trạng thái loading theo từng thành viên và reload lại detail để danh sách cùng tổng thành viên đồng bộ với backend.
+- Các endpoint backend còn lại hiện đã có luồng FE tương ứng, hoặc chỉ là biến thể kỹ thuật như `PATCH`/endpoint đáp án riêng lẻ mà FE đang bao phủ bằng flow cập nhật đầy đủ hiện tại.
+
+Changed files:
+
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint` — passed.
+- `npm --prefix frontend run build` — passed.
+- `rg -n "classroomApi\.removeMember\(|PATCH|answers/\{id:int\}|questions/\{id:int\}/answers" frontend/src backend/EduGuard.Api/Controllers frontend/src/api` — xác nhận FE đã dùng `classroomApi.removeMember`; các endpoint còn lại chưa có UI riêng chủ yếu là biến thể `PATCH` hoặc endpoint mức thấp cho answer/question.
+
+Unresolved questions:
+
+- Nếu team muốn phơi bày riêng các endpoint `PATCH` hoặc CRUD đáp án độc lập trên UI, cần xác nhận trước xem có muốn tách form/question editor hiện tại thành thao tác mức thấp hơn hay không.
+
+## Feature: Teacher classroom list uses inline totals and title-link cards
+
+Date: 2026-06-16
+
+Branch/source: `devH`
+
+Description:
+
+- Thu gọn phần đầu trang Teacher Classrooms: giữ tiêu đề `Lớp học của giảng viên`, bỏ hai ô thống kê `Giảng viên` và `Thành viên`, đồng thời đưa `Tổng lớp học: N` lên cùng dòng tiêu đề theo dạng text trung tính.
+- Rút gọn classroom card để bớt thao tác thừa: bỏ các nút `Sao chép mã lớp` và `Xem chi tiết`, chuyển tên lớp thành link click trực tiếp vào trang chi tiết với hover/focus rõ ràng nhưng không làm toàn card clickable.
+- Đổi ô thông tin thứ ba từ `Cập nhật` sang `Mã lớp`, đồng thời bỏ badge join code cạnh `Lớp bạn quản lý` để card gọn hơn sau khi bỏ footer action.
+
+Changed files:
+
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/components/ClassroomCard.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint` — passed.
+- `npm --prefix frontend run build` — passed.
+
+Unresolved questions:
+
+- Chưa có viewport/screenshot test tự động cho Teacher classroom list; thay đổi hiện được xác nhận bằng lint/build sạch và logic route chi tiết giữ nguyên.
+
+## Bug fix: Exam time display no longer shifts after save
+
+Date: 2026-06-15
+
+Branch/source: `devH`
+
+Description:
+
+- Sửa lỗi thời gian đề thi có thể hiển thị lệch sau khi tạo hoặc cập nhật đề: người dùng nhập một giờ trong form nhưng khi quay lại danh sách hoặc màn chi tiết thì app lại hiện mốc khác.
+- Nguyên nhân là một số timestamp từ backend có dạng ISO nhưng không kèm timezone suffix, khiến frontend parse như giờ local thay vì UTC.
+- Bổ sung parser ngày giờ dùng chung ở frontend để coi các chuỗi ISO không kèm timezone là UTC trước khi format sang giờ Việt Nam; đồng thời nối parser này vào status exam, form chỉnh sửa exam và logic tính giờ kết thúc attempt.
+
+Changed files:
+
+- `frontend/src/utils/formatDate.js`
+- `frontend/src/api/apiHelpers.js`
+- `frontend/src/features/exams/examHelpers.js`
+- `frontend/src/features/exam-attempts/attemptHelpers.js`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint` — passed.
+- `npm --prefix frontend run build` — passed.
+
+Unresolved questions:
+
+- Các helper assignment/dashboard vẫn còn một số chỗ parse `Date` trực tiếp; bug người dùng báo ở luồng exam đã được vá, nhưng nếu team muốn đồng bộ toàn bộ app thì có thể gom nốt các chỗ còn lại sang parser dùng chung.
+
+## Feature: Sidebar collapse arrow after opening menu
+
+Date: 2026-06-15
+
+Branch/source: `devH`
+
+Description:
+
+- Giữ nút ngoài mép trái ở trạng thái đóng là biểu tượng `3 gạch`, nhưng khi người dùng đã mở sidebar thì nút toggle bên trong menu sẽ đổi sang mũi tên ngược chiều để biểu thị thao tác thu gọn rõ hơn.
+- Bỏ trạng thái dấu `X` ở icon toggle của sidebar vì nó dễ bị hiểu là đóng/hủy chung chung, không diễn đạt rõ hướng thu gọn của menu.
+
+Changed files:
+
+- `frontend/src/components/layout/Sidebar.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint` — passed.
+- `npm --prefix frontend run build` — passed.
+
+Unresolved questions:
+
+- Chưa có screenshot test cho trạng thái đóng/mở sidebar; thay đổi hiện được xác nhận qua lint/build sạch và logic icon toggle trong layout dùng chung.
+
+## Feature: Minimal auth brand panel on login and register
+
+Date: 2026-06-15
+
+Branch/source: `devH`
+
+Description:
+
+- Tinh gọn lại toàn bộ panel trái của khu đăng nhập/đăng ký theo hướng tối giản, hiện đại hơn thay cho hero nhiều nội dung trước đó.
+- Căn giữa logo trong panel trái, đưa chữ `EduGuard` xuống dưới logo và giữ 2 dòng thông điệp cố định `Học Tập an toàn` và `Thi trực tuyến minh bạch` trên hai dòng riêng, không bị wrap giữa chừng.
+- Làm lại nền auth hero bằng gradient sáng nhẹ và accent mờ để phần nhận diện nhìn sạch, hiện đại nhưng vẫn đồng bộ với token màu hiện có của frontend.
+
+Changed files:
+
+- `frontend/src/features/auth/components/AuthLayout.jsx`
+- `frontend/src/index.css`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint` — passed.
+- `npm --prefix frontend run build` — passed.
+
+Unresolved questions:
+
+- Chưa có screenshot test tự động cho auth layout; phần thay đổi hiện được xác nhận bằng lint/build sạch và cấu trúc responsive hiện tại của layout dùng chung.
+
+## Feature: Shared role drawer polish and login failure copy
+
+Date: 2026-06-15
+
+Branch/source: `devH`
+
+Description:
+
+- Chuẩn hóa lại thông báo ở màn đăng nhập: khi backend trả lỗi xác thực, frontend hiển thị đúng câu `Bạn đã nhập sai tài khoản hoặc mật khẩu` ngay trong form thay vì đẩy message kỹ thuật ra UI.
+- Giữ layout workspace dùng chung cho mọi role và tiếp tục quản lý menu điều hướng động từ cấu hình role hiện có, tránh copy-paste menu ở từng màn riêng.
+- Làm lại state mở/đóng drawer trong `AppShell` và `Sidebar` để click nút 3 gạch hoặc click overlay đều đóng/mở ổn định hơn; đồng thời chỉnh overlay fade + panel transform để sidebar trượt từ sát cạnh trái trực quan hơn.
+- Bỏ giới hạn `lg:hidden` ở nút 3 gạch và cho sidebar desktop có trạng thái thu gọn/mở rộng thật sự, để người dùng nhìn thấy ngay tác dụng ẩn/hiện menu trái trên màn hình lớn thay vì chỉ ở mobile.
+- Đưa nút 3 gạch ra khỏi top navbar, giữ sidebar bám sát mép trái viewport và thay phần chữ `Menu chức năng` trong đầu sidebar bằng chính nút toggle để tác vụ ẩn/hiện menu nhìn thấy rõ hơn.
+- Chuẩn hóa lại form tạo/sửa đề thi của giảng viên theo giờ Việt Nam (UTC+7): `datetime-local` giờ luôn được map sang/ra ISO bằng múi giờ Việt Nam, `giờ đóng đề` mặc định tự cập nhật theo `giờ mở đề + thời lượng`, nhưng giảng viên vẫn có thể nhập một mốc đóng muộn hơn khi muốn kéo dài thời gian truy cập cho sinh viên.
+
+Changed files:
+
+- `frontend/src/components/layout/AppShell.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/features/auth/pages/LoginPage.jsx`
+- `frontend/src/features/exams/components/ExamForm.jsx`
+- `frontend/src/features/exams/examHelpers.js`
+- `frontend/src/index.css`
+- `frontend/src/utils/formatDate.js`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint` — passed.
+- `npm --prefix frontend run build` — passed.
+
+Unresolved questions:
+
+- Chưa có test viewport/screenshot tự động cho animation drawer hoặc test form thời gian tự động trong exam form; hành vi hiện được xác nhận bằng lint/build sạch và logic UI cục bộ.
+
+## Feature: Frontend UI token alignment for auth and workspace
+
+Date: 2026-06-15
+
+Branch/source: `devH`
+
+Description:
+
+- Đồng bộ lại khu vực xác thực theo design system hiện tại: bỏ gradient/màu hardcode ở auth shell, render đúng `description`, dùng lại token cho input/button/link và giữ bố cục 2 cột ổn định hơn trên mobile.
+- Chuẩn hóa các surface dùng chung trong workspace đã đăng nhập như `PageHeader`, `EmptyState`, loading panel và summary card để dashboard, classroom, exam và profile nhìn nhất quán hơn.
+- Dọn các màu/shadow hardcode còn sót trong `TopBar`, `BrandNavbar` và `GoogleAuthButton`, giữ toàn bộ thay đổi trong phạm vi frontend, không chạm backend.
+
+Changed files:
+
+- `frontend/src/index.css`
+- `frontend/src/components/common/EmptyState.jsx`
+- `frontend/src/components/dashboard/StatCard.jsx`
+- `frontend/src/components/layout/BrandNavbar.jsx`
+- `frontend/src/components/layout/PageHeader.jsx`
+- `frontend/src/components/layout/ProtectedRoute.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/features/auth/components/AuthLayout.jsx`
+- `frontend/src/features/auth/components/GoogleAuthButton.jsx`
+- `frontend/src/features/auth/pages/LoginPage.jsx`
+- `frontend/src/features/auth/pages/RegisterPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/dashboard/pages/AdminDashboardPage.jsx`
+- `frontend/src/features/dashboard/pages/StudentDashboardPage.jsx`
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `frontend/src/features/users/pages/UserManagementPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Validation:
+
+- `npm --prefix frontend run lint` — passed.
+- `npm --prefix frontend run build` — passed.
+
+Unresolved questions:
+
+- Chưa có kiểm thử screenshot/browser tự động cho đợt polish này; việc xác nhận hiện dựa trên design token hiện hành và build sạch.
+
 ## Bug fix: Local login Network Error from HTTPS redirect
 
 Date: 2026-06-15

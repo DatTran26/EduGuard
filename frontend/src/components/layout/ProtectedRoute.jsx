@@ -10,7 +10,7 @@ export default function ProtectedRoute({ allowedRoles = [] }) {
 
   if (isHydrating) {
     return (
-      <div className="rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
+      <div className="eg-feedback-panel">
         Đang kiểm tra phiên đăng nhập...
       </div>
     );

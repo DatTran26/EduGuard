@@ -103,7 +103,7 @@ export default function RegisterPage() {
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
         <TextInput
-          className="rounded-[18px] border-[#D7E0EA] bg-[#FBFCFE] px-4 py-3.5 focus:border-[#1479E8] focus:shadow-[0_0_0_4px_rgba(20,121,232,0.12)]"
+          className="eg-auth-input"
           id="register-full-name"
           label="Họ và tên"
           onChange={(event) => handleFieldChange("fullName", event.target.value)}
@@ -113,7 +113,7 @@ export default function RegisterPage() {
         />
         <TextInput
           autoComplete="email"
-          className="rounded-[18px] border-[#D7E0EA] bg-[#FBFCFE] px-4 py-3.5 focus:border-[#1479E8] focus:shadow-[0_0_0_4px_rgba(20,121,232,0.12)]"
+          className="eg-auth-input"
           id="register-email"
           label="Email"
           onChange={(event) => handleFieldChange("email", event.target.value)}
@@ -124,7 +124,7 @@ export default function RegisterPage() {
         />
         <TextInput
           autoComplete="new-password"
-          className="rounded-[18px] border-[#D7E0EA] bg-[#FBFCFE] px-4 py-3.5 focus:border-[#1479E8] focus:shadow-[0_0_0_4px_rgba(20,121,232,0.12)]"
+          className="eg-auth-input"
           id="register-password"
           label="Mật khẩu"
           onChange={(event) => handleFieldChange("password", event.target.value)}
@@ -135,7 +135,7 @@ export default function RegisterPage() {
         />
         <TextInput
           autoComplete="new-password"
-          className="rounded-[18px] border-[#D7E0EA] bg-[#FBFCFE] px-4 py-3.5 focus:border-[#1479E8] focus:shadow-[0_0_0_4px_rgba(20,121,232,0.12)]"
+          className="eg-auth-input"
           id="register-confirm-password"
           label="Xác nhận mật khẩu"
           onChange={(event) => handleFieldChange("confirmPassword", event.target.value)}
@@ -146,7 +146,7 @@ export default function RegisterPage() {
         />
 
         <Button
-          className="w-full rounded-[20px] bg-[#1479E8] px-6 py-3.5 text-base font-semibold text-white shadow-[0_18px_42px_rgba(20,121,232,0.24)] hover:bg-[#136CCF]"
+          className="eg-auth-primary-button"
           disabled={isSubmitting}
           type="submit"
         >

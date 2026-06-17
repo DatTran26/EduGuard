@@ -1,4 +1,5 @@
 import { getStoredUser } from "../utils/tokenStorage";
+import { parseDateValue } from "../utils/formatDate";
 
 export const QUESTION_TYPE_VALUE_BY_CODE = {
   1: "SingleChoice",
@@ -97,8 +98,8 @@ export function buildExamStatusLabel(exam) {
   }
 
   const now = Date.now();
-  const startTime = exam.startTime ? new Date(exam.startTime).getTime() : null;
-  const endTime = exam.endTime ? new Date(exam.endTime).getTime() : null;
+  const startTime = parseDateValue(exam.startTime)?.getTime() ?? null;
+  const endTime = parseDateValue(exam.endTime)?.getTime() ?? null;
 
   if (startTime && now < startTime) {
     return "Sắp mở";

@@ -4,24 +4,12 @@ import Card from "../../../components/common/Card";
 import CheckboxField from "../../../components/forms/CheckboxField";
 import Select from "../../../components/forms/Select";
 import TextInput from "../../../components/forms/TextInput";
-import { toDateTimeLocalInputValue } from "../examHelpers";
-
-function calculateEndTimeInputValue(startTimeValue, durationMinutesValue) {
-  const durationMinutes = Number(durationMinutesValue);
-
-  if (!startTimeValue || !Number.isFinite(durationMinutes) || durationMinutes <= 0) {
-    return "";
-  }
-
-  const startDate = new Date(startTimeValue);
-
-  if (Number.isNaN(startDate.getTime())) {
-    return "";
-  }
-
-  const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000);
-  return toDateTimeLocalInputValue(endDate);
-}
+import {
+  calculateEndTimeInputValue,
+  hasCustomEndTimeForExam,
+  toDateTimeLocalInputValue,
+  toVietnamISOString,
+} from "../examHelpers";
 
 // Hàm này dựng state form từ exam hiện tại hoặc từ classroom mặc định khi teacher đang tạo đề mới.
 function buildExamFormValues(exam, defaultClassroomId = "") {
@@ -55,8 +43,15 @@ export default function ExamForm({
   title = "Thông tin bài kiểm tra",
 }) {
   const [formValues, setFormValues] = useState(() => buildExamFormValues(exam, defaultClassroomId));
-  const [isEndTimeManuallyEdited, setIsEndTimeManuallyEdited] = useState(false);
+  const [isEndTimeManuallyEdited, setIsEndTimeManuallyEdited] = useState(() => hasCustomEndTimeForExam(exam));
   const isEditingExam = Boolean(exam);
+  const expectedEndTimeValue = calculateEndTimeInputValue(formValues.startTime, formValues.durationMinutes);
+  const endTimeError =
+    formValues.endTime &&
+    expectedEndTimeValue &&
+    formValues.endTime < expectedEndTimeValue
+      ? "Giờ đóng đề phải lớn hơn hoặc bằng giờ mở đề + thời gian làm bài. Nếu muốn cho sinh viên thêm thời gian, hãy đặt muộn hơn mốc tự động."
+      : "";
 
   // Hàm này cập nhật một field đơn giản trong form để code phần JSX gọn hơn.
   function handleFieldChange(fieldName, value) {
@@ -99,6 +94,15 @@ export default function ExamForm({
   }
 
   function handleEndTimeChange(value) {
+    if (!value) {
+      setIsEndTimeManuallyEdited(false);
+      setFormValues((previousValues) => ({
+        ...previousValues,
+        endTime: calculateEndTimeInputValue(previousValues.startTime, previousValues.durationMinutes),
+      }));
+      return;
+    }
+
     setIsEndTimeManuallyEdited(true);
     handleFieldChange("endTime", value);
   }
@@ -123,7 +127,7 @@ export default function ExamForm({
       description: formValues.description.trim(),
       durationMinutes: Number(formValues.durationMinutes),
       enableAntiCheat: Boolean(formValues.enableAntiCheat),
-      endTime: formValues.endTime ? new Date(formValues.endTime).toISOString() : null,
+      endTime: toVietnamISOString(formValues.endTime),
       isPublished: shouldPublishAfterSave,
       settings: {
         maxAttempts: Number(formValues.settings.maxAttempts),
@@ -132,7 +136,7 @@ export default function ExamForm({
         shuffleAnswers: Boolean(formValues.settings.shuffleAnswers),
         shuffleQuestions: Boolean(formValues.settings.shuffleQuestions),
       },
-      startTime: formValues.startTime ? new Date(formValues.startTime).toISOString() : null,
+      startTime: toVietnamISOString(formValues.startTime),
       title: formValues.title.trim(),
     };
   }
@@ -140,6 +144,10 @@ export default function ExamForm({
   // Hàm này submit dữ liệu exam lên page cha để page tự quyết định create hay update.
   async function handleSubmit(event) {
     event.preventDefault();
+
+    if (endTimeError) {
+      return;
+    }
 
     const shouldReset = await onSubmitExam(buildSubmitPayload());
 
@@ -203,13 +211,18 @@ export default function ExamForm({
           <TextInput
             id="exam-start-time"
             label="Thời gian mở đề"
+            helperText="Nhập theo giờ Việt Nam (UTC+7)."
             onChange={(event) => handleStartTimeChange(event.target.value)}
             type="datetime-local"
             value={formValues.startTime}
           />
           <TextInput
+            error={endTimeError}
             id="exam-end-time"
             label="Thời gian đóng đề"
+            helperText={isEndTimeManuallyEdited
+              ? "Bạn đang dùng giờ đóng đề thủ công. Có thể xóa giá trị này để quay lại mốc tự động theo giờ mở đề + thời lượng."
+              : "Mặc định hệ thống tự đặt = giờ mở đề + thời gian làm bài. Bạn vẫn có thể sửa tay nếu muốn cho sinh viên thêm thời gian."}
             onChange={(event) => handleEndTimeChange(event.target.value)}
             type="datetime-local"
             value={formValues.endTime}

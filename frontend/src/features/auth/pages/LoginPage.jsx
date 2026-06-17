@@ -8,6 +8,25 @@ import { useToast } from "../../../hooks/useToast";
 import { getDefaultPathByRole } from "../../../routes/roleRoutes";
 import { routeConfig } from "../../../routes/routeConfig";
 
+const INVALID_CREDENTIALS_MESSAGE = "Bạn đã nhập sai tài khoản hoặc mật khẩu";
+
+// Hàm này gom lỗi đăng nhập để sai tài khoản/mật khẩu luôn hiển thị cùng một câu rõ ràng.
+function buildLoginErrorMessage(error) {
+  const normalizedMessage = error?.message?.toLowerCase?.() ?? "";
+
+  if (
+    [400, 401, 403].includes(error?.status) ||
+    normalizedMessage.includes("invalid") ||
+    normalizedMessage.includes("password") ||
+    normalizedMessage.includes("mật khẩu") ||
+    normalizedMessage.includes("email")
+  ) {
+    return INVALID_CREDENTIALS_MESSAGE;
+  }
+
+  return error?.message || "Không thể đăng nhập. Bạn thử lại giúp mình nhé.";
+}
+
 // Trang này gọi API đăng nhập thật của backend theo contract auth trong docs.
 export default function LoginPage() {
   const location = useLocation();
@@ -18,6 +37,7 @@ export default function LoginPage() {
     email: "",
     password: "",
   });
+  const [loginErrorMessage, setLoginErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Hàm này lấy route cần quay lại sau khi login xong, giống lúc route guard redirect user.
@@ -27,6 +47,7 @@ export default function LoginPage() {
 
   // Hàm này cập nhật state form theo từng field để phần submit phía dưới gọn hơn.
   function handleFieldChange(fieldName, value) {
+    setLoginErrorMessage("");
     setFormValues((previousValues) => ({
       ...previousValues,
       [fieldName]: value,
@@ -45,6 +66,7 @@ export default function LoginPage() {
   // Hàm này xử lý submit form đăng nhập theo đúng endpoint `/api/auth/login`.
   async function handleSubmit(event) {
     event.preventDefault();
+    setLoginErrorMessage("");
     setIsSubmitting(true);
 
     try {
@@ -56,11 +78,16 @@ export default function LoginPage() {
       });
       navigate(getRedirectPath(session.user.role), { replace: true });
     } catch (error) {
-      showToast({
-        tone: "danger",
-        title: "Đăng nhập thất bại",
-        message: error.message || "Không thể đăng nhập. Bạn thử lại giúp mình nhé.",
-      });
+      const nextErrorMessage = buildLoginErrorMessage(error);
+      setLoginErrorMessage(nextErrorMessage);
+
+      if (nextErrorMessage !== INVALID_CREDENTIALS_MESSAGE) {
+        showToast({
+          tone: "danger",
+          title: "Đăng nhập thất bại",
+          message: nextErrorMessage,
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -75,9 +102,18 @@ export default function LoginPage() {
       footerLinkTo={routeConfig.register}
     >
       <form className="space-y-5" onSubmit={handleSubmit}>
+        {loginErrorMessage ? (
+          <div
+            className="rounded-[18px] border border-danger/20 bg-danger-muted px-4 py-3 text-sm leading-6 text-danger"
+            role="alert"
+          >
+            {loginErrorMessage}
+          </div>
+        ) : null}
+
         <TextInput
           autoComplete="email"
-          className="rounded-[18px] border-[#D7E0EA] bg-[#FBFCFE] px-4 py-3.5 focus:border-[#1479E8] focus:shadow-[0_0_0_4px_rgba(20,121,232,0.12)]"
+          className="eg-auth-input"
           id="login-email"
           label="Email"
           onChange={(event) => handleFieldChange("email", event.target.value)}
@@ -88,7 +124,7 @@ export default function LoginPage() {
         />
         <TextInput
           autoComplete="current-password"
-          className="rounded-[18px] border-[#D7E0EA] bg-[#FBFCFE] px-4 py-3.5 focus:border-[#1479E8] focus:shadow-[0_0_0_4px_rgba(20,121,232,0.12)]"
+          className="eg-auth-input"
           id="login-password"
           label="Mật khẩu"
           onChange={(event) => handleFieldChange("password", event.target.value)}
@@ -98,17 +134,17 @@ export default function LoginPage() {
           value={formValues.password}
         />
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <label className="inline-flex items-center gap-3 text-sm font-medium text-[#536277]">
+        <div className="eg-auth-checkbox-row">
+          <label className="eg-auth-checkbox">
             <input
-              className="h-4 w-4 rounded border-[#CCD7E4] accent-[#1479E8]"
+              className="eg-auth-checkbox-input"
               name="remember-session"
               type="checkbox"
             />
             Ghi nhớ đăng nhập
           </label>
           <button
-            className="text-sm font-semibold text-[#0F2F57] transition-colors duration-200 hover:text-[#1479E8]"
+            className="eg-auth-inline-link text-sm"
             type="button"
             onClick={handleForgotPasswordClick}
           >
@@ -117,7 +153,7 @@ export default function LoginPage() {
         </div>
 
         <Button
-          className="w-full rounded-[20px] bg-[#1479E8] px-6 py-3.5 text-base font-semibold text-white shadow-[0_18px_42px_rgba(20,121,232,0.24)] hover:bg-[#136CCF]"
+          className="eg-auth-primary-button"
           disabled={isSubmitting}
           type="submit"
         >

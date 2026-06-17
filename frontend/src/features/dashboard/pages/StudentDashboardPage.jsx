@@ -94,7 +94,7 @@ export default function StudentDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
+      <div className="eg-feedback-panel">
         Đang tải dashboard sinh viên...
       </div>
     );

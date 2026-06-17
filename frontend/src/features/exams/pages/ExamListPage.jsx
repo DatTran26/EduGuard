@@ -215,9 +215,9 @@ export default function ExamListPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {summaryItems.map((item) => (
-          <div key={item.label} className="rounded-[20px] border border-border bg-surface p-5">
+          <div key={item.label} className="eg-summary-card">
             <p className="text-[0.82rem] font-medium text-secondary">{item.label}</p>
-            <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{item.value}</p>
+            <p className="text-3xl font-semibold tracking-tight text-primary">{item.value}</p>
           </div>
         ))}
       </div>
@@ -259,7 +259,7 @@ export default function ExamListPage() {
       ) : null}
 
       {isLoading ? (
-        <div className="rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
+        <div className="eg-feedback-panel">
           Đang tải danh sách bài kiểm tra...
         </div>
       ) : exams.length > 0 ? (

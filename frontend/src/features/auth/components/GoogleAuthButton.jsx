@@ -9,7 +9,7 @@ export default function GoogleAuthButton({
 }) {
   return (
     <Button className="w-full justify-center gap-3" disabled={disabled} onClick={onClick} variant="secondary">
-      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-[0.92rem] font-bold text-[#4285F4] shadow-sm">
+      <span className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface text-[0.92rem] font-bold text-link">
         G
       </span>
       {isLoading ? "Đang mở Google..." : label}

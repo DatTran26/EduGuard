@@ -409,7 +409,7 @@ export default function ExamDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
+      <div className="eg-feedback-panel">
         Đang tải chi tiết bài kiểm tra...
       </div>
     );
