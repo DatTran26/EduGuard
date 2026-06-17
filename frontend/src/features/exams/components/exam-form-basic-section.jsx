@@ -7,14 +7,17 @@ export default function ExamFormBasicSection({
   isEditingExam,
   selectOptions,
   onFieldChange,
+  showDescriptions = true,
 }) {
   return (
     <section className="space-y-4 rounded-[20px] border border-border bg-neutral p-5">
       <div className="space-y-1">
         <h4 className="text-base font-semibold text-primary">Thông tin cơ bản</h4>
-        <p className="text-sm leading-6 text-secondary">
-          Chọn lớp học, đặt tiêu đề rõ ràng và thêm mô tả ngắn để sinh viên dễ nhận biết đề.
-        </p>
+        {showDescriptions ? (
+          <p className="text-sm leading-6 text-secondary">
+            Chọn lớp học, đặt tiêu đề rõ ràng và thêm mô tả ngắn để sinh viên dễ nhận biết đề.
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-4">
@@ -43,7 +46,7 @@ export default function ExamFormBasicSection({
           as="textarea"
           id="exam-description"
           label="Mô tả"
-          helperText="Mô tả ngắn giúp sinh viên hiểu phạm vi nội dung trước khi vào phòng thi."
+          helperText={showDescriptions ? "Mô tả ngắn giúp sinh viên hiểu phạm vi nội dung trước khi vào phòng thi." : undefined}
           onChange={(event) => onFieldChange("description", event.target.value)}
           placeholder="Mô tả ngắn về nội dung đề thi"
           value={formValues.description}

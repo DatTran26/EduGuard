@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { areUserIdsEqual } from "../../../api/apiHelpers";
 import { classroomApi } from "../../../api/classroomApi";
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
@@ -45,6 +46,69 @@ function getAccessBadgeLabel(classroom, role) {
   return "Bạn đang tham gia lớp này";
 }
 
+function getMemberBadgeVariant(member) {
+  if (member.role === "Giảng viên" || member.status === "Owner") {
+    return "info";
+  }
+
+  if (member.status === "Active") {
+    return "success";
+  }
+
+  return "neutral";
+}
+
+function buildVisibleMembers(classroom, members, currentUser) {
+  const normalizedMembers = Array.isArray(members)
+    ? members.map((member) => ({
+        ...member,
+        isCurrentUser:
+          currentUser?.role === "Student" &&
+          (areUserIdsEqual(member.studentId, currentUser.id) ||
+            (currentUser.email &&
+              member.email &&
+              currentUser.email.toLowerCase() === member.email.toLowerCase())),
+      }))
+    : [];
+
+  const hasTeacherEntry = normalizedMembers.some((member) =>
+    areUserIdsEqual(member.studentId, classroom.teacherId),
+  );
+  const hasCurrentStudentEntry = normalizedMembers.some((member) => member.isCurrentUser);
+
+  const teacherEntry = hasTeacherEntry
+    ? null
+    : {
+        id: `teacher-${classroom.teacherId || classroom.id}`,
+        studentId: classroom.teacherId,
+        fullName: classroom.teacherName || "Giảng viên chưa xác định",
+        email: "",
+        joinedAt: classroom.createdAt ?? null,
+        role: "Giảng viên",
+        status: "Owner",
+        statusLabel: "Quản lý lớp",
+        isCurrentUser:
+          currentUser?.role === "Teacher" && areUserIdsEqual(currentUser.id, classroom.teacherId),
+      };
+
+  const currentStudentEntry =
+    currentUser?.role === "Student" && !hasCurrentStudentEntry
+      ? {
+          id: `self-${currentUser.id}`,
+          studentId: currentUser.id,
+          fullName: currentUser.fullName || "Bạn",
+          email: currentUser.email || "",
+          joinedAt: classroom.joinedAt ?? null,
+          role: "Sinh viên",
+          status: "Active",
+          statusLabel: "Đang tham gia",
+          isCurrentUser: true,
+        }
+      : null;
+
+  return [teacherEntry, currentStudentEntry, ...normalizedMembers].filter(Boolean);
+}
+
 // Trang này hiển thị đầy đủ thông tin classroom, thành viên và khu vực teacher chỉnh sửa lớp học.
 export default function ClassroomDetailPage() {
   const navigate = useNavigate();
@@ -56,6 +120,8 @@ export default function ClassroomDetailPage() {
   const [loadErrorMessage, setLoadErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const visibleMembers =
+    classroom && user?.role !== "Admin" ? buildVisibleMembers(classroom, members, user) : [];
 
   // Hàm này tải classroom detail và member list theo đúng quyền backend hiện đang mở cho role hiện tại.
   async function loadClassroomDetail() {
@@ -302,10 +368,6 @@ export default function ClassroomDetailPage() {
                 </div>
               ))}
             </div>
-
-            <div className="rounded-[16px] border border-border bg-neutral p-4 text-sm text-secondary">
-              Cập nhật gần nhất: {formatShortDateTime(classroom.updatedAt || classroom.createdAt)}
-            </div>
           </Card>
 
           {classroom.canEdit ? (
@@ -333,7 +395,7 @@ export default function ClassroomDetailPage() {
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-lg font-semibold text-primary">Thành viên lớp học</h3>
               <span className="text-sm text-secondary">
-                {user?.role === "Admin" ? "Theo quyền hiện tại" : `${members.length} sinh viên`}
+                {user?.role === "Admin" ? "Theo quyền hiện tại" : `${visibleMembers.length} thành viên`}
               </span>
             </div>
 
@@ -342,21 +404,27 @@ export default function ClassroomDetailPage() {
                 Backend hiện chỉ cho giáo viên chủ lớp hoặc sinh viên đã tham gia xem danh sách thành
                 viên chi tiết.
               </p>
-            ) : members.length > 0 ? (
+            ) : visibleMembers.length > 0 ? (
               <div className="space-y-3">
-                {members.map((member) => (
+                {visibleMembers.map((member) => (
                   <div key={member.id} className="rounded-[16px] border border-border bg-neutral p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-primary">{member.fullName}</p>
-                        <p className="mt-1 text-sm text-secondary">{member.email}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-primary">{member.fullName}</p>
+                          {member.isCurrentUser ? <Badge variant="info">Bạn</Badge> : null}
+                          {member.role === "Giảng viên" ? <Badge variant="caution">Giảng viên</Badge> : null}
+                        </div>
+                        <p className="mt-1 text-sm text-secondary">
+                          {member.email || (member.role === "Giảng viên" ? "Giảng viên phụ trách lớp" : "")}
+                        </p>
                       </div>
-                      <Badge variant={member.status === "Active" ? "success" : "neutral"}>
+                      <Badge variant={getMemberBadgeVariant(member)}>
                         {member.statusLabel}
                       </Badge>
                     </div>
                     <p className="mt-2 text-sm text-secondary">
-                      Tham gia: {formatShortDateTime(member.joinedAt)}
+                      {member.role === "Giảng viên" ? "Bắt đầu quản lý" : "Tham gia"}: {formatShortDateTime(member.joinedAt)}
                     </p>
                   </div>
                 ))}

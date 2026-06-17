@@ -23,6 +23,7 @@ export default function QuestionForm({
   onCancel = null,
   onSubmitQuestion,
   question = null,
+  showDescriptions = true,
   submitLabel = "Lưu câu hỏi",
   title = "Câu hỏi mới",
 }) {
@@ -180,7 +181,7 @@ export default function QuestionForm({
           />
         </div>
 
-        {questionTypeGuidance ? (
+        {showDescriptions && questionTypeGuidance ? (
           <div className="rounded-[12px] border border-info/20 bg-info-muted px-4 py-3 text-sm leading-6 text-secondary">
             <p className="font-semibold text-primary">{questionTypeGuidance.title}</p>
             <p className="mt-1">{questionTypeGuidance.description}</p>

@@ -691,6 +691,7 @@ export default function ExamDetailPage() {
               isSubmitting={isSaving}
               key={`${exam.id}-${exam.updatedAt || exam.createdAt}`}
               onSubmitExam={handleUpdateExam}
+              showDescriptions={false}
               submitLabel="Lưu thay đổi"
               title="Chỉnh sửa bài kiểm tra"
             />
@@ -721,6 +722,7 @@ export default function ExamDetailPage() {
               isSubmitting={isQuestionSubmitting}
               key={`create-question-${exam.id}-${questions.length}`}
               onSubmitQuestion={handleCreateQuestion}
+              showDescriptions={false}
               submitLabel="Thêm câu hỏi"
               title="Thêm câu hỏi mới"
             />
@@ -754,6 +756,7 @@ export default function ExamDetailPage() {
                         onCancel={() => setEditingQuestionId(null)}
                         onSubmitQuestion={(payload) => handleUpdateQuestion(question.id, payload)}
                         question={question}
+                        showDescriptions={false}
                         submitLabel="Lưu câu hỏi"
                         title={`Chỉnh sửa câu ${question.orderIndex}`}
                       />
@@ -764,7 +767,6 @@ export default function ExamDetailPage() {
             ) : (
               <EmptyState
                 title="Đề thi này chưa có câu hỏi nào."
-                description="Thêm ít nhất một câu hỏi hợp lệ trước khi publish đề thi cho sinh viên."
               />
             )
           ) : null}
@@ -798,13 +800,7 @@ export default function ExamDetailPage() {
           {exam.canEdit ? (
             <Card className="space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <h3 className="text-lg font-semibold text-primary">Trạng thái publish</h3>
-                  <p className="text-sm leading-6 text-secondary">
-                    Checklist đang dựa trên dữ liệu đã lưu hiện tại của đề và backend sẽ kiểm tra lại
-                    thêm một lần nữa khi bạn bấm publish.
-                  </p>
-                </div>
+                <h3 className="text-lg font-semibold text-primary">Trạng thái publish</h3>
                 <Badge variant={publishStatusMeta.variant}>{publishStatusMeta.label}</Badge>
               </div>
 

@@ -33,6 +33,12 @@ export default function ClassroomListPage() {
   const pageCopy = getPageCopyByRole(user?.role);
   const summaryItems = buildSummaryItems(classrooms);
   const isAdminView = user?.role === "Admin";
+  const isTeacherView = user?.role === "Teacher";
+  const isStudentView = user?.role === "Student";
+  const totalClassroomsSummary = summaryItems[0] ?? {
+    label: "Tổng số lớp học",
+    value: classrooms.length,
+  };
   const visibleClassrooms = isAdminView
     ? filterAndSortAdminClassrooms(classrooms, adminSearchTerm, adminSortOption)
     : classrooms;
@@ -172,24 +178,65 @@ export default function ClassroomListPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow={getRoleLabel(user?.role)}
-        title={pageCopy.title}
-        actions={
-          user?.role === "Teacher" ? (
-            <Button
-              onClick={() => setIsCreateFormVisible((prev) => !prev)}
-              variant={isCreateFormVisible ? "secondary" : "primary"}
-            >
-              {isCreateFormVisible ? "Ẩn form tạo lớp" : "Tạo lớp học"}
-            </Button>
-          ) : pageCopy.actionLabel ? (
+      {isTeacherView ? (
+        <div className="flex flex-col gap-4 rounded-[24px] border border-border bg-surface p-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-3">
+            <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-4 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-info">
+              {getRoleLabel(user?.role)}
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-[2.2rem]">
+              {pageCopy.title}
+            </h1>
+          </div>
+
+          <div className="flex items-center justify-center rounded-full border border-border bg-neutral px-5 py-3">
+            <div className="flex items-center gap-3 whitespace-nowrap">
+              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-secondary">
+                {totalClassroomsSummary.label}
+              </p>
+              <p className="text-2xl font-semibold tracking-tight text-primary">
+                {totalClassroomsSummary.value}
+              </p>
+            </div>
+          </div>
+
+          <Button
+            onClick={() => setIsCreateFormVisible((prev) => !prev)}
+            variant={isCreateFormVisible ? "secondary" : "primary"}
+          >
+            {isCreateFormVisible ? "Ẩn form tạo lớp" : "Tạo lớp học"}
+          </Button>
+        </div>
+      ) : isStudentView ? (
+        <div className="flex flex-col gap-4 rounded-[24px] border border-border bg-surface p-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-3">
+            <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-4 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-info">
+              {getRoleLabel(user?.role)}
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-[2.2rem]">
+              {pageCopy.title}
+            </h1>
+          </div>
+
+          {pageCopy.actionLabel ? (
             <Link className="eg-button eg-button-primary" to={routeConfig.studentJoinClassroom}>
               {pageCopy.actionLabel}
             </Link>
-          ) : null
-        }
-      />
+          ) : null}
+        </div>
+      ) : (
+        <PageHeader
+          eyebrow={getRoleLabel(user?.role)}
+          title={pageCopy.title}
+          actions={
+            pageCopy.actionLabel ? (
+              <Link className="eg-button eg-button-primary" to={routeConfig.studentJoinClassroom}>
+                {pageCopy.actionLabel}
+              </Link>
+            ) : null
+          }
+        />
+      )}
 
       {isAdminView ? (
         <ClassroomListAdminFilters
@@ -199,16 +246,7 @@ export default function ClassroomListPage() {
           onSortOptionChange={setAdminSortOption}
           onResetFilters={handleResetAdminFilters}
         />
-      ) : (
-        <div className="grid gap-4 md:grid-cols-3">
-          {summaryItems.map((item) => (
-            <div key={item.label} className="rounded-[20px] border border-border bg-surface p-5">
-              <p className="text-[0.82rem] font-medium text-secondary">{item.label}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{item.value}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      ) : null}
 
       {user?.role === "Teacher" && isCreateFormVisible ? (
         <CreateClassroomForm

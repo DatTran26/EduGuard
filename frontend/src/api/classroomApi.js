@@ -12,8 +12,9 @@ import {
 // - Join code được backend tự sinh khi tạo lớp; frontend chỉ hiển thị lại chứ không còn tự random ở local.
 // - Riêng member list hiện backend chỉ mở cho teacher chủ lớp hoặc student đã tham gia, nên admin chỉ xem được detail cơ bản.
 
-function normalizeClassroomDto(classroom, currentUser, memberCount = null) {
-  const normalizedMemberCount = typeof memberCount === "number" ? memberCount : null;
+function normalizeClassroomDto(classroom, currentUser, membershipMeta = {}) {
+  const normalizedMemberCount =
+    typeof membershipMeta.memberCount === "number" ? membershipMeta.memberCount : null;
 
   return {
     id: Number(classroom?.id) || 0,
@@ -25,6 +26,7 @@ function normalizeClassroomDto(classroom, currentUser, memberCount = null) {
     createdAt: classroom?.createdAt ?? null,
     updatedAt: classroom?.createdAt ?? null,
     memberCount: normalizedMemberCount,
+    joinedAt: membershipMeta.joinedAt ?? null,
     canEdit:
       currentUser?.role === "Teacher" && areUserIdsEqual(currentUser.id, classroom?.teacherId),
     isJoined: currentUser?.role === "Student",
@@ -67,16 +69,36 @@ async function getMemberListApiResponse(classroomId) {
   };
 }
 
-async function resolveMemberCount(classroomId, currentUser) {
+async function resolveClassroomMembershipMeta(classroomId, currentUser) {
   if (!currentUser || hasAnyRole(currentUser, ["Admin"])) {
-    return null;
+    return {
+      memberCount: null,
+      joinedAt: null,
+    };
   }
 
   try {
     const memberResponse = await getMemberListApiResponse(classroomId);
-    return memberResponse.data.length + 1;
+    const currentMember =
+      currentUser.role === "Student"
+        ? memberResponse.data.find(
+            (member) =>
+              areUserIdsEqual(member.studentId, currentUser.id) ||
+              (currentUser.email &&
+                member.email &&
+                currentUser.email.toLowerCase() === member.email.toLowerCase()),
+          )
+        : null;
+
+    return {
+      memberCount: memberResponse.data.length + 1,
+      joinedAt: currentMember?.joinedAt ?? null,
+    };
   } catch {
-    return null;
+    return {
+      memberCount: null,
+      joinedAt: null,
+    };
   }
 }
 
@@ -85,20 +107,20 @@ export const classroomApi = {
     const currentUser = getCurrentSessionUser();
     const apiResponse = await requestApi(() => axiosClient.get("/classrooms"));
     const classroomItems = Array.isArray(apiResponse.data) ? apiResponse.data : [];
-    const memberCounts = await Promise.all(
+    const membershipMetaList = await Promise.all(
       classroomItems.map(async (classroom) => ({
         classroomId: Number(classroom.id),
-        memberCount: await resolveMemberCount(classroom.id, currentUser),
+        membershipMeta: await resolveClassroomMembershipMeta(classroom.id, currentUser),
       })),
     );
-    const memberCountMap = new Map(
-      memberCounts.map((item) => [item.classroomId, item.memberCount]),
+    const membershipMetaMap = new Map(
+      membershipMetaList.map((item) => [item.classroomId, item.membershipMeta]),
     );
 
     return {
       ...apiResponse,
       data: classroomItems.map((classroom) =>
-        normalizeClassroomDto(classroom, currentUser, memberCountMap.get(Number(classroom.id))),
+        normalizeClassroomDto(classroom, currentUser, membershipMetaMap.get(Number(classroom.id))),
       ),
     };
   },
@@ -106,11 +128,11 @@ export const classroomApi = {
   async getById(classroomId) {
     const currentUser = getCurrentSessionUser();
     const apiResponse = await requestApi(() => axiosClient.get(`/classrooms/${classroomId}`));
-    const memberCount = await resolveMemberCount(classroomId, currentUser);
+    const membershipMeta = await resolveClassroomMembershipMeta(classroomId, currentUser);
 
     return {
       ...apiResponse,
-      data: normalizeClassroomDto(apiResponse.data, currentUser, memberCount),
+      data: normalizeClassroomDto(apiResponse.data, currentUser, membershipMeta),
     };
   },
 
@@ -129,7 +151,7 @@ export const classroomApi = {
 
     return {
       ...apiResponse,
-      data: normalizeClassroomDto(apiResponse.data, currentUser, 1),
+      data: normalizeClassroomDto(apiResponse.data, currentUser, { memberCount: 1, joinedAt: null }),
     };
   },
 
@@ -141,11 +163,11 @@ export const classroomApi = {
         description: payload.description?.trim() || null,
       }),
     );
-    const memberCount = await resolveMemberCount(classroomId, currentUser);
+    const membershipMeta = await resolveClassroomMembershipMeta(classroomId, currentUser);
 
     return {
       ...apiResponse,
-      data: normalizeClassroomDto(apiResponse.data, currentUser, memberCount),
+      data: normalizeClassroomDto(apiResponse.data, currentUser, membershipMeta),
     };
   },
 
@@ -165,11 +187,11 @@ export const classroomApi = {
         joinCode: joinCode.trim().toUpperCase(),
       }),
     );
-    const memberCount = await resolveMemberCount(apiResponse.data?.id, currentUser);
+    const membershipMeta = await resolveClassroomMembershipMeta(apiResponse.data?.id, currentUser);
 
     return {
       ...apiResponse,
-      data: normalizeClassroomDto(apiResponse.data, currentUser, memberCount),
+      data: normalizeClassroomDto(apiResponse.data, currentUser, membershipMeta),
     };
   },
 

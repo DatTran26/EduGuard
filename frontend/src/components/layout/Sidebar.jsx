@@ -1,5 +1,6 @@
-import { NavLink } from "react-router-dom";
+import { Link, matchPath, useLocation } from "react-router-dom";
 import { cn } from "../../utils/cn";
+import { routeConfig } from "../../routes/routeConfig";
 import {
   FiBookOpen,
   FiClipboard,
@@ -12,7 +13,7 @@ import {
 } from "react-icons/fi";
 
 // Hàm này trả class cho từng item trong sidebar để route đang active nhìn rõ hơn.
-function getNavigationLinkClassName({ isActive }) {
+function getNavigationLinkClassName(isActive) {
   return cn(
     "relative block rounded-[14px] px-4 py-3 text-sm font-medium transition-all duration-200",
     isActive
@@ -47,6 +48,50 @@ function getNavigationIconByLabel(label) {
   return FiBookOpen;
 }
 
+function getNavigationItemIsActive(itemPath, pathname) {
+  if (itemPath === routeConfig.studentClassrooms) {
+    return (
+      pathname === routeConfig.studentClassrooms ||
+      Boolean(matchPath(routeConfig.studentClassroomDetail, pathname))
+    );
+  }
+
+  if (itemPath === routeConfig.studentJoinClassroom) {
+    return pathname === routeConfig.studentJoinClassroom;
+  }
+
+  if (itemPath === routeConfig.teacherClassrooms) {
+    return (
+      pathname === routeConfig.teacherClassrooms ||
+      Boolean(matchPath(routeConfig.teacherClassroomDetail, pathname))
+    );
+  }
+
+  if (itemPath === routeConfig.adminClassrooms) {
+    return (
+      pathname === routeConfig.adminClassrooms ||
+      Boolean(matchPath(routeConfig.adminClassroomDetail, pathname))
+    );
+  }
+
+  if (itemPath === routeConfig.studentExams) {
+    return (
+      pathname === routeConfig.studentExams ||
+      Boolean(matchPath(routeConfig.studentExamDetail, pathname)) ||
+      Boolean(matchPath(routeConfig.studentExamAttempt, pathname))
+    );
+  }
+
+  if (itemPath === routeConfig.teacherExams) {
+    return pathname === routeConfig.teacherExams || Boolean(matchPath(routeConfig.teacherExamDetail, pathname));
+  }
+
+  if (itemPath === routeConfig.adminExams) {
+    return pathname === routeConfig.adminExams || Boolean(matchPath(routeConfig.adminExamDetail, pathname));
+  }
+
+  return pathname === itemPath;
+}
 
 // Component này là thanh điều hướng bên trái cho khu vực đã đăng nhập.
 export default function Sidebar({
@@ -57,6 +102,8 @@ export default function Sidebar({
   onClose,
   onToggleCollapse,
 }) {
+  const location = useLocation();
+
   // Hàm này đóng sidebar khi người dùng bấm ra ngoài vùng panel trên mobile.
   function handleOverlayClick() {
     onClose();
@@ -92,11 +139,7 @@ export default function Sidebar({
           <div className="flex items-center gap-3">
             <div className="relative">
               <span className="absolute -inset-1 rounded-[14px] bg-white/5 blur-[10px]" aria-hidden="true" />
-              <img
-                alt="Logo EduGuard"
-                className="relative h-8 w-auto object-contain"
-                src="/logo.png"
-              />
+              <img alt="Logo EduGuard" className="relative h-8 w-auto object-contain" src="/logo.png" />
             </div>
             <div className={cn(isCollapsed ? "lg:hidden" : "")}>
               <h2 className="text-base font-bold tracking-tight text-white leading-none">EduGuard</h2>
@@ -122,38 +165,39 @@ export default function Sidebar({
             isCollapsed ? "lg:items-stretch px-3" : "px-5",
           )}
         >
-          {navigationItems.map((item) => (
-            (() => {
-              const ItemIcon = getNavigationIconByLabel(item.label);
-              return (
-            <NavLink
-              key={item.path}
-              className={(navState) =>
-                cn(
-                  getNavigationLinkClassName(navState),
+          {navigationItems.map((item) => {
+            const ItemIcon = getNavigationIconByLabel(item.label);
+            const isItemActive = getNavigationItemIsActive(item.path, location.pathname);
+
+            return (
+              <Link
+                key={item.path}
+                aria-current={isItemActive ? "page" : undefined}
+                className={cn(
+                  getNavigationLinkClassName(isItemActive),
                   isCollapsed ? "lg:px-2 lg:py-2.5 lg:rounded-[16px]" : "",
-                )
-              }
-              onClick={onNavigate}
-              to={item.path}
-              title={isCollapsed ? item.label : undefined}
-            >
-              <span className={cn("flex items-center gap-3", isCollapsed ? "lg:justify-center" : "")}>
-                <span className={cn(
-                  "inline-flex h-9 w-9 items-center justify-center rounded-[14px] border border-white/10 bg-white/6 text-white/90",
-                  isCollapsed ? "lg:flex" : "hidden lg:flex",
-                )}>
-                  <ItemIcon className="h-[18px] w-[18px]" />
+                )}
+                onClick={onNavigate}
+                title={isCollapsed ? item.label : undefined}
+                to={item.path}
+              >
+                <span className={cn("flex items-center gap-3", isCollapsed ? "lg:justify-center" : "")}>
+                  <span
+                    className={cn(
+                      "inline-flex h-9 w-9 items-center justify-center rounded-[14px] border border-white/10 bg-white/6 text-white/90",
+                      isCollapsed ? "lg:flex" : "hidden lg:flex",
+                    )}
+                  >
+                    <ItemIcon className="h-[18px] w-[18px]" />
+                  </span>
+                  <span className={cn("flex items-center gap-3", isCollapsed ? "lg:hidden" : "")}>
+                    <ItemIcon className="h-[18px] w-[18px] text-slate-300 lg:hidden" />
+                    <span>{item.label}</span>
+                  </span>
                 </span>
-                <span className={cn("flex items-center gap-3", isCollapsed ? "lg:hidden" : "")}>
-                  <ItemIcon className="h-[18px] w-[18px] text-slate-300 lg:hidden" />
-                  <span>{item.label}</span>
-                </span>
-              </span>
-            </NavLink>
-              );
-            })()
-          ))}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className={cn("border-t border-white/10 pt-4 pb-5 mt-auto", isCollapsed ? "px-3" : "px-5")}>
@@ -177,4 +221,3 @@ export default function Sidebar({
     </aside>
   );
 }
-

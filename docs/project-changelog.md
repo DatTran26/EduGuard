@@ -1,5 +1,79 @@
 # Project Changelog
 
+## Feature: Auth UI refinement with centered two-column login experience
+
+Date: 2026-06-17
+
+Branch/source: `devH`
+
+Description:
+
+- Thiết kế lại giao diện đăng nhập theo layout 2 cột cân giữa màn hình: brand panel navy gradient bên trái và login card trắng bên phải, không còn tình trạng form kéo full width như trước.
+- Tăng khoảng trắng, giới hạn chiều rộng tổng thể, làm lại hierarchy chữ, input, checkbox row và nút CTA để khu vực xác thực nhìn rõ ràng và chuyên nghiệp hơn trên desktop lẫn mobile.
+- Giữ nguyên toàn bộ logic đăng nhập hiện tại; chỉ thay đổi UI/CSS/layout và làm mới skin của toast để popup lỗi/thông báo đồng bộ hơn với màn xác thực.
+
+Changed files:
+
+- `frontend/src/features/auth/components/AuthLayout.jsx`
+- `frontend/src/features/auth/pages/LoginPage.jsx`
+- `frontend/src/index.css`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Rebuilt `AuthLayout` into a true two-column auth shell with a centered brand panel, a fixed-width form card, and responsive breakpoints that collapse cleanly to one column on smaller screens.
+- Replaced the previous auth styling with dedicated `eg-auth-*` CSS for spacing, card radius, panel shadows, input height/focus state, CTA sizing, checkbox row alignment, and mobile behavior.
+- Shortened the login copy to keep the card visually clean and moved the inline credential error into a dedicated auth alert style without touching submit/auth state handling.
+- Tuned global toast presentation so danger/info/success toasts match the requested lighter card treatment and close button layout.
+
+Validation:
+
+- `npm run lint` — passed.
+- `npm run build -- --outDir temp-build-auth-ui` — passed.
+
+Unresolved questions:
+
+- Vite/Rolldown still emits the existing non-blocking `@microsoft/signalr` PURE annotation warnings and large chunk warning during build; this change does not alter that behavior.
+
+## Feature: Frontend dependency baseline for stable devH/release merges
+
+Date: 2026-06-17
+
+Branch/source: `devH`
+
+Description:
+
+- Ổn định bộ dependency frontend giữa `devH` và `release` bằng cách khóa exact version cho React, React Router, Vite, Tailwind và các package trực tiếp khác thay vì tiếp tục để semver range trôi theo `^`.
+- Bổ sung metadata/cấu hình npm để những lần `npm install` sau không tự ghi thêm range mới vào manifest, từ đó giảm diff `package-lock.json` vô nghĩa khi sync hoặc merge nhánh.
+- Đồng bộ lại lockfile theo bộ version đã chốt và kiểm tra lại build frontend trên codebase hiện tại để tránh tái phát lỗi thư viện Vite do drift dependency sau merge.
+
+Changed files:
+
+- `frontend/.npmrc`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Thêm `packageManager: npm@11.6.2` và `.npmrc` với `save-exact=true` để chuẩn hóa công cụ cài package ở frontend.
+- Đổi toàn bộ direct dependency/devDependency từ semver range sang exact version khớp với bộ đã verify: React `19.2.7`, React Router `7.18.0`, Vite `8.0.16`, `@tailwindcss/vite`/`tailwindcss` `4.3.1`, `axios` `1.18.0`, `lucide-react` `1.20.0`, cùng các package lint/type liên quan.
+- Re-sync `frontend/package-lock.json` để metadata ở root khớp manifest mới và bỏ các entry stale không còn nên được track sau những lần cài đặt trôi version trước đó.
+- Giữ nguyên `vite.config.js`; sau rà soát, khác biệt gây merge noise nằm ở dependency resolution chứ không phải cấu hình proxy/alias của Vite.
+
+Validation:
+
+- `npm install --package-lock-only` — passed.
+- `npm run build -- --outDir temp-build-verify-pinned` — passed.
+- `git merge-tree $(git merge-base origin/release devH) origin/release devH` — inspected; không xuất hiện textual conflict marker ở `frontend/package.json`, `frontend/package-lock.json`, `frontend/vite.config.js`.
+
+Unresolved questions:
+
+- `npm ls --depth=0` vẫn báo một số package WASM helper ở `node_modules` là extraneous từ lần cài trước; build hiện không bị ảnh hưởng, nhưng nên chạy `npm prune` hoặc `npm ci` khi workspace không còn process `node` giữ file.
+- Vite/Rolldown vẫn in warning không chặn build từ `@microsoft/signalr` PURE annotation và cảnh báo chunk size lớn mặc định.
+
 ## Feature: Frontend exam publish readiness and Vietnam timezone workflow
 
 Date: 2026-06-17

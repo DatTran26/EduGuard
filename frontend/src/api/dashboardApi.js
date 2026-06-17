@@ -1,4 +1,9 @@
-import { areUserIdsEqual } from "./apiHelpers";
+import { antiCheatApi } from "./antiCheatApi";
+import { assignmentApi } from "./assignmentApi";
+import { areUserIdsEqual, buildExamStatusLabel, getCurrentSessionUser } from "./apiHelpers";
+import { classroomApi } from "./classroomApi";
+import { examApi } from "./examApi";
+import { examAttemptApi } from "./examAttemptApi";
 import {
   buildApiResponse,
   createApiError,
@@ -7,9 +12,9 @@ import {
   requireCurrentUser,
 } from "./mockDatabase";
 
-// MOCK STATUS:
-// - Dashboard hiện mới có frontend/mock API để hoàn thiện UI, chưa gọi backend dashboard thật.
-// - Toàn bộ thống kê trong file này đang được tổng hợp từ mockDatabase/localStorage.
+// INTEGRATION STATUS:
+// - Teacher dashboard đã chuyển sang tổng hợp dữ liệu backend thật từ classroom / assignment / exam / attempt / anti-cheat API.
+// - Admin và student dashboard hiện vẫn dùng mock vì backend chưa có dashboard endpoint và chưa đủ dữ liệu thật để suy ra trọn vẹn.
 
 // Hàm này tính trung bình các số và làm tròn 1 chữ số thập phân để đưa lên dashboard cho dễ đọc.
 function calculateAverage(values) {
@@ -24,6 +29,23 @@ function calculateAverage(values) {
 // Hàm này ép phần trăm về khoảng 0-100 để thanh tiến độ không bị vỡ layout.
 function clampPercentage(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function buildLocalDateKey(dateValue) {
+  const date = new Date(dateValue);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatDayMonthLabel(dateValue) {
+  const date = new Date(dateValue);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  return `${day}/${month}`;
 }
 
 // Hàm này lấy số sinh viên active trong một classroom để các phép tính submission và score dùng chung.
@@ -254,6 +276,141 @@ function buildTeacherClassroomPerformance(database, managedClassrooms) {
   });
 }
 
+// Hàm này gom hoạt động 7 ngày gần nhất để chart đường nhìn được nhịp nộp bài và cảnh báo bất thường.
+function buildTeacherActivityTrend(database, teacherExamIds) {
+  const relevantAttempts = database.examAttempts.filter((attempt) => teacherExamIds.includes(attempt.examId));
+  const relevantAttemptIds = new Set(relevantAttempts.map((attempt) => attempt.id));
+  const attemptsByDay = relevantAttempts.reduce((accumulator, attempt) => {
+    const dayKey = buildLocalDateKey(attempt.submittedAt ?? attempt.startedAt ?? new Date());
+    accumulator[dayKey] = (accumulator[dayKey] ?? 0) + 1;
+    return accumulator;
+  }, {});
+  const alertsByDay = database.cheatingLogs
+    .filter((logItem) => relevantAttemptIds.has(logItem.examAttemptId))
+    .reduce((accumulator, logItem) => {
+      const dayKey = buildLocalDateKey(logItem.occurredAt ?? new Date());
+      accumulator[dayKey] = (accumulator[dayKey] ?? 0) + 1;
+      return accumulator;
+    }, {});
+  const today = new Date();
+
+  today.setHours(0, 0, 0, 0);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const currentDate = new Date(today);
+
+    currentDate.setDate(today.getDate() - (6 - index));
+
+    const dayKey = buildLocalDateKey(currentDate);
+
+    return {
+      label: formatDayMonthLabel(currentDate),
+      attemptCount: attemptsByDay[dayKey] ?? 0,
+      alertCount: alertsByDay[dayKey] ?? 0,
+    };
+  });
+}
+
+// Hàm này phân nhóm đề thi theo trạng thái để donut chart cho teacher đọc nhanh ngay đầu dashboard.
+function buildTeacherExamStatusBreakdown(teacherExams) {
+  const orderedLabels = ["Bản nháp", "Sắp mở", "Đang mở", "Đã đóng"];
+  const groupedStatuses = teacherExams.reduce((accumulator, exam) => {
+    const statusLabel = buildExamStatusLabel(exam);
+
+    accumulator[statusLabel] = (accumulator[statusLabel] ?? 0) + 1;
+    return accumulator;
+  }, {});
+  const orderedStatusLabels = [
+    ...orderedLabels,
+    ...Object.keys(groupedStatuses).filter((label) => !orderedLabels.includes(label)),
+  ];
+  const totalExamCount = teacherExams.length;
+
+  return orderedStatusLabels.map((label) => ({
+    label,
+    value: groupedStatuses[label] ?? 0,
+    percentage:
+      totalExamCount === 0 ? 0 : clampPercentage(((groupedStatuses[label] ?? 0) / totalExamCount) * 100),
+  }));
+}
+
+function buildItemPreview(items, key) {
+  return items
+    .slice(0, 2)
+    .map((item) => item[key])
+    .filter(Boolean)
+    .join(", ");
+}
+
+// Hàm này gom vài việc cần xử lý để phần dashboard của giảng viên có khối hành động rõ ràng.
+function buildTeacherActionItems(teacherExams, classroomPerformance, highRiskStudents) {
+  const actionItems = [];
+  const draftExams = teacherExams.filter((exam) => buildExamStatusLabel(exam) === "Bản nháp");
+  const upcomingExams = teacherExams.filter((exam) => buildExamStatusLabel(exam) === "Sắp mở");
+  const lowSubmissionClasses = classroomPerformance.filter((classroom) => classroom.submissionRate < 60);
+  const weakScoreClasses = classroomPerformance.filter(
+    (classroom) => classroom.averageScore > 0 && classroom.averageScore < 7,
+  );
+
+  if (draftExams.length > 0) {
+    actionItems.push({
+      id: "draft-exams",
+      tone: "neutral",
+      title: `${draftExams.length} bài kiểm tra vẫn đang ở bản nháp`,
+      detail: "Kiểm tra nội dung và publish khi đã sẵn sàng cho sinh viên.",
+    });
+  }
+
+  if (upcomingExams.length > 0) {
+    actionItems.push({
+      id: "upcoming-exams",
+      tone: "info",
+      title: `${upcomingExams.length} bài kiểm tra sắp diễn ra`,
+      detail: "Rà soát lại thời gian mở đề và cấu hình trước giờ bắt đầu.",
+    });
+  }
+
+  if (lowSubmissionClasses.length > 0) {
+    actionItems.push({
+      id: "low-submission",
+      tone: "caution",
+      title: `${lowSubmissionClasses.length} lớp có tỉ lệ nộp bài thấp`,
+      detail: `Cần nhắc thêm ở: ${buildItemPreview(lowSubmissionClasses, "name") || "các lớp liên quan"}.`,
+    });
+  }
+
+  if (weakScoreClasses.length > 0) {
+    actionItems.push({
+      id: "weak-score",
+      tone: "danger",
+      title: `${weakScoreClasses.length} lớp có điểm thi trung bình dưới 7`,
+      detail: "Nên xem lại độ khó đề hoặc bổ sung nội dung ôn tập.",
+    });
+  }
+
+  if (highRiskStudents.length > 0) {
+    actionItems.push({
+      id: "high-risk-students",
+      tone: "danger",
+      title: `${highRiskStudents.length} sinh viên cần theo dõi thêm`,
+      detail: "Ưu tiên các trường hợp có điểm nghi ngờ cao để rà soát chi tiết.",
+    });
+  }
+
+  if (actionItems.length === 0) {
+    return [
+      {
+        id: "all-clear",
+        tone: "success",
+        title: "Chưa có hạng mục nào cần xử lý gấp",
+        detail: "Các lớp học và bài kiểm tra hiện đang ở trạng thái ổn định.",
+      },
+    ];
+  }
+
+  return actionItems.slice(0, 4);
+}
+
 // Hàm này dựng danh sách lịch thi sắp tới của giảng viên để nhìn nhanh công việc gần hạn.
 function buildTeacherUpcomingExams(database, teacherExams) {
   return teacherExams
@@ -268,6 +425,317 @@ function buildTeacherUpcomingExams(database, teacherExams) {
       durationMinutes: exam.durationMinutes,
       enableAntiCheat: exam.enableAntiCheat,
     }));
+}
+
+function getMapValuesAsArray(itemsByKey) {
+  return [...itemsByKey.values()].flat();
+}
+
+function buildTeacherSubmissionRateFromReal(assignmentsByClassroom, membersByClassroom) {
+  const assignmentRates = [...assignmentsByClassroom.entries()].flatMap(([classroomId, assignments]) => {
+    const studentCount = (membersByClassroom.get(classroomId) ?? []).length;
+
+    return assignments.map((assignment) => {
+      if (studentCount === 0) {
+        return 0;
+      }
+
+      return (Number(assignment.submissionCount) || 0) / studentCount * 100;
+    });
+  });
+
+  if (assignmentRates.length === 0) {
+    return 0;
+  }
+
+  return clampPercentage(calculateAverage(assignmentRates));
+}
+
+function buildTeacherActivityTrendFromReal(teacherAttempts, antiCheatLogs) {
+  const attemptsByDay = teacherAttempts.reduce((accumulator, attempt) => {
+    const rawDateValue = attempt.submittedAt || attempt.startedAt;
+
+    if (!rawDateValue) {
+      return accumulator;
+    }
+
+    const dayKey = buildLocalDateKey(rawDateValue);
+
+    accumulator[dayKey] = (accumulator[dayKey] ?? 0) + 1;
+    return accumulator;
+  }, {});
+  const alertsByDay = antiCheatLogs.reduce((accumulator, logItem) => {
+    if (!logItem.occurredAt) {
+      return accumulator;
+    }
+
+    const dayKey = buildLocalDateKey(logItem.occurredAt);
+
+    accumulator[dayKey] = (accumulator[dayKey] ?? 0) + 1;
+    return accumulator;
+  }, {});
+  const today = new Date();
+
+  today.setHours(0, 0, 0, 0);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const currentDate = new Date(today);
+
+    currentDate.setDate(today.getDate() - (6 - index));
+
+    const dayKey = buildLocalDateKey(currentDate);
+
+    return {
+      label: formatDayMonthLabel(currentDate),
+      attemptCount: attemptsByDay[dayKey] ?? 0,
+      alertCount: alertsByDay[dayKey] ?? 0,
+    };
+  });
+}
+
+function buildCheatingTypeBreakdownFromReal(antiCheatLogs) {
+  if (antiCheatLogs.length === 0) {
+    return [];
+  }
+
+  const groupedLogs = antiCheatLogs.reduce((accumulator, logItem) => {
+    const previousValue = accumulator[logItem.type] ?? 0;
+
+    accumulator[logItem.type] = previousValue + 1;
+    return accumulator;
+  }, {});
+  const totalLogs = antiCheatLogs.length;
+
+  return Object.entries(groupedLogs)
+    .map(([type, count]) => ({
+      label: type,
+      value: count,
+      percentage: clampPercentage((count / totalLogs) * 100),
+    }))
+    .sort((firstItem, secondItem) => secondItem.value - firstItem.value);
+}
+
+function buildTeacherClassroomPerformanceFromReal(
+  managedClassrooms,
+  assignmentsByClassroom,
+  membersByClassroom,
+  examsByClassroom,
+  attemptsByExam,
+) {
+  return managedClassrooms.map((classroom) => {
+    const classroomAssignments = assignmentsByClassroom.get(classroom.id) ?? [];
+    const classroomMembers = membersByClassroom.get(classroom.id) ?? [];
+    const classroomExams = examsByClassroom.get(classroom.id) ?? [];
+    const classroomAttempts = classroomExams.flatMap((exam) => attemptsByExam.get(exam.id) ?? []);
+    const classroomScores = classroomAttempts
+      .map((attempt) => attempt.score)
+      .filter((scoreValue) => typeof scoreValue === "number");
+    const studentCount = classroomMembers.length;
+    const expectedSubmissionCount = classroomAssignments.length * studentCount;
+    const actualSubmissionCount = classroomAssignments.reduce(
+      (sumValue, assignment) => sumValue + (Number(assignment.submissionCount) || 0),
+      0,
+    );
+
+    return {
+      id: classroom.id,
+      name: classroom.name,
+      studentCount,
+      assignmentCount: classroomAssignments.length,
+      averageScore: calculateAverage(classroomScores),
+      submissionRate:
+        expectedSubmissionCount === 0
+          ? 0
+          : clampPercentage((actualSubmissionCount / expectedSubmissionCount) * 100),
+      riskCount: classroomAttempts.filter((attempt) => Number(attempt.suspicionScore) >= 10).length,
+    };
+  });
+}
+
+function buildTeacherHighRiskStudentsFromReal(teacherAttempts, examsById, studentsById) {
+  const riskyAttempts = teacherAttempts.filter((attempt) => Number(attempt.suspicionScore) > 0);
+  const groupedStudents = riskyAttempts.reduce((accumulator, attempt) => {
+    const studentId = String(attempt.studentId || "");
+
+    if (!studentId) {
+      return accumulator;
+    }
+
+    const attemptTimestamp = new Date(attempt.submittedAt || attempt.startedAt || 0).getTime();
+    const previousValue = accumulator[studentId] ?? {
+      studentId,
+      studentName: attempt.studentName ?? "",
+      totalSuspicion: 0,
+      attemptCount: 0,
+      latestAttemptTimestamp: Number.NEGATIVE_INFINITY,
+      latestExamId: Number(attempt.examId) || 0,
+    };
+
+    previousValue.totalSuspicion += Number(attempt.suspicionScore) || 0;
+    previousValue.attemptCount += 1;
+
+    if (attemptTimestamp >= previousValue.latestAttemptTimestamp) {
+      previousValue.latestAttemptTimestamp = attemptTimestamp;
+      previousValue.latestExamId = Number(attempt.examId) || 0;
+      previousValue.studentName = attempt.studentName || previousValue.studentName;
+    }
+
+    accumulator[studentId] = previousValue;
+    return accumulator;
+  }, {});
+
+  return Object.values(groupedStudents)
+    .map((studentRiskItem) => {
+      const student = studentsById.get(studentRiskItem.studentId);
+
+      return {
+        id: studentRiskItem.studentId,
+        studentName:
+          studentRiskItem.studentName ||
+          student?.fullName ||
+          "Sinh viên chưa xác định",
+        email: student?.email ?? "--",
+        totalSuspicion: studentRiskItem.totalSuspicion,
+        attemptCount: studentRiskItem.attemptCount,
+        latestExamTitle:
+          examsById.get(studentRiskItem.latestExamId)?.title ?? "Bài kiểm tra chưa xác định",
+      };
+    })
+    .sort((firstItem, secondItem) => secondItem.totalSuspicion - firstItem.totalSuspicion)
+    .slice(0, 5);
+}
+
+function buildTeacherUpcomingExamsFromReal(teacherExams) {
+  return teacherExams
+    .filter((exam) => exam.startTime && new Date(exam.startTime).getTime() > Date.now())
+    .sort((firstExam, secondExam) => new Date(firstExam.startTime) - new Date(secondExam.startTime))
+    .slice(0, 5)
+    .map((exam) => ({
+      id: exam.id,
+      title: exam.title,
+      classroomName: exam.classroomName,
+      startTime: exam.startTime,
+      durationMinutes: exam.durationMinutes,
+      enableAntiCheat: exam.enableAntiCheat,
+    }));
+}
+
+async function buildTeacherDashboardDataFromRealApis() {
+  const classroomResponse = await classroomApi.getAll();
+  const managedClassrooms = Array.isArray(classroomResponse.data)
+    ? classroomResponse.data.filter((classroom) => classroom.canEdit)
+    : [];
+  const managedClassroomIds = new Set(managedClassrooms.map((classroom) => classroom.id));
+  const [memberEntries, assignmentEntries, examResponse] = await Promise.all([
+    Promise.all(
+      managedClassrooms.map(async (classroom) => {
+        try {
+          const response = await classroomApi.getMembers(classroom.id);
+          return [classroom.id, Array.isArray(response.data) ? response.data : []];
+        } catch {
+          return [classroom.id, []];
+        }
+      }),
+    ),
+    Promise.all(
+      managedClassrooms.map(async (classroom) => {
+        try {
+          const response = await assignmentApi.getByClassroom(classroom.id);
+          return [classroom.id, Array.isArray(response.data) ? response.data : []];
+        } catch {
+          return [classroom.id, []];
+        }
+      }),
+    ),
+    examApi.getAll(),
+  ]);
+  const teacherExams = (Array.isArray(examResponse.data) ? examResponse.data : []).filter((exam) =>
+    managedClassroomIds.has(Number(exam.classroomId)),
+  );
+  const attemptEntries = await Promise.all(
+    teacherExams.map(async (exam) => {
+      try {
+        const response = await examAttemptApi.getByExam(exam.id);
+        return [exam.id, Array.isArray(response.data) ? response.data : []];
+      } catch {
+        return [exam.id, []];
+      }
+    }),
+  );
+  const suspiciousAttempts = attemptEntries
+    .flatMap(([, attempts]) => attempts)
+    .filter((attempt) => Number(attempt.suspicionScore) > 0);
+  const antiCheatLogEntries = await Promise.all(
+    suspiciousAttempts.map(async (attempt) => {
+      try {
+        const response = await antiCheatApi.getLogsByAttempt(attempt.id);
+        return [attempt.id, Array.isArray(response.data) ? response.data : []];
+      } catch {
+        return [attempt.id, []];
+      }
+    }),
+  );
+  const membersByClassroom = new Map(memberEntries.map(([classroomId, members]) => [Number(classroomId), members]));
+  const assignmentsByClassroom = new Map(
+    assignmentEntries.map(([classroomId, assignments]) => [Number(classroomId), assignments]),
+  );
+  const examsByClassroom = teacherExams.reduce((accumulator, exam) => {
+    const classroomId = Number(exam.classroomId) || 0;
+    const previousValue = accumulator.get(classroomId) ?? [];
+
+    previousValue.push(exam);
+    accumulator.set(classroomId, previousValue);
+    return accumulator;
+  }, new Map());
+  const attemptsByExam = new Map(attemptEntries.map(([examId, attempts]) => [Number(examId), attempts]));
+  const allTeacherAttempts = getMapValuesAsArray(attemptsByExam);
+  const allAntiCheatLogs = antiCheatLogEntries.flatMap(([, logs]) => logs);
+  const studentsById = memberEntries.reduce((accumulator, [, members]) => {
+    members.forEach((member) => {
+      const studentId = String(member.studentId || "");
+
+      if (studentId) {
+        accumulator.set(studentId, member);
+      }
+    });
+    return accumulator;
+  }, new Map());
+  const uniqueStudentIds = new Set([...studentsById.keys()]);
+  const examsById = new Map(teacherExams.map((exam) => [Number(exam.id), exam]));
+  const classroomPerformance = buildTeacherClassroomPerformanceFromReal(
+    managedClassrooms,
+    assignmentsByClassroom,
+    membersByClassroom,
+    examsByClassroom,
+    attemptsByExam,
+  );
+  const highRiskStudents = buildTeacherHighRiskStudentsFromReal(
+    allTeacherAttempts,
+    examsById,
+    studentsById,
+  );
+
+  return {
+    summary: {
+      managedClassrooms: managedClassrooms.length,
+      totalStudents: uniqueStudentIds.size,
+      totalAssignments: getMapValuesAsArray(assignmentsByClassroom).length,
+      totalExams: teacherExams.length,
+      submissionRate: buildTeacherSubmissionRateFromReal(assignmentsByClassroom, membersByClassroom),
+      averageExamScore: calculateAverage(
+        allTeacherAttempts
+          .map((attempt) => attempt.score)
+          .filter((scoreValue) => typeof scoreValue === "number"),
+      ),
+    },
+    activityTrend: buildTeacherActivityTrendFromReal(allTeacherAttempts, allAntiCheatLogs),
+    examStatusBreakdown: buildTeacherExamStatusBreakdown(teacherExams),
+    classroomPerformance,
+    actionItems: buildTeacherActionItems(teacherExams, classroomPerformance, highRiskStudents),
+    highRiskStudents,
+    upcomingExams: buildTeacherUpcomingExamsFromReal(teacherExams),
+    cheatingTypes: buildCheatingTypeBreakdownFromReal(allAntiCheatLogs),
+  };
 }
 
 // Hàm này dựng dashboard cho teacher bằng cách lọc các bảng thuộc quyền của giảng viên hiện tại.
@@ -292,6 +760,8 @@ function buildTeacherDashboardData(database, currentUser) {
   const attemptScores = teacherAttempts
     .map((attempt) => attempt.score)
     .filter((scoreValue) => typeof scoreValue === "number");
+  const classroomPerformance = buildTeacherClassroomPerformance(database, managedClassrooms);
+  const highRiskStudents = buildHighRiskStudents(database, teacherExamIds);
 
   return {
     summary: {
@@ -302,8 +772,11 @@ function buildTeacherDashboardData(database, currentUser) {
       submissionRate: calculateTeacherSubmissionRate(database, teacherAssignments),
       averageExamScore: calculateAverage(attemptScores),
     },
-    classroomPerformance: buildTeacherClassroomPerformance(database, managedClassrooms),
-    highRiskStudents: buildHighRiskStudents(database, teacherExamIds),
+    activityTrend: buildTeacherActivityTrend(database, teacherExamIds),
+    examStatusBreakdown: buildTeacherExamStatusBreakdown(teacherExams),
+    classroomPerformance,
+    actionItems: buildTeacherActionItems(teacherExams, classroomPerformance, highRiskStudents),
+    highRiskStudents,
     upcomingExams: buildTeacherUpcomingExams(database, teacherExams),
     cheatingTypes: buildCheatingTypeBreakdown(database, teacherExamIds),
   };
@@ -446,8 +919,9 @@ function buildStudentDashboardData(database, currentUser) {
   };
 }
 
-// MOCK ENDPOINT GROUP:
-// - getAdminDashboard / getTeacherDashboard / getStudentDashboard đều là mock endpoint theo role.
+// DASHBOARD ENDPOINT GROUP:
+// - getTeacherDashboard đang tổng hợp từ API thật của backend.
+// - getAdminDashboard và getStudentDashboard vẫn là mock endpoint theo role.
 export const dashboardApi = {
   getAdminDashboard() {
     return executeMockRequest(() => {
@@ -465,19 +939,20 @@ export const dashboardApi = {
     });
   },
 
-  getTeacherDashboard() {
-    return executeMockRequest(() => {
-      const database = readMockDatabase();
-      const currentUser = requireCurrentUser(database);
+  async getTeacherDashboard() {
+    const currentUser = getCurrentSessionUser();
 
-      if (currentUser.role !== "Teacher") {
-        throw createApiError("Chỉ giảng viên mới có quyền xem dashboard này.", 403);
-      }
+    if (!currentUser) {
+      throw createApiError("Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
 
-      return buildApiResponse({
-        message: "Lấy dữ liệu dashboard giảng viên thành công.",
-        data: buildTeacherDashboardData(database, currentUser),
-      });
+    if (currentUser.role !== "Teacher") {
+      throw createApiError("Chỉ giảng viên mới có quyền xem dashboard này.", 403);
+    }
+
+    return buildApiResponse({
+      message: "Lấy dữ liệu dashboard giảng viên thành công.",
+      data: await buildTeacherDashboardDataFromRealApis(),
     });
   },
 

@@ -18,16 +18,16 @@ export default function AuthLayout({
               <div className="eg-auth-brand-mark">
                 <img
                   alt="Logo EduGuard"
-                  className="h-20 w-auto object-contain md:h-24"
+                  className="eg-auth-brand-logo"
                   src="/logo-transparent.png"
                 />
               </div>
 
-              <div className="space-y-5 text-center">
+              <div className="eg-auth-brand-copy">
                 <p className="eg-auth-brand-title">EduGuard</p>
 
                 <div className="eg-auth-tagline">
-                  <p className="eg-auth-tagline-line">Học Tập an toàn</p>
+                  <p className="eg-auth-tagline-line">Học tập an toàn</p>
                   <p className="eg-auth-tagline-line">Thi trực tuyến minh bạch</p>
                 </div>
               </div>
@@ -46,7 +46,7 @@ export default function AuthLayout({
 
               {children}
 
-              <p className="mt-6 text-sm leading-6 text-secondary">
+              <p className="eg-auth-footer">
                 {footerText}{" "}
                 <Link className="eg-auth-inline-link" to={footerLinkTo}>
                   {footerLinkLabel}

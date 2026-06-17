@@ -33,6 +33,7 @@ export default function ExamForm({
   exam = null,
   isSubmitting = false,
   onSubmitExam,
+  showDescriptions = true,
   submitLabel = "Lưu bài kiểm tra",
   title = "Thông tin bài kiểm tra",
 }) {
@@ -147,11 +148,13 @@ export default function ExamForm({
     })),
   ];
 
-  const footerNote = isEditingExam
-    ? exam?.isPublished
-      ? "Đề này đã publish. Hãy lưu thay đổi cấu hình trước khi tiếp tục theo dõi phòng thi."
-      : "Đề đang ở trạng thái nháp. Sau khi thêm đủ câu hỏi hợp lệ, bạn có thể publish từ trang chi tiết."
-    : "Đề mới sẽ được lưu ở trạng thái nháp để bạn tiếp tục hoàn thiện câu hỏi và cấu hình trước khi publish.";
+  const footerNote = showDescriptions
+    ? isEditingExam
+      ? exam?.isPublished
+        ? "Đề này đã publish. Hãy lưu thay đổi cấu hình trước khi tiếp tục theo dõi phòng thi."
+        : "Đề đang ở trạng thái nháp. Sau khi thêm đủ câu hỏi hợp lệ, bạn có thể publish từ trang chi tiết."
+      : "Đề mới sẽ được lưu ở trạng thái nháp để bạn tiếp tục hoàn thiện câu hỏi và cấu hình trước khi publish."
+    : "";
 
   return (
     <Card className="space-y-5">
@@ -164,6 +167,7 @@ export default function ExamForm({
           isEditingExam={isEditingExam}
           onFieldChange={handleFieldChange}
           selectOptions={selectOptions}
+          showDescriptions={showDescriptions}
         />
 
         <ExamFormScheduleSection
@@ -174,22 +178,25 @@ export default function ExamForm({
           onDurationChange={handleDurationChange}
           onEndTimeChange={handleEndTimeChange}
           onStartTimeChange={handleStartTimeChange}
+          showDescriptions={showDescriptions}
         />
 
         <ExamFormConfigSection
           errors={validationErrors}
           formValues={formValues}
           onSettingChange={handleSettingChange}
+          showDescriptions={showDescriptions}
         />
 
         <ExamFormMonitoringSection
           formValues={formValues}
           onFieldChange={handleFieldChange}
           onSettingChange={handleSettingChange}
+          showDescriptions={showDescriptions}
         />
 
-        <div className="space-y-3 pt-2">
-          <p className="text-sm leading-6 text-secondary">{footerNote}</p>
+        <div className="pt-2">
+          {footerNote ? <p className="mb-3 text-sm leading-6 text-secondary">{footerNote}</p> : null}
           <Button className="w-full sm:w-auto" disabled={isSubmitting} type="submit">
             {isSubmitting ? "Đang lưu..." : submitLabel}
           </Button>

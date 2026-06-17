@@ -96,7 +96,7 @@ export default function LoginPage() {
   return (
     <AuthLayout
       title="Đăng nhập EduGuard"
-      description="Truy cập nhanh vào lớp học, bài kiểm tra và khu vực quản trị của bạn chỉ với một lần xác thực."
+      description="Tiếp tục với lớp học, kỳ thi và khu vực quản trị của bạn."
       footerText="Chưa có tài khoản?"
       footerLinkLabel="Đăng ký ngay"
       footerLinkTo={routeConfig.register}
@@ -104,7 +104,7 @@ export default function LoginPage() {
       <form className="space-y-5" onSubmit={handleSubmit}>
         {loginErrorMessage ? (
           <div
-            className="rounded-[18px] border border-danger/20 bg-danger-muted px-4 py-3 text-sm leading-6 text-danger"
+            className="eg-auth-inline-alert"
             role="alert"
           >
             {loginErrorMessage}
