@@ -5,6 +5,7 @@ import {
   FiBookOpen,
   FiClipboard,
   FiHome,
+  FiShield,
   FiUsers,
   FiUser,
   FiLogIn,
@@ -39,6 +40,9 @@ function getNavigationIconByLabel(label) {
   if (label === "Quản lí người dùng") {
     return FiUser;
   }
+  if (label === "Giám sát") {
+    return FiShield;
+  }
   if (label === "Hồ sơ" || label === "Hồ sơ cá nhân") {
     return FiUser;
   }
@@ -52,7 +56,8 @@ function getNavigationItemIsActive(itemPath, pathname) {
   if (itemPath === routeConfig.studentClassrooms) {
     return (
       pathname === routeConfig.studentClassrooms ||
-      Boolean(matchPath(routeConfig.studentClassroomDetail, pathname))
+      (pathname !== routeConfig.studentJoinClassroom &&
+        Boolean(matchPath(routeConfig.studentClassroomDetail, pathname)))
     );
   }
 

@@ -9,6 +9,7 @@ using EduGuard.Infrastructure.Classrooms;
 using EduGuard.Infrastructure.Exams;
 using EduGuard.Infrastructure.Data;
 using EduGuard.Infrastructure.Repositories;
+using EduGuard.Infrastructure.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -90,6 +91,7 @@ public static class DependencyInjection
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUserService, UserService>();
         services.AddScoped<IClassroomRepository, ClassroomRepository>();
         services.AddScoped<IClassroomService, ClassroomService>();
         services.AddScoped<IAssignmentRepository, AssignmentRepository>();

@@ -2,11 +2,18 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import Button from "../../../components/common/Button";
+import FormErrorSummary from "../../../components/forms/FormErrorSummary";
 import TextInput from "../../../components/forms/TextInput";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { getDefaultPathByRole } from "../../../routes/roleRoutes";
 import { routeConfig } from "../../../routes/routeConfig";
+import {
+  getFirstValidationError,
+  hasValidationErrors,
+  validateEmailAddress,
+  validateRequiredText,
+} from "../../../utils/formValidation";
 
 const INVALID_CREDENTIALS_MESSAGE = "Bạn đã nhập sai tài khoản hoặc mật khẩu";
 
@@ -38,6 +45,7 @@ export default function LoginPage() {
     password: "",
   });
   const [loginErrorMessage, setLoginErrorMessage] = useState("");
+  const [validationErrors, setValidationErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Hàm này lấy route cần quay lại sau khi login xong, giống lúc route guard redirect user.
@@ -48,10 +56,21 @@ export default function LoginPage() {
   // Hàm này cập nhật state form theo từng field để phần submit phía dưới gọn hơn.
   function handleFieldChange(fieldName, value) {
     setLoginErrorMessage("");
+    setValidationErrors((previousErrors) => ({
+      ...previousErrors,
+      [fieldName]: "",
+    }));
     setFormValues((previousValues) => ({
       ...previousValues,
       [fieldName]: value,
     }));
+  }
+
+  function validateFormValues() {
+    return {
+      email: validateEmailAddress(formValues.email),
+      password: validateRequiredText(formValues.password, "Mật khẩu không được để trống."),
+    };
   }
 
   // Hàm này giữ chỗ cho luồng quên mật khẩu trước khi backend thực sự cung cấp endpoint tương ứng.
@@ -66,7 +85,15 @@ export default function LoginPage() {
   // Hàm này xử lý submit form đăng nhập theo đúng endpoint `/api/auth/login`.
   async function handleSubmit(event) {
     event.preventDefault();
+    const nextValidationErrors = validateFormValues();
+
+    setValidationErrors(nextValidationErrors);
     setLoginErrorMessage("");
+
+    if (hasValidationErrors(nextValidationErrors)) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -93,6 +120,8 @@ export default function LoginPage() {
     }
   }
 
+  const formErrorMessage = loginErrorMessage || getFirstValidationError(validationErrors);
+
   return (
     <AuthLayout
       title="Đăng nhập EduGuard"
@@ -101,12 +130,11 @@ export default function LoginPage() {
       footerLinkLabel="Đăng ký ngay"
       footerLinkTo={routeConfig.register}
     >
-      <form className="space-y-5" onSubmit={handleSubmit}>
+      <form className="space-y-5" noValidate onSubmit={handleSubmit}>
+        {loginErrorMessage ? null : <FormErrorSummary message={formErrorMessage} />}
+
         {loginErrorMessage ? (
-          <div
-            className="eg-auth-inline-alert"
-            role="alert"
-          >
+          <div className="eg-auth-inline-alert" role="alert">
             {loginErrorMessage}
           </div>
         ) : null}
@@ -114,6 +142,7 @@ export default function LoginPage() {
         <TextInput
           autoComplete="email"
           className="eg-auth-input"
+          error={validationErrors.email}
           id="login-email"
           label="Email"
           onChange={(event) => handleFieldChange("email", event.target.value)}
@@ -125,6 +154,7 @@ export default function LoginPage() {
         <TextInput
           autoComplete="current-password"
           className="eg-auth-input"
+          error={validationErrors.password}
           id="login-password"
           label="Mật khẩu"
           onChange={(event) => handleFieldChange("password", event.target.value)}

@@ -120,21 +120,17 @@ export default function ClassroomDetailPage() {
   const [loadErrorMessage, setLoadErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const visibleMembers =
-    classroom && user?.role !== "Admin" ? buildVisibleMembers(classroom, members, user) : [];
+  const visibleMembers = classroom ? buildVisibleMembers(classroom, members, user) : [];
 
   // Hàm này tải classroom detail và member list theo đúng quyền backend hiện đang mở cho role hiện tại.
   async function loadClassroomDetail() {
     setIsLoading(true);
 
     try {
-      const requestList = [classroomApi.getById(classroomId)];
-
-      if (user?.role !== "Admin") {
-        requestList.push(classroomApi.getMembers(classroomId));
-      }
-
-      const [classroomResponse, memberResponse] = await Promise.all(requestList);
+      const [classroomResponse, memberResponse] = await Promise.all([
+        classroomApi.getById(classroomId),
+        classroomApi.getMembers(classroomId),
+      ]);
 
       setClassroom(classroomResponse.data);
       setMembers(memberResponse?.data ?? []);
@@ -160,13 +156,10 @@ export default function ClassroomDetailPage() {
     // Hàm này tải dữ liệu lần đầu hoặc khi đổi classroom id, giữ cho detail page đúng nội dung.
     async function loadInitialDetail() {
       try {
-        const requestList = [classroomApi.getById(classroomId)];
-
-        if (user?.role !== "Admin") {
-          requestList.push(classroomApi.getMembers(classroomId));
-        }
-
-        const [classroomResponse, memberResponse] = await Promise.all(requestList);
+        const [classroomResponse, memberResponse] = await Promise.all([
+          classroomApi.getById(classroomId),
+          classroomApi.getMembers(classroomId),
+        ]);
 
         if (!isMounted) {
           return;
@@ -394,17 +387,10 @@ export default function ClassroomDetailPage() {
           <Card className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-lg font-semibold text-primary">Thành viên lớp học</h3>
-              <span className="text-sm text-secondary">
-                {user?.role === "Admin" ? "Theo quyền hiện tại" : `${visibleMembers.length} thành viên`}
-              </span>
+              <span className="text-sm text-secondary">{visibleMembers.length} thành viên</span>
             </div>
 
-            {user?.role === "Admin" ? (
-              <p className="text-sm leading-6 text-secondary">
-                Backend hiện chỉ cho giáo viên chủ lớp hoặc sinh viên đã tham gia xem danh sách thành
-                viên chi tiết.
-              </p>
-            ) : visibleMembers.length > 0 ? (
+            {visibleMembers.length > 0 ? (
               <div className="space-y-3">
                 {visibleMembers.map((member) => (
                   <div key={member.id} className="rounded-[16px] border border-border bg-neutral p-4">

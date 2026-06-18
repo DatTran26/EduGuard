@@ -40,6 +40,13 @@ const breadcrumbLabelBySegment = {
   profile: "Hồ sơ",
   users: "Người dùng",
   join: "Tham gia lớp",
+  monitoring: "Giám sát",
+};
+
+const homeHrefByRoleSegment = {
+  admin: routeConfig.adminDashboard,
+  teacher: routeConfig.teacherDashboard,
+  student: routeConfig.studentClassrooms,
 };
 
 function labelForBreadcrumbSegment(segment) {
@@ -54,7 +61,7 @@ function buildBreadcrumbTrail(pathname) {
   const items = [
     {
       label: "Trang chủ",
-      href: rolePrefix ? `/${rolePrefix}/dashboard` : "/",
+      href: homeHrefByRoleSegment[rolePrefix] || "/",
     },
   ];
 

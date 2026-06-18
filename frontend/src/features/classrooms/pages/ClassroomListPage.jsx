@@ -156,7 +156,7 @@ export default function ClassroomListPage() {
 
   function renderEmptyState() {
     if (loadErrorMessage) {
-      return <EmptyState title="Không thể tải lớp học." description={loadErrorMessage} />;
+      return <EmptyState title="Không thể tải lớp học." />;
     }
     if (user?.role === "Teacher") {
       return <EmptyState title="Bạn chưa tạo lớp học nào." />;
@@ -226,7 +226,6 @@ export default function ClassroomListPage() {
         </div>
       ) : (
         <PageHeader
-          eyebrow={getRoleLabel(user?.role)}
           title={pageCopy.title}
           actions={
             pageCopy.actionLabel ? (

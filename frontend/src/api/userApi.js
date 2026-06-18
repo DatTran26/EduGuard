@@ -1,4 +1,5 @@
-import { areUserIdsEqual } from "./apiHelpers";
+import axiosClient from "./axiosClient";
+import { areUserIdsEqual, normalizeUserId, requestApi } from "./apiHelpers";
 import {
   appendActivityLog,
   buildApiResponse,
@@ -12,8 +13,38 @@ import {
 } from "./mockDatabase";
 
 // MOCK STATUS:
-// - Hồ sơ cá nhân và danh sách người dùng admin hiện vẫn đi qua mockDatabase/localStorage.
+// - Hồ sơ cá nhân hiện vẫn đi qua mockDatabase/localStorage.
+// - Riêng quản lí người dùng của admin đã đi backend thật qua /api/users.
 // - Auth session là backend thật, nhưng profile update/avatar vẫn chưa có user API backend tương ứng ở frontend.
+
+const DEFAULT_ROLE = "Student";
+const ROLE_PRIORITY = ["Admin", "Teacher", "Student"];
+
+function resolvePrimaryRole(roles) {
+  for (const role of ROLE_PRIORITY) {
+    if (roles.includes(role)) {
+      return role;
+    }
+  }
+
+  return roles[0] ?? DEFAULT_ROLE;
+}
+
+function normalizeAdminUser(user) {
+  const roles = Array.isArray(user?.roles) ? user.roles.filter(Boolean) : [];
+
+  return {
+    id: normalizeUserId(user?.id),
+    fullName: user?.fullName ?? "",
+    avatarUrl: user?.avatarUrl ?? "",
+    isActive: typeof user?.isActive === "boolean" ? user.isActive : true,
+    createdAt: user?.createdAt ?? null,
+    updatedAt: user?.updatedAt ?? null,
+    email: user?.email ?? "",
+    roles,
+    role: resolvePrimaryRole(roles),
+  };
+}
 
 // Hàm này kiểm tra dữ liệu hồ sơ trước khi cập nhật để tránh lưu thông tin nửa vời.
 function validateProfilePayload(payload) {
@@ -49,7 +80,7 @@ function updateCurrentUserProfile(database, currentUser, payload) {
 }
 
 // MOCK ENDPOINT GROUP:
-// - getMyProfile / updateMyProfile / getAll hiện đều đang là mock endpoint.
+// - getMyProfile / updateMyProfile hiện vẫn là mock endpoint.
 export const userApi = {
   getMyProfile() {
     return executeMockRequest(() => {
@@ -83,21 +114,54 @@ export const userApi = {
     });
   },
 
-  getAll() {
-    return executeMockRequest(() => {
-      const database = readMockDatabase();
-      const currentUser = requireCurrentUser(database);
+  async getAll() {
+    const apiResponse = await requestApi(() => axiosClient.get("/users"));
 
-      if (currentUser.role !== "Admin") {
-        throw createApiError("Chỉ quản trị viên mới có quyền xem danh sách người dùng.", 403);
-      }
+    return {
+      ...apiResponse,
+      data: Array.isArray(apiResponse.data) ? apiResponse.data.map((user) => normalizeAdminUser(user)) : [],
+    };
+  },
 
-      return buildApiResponse({
-        message: "Lấy danh sách người dùng thành công.",
-        data: database.users
-          .map((user) => toUserDto(user))
-          .sort((firstUser, secondUser) => firstUser.fullName.localeCompare(secondUser.fullName, "vi")),
-      });
-    });
+  async create(payload) {
+    const apiResponse = await requestApi(() =>
+      axiosClient.post("/users", {
+        fullName: payload.fullName?.trim() ?? "",
+        email: payload.email?.trim() ?? "",
+        password: payload.password ?? "",
+        role: payload.role ?? DEFAULT_ROLE,
+        isActive: typeof payload.isActive === "boolean" ? payload.isActive : true,
+      }),
+    );
+
+    return {
+      ...apiResponse,
+      data: normalizeAdminUser(apiResponse.data),
+    };
+  },
+
+  async update(userId, payload) {
+    const apiResponse = await requestApi(() =>
+      axiosClient.put(`/users/${normalizeUserId(userId)}`, {
+        fullName: payload.fullName?.trim() ?? "",
+        email: payload.email?.trim() ?? "",
+        role: payload.role ?? DEFAULT_ROLE,
+        isActive: typeof payload.isActive === "boolean" ? payload.isActive : true,
+      }),
+    );
+
+    return {
+      ...apiResponse,
+      data: normalizeAdminUser(apiResponse.data),
+    };
+  },
+
+  async delete(userId) {
+    const apiResponse = await requestApi(() => axiosClient.delete(`/users/${normalizeUserId(userId)}`));
+
+    return {
+      ...apiResponse,
+      data: apiResponse.data ?? null,
+    };
   },
 };

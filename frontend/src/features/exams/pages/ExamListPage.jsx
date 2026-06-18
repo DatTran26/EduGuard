@@ -84,7 +84,6 @@ export default function ExamListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [classrooms, setClassrooms] = useState([]);
   const [exams, setExams] = useState([]);
-  const [loadErrorMessage, setLoadErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreateFormVisible, setIsCreateFormVisible] = useState(false);
@@ -131,10 +130,8 @@ export default function ExamListPage() {
 
       setClassrooms(classroomResponse.data);
       setExams(examResponse.data);
-      setLoadErrorMessage("");
     } catch (error) {
       const nextMessage = error.message || "Không thể tải danh sách bài kiểm tra.";
-      setLoadErrorMessage(nextMessage);
       showToast({
         tone: "danger",
         title: "Tải dữ liệu thất bại",
@@ -163,14 +160,12 @@ export default function ExamListPage() {
 
         setClassrooms(classroomResponse.data);
         setExams(examResponse.data);
-        setLoadErrorMessage("");
       } catch (error) {
         if (!isMounted) {
           return;
         }
 
         const nextMessage = error.message || "Không thể tải danh sách bài kiểm tra.";
-        setLoadErrorMessage(nextMessage);
         showToast({
           tone: "danger",
           title: "Tải dữ liệu thất bại",
@@ -345,7 +340,6 @@ export default function ExamListPage() {
               </Button>
             ) : null
           }
-          eyebrow={getRoleLabel(user?.role)}
           title={pageCopy.title}
         />
       )}
@@ -441,7 +435,7 @@ export default function ExamListPage() {
           }
         />
       ) : (
-        <EmptyState title="Chưa có bài kiểm tra nào." description={loadErrorMessage} />
+        <EmptyState title="Chưa có bài kiểm tra nào." />
       )}
     </div>
   );

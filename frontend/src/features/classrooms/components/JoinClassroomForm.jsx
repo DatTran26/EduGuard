@@ -2,23 +2,56 @@ import { useState } from "react";
 import { FiKey, FiLogIn } from "react-icons/fi";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
+import FormErrorSummary from "../../../components/forms/FormErrorSummary";
 import TextInput from "../../../components/forms/TextInput";
+import {
+  getFirstValidationError,
+  hasValidationErrors,
+  validateMinLength,
+  validateRequiredText,
+} from "../../../utils/formValidation";
 
 // Form này phụ trách nhập mã lớp để sinh viên tham gia lớp theo đúng flow tài liệu yêu cầu.
 export default function JoinClassroomForm({ isSubmitting = false, onJoinClassroom }) {
   const [joinCode, setJoinCode] = useState("");
+  const [validationErrors, setValidationErrors] = useState({});
 
   // Hàm này chuẩn hóa mã lớp ngay khi gõ để dữ liệu gửi đi luôn ở dạng in hoa, không có khoảng trắng.
   function handleJoinCodeChange(value) {
+    setValidationErrors((previousErrors) => ({
+      ...previousErrors,
+      joinCode: "",
+    }));
     setJoinCode(value.toUpperCase().replace(/\s+/g, ""));
+  }
+
+  function validateFormValues() {
+    const nextErrors = {
+      joinCode: validateRequiredText(joinCode, "Mã lớp không được để trống."),
+    };
+
+    if (!nextErrors.joinCode) {
+      nextErrors.joinCode = validateMinLength(joinCode, 6, "Mã lớp cần ít nhất 6 ký tự.");
+    }
+
+    return nextErrors;
   }
 
   // Hàm này gửi mã lớp về page cha và chỉ reset input khi thao tác join thành công.
   async function handleSubmit(event) {
     event.preventDefault();
+    const nextValidationErrors = validateFormValues();
+
+    setValidationErrors(nextValidationErrors);
+
+    if (hasValidationErrors(nextValidationErrors)) {
+      return;
+    }
+
     const shouldReset = await onJoinClassroom(joinCode.trim());
 
     if (shouldReset) {
+      setValidationErrors({});
       setJoinCode("");
     }
   }
@@ -34,13 +67,16 @@ export default function JoinClassroomForm({ isSubmitting = false, onJoinClassroo
         </div>
       </div>
 
-      <form className="space-y-5 px-6 py-6" onSubmit={handleSubmit}>
+      <form className="space-y-5 px-6 py-6" noValidate onSubmit={handleSubmit}>
+        <FormErrorSummary message={getFirstValidationError(validationErrors)} />
+
         <TextInput
           id="join-classroom-code"
           label="Mã lớp"
           autoCapitalize="characters"
           autoComplete="off"
           className="font-mono text-base tracking-[0.32em] uppercase sm:text-lg"
+          error={validationErrors.joinCode}
           maxLength={12}
           onChange={(event) => handleJoinCodeChange(event.target.value)}
           placeholder="VD: WEB2B9"

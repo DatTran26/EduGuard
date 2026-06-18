@@ -17,7 +17,8 @@ import {
 // INTEGRATION STATUS:
 // - login / register / me / logout đang gọi backend auth thật qua authApi.
 // - classroom và exam hiện đã đi backend thật; teacher dashboard cũng đang tổng hợp từ API thật.
-// - updateProfile, admin/student dashboard và user management vẫn còn mock.
+// - updateProfile và student dashboard vẫn còn mock.
+// - user management của admin đã đi backend thật.
 // - Session backend vẫn được bridge sang mock DB để các module còn mock tiếp tục hoạt động liền mạch.
 
 const AuthContext = createContext(undefined);

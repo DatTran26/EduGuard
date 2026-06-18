@@ -4,6 +4,7 @@ import { areUserIdsEqual, buildExamStatusLabel, getCurrentSessionUser } from "./
 import { classroomApi } from "./classroomApi";
 import { examApi } from "./examApi";
 import { examAttemptApi } from "./examAttemptApi";
+import { userApi } from "./userApi";
 import {
   buildApiResponse,
   createApiError,
@@ -13,8 +14,9 @@ import {
 } from "./mockDatabase";
 
 // INTEGRATION STATUS:
+// - Admin dashboard đã chuyển sang tổng hợp dữ liệu backend thật từ user / classroom / exam / attempt / anti-cheat API.
 // - Teacher dashboard đã chuyển sang tổng hợp dữ liệu backend thật từ classroom / assignment / exam / attempt / anti-cheat API.
-// - Admin và student dashboard hiện vẫn dùng mock vì backend chưa có dashboard endpoint và chưa đủ dữ liệu thật để suy ra trọn vẹn.
+// - Admin monitoring và student dashboard hiện vẫn dùng mock vì backend chưa có endpoint tổng hợp riêng.
 
 // Hàm này tính trung bình các số và làm tròn 1 chữ số thập phân để đưa lên dashboard cho dễ đọc.
 function calculateAverage(values) {
@@ -48,83 +50,10 @@ function formatDayMonthLabel(dateValue) {
   return `${day}/${month}`;
 }
 
-// Hàm này lấy số sinh viên active trong một classroom để các phép tính submission và score dùng chung.
-function getActiveStudentCount(database, classroomId) {
-  return database.classroomMembers.filter(
-    (member) => member.classroomId === classroomId && member.status === "Active",
-  ).length;
-}
-
 // Hàm này lấy tên lớp học theo id để page không phải tự nối tay ở nhiều nơi.
 function getClassroomNameById(database, classroomId) {
   const classroom = database.classrooms.find((item) => item.id === classroomId);
   return classroom?.name ?? "Lớp học chưa xác định";
-}
-
-// Hàm này lấy tên đề thi theo id để danh sách lịch thi và kết quả nhìn rõ hơn.
-function getExamTitleById(database, examId) {
-  const exam = database.exams.find((item) => item.id === examId);
-  return exam?.title ?? "Bài kiểm tra chưa xác định";
-}
-
-// Hàm này gom các activity log mới nhất và thêm tên người thao tác để admin theo dõi.
-function buildRecentActivities(database) {
-  return database.activityLogs
-    .slice()
-    .sort((firstLog, secondLog) => {
-      return new Date(secondLog.createdAt) - new Date(firstLog.createdAt);
-    })
-    .slice(0, 6)
-    .map((logItem) => {
-      const actor = database.users.find((user) => areUserIdsEqual(user.id, logItem.userId));
-
-      return {
-        id: logItem.id,
-        action: logItem.action,
-        actorName: actor?.fullName ?? "Hệ thống",
-        description: logItem.description,
-        createdAt: logItem.createdAt,
-      };
-    });
-}
-
-// Hàm này tổng hợp classroom cho admin để biết lớp nào đông thành viên và có nhiều bài thi hơn.
-function buildAdminClassroomOverview(database) {
-  return database.classrooms
-    .map((classroom) => {
-      const memberCount = getActiveStudentCount(database, classroom.id) + 1;
-      const examCount = database.exams.filter((exam) => exam.classroomId === classroom.id).length;
-      const assignmentCount = database.assignments.filter(
-        (assignment) => assignment.classroomId === classroom.id,
-      ).length;
-
-      return {
-        id: classroom.id,
-        name: classroom.name,
-        memberCount,
-        examCount,
-        assignmentCount,
-      };
-    })
-    .sort((firstClassroom, secondClassroom) => secondClassroom.memberCount - firstClassroom.memberCount);
-}
-
-// Hàm này gom phân bố role để admin dashboard có dữ liệu dạng biểu đồ thanh.
-function buildRoleDistribution(database) {
-  const roleLabels = [
-    { role: "Admin", label: "Quản trị viên" },
-    { role: "Teacher", label: "Giảng viên" },
-    { role: "Student", label: "Sinh viên" },
-  ];
-
-  return roleLabels.map((item) => {
-    const count = database.users.filter((user) => user.role === item.role).length;
-    return {
-      label: item.label,
-      value: count,
-      percentage: clampPercentage((count / Math.max(database.users.length, 1)) * 100),
-    };
-  });
 }
 
 // Hàm này tổng hợp cheating log theo loại để teacher/admin nhìn nhanh nhóm hành vi nổi bật.
@@ -156,159 +85,178 @@ function buildCheatingTypeBreakdown(database, examIds = null) {
     .sort((firstItem, secondItem) => secondItem.value - firstItem.value);
 }
 
-// Hàm này dựng dữ liệu dashboard cho admin từ toàn bộ mock database hiện có.
-function buildAdminDashboardData(database) {
-  const studentCount = database.users.filter((user) => user.role === "Student").length;
-  const teacherCount = database.users.filter((user) => user.role === "Teacher").length;
-  const totalSuspicionPoints = database.examAttempts.reduce(
-    (sumValue, attempt) => sumValue + (attempt.suspicionScore ?? 0),
-    0,
-  );
+function buildAdminHighRiskAttempts(database) {
+  const logCountByAttemptId = database.cheatingLogs.reduce((accumulator, logItem) => {
+    accumulator[logItem.examAttemptId] = (accumulator[logItem.examAttemptId] ?? 0) + 1;
+    return accumulator;
+  }, {});
 
-  return {
-    summary: {
-      totalUsers: database.users.length,
-      totalStudents: studentCount,
-      totalTeachers: teacherCount,
-      totalClassrooms: database.classrooms.length,
-      totalExams: database.exams.length,
-      totalAttempts: database.examAttempts.length,
-      totalSuspicionPoints,
-    },
-    roleDistribution: buildRoleDistribution(database),
-    classroomOverview: buildAdminClassroomOverview(database),
-    recentActivities: buildRecentActivities(database),
-    cheatingTypes: buildCheatingTypeBreakdown(database),
-  };
+  return database.examAttempts
+    .filter((attempt) => Number(attempt.suspicionScore) > 0)
+    .map((attempt) => {
+      const exam = database.exams.find((examItem) => examItem.id === attempt.examId);
+      const student = database.users.find((user) => areUserIdsEqual(user.id, attempt.studentId));
+
+      return {
+        id: attempt.id,
+        studentName: student?.fullName ?? attempt.studentName ?? "Sinh viên chưa xác định",
+        examTitle: exam?.title ?? "Bài kiểm tra chưa xác định",
+        classroomName: exam ? getClassroomNameById(database, exam.classroomId) : "Lớp học chưa xác định",
+        suspicionScore: Number(attempt.suspicionScore) || 0,
+        logCount: logCountByAttemptId[attempt.id] ?? 0,
+        submittedAt: attempt.submittedAt ?? attempt.startedAt ?? null,
+        status: attempt.status ?? "--",
+      };
+    })
+    .sort((firstAttempt, secondAttempt) => {
+      const suspicionDelta = secondAttempt.suspicionScore - firstAttempt.suspicionScore;
+
+      if (suspicionDelta !== 0) {
+        return suspicionDelta;
+      }
+
+      return new Date(secondAttempt.submittedAt || 0) - new Date(firstAttempt.submittedAt || 0);
+    });
 }
 
-// Hàm này tính tỷ lệ nộp bài trung bình của teacher dựa trên assignment và số sinh viên mỗi lớp.
-function calculateTeacherSubmissionRate(database, teacherAssignments) {
-  if (teacherAssignments.length === 0) {
-    return 0;
-  }
+function buildAdminRecentIncidents(database) {
+  return database.cheatingLogs
+    .slice()
+    .sort((firstLog, secondLog) => new Date(secondLog.occurredAt || 0) - new Date(firstLog.occurredAt || 0))
+    .slice(0, 10)
+    .map((logItem) => {
+      const attempt = database.examAttempts.find((attemptItem) => attemptItem.id === logItem.examAttemptId);
+      const exam = attempt ? database.exams.find((examItem) => examItem.id === attempt.examId) : null;
+      const student = attempt
+        ? database.users.find((user) => areUserIdsEqual(user.id, attempt.studentId))
+        : null;
 
-  const assignmentRates = teacherAssignments.map((assignment) => {
-    const studentCount = getActiveStudentCount(database, assignment.classroomId);
-    const submissionCount = database.submissions.filter(
-      (submission) => submission.assignmentId === assignment.id,
-    ).length;
+      return {
+        id: logItem.id,
+        type: logItem.type,
+        studentName: student?.fullName ?? attempt?.studentName ?? "Sinh viên chưa xác định",
+        examTitle: exam?.title ?? "Bài kiểm tra chưa xác định",
+        classroomName: exam ? getClassroomNameById(database, exam.classroomId) : "Lớp học chưa xác định",
+        suspicionPoint: Number(logItem.suspicionPoint) || 0,
+        occurredAt: logItem.occurredAt ?? null,
+      };
+    });
+}
 
-    if (studentCount === 0) {
-      return 0;
+function buildAdminExamRiskRanking(database) {
+  return database.exams
+    .map((exam) => {
+      const examAttempts = database.examAttempts.filter((attempt) => attempt.examId === exam.id);
+      const attemptIds = new Set(examAttempts.map((attempt) => attempt.id));
+      const examLogs = database.cheatingLogs.filter((logItem) => attemptIds.has(logItem.examAttemptId));
+      const totalSuspicion = examAttempts.reduce(
+        (sumValue, attempt) => sumValue + (Number(attempt.suspicionScore) || 0),
+        0,
+      );
+      const flaggedAttempts = examAttempts.filter((attempt) => Number(attempt.suspicionScore) >= 10).length;
+
+      return {
+        id: exam.id,
+        title: exam.title,
+        classroomName: getClassroomNameById(database, exam.classroomId),
+        totalAttempts: examAttempts.length,
+        flaggedAttempts,
+        totalLogs: examLogs.length,
+        totalSuspicion,
+      };
+    })
+    .filter((exam) => exam.totalAttempts > 0 || exam.totalLogs > 0 || exam.totalSuspicion > 0)
+    .sort((firstExam, secondExam) => {
+      const suspicionDelta = secondExam.totalSuspicion - firstExam.totalSuspicion;
+
+      if (suspicionDelta !== 0) {
+        return suspicionDelta;
+      }
+
+      return secondExam.totalLogs - firstExam.totalLogs;
+    });
+}
+
+function buildAdminStudentRiskRanking(database) {
+  const logsByAttemptId = database.cheatingLogs.reduce((accumulator, logItem) => {
+    const previousLogs = accumulator[logItem.examAttemptId] ?? [];
+
+    previousLogs.push(logItem);
+    accumulator[logItem.examAttemptId] = previousLogs;
+    return accumulator;
+  }, {});
+  const groupedStudents = database.examAttempts.reduce((accumulator, attempt) => {
+    if (Number(attempt.suspicionScore) <= 0) {
+      return accumulator;
     }
 
-    return (submissionCount / studentCount) * 100;
-  });
+    const studentId = String(attempt.studentId || "");
 
-  return clampPercentage(calculateAverage(assignmentRates));
-}
+    if (!studentId) {
+      return accumulator;
+    }
 
-// Hàm này gom danh sách sinh viên rủi ro cao theo suspicion score để teacher xử lý nhanh.
-function buildHighRiskStudents(database, teacherExamIds) {
-  const riskyAttempts = database.examAttempts.filter(
-    (attempt) => teacherExamIds.includes(attempt.examId) && (attempt.suspicionScore ?? 0) > 0,
-  );
-
-  const groupedStudents = riskyAttempts.reduce((accumulator, attempt) => {
-    const previousValue = accumulator[attempt.studentId] ?? {
-      studentId: attempt.studentId,
+    const exam = database.exams.find((examItem) => examItem.id === attempt.examId);
+    const previousValue = accumulator[studentId] ?? {
+      id: studentId,
+      studentName: attempt.studentName ?? "",
+      email: "--",
       totalSuspicion: 0,
+      logCount: 0,
       attemptCount: 0,
-      latestExamId: attempt.examId,
+      classroomNames: new Set(),
     };
 
-    previousValue.totalSuspicion += attempt.suspicionScore ?? 0;
+    previousValue.totalSuspicion += Number(attempt.suspicionScore) || 0;
+    previousValue.logCount += (logsByAttemptId[attempt.id] ?? []).length;
     previousValue.attemptCount += 1;
-    previousValue.latestExamId = attempt.examId;
-    accumulator[attempt.studentId] = previousValue;
+
+    if (exam) {
+      previousValue.classroomNames.add(getClassroomNameById(database, exam.classroomId));
+    }
+
+    accumulator[studentId] = previousValue;
     return accumulator;
   }, {});
 
   return Object.values(groupedStudents)
     .map((studentRiskItem) => {
-      const student = database.users.find((user) => areUserIdsEqual(user.id, studentRiskItem.studentId));
+      const student = database.users.find((user) => areUserIdsEqual(user.id, studentRiskItem.id));
 
       return {
-        id: studentRiskItem.studentId,
-        studentName: student?.fullName ?? "Sinh viên chưa xác định",
-        email: student?.email ?? "--",
+        id: studentRiskItem.id,
+        studentName: student?.fullName ?? studentRiskItem.studentName ?? "Sinh viên chưa xác định",
+        email: student?.email ?? studentRiskItem.email,
         totalSuspicion: studentRiskItem.totalSuspicion,
+        logCount: studentRiskItem.logCount,
         attemptCount: studentRiskItem.attemptCount,
-        latestExamTitle: getExamTitleById(database, studentRiskItem.latestExamId),
+        classroomNames: [...studentRiskItem.classroomNames],
       };
     })
-    .sort((firstItem, secondItem) => secondItem.totalSuspicion - firstItem.totalSuspicion)
-    .slice(0, 5);
+    .sort((firstStudent, secondStudent) => secondStudent.totalSuspicion - firstStudent.totalSuspicion);
 }
 
-// Hàm này dựng hiệu suất theo từng classroom để teacher dashboard nhìn được lớp nào đang chậm tiến độ.
-function buildTeacherClassroomPerformance(database, managedClassrooms) {
-  return managedClassrooms.map((classroom) => {
-    const classroomAssignments = database.assignments.filter(
-      (assignment) => assignment.classroomId === classroom.id,
-    );
-    const classroomExams = database.exams.filter((exam) => exam.classroomId === classroom.id);
-    const classroomAttempts = database.examAttempts.filter((attempt) =>
-      classroomExams.some((exam) => exam.id === attempt.examId),
-    );
-    const classroomScores = classroomAttempts
-      .map((attempt) => attempt.score)
-      .filter((scoreValue) => typeof scoreValue === "number");
-    const memberCount = getActiveStudentCount(database, classroom.id);
-    const expectedSubmissionCount = classroomAssignments.length * Math.max(memberCount, 1);
-    const realSubmissionCount = database.submissions.filter((submission) =>
-      classroomAssignments.some((assignment) => assignment.id === submission.assignmentId),
-    ).length;
+function buildAdminMonitoringData(database) {
+  const highRiskAttempts = buildAdminHighRiskAttempts(database);
+  const totalLogs = database.cheatingLogs.length;
+  const flaggedAttempts = database.examAttempts.filter((attempt) => Number(attempt.suspicionScore) >= 10).length;
+  const totalSuspicionPoints = database.examAttempts.reduce(
+    (sumValue, attempt) => sumValue + (Number(attempt.suspicionScore) || 0),
+    0,
+  );
 
-    return {
-      id: classroom.id,
-      name: classroom.name,
-      studentCount: memberCount,
-      assignmentCount: classroomAssignments.length,
-      averageScore: calculateAverage(classroomScores),
-      submissionRate:
-        expectedSubmissionCount === 0
-          ? 0
-          : clampPercentage((realSubmissionCount / expectedSubmissionCount) * 100),
-      riskCount: classroomAttempts.filter((attempt) => (attempt.suspicionScore ?? 0) >= 10).length,
-    };
-  });
-}
-
-// Hàm này gom hoạt động 7 ngày gần nhất để chart đường nhìn được nhịp nộp bài và cảnh báo bất thường.
-function buildTeacherActivityTrend(database, teacherExamIds) {
-  const relevantAttempts = database.examAttempts.filter((attempt) => teacherExamIds.includes(attempt.examId));
-  const relevantAttemptIds = new Set(relevantAttempts.map((attempt) => attempt.id));
-  const attemptsByDay = relevantAttempts.reduce((accumulator, attempt) => {
-    const dayKey = buildLocalDateKey(attempt.submittedAt ?? attempt.startedAt ?? new Date());
-    accumulator[dayKey] = (accumulator[dayKey] ?? 0) + 1;
-    return accumulator;
-  }, {});
-  const alertsByDay = database.cheatingLogs
-    .filter((logItem) => relevantAttemptIds.has(logItem.examAttemptId))
-    .reduce((accumulator, logItem) => {
-      const dayKey = buildLocalDateKey(logItem.occurredAt ?? new Date());
-      accumulator[dayKey] = (accumulator[dayKey] ?? 0) + 1;
-      return accumulator;
-    }, {});
-  const today = new Date();
-
-  today.setHours(0, 0, 0, 0);
-
-  return Array.from({ length: 7 }, (_, index) => {
-    const currentDate = new Date(today);
-
-    currentDate.setDate(today.getDate() - (6 - index));
-
-    const dayKey = buildLocalDateKey(currentDate);
-
-    return {
-      label: formatDayMonthLabel(currentDate),
-      attemptCount: attemptsByDay[dayKey] ?? 0,
-      alertCount: alertsByDay[dayKey] ?? 0,
-    };
-  });
+  return {
+    summary: {
+      totalLogs,
+      flaggedAttempts,
+      highRiskAttempts: highRiskAttempts.filter((attempt) => attempt.suspicionScore >= 10).length,
+      totalSuspicionPoints,
+    },
+    cheatingTypes: buildCheatingTypeBreakdown(database),
+    examRiskRanking: buildAdminExamRiskRanking(database),
+    studentRiskRanking: buildAdminStudentRiskRanking(database),
+    recentIncidents: buildAdminRecentIncidents(database),
+  };
 }
 
 // Hàm này phân nhóm đề thi theo trạng thái để donut chart cho teacher đọc nhanh ngay đầu dashboard.
@@ -409,22 +357,6 @@ function buildTeacherActionItems(teacherExams, classroomPerformance, highRiskStu
   }
 
   return actionItems.slice(0, 4);
-}
-
-// Hàm này dựng danh sách lịch thi sắp tới của giảng viên để nhìn nhanh công việc gần hạn.
-function buildTeacherUpcomingExams(database, teacherExams) {
-  return teacherExams
-    .filter((exam) => new Date(exam.startTime).getTime() > Date.now())
-    .sort((firstExam, secondExam) => new Date(firstExam.startTime) - new Date(secondExam.startTime))
-    .slice(0, 5)
-    .map((exam) => ({
-      id: exam.id,
-      title: exam.title,
-      classroomName: getClassroomNameById(database, exam.classroomId),
-      startTime: exam.startTime,
-      durationMinutes: exam.durationMinutes,
-      enableAntiCheat: exam.enableAntiCheat,
-    }));
 }
 
 function getMapValuesAsArray(itemsByKey) {
@@ -738,47 +670,211 @@ async function buildTeacherDashboardDataFromRealApis() {
   };
 }
 
-// Hàm này dựng dashboard cho teacher bằng cách lọc các bảng thuộc quyền của giảng viên hiện tại.
-function buildTeacherDashboardData(database, currentUser) {
-  const managedClassrooms = database.classrooms.filter(
-    (classroom) => areUserIdsEqual(classroom.teacherId, currentUser.id),
-  );
-  const classroomIds = managedClassrooms.map((classroom) => classroom.id);
-  const teacherAssignments = database.assignments.filter(
-    (assignment) => areUserIdsEqual(assignment.teacherId, currentUser.id),
-  );
-  const teacherExams = database.exams.filter((exam) => areUserIdsEqual(exam.teacherId, currentUser.id));
-  const teacherExamIds = teacherExams.map((exam) => exam.id);
-  const teacherAttempts = database.examAttempts.filter((attempt) => teacherExamIds.includes(attempt.examId));
-  const studentIds = [
-    ...new Set(
-      database.classroomMembers
-        .filter((member) => classroomIds.includes(member.classroomId) && member.status === "Active")
-        .map((member) => member.studentId),
-    ),
+function buildAdminRoleDistributionFromReal(users) {
+  const roleLabels = [
+    { role: "Admin", label: "Quản trị viên" },
+    { role: "Teacher", label: "Giảng viên" },
+    { role: "Student", label: "Sinh viên" },
   ];
-  const attemptScores = teacherAttempts
-    .map((attempt) => attempt.score)
-    .filter((scoreValue) => typeof scoreValue === "number");
-  const classroomPerformance = buildTeacherClassroomPerformance(database, managedClassrooms);
-  const highRiskStudents = buildHighRiskStudents(database, teacherExamIds);
+
+  return roleLabels.map((item) => {
+    const count = users.filter((user) => user.role === item.role).length;
+
+    return {
+      label: item.label,
+      value: count,
+      percentage: clampPercentage((count / Math.max(users.length, 1)) * 100),
+    };
+  });
+}
+
+function buildAdminExamStatusBreakdownFromReal(exams) {
+  const groupedStatuses = exams.reduce((accumulator, exam) => {
+    const statusLabel = buildExamStatusLabel(exam);
+
+    accumulator[statusLabel] = (accumulator[statusLabel] ?? 0) + 1;
+    return accumulator;
+  }, {});
+  const totalExamCount = Math.max(exams.length, 1);
+
+  return Object.entries(groupedStatuses)
+    .map(([label, count]) => ({
+      label,
+      value: count,
+      percentage: clampPercentage((count / totalExamCount) * 100),
+    }))
+    .sort((firstItem, secondItem) => secondItem.value - firstItem.value);
+}
+
+function buildAdminClassroomOverviewFromReal(classrooms, exams) {
+  const examCountByClassroom = exams.reduce((accumulator, exam) => {
+    const classroomId = Number(exam.classroomId) || 0;
+
+    accumulator[classroomId] = (accumulator[classroomId] ?? 0) + 1;
+    return accumulator;
+  }, {});
+
+  return classrooms
+    .map((classroom) => ({
+      id: classroom.id,
+      name: classroom.name,
+      memberCount: Number(classroom.memberCount) || 0,
+      examCount: examCountByClassroom[Number(classroom.id)] ?? 0,
+    }))
+    .sort((firstClassroom, secondClassroom) => {
+      const memberDelta = secondClassroom.memberCount - firstClassroom.memberCount;
+
+      if (memberDelta !== 0) {
+        return memberDelta;
+      }
+
+      return secondClassroom.examCount - firstClassroom.examCount;
+    });
+}
+
+function buildAdminHighRiskAttemptsFromReal(attempts, examsById, logCountByAttempt) {
+  return attempts
+    .filter((attempt) => Number(attempt.suspicionScore) > 0)
+    .map((attempt) => {
+      const exam = examsById.get(Number(attempt.examId));
+
+      return {
+        id: attempt.id,
+        studentName: attempt.studentName || "Sinh viên chưa xác định",
+        examTitle: exam?.title ?? "Bài kiểm tra chưa xác định",
+        classroomName: exam?.classroomName ?? "Lớp học chưa xác định",
+        suspicionScore: Number(attempt.suspicionScore) || 0,
+        logCount: logCountByAttempt.get(Number(attempt.id)) ?? 0,
+        submittedAt: attempt.submittedAt ?? attempt.startedAt ?? null,
+        status: attempt.status ?? "--",
+      };
+    })
+    .sort((firstAttempt, secondAttempt) => {
+      const suspicionDelta = secondAttempt.suspicionScore - firstAttempt.suspicionScore;
+
+      if (suspicionDelta !== 0) {
+        return suspicionDelta;
+      }
+
+      return new Date(secondAttempt.submittedAt || 0) - new Date(firstAttempt.submittedAt || 0);
+    });
+}
+
+function buildAdminRecentActivitiesFromReal(classrooms, exams, attempts) {
+  const classroomActivities = classrooms.map((classroom) => ({
+    id: `classroom-${classroom.id}`,
+    action: "tạo lớp học",
+    actorName: classroom.teacherName || "Giảng viên chưa xác định",
+    description: classroom.name,
+    createdAt: classroom.createdAt ?? null,
+  }));
+  const examActivities = exams.map((exam) => ({
+    id: `exam-${exam.id}`,
+    action: exam.isPublished ? "publish đề thi" : "tạo đề thi",
+    actorName: exam.teacherName || "Giảng viên chưa xác định",
+    description: `${exam.title} • ${exam.classroomName}`,
+    createdAt: exam.updatedAt ?? exam.createdAt ?? null,
+  }));
+  const attemptActivities = attempts.map((attempt) => {
+    const exam = exams.find((examItem) => Number(examItem.id) === Number(attempt.examId));
+
+    return {
+      id: `attempt-${attempt.id}`,
+      action: attempt.status === "Submitted" ? "nộp bài" : "bắt đầu làm bài",
+      actorName: attempt.studentName || "Sinh viên chưa xác định",
+      description: exam?.title ?? "Bài kiểm tra chưa xác định",
+      createdAt: attempt.submittedAt ?? attempt.startedAt ?? null,
+    };
+  });
+
+  return [...classroomActivities, ...examActivities, ...attemptActivities]
+    .sort((firstActivity, secondActivity) => {
+      return new Date(secondActivity.createdAt || 0) - new Date(firstActivity.createdAt || 0);
+    })
+    .slice(0, 6);
+}
+
+function buildAdminCheatingTypeBreakdownFromReal(logs) {
+  if (logs.length === 0) {
+    return [];
+  }
+
+  const groupedLogs = logs.reduce((accumulator, logItem) => {
+    accumulator[logItem.type] = (accumulator[logItem.type] ?? 0) + 1;
+    return accumulator;
+  }, {});
+  const totalLogs = logs.length;
+
+  return Object.entries(groupedLogs)
+    .map(([label, count]) => ({
+      label,
+      value: count,
+      percentage: clampPercentage((count / totalLogs) * 100),
+    }))
+    .sort((firstItem, secondItem) => secondItem.value - firstItem.value);
+}
+
+async function buildAdminDashboardDataFromRealApis() {
+  const [userResponse, classroomResponse, examResponse] = await Promise.all([
+    userApi.getAll(),
+    classroomApi.getAll(),
+    examApi.getAll(),
+  ]);
+  const users = Array.isArray(userResponse.data) ? userResponse.data : [];
+  const classrooms = Array.isArray(classroomResponse.data) ? classroomResponse.data : [];
+  const exams = Array.isArray(examResponse.data) ? examResponse.data : [];
+  const attemptEntries = await Promise.all(
+    exams.map(async (exam) => {
+      try {
+        const response = await examAttemptApi.getByExam(exam.id);
+        return [exam.id, Array.isArray(response.data) ? response.data : []];
+      } catch {
+        return [exam.id, []];
+      }
+    }),
+  );
+  const allAttempts = attemptEntries.flatMap(([, attempts]) => attempts);
+  const riskyAttempts = allAttempts.filter((attempt) => Number(attempt.suspicionScore) > 0);
+  const antiCheatLogEntries = await Promise.all(
+    riskyAttempts.map(async (attempt) => {
+      try {
+        const response = await antiCheatApi.getLogsByAttempt(attempt.id);
+        return [attempt.id, Array.isArray(response.data) ? response.data : []];
+      } catch {
+        return [attempt.id, []];
+      }
+    }),
+  );
+  const allAntiCheatLogs = antiCheatLogEntries.flatMap(([, logs]) => logs);
+  const logCountByAttempt = new Map(
+    antiCheatLogEntries.map(([attemptId, logs]) => [Number(attemptId), logs.length]),
+  );
+  const examsById = new Map(exams.map((exam) => [Number(exam.id), exam]));
+  const totalSuspicionPoints = allAttempts.reduce(
+    (sumValue, attempt) => sumValue + (Number(attempt.suspicionScore) || 0),
+    0,
+  );
 
   return {
     summary: {
-      managedClassrooms: managedClassrooms.length,
-      totalStudents: studentIds.length,
-      totalAssignments: teacherAssignments.length,
-      totalExams: teacherExams.length,
-      submissionRate: calculateTeacherSubmissionRate(database, teacherAssignments),
-      averageExamScore: calculateAverage(attemptScores),
+      totalUsers: users.length,
+      totalStudents: users.filter((user) => user.role === "Student").length,
+      totalTeachers: users.filter((user) => user.role === "Teacher").length,
+      totalClassrooms: classrooms.length,
+      totalExams: exams.length,
+      totalAttempts: allAttempts.length,
+      totalSuspicionPoints,
     },
-    activityTrend: buildTeacherActivityTrend(database, teacherExamIds),
-    examStatusBreakdown: buildTeacherExamStatusBreakdown(teacherExams),
-    classroomPerformance,
-    actionItems: buildTeacherActionItems(teacherExams, classroomPerformance, highRiskStudents),
-    highRiskStudents,
-    upcomingExams: buildTeacherUpcomingExams(database, teacherExams),
-    cheatingTypes: buildCheatingTypeBreakdown(database, teacherExamIds),
+    roleDistribution: buildAdminRoleDistributionFromReal(users),
+    examStatusBreakdown: buildAdminExamStatusBreakdownFromReal(exams),
+    classroomOverview: buildAdminClassroomOverviewFromReal(classrooms, exams),
+    highRiskAttempts: buildAdminHighRiskAttemptsFromReal(
+      allAttempts,
+      examsById,
+      logCountByAttempt,
+    ).slice(0, 5),
+    recentActivities: buildAdminRecentActivitiesFromReal(classrooms, exams, allAttempts),
+    cheatingTypes: buildAdminCheatingTypeBreakdownFromReal(allAntiCheatLogs),
   };
 }
 
@@ -920,21 +1016,38 @@ function buildStudentDashboardData(database, currentUser) {
 }
 
 // DASHBOARD ENDPOINT GROUP:
-// - getTeacherDashboard đang tổng hợp từ API thật của backend.
-// - getAdminDashboard và getStudentDashboard vẫn là mock endpoint theo role.
+// - getAdminDashboard và getTeacherDashboard đang tổng hợp từ API thật của backend.
+// - getAdminMonitoringDashboard và getStudentDashboard vẫn là mock endpoint theo role.
 export const dashboardApi = {
-  getAdminDashboard() {
+  async getAdminDashboard() {
+    const currentUser = getCurrentSessionUser();
+
+    if (!currentUser) {
+      throw createApiError("Phiên đăng nhập không hợp lệ hoặc đã hết hạn.", 401);
+    }
+
+    if (currentUser.role !== "Admin") {
+      throw createApiError("Chỉ quản trị viên mới có quyền xem dashboard này.", 403);
+    }
+
+    return buildApiResponse({
+      message: "Lấy dữ liệu dashboard admin thành công.",
+      data: await buildAdminDashboardDataFromRealApis(),
+    });
+  },
+
+  getAdminMonitoringDashboard() {
     return executeMockRequest(() => {
       const database = readMockDatabase();
       const currentUser = requireCurrentUser(database);
 
       if (currentUser.role !== "Admin") {
-        throw createApiError("Chỉ quản trị viên mới có quyền xem dashboard này.", 403);
+        throw createApiError("Chỉ quản trị viên mới có quyền xem giám sát hệ thống.", 403);
       }
 
       return buildApiResponse({
-        message: "Lấy dữ liệu dashboard admin thành công.",
-        data: buildAdminDashboardData(database),
+        message: "Lấy dữ liệu giám sát admin thành công.",
+        data: buildAdminMonitoringData(database),
       });
     });
   },

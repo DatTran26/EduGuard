@@ -1,8 +1,15 @@
 import { useState } from "react";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
+import FormErrorSummary from "../../../components/forms/FormErrorSummary";
 import TextInput from "../../../components/forms/TextInput";
 import { toAssignmentDateTimeInputValue } from "../assignmentHelpers";
+import {
+  getFirstValidationError,
+  hasValidationErrors,
+  validateNumberField,
+  validateRequiredText,
+} from "../../../utils/formValidation";
 
 function buildAssignmentFormValues(assignment = null) {
   return {
@@ -22,12 +29,30 @@ export default function AssignmentForm({
   title = "Thông tin bài tập",
 }) {
   const [formValues, setFormValues] = useState(() => buildAssignmentFormValues(assignment));
+  const [validationErrors, setValidationErrors] = useState({});
 
   function handleFieldChange(fieldName, value) {
+    setValidationErrors((previousErrors) => ({
+      ...previousErrors,
+      [fieldName]: "",
+    }));
     setFormValues((previousValues) => ({
       ...previousValues,
       [fieldName]: value,
     }));
+  }
+
+  function validateFormValues() {
+    return {
+      title: validateRequiredText(formValues.title, "Tiêu đề bài tập không được để trống."),
+      deadline: validateRequiredText(formValues.deadline, "Hạn nộp không được để trống."),
+      maxScore: validateNumberField(formValues.maxScore, {
+        requiredMessage: "Điểm tối đa không được để trống.",
+        invalidMessage: "Điểm tối đa phải là số hợp lệ.",
+        min: 1,
+        minMessage: "Điểm tối đa phải lớn hơn hoặc bằng 1.",
+      }),
+    };
   }
 
   function buildSubmitPayload() {
@@ -41,10 +66,18 @@ export default function AssignmentForm({
 
   async function handleSubmit(event) {
     event.preventDefault();
+    const nextValidationErrors = validateFormValues();
+
+    setValidationErrors(nextValidationErrors);
+
+    if (hasValidationErrors(nextValidationErrors)) {
+      return;
+    }
 
     const shouldReset = await onSubmitAssignment(buildSubmitPayload());
 
     if (shouldReset && !assignment) {
+      setValidationErrors({});
       setFormValues(buildAssignmentFormValues(null));
     }
   }
@@ -53,8 +86,11 @@ export default function AssignmentForm({
     <Card className="space-y-5">
       <h3 className="text-lg font-semibold text-primary">{title}</h3>
 
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form className="space-y-4" noValidate onSubmit={handleSubmit}>
+        <FormErrorSummary message={getFirstValidationError(validationErrors)} />
+
         <TextInput
+          error={validationErrors.title}
           id={`assignment-title-${assignment?.id ?? "create"}`}
           label="Tiêu đề bài tập"
           onChange={(event) => handleFieldChange("title", event.target.value)}
@@ -74,6 +110,7 @@ export default function AssignmentForm({
 
         <div className="grid gap-4 md:grid-cols-2">
           <TextInput
+            error={validationErrors.deadline}
             id={`assignment-deadline-${assignment?.id ?? "create"}`}
             label="Hạn nộp"
             onChange={(event) => handleFieldChange("deadline", event.target.value)}
@@ -82,6 +119,7 @@ export default function AssignmentForm({
             value={formValues.deadline}
           />
           <TextInput
+            error={validationErrors.maxScore}
             id={`assignment-max-score-${assignment?.id ?? "create"}`}
             label="Điểm tối đa"
             min="1"

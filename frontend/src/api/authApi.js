@@ -25,10 +25,10 @@ function normalizeAuthUser(user) {
     email: user?.email ?? "",
     roles,
     role: resolvePrimaryRole(roles),
-    avatarUrl: "",
-    isActive: true,
-    createdAt: null,
-    updatedAt: null,
+    avatarUrl: user?.avatarUrl ?? "",
+    isActive: typeof user?.isActive === "boolean" ? user.isActive : true,
+    createdAt: user?.createdAt ?? null,
+    updatedAt: user?.updatedAt ?? null,
   };
 }
 

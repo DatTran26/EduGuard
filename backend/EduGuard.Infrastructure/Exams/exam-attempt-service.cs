@@ -134,11 +134,16 @@ public class ExamAttemptService : IExamAttemptService
         return BuildResult(attempt, showDetails);
     }
 
-    public async Task<IReadOnlyList<ExamAttemptDto>> GetAttemptsByExamAsync(int examId, string teacherId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ExamAttemptDto>> GetAttemptsByExamAsync(
+        int examId,
+        string userId,
+        IReadOnlyList<string> roles,
+        CancellationToken ct = default)
     {
         var exam = await _examRepository.GetByIdAsync(examId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
-        if (exam.TeacherId != teacherId)
+
+        if (!roles.Contains("Admin") && exam.TeacherId != userId)
             throw new UnauthorizedAccessException("Chỉ giáo viên tạo đề mới được xem lượt thi.");
 
         var attempts = await _examRepository.GetAttemptsByExamIdAsync(examId, ct);

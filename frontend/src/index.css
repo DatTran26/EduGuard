@@ -412,6 +412,30 @@ button {
   color: var(--color-danger);
 }
 
+.eg-form-error-summary {
+  border: 1px solid color-mix(in srgb, var(--color-danger) 18%, transparent);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, rgb(254 242 242 / 98%), rgb(255 255 255 / 96%));
+  padding: 14px 16px;
+  box-shadow: 0 10px 24px rgb(220 38 38 / 6%);
+}
+
+.eg-form-error-summary-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-danger);
+}
+
+.eg-form-error-summary-message {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-primary);
+}
+
 .eg-badge {
   display: inline-flex;
   align-items: center;

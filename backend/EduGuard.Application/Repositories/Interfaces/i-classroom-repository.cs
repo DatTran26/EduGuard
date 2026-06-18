@@ -7,6 +7,7 @@ public interface IClassroomRepository
     Task<Classroom?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<Classroom?> GetByJoinCodeAsync(string joinCode, CancellationToken ct = default);
     Task<bool> JoinCodeExistsAsync(string joinCode, CancellationToken ct = default);
+    Task<List<Classroom>> GetAllAsync(CancellationToken ct = default);
     Task<List<Classroom>> GetByTeacherIdAsync(string teacherId, CancellationToken ct = default);
     Task<List<Classroom>> GetByStudentIdAsync(string studentId, CancellationToken ct = default);
     Task<ClassroomMember?> GetMemberAsync(int classroomId, string studentId, CancellationToken ct = default);

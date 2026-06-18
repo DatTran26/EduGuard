@@ -65,6 +65,13 @@ public class ClassroomService : IClassroomService
         IReadOnlyList<string> roles,
         CancellationToken ct = default)
     {
+        if (roles.Contains("Admin"))
+        {
+            return (await _classroomRepository.GetAllAsync(ct))
+                .Select(MapClassroom)
+                .ToList();
+        }
+
         var classrooms = new List<Classroom>();
 
         if (roles.Contains("Teacher"))
@@ -209,6 +216,7 @@ public class ClassroomService : IClassroomService
     public async Task<IReadOnlyList<ClassroomMemberDto>> GetMembersAsync(
         int classroomId,
         string userId,
+        IReadOnlyList<string> roles,
         CancellationToken ct = default)
     {
         var classroom = await _classroomRepository.GetByIdAsync(classroomId, ct)
@@ -217,8 +225,9 @@ public class ClassroomService : IClassroomService
         var isTeacher = classroom.TeacherId == userId;
         var membership = await _classroomRepository.GetMemberAsync(classroomId, userId, ct);
         var isActiveStudent = membership?.Status == ClassroomMemberStatus.Active;
+        var isAdmin = roles.Contains("Admin");
 
-        if (!isTeacher && !isActiveStudent)
+        if (!isAdmin && !isTeacher && !isActiveStudent)
             throw new UnauthorizedAccessException("Bạn không có quyền xem thành viên lớp này.");
 
         var members = await _classroomRepository.GetActiveMembersAsync(classroomId, ct);

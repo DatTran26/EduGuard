@@ -7,8 +7,8 @@ import RegisterPage from "../features/auth/pages/RegisterPage";
 import ClassroomDetailPage from "../features/classrooms/pages/ClassroomDetailPage";
 import ClassroomListPage from "../features/classrooms/pages/ClassroomListPage";
 import JoinClassroomPage from "../features/classrooms/pages/JoinClassroomPage";
+import AdminMonitoringPage from "../features/admin/pages/AdminMonitoringPage";
 import AdminDashboardPage from "../features/dashboard/pages/AdminDashboardPage";
-import StudentDashboardPage from "../features/dashboard/pages/StudentDashboardPage";
 import TeacherDashboardPage from "../features/dashboard/pages/TeacherDashboardPage";
 import ExamAttemptPage from "../features/exam-attempts/pages/ExamAttemptPage";
 import ExamDetailPage from "../features/exams/pages/ExamDetailPage";
@@ -72,6 +72,10 @@ export default function AppRoutes() {
               path={routeConfig.adminExamDetail}
             />
             <Route
+              element={<AdminMonitoringPage />}
+              path={routeConfig.adminMonitoring}
+            />
+            <Route
               element={<UserManagementPage />}
               path={routeConfig.adminUsers}
             />
@@ -118,7 +122,7 @@ export default function AppRoutes() {
               path={routeConfig.studentExamDetail}
             />
             <Route
-              element={<StudentDashboardPage />}
+              element={<Navigate replace to={routeConfig.studentClassrooms} />}
               path={routeConfig.studentDashboard}
             />
             <Route element={<ProfilePage />} path={routeConfig.studentProfile} />

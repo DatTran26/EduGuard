@@ -1,6 +1,8 @@
 import { useState } from "react";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
+import FormErrorSummary from "../../../components/forms/FormErrorSummary";
+import { getFirstValidationError } from "../../../utils/formValidation";
 import ExamFormBasicSection from "./exam-form-basic-section";
 import ExamFormConfigSection from "./exam-form-config-section";
 import ExamFormMonitoringSection from "./exam-form-monitoring-section";
@@ -160,7 +162,9 @@ export default function ExamForm({
     <Card className="space-y-5">
       <h3 className="text-lg font-semibold text-primary">{title}</h3>
 
-      <form className="space-y-5" onSubmit={handleSubmit}>
+      <form className="space-y-5" noValidate onSubmit={handleSubmit}>
+        <FormErrorSummary message={getFirstValidationError(validationErrors)} />
+
         <ExamFormBasicSection
           errors={validationErrors}
           formValues={formValues}

@@ -2,7 +2,6 @@ import axiosClient from "./axiosClient";
 import {
   areUserIdsEqual,
   getCurrentSessionUser,
-  hasAnyRole,
   normalizeUserId,
   requestApi,
 } from "./apiHelpers";
@@ -10,7 +9,7 @@ import {
 // INTEGRATION STATUS:
 // - File này đã nối classroom API thật của backend cho teacher/student/admin theo các endpoint hiện có.
 // - Join code được backend tự sinh khi tạo lớp; frontend chỉ hiển thị lại chứ không còn tự random ở local.
-// - Riêng member list hiện backend chỉ mở cho teacher chủ lớp hoặc student đã tham gia, nên admin chỉ xem được detail cơ bản.
+// - Admin hiện cũng đọc được member list để FE suy ra memberCount thật và xem chi tiết lớp học đồng nhất hơn.
 
 function normalizeClassroomDto(classroom, currentUser, membershipMeta = {}) {
   const normalizedMemberCount =
@@ -70,7 +69,7 @@ async function getMemberListApiResponse(classroomId) {
 }
 
 async function resolveClassroomMembershipMeta(classroomId, currentUser) {
-  if (!currentUser || hasAnyRole(currentUser, ["Admin"])) {
+  if (!currentUser) {
     return {
       memberCount: null,
       joinedAt: null,
