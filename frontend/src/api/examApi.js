@@ -1,7 +1,9 @@
 import axiosClient from "./axiosClient";
 import {
+  areUserIdsEqual,
   buildExamStatusLabel,
   getCurrentSessionUser,
+  normalizeUserId,
   normalizeQuestionType,
   requestApi,
   roundToOneDecimal,
@@ -73,17 +75,17 @@ function calculateTotalQuestionScore(questions = []) {
 
 function normalizeExamDto(exam, currentUser, classroom = null, extraData = {}) {
   const isTeacherOwner =
-    currentUser?.role === "Teacher" && Number(currentUser.id) === Number(exam?.teacherId);
+    currentUser?.role === "Teacher" && areUserIdsEqual(currentUser.id, exam?.teacherId);
   const canViewQuestionBank = currentUser?.role === "Admin" || isTeacherOwner;
 
   return {
     id: Number(exam?.id) || 0,
     classroomId: Number(exam?.classroomId) || 0,
     classroomName: classroom?.name ?? "Lớp học chưa xác định",
-    teacherId: Number(exam?.teacherId) || 0,
+    teacherId: normalizeUserId(exam?.teacherId),
     teacherName:
       classroom?.teacherName ||
-      (Number(currentUser?.id) === Number(exam?.teacherId) ? currentUser?.fullName : "") ||
+      (areUserIdsEqual(currentUser?.id, exam?.teacherId) ? currentUser?.fullName : "") ||
       "Giảng viên chưa xác định",
     title: exam?.title ?? "",
     description: exam?.description ?? "",

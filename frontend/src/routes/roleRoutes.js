@@ -1,5 +1,4 @@
 import {
-  getDashboardPathByRole,
   getProfilePathByRole,
   routeConfig,
 } from "./routeConfig";
@@ -10,6 +9,7 @@ const ROLE_NAVIGATION_ITEMS = {
     { label: "Dashboard", path: routeConfig.adminDashboard },
     { label: "Quản lí lớp học", path: routeConfig.adminClassrooms },
     { label: "Quản lí bài kiểm tra", path: routeConfig.adminExams },
+    { label: "Giám sát", path: routeConfig.adminMonitoring },
     { label: "Quản lí người dùng", path: routeConfig.adminUsers },
     { label: "Hồ sơ cá nhân", path: routeConfig.adminProfile },
   ],
@@ -22,7 +22,6 @@ const ROLE_NAVIGATION_ITEMS = {
     { label: "Lớp của tôi", path: routeConfig.studentClassrooms },
     { label: "Bài kiểm tra", path: routeConfig.studentExams },
     { label: "Tham gia lớp", path: routeConfig.studentJoinClassroom },
-    { label: "Dashboard", path: routeConfig.studentDashboard },
     { label: "Hồ sơ", path: routeConfig.studentProfile },
   ],
 };
@@ -34,7 +33,15 @@ export function getNavigationItemsByRole(role) {
 
 // Hàm này trả route mặc định sau khi user đăng nhập hoặc bị redirect do sai quyền.
 export function getDefaultPathByRole(role) {
-  return getDashboardPathByRole(role);
+  if (role === "Admin") {
+    return routeConfig.adminDashboard;
+  }
+
+  if (role === "Teacher") {
+    return routeConfig.teacherDashboard;
+  }
+
+  return routeConfig.studentClassrooms;
 }
 
 // Hàm này đổi role kỹ thuật sang nhãn tiếng Việt để đưa lên UI cho tự nhiên hơn.

@@ -1,5 +1,396 @@
 # Project Changelog
 
+## Feature: Admin real-data sync for dashboard, classrooms, and exams
+
+Date: 2026-06-18
+
+Branch/source: `devH`
+
+Description:
+
+- Sửa lệch dữ liệu ở cụm Admin khi `Dashboard`, `Quản lí lớp học` và `Quản lí bài kiểm tra` chưa khớp với database thật.
+- Mở quyền backend để Admin đọc toàn bộ lớp học, danh sách thành viên lớp, lượt làm bài thi và dữ liệu anti-cheat cần thiết cho tổng hợp quản trị.
+- Chuyển `Dashboard` admin từ nguồn mock sang tổng hợp bằng API thật hiện có, giữ nguyên layout/title-only nhưng thay toàn bộ số liệu chính bằng dữ liệu backend.
+
+Changed files:
+
+- `backend/EduGuard.Application/Repositories/Interfaces/i-classroom-repository.cs`
+- `backend/EduGuard.Infrastructure/Repositories/classroom-repository.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-classroom-service.cs`
+- `backend/EduGuard.Infrastructure/Classrooms/classroom-service.cs`
+- `backend/EduGuard.Api/Controllers/classrooms-controller.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-exam-attempt-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-attempt-service.cs`
+- `backend/EduGuard.Api/Controllers/exam-attempts-controller.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-anti-cheat-service.cs`
+- `backend/EduGuard.Infrastructure/AntiCheat/anti-cheat-service.cs`
+- `backend/EduGuard.Api/Controllers/anti-cheat-controller.cs`
+- `frontend/src/api/classroomApi.js`
+- `frontend/src/api/dashboardApi.js`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Thêm nhánh admin cho classroom backend: `/api/classrooms` giờ trả toàn bộ classroom cho Admin, và `/api/classrooms/{id}/members` cũng cho phép Admin đọc member list để FE suy ra `memberCount` thật thay vì để trống hoặc lệch số liệu.
+- Mở quyền admin cho `GET /api/exams/{id}/attempts` và các endpoint anti-cheat xem log/score/summary; phần service vẫn giữ rule cũ cho Teacher nhưng bổ sung allow-list rõ ràng cho Admin thay vì tạo endpoint song song.
+- `classroomApi` phía frontend không còn bỏ qua member fetch ở role Admin; `ClassroomDetailPage` cũng hiển thị member list thật cho admin để phần quản lí lớp nhất quán với database.
+- `dashboardApi.getAdminDashboard()` không còn đọc mock database/localStorage; thay vào đó FE tổng hợp dữ liệu thật từ `userApi`, `classroomApi`, `examApi`, `examAttemptApi`, `antiCheatApi`, nên các chỉ số người dùng/lớp học/bài kiểm tra/lượt làm nghi ngờ phản ánh trực tiếp từ backend hiện tại.
+- Không thêm backend endpoint dashboard admin riêng trong thay đổi này; mục tiêu là sửa lệch dữ liệu với mức xâm lấn thấp nhất lên UI và giữ tương thích với cấu trúc route/page đã có.
+
+Validation:
+
+- `npx eslint src/api/classroomApi.js src/api/dashboardApi.js src/features/classrooms/pages/ClassroomDetailPage.jsx` — passed.
+- `dotnet build ..\backend\EduGuard.Api\EduGuard.Api.csproj -o .\temp-backend-build-admin-real-data` — passed.
+- `npm run build -- --outDir temp-build-admin-real-data-sync` — passed.
+
+Unresolved questions:
+
+- `AdminMonitoringPage` hiện vẫn dùng nguồn tổng hợp mock riêng; thay đổi này mới đưa `Dashboard`, `Lớp học` và `Bài kiểm tra` của admin về dữ liệu thật như yêu cầu.
+- Build frontend vẫn còn warning sẵn có từ `@microsoft/signalr` PURE annotation và cảnh báo chunk lớn; thay đổi này không làm phát sinh lỗi build mới.
+
+## Feature: Modern in-app submit validation for frontend forms
+
+Date: 2026-06-18
+
+Branch/source: `devH`
+
+Description:
+
+- Loại bỏ trải nghiệm validate submit mặc định của trình duyệt trên các form chính để giao diện nhập liệu đồng nhất, hiện đại hơn và không còn popup native gây lệch style.
+- Chuyển các form đăng nhập, đăng ký, tạo/join lớp, bài tập, hồ sơ, quản lí người dùng, đề thi và câu hỏi sang cơ chế validation nội bộ với lỗi hiển thị ngay trong UI.
+- Giữ nguyên flow submit và API hiện có; thay đổi tập trung vào UX form, cách báo lỗi và tính nhất quán của trải nghiệm người dùng.
+
+Changed files:
+
+- `frontend/src/components/forms/FormErrorSummary.jsx`
+- `frontend/src/utils/formValidation.js`
+- `frontend/src/index.css`
+- `frontend/src/features/auth/pages/LoginPage.jsx`
+- `frontend/src/features/auth/pages/RegisterPage.jsx`
+- `frontend/src/features/classrooms/components/CreateClassroomForm.jsx`
+- `frontend/src/features/classrooms/components/JoinClassroomForm.jsx`
+- `frontend/src/features/assignments/components/AssignmentForm.jsx`
+- `frontend/src/features/users/components/AdminUserForm.jsx`
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `frontend/src/features/exams/components/ExamForm.jsx`
+- `frontend/src/features/exams/components/QuestionForm.jsx`
+- `frontend/src/features/exams/components/question-form-answers-section.jsx`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Tạo bộ helper validation dùng chung trong `formValidation.js` để kiểm tra text bắt buộc, email, độ dài tối thiểu, số hợp lệ và lấy lỗi đầu tiên cho banner tổng hợp.
+- Thêm `FormErrorSummary` và style đi kèm trong `index.css` để tất cả form có cùng cách hiển thị lỗi submit thay vì phụ thuộc vào tooltip/native prompt của browser.
+- Các form auth/classroom/assignment/admin user/profile đã được chuyển sang `noValidate`, clear lỗi theo field khi người dùng sửa dữ liệu và giữ lỗi hiển thị inline ở từng input.
+- Hoàn tất phần còn sót ở `ExamForm` và `QuestionForm`: thêm `noValidate`, banner lỗi tổng hợp, validate riêng cho điểm, thứ tự, nội dung câu hỏi, từng đáp án và rule chọn đáp án đúng theo loại câu hỏi.
+
+Validation:
+
+- `npx eslint src/utils/formValidation.js src/components/forms/FormErrorSummary.jsx src/features/auth/pages/LoginPage.jsx src/features/auth/pages/RegisterPage.jsx src/features/classrooms/components/CreateClassroomForm.jsx src/features/classrooms/components/JoinClassroomForm.jsx src/features/assignments/components/AssignmentForm.jsx src/features/users/components/AdminUserForm.jsx src/features/users/pages/ProfilePage.jsx src/features/exams/components/QuestionForm.jsx src/features/exams/components/question-form-answers-section.jsx src/features/exams/components/ExamForm.jsx` — passed.
+- `npm run build -- --outDir temp-build-form-validation-refresh` — passed.
+
+Unresolved questions:
+
+- Một số trang vẫn còn dùng `window.confirm` cho thao tác xoá; nếu muốn đồng bộ hoàn toàn UX popup với form mới, nên thay các confirm native này bằng modal nội bộ ở bước tiếp theo.
+- Build vẫn còn warning sẵn có từ `@microsoft/signalr` PURE annotation và cảnh báo bundle size lớn; thay đổi này không làm phát sinh lỗi build mới.
+
+## Feature: Admin user management real API and CRUD
+
+Date: 2026-06-18
+
+Branch/source: `devH`
+
+Description:
+
+- Bỏ mock data cho màn `Quản lí người dùng` của Admin và chuyển sang dữ liệu backend thật qua `GET /api/users`.
+- Bổ sung đầy đủ thao tác `Thêm`, `Sửa`, `Xóa` người dùng ngay trong màn `Người dùng` hiện có, giữ bố cục title-only theo hướng filter + danh sách + chi tiết thay vì tách page mới.
+- Backend chặn các thao tác nguy hiểm như tự xóa tài khoản, tự bỏ quyền Admin, tự khóa chính mình, đồng thời chặn xóa cứng user đã có dữ liệu liên quan để không phá vỡ quan hệ lớp học/bài thi/bài nộp.
+
+Changed files:
+
+- `backend/EduGuard.Api/Controllers/users-controller.cs`
+- `backend/EduGuard.Application/DTOs/Auth/user-dto.cs`
+- `backend/EduGuard.Application/DTOs/Users/create-user-request.cs`
+- `backend/EduGuard.Application/DTOs/Users/update-user-request.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-user-service.cs`
+- `backend/EduGuard.Application/Validators/create-user-request-validator.cs`
+- `backend/EduGuard.Application/Validators/update-user-request-validator.cs`
+- `backend/EduGuard.Infrastructure/Auth/auth-service.cs`
+- `backend/EduGuard.Infrastructure/Users/user-service.cs`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `frontend/src/api/authApi.js`
+- `frontend/src/api/userApi.js`
+- `frontend/src/hooks/useAuth.jsx`
+- `frontend/src/features/users/components/AdminUserForm.jsx`
+- `frontend/src/features/users/pages/UserManagementPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Thêm backend admin users API mới dựa trên ASP.NET Identity: `UsersController`, `IUserService`, `UserService`, DTO create/update và FluentValidation; giữ nguyên `AuthController` và flow đăng nhập hiện có.
+- Mở rộng `UserDto` để trả thêm `avatarUrl`, `isActive`, `createdAt`, `updatedAt`; `authApi` và `userApi` phía frontend normalize lại theo shape user hiện ứng dụng đang dùng.
+- `UserService` dùng `UserManager` + `RoleManager` để tạo/cập nhật role user, revoke refresh token khi email/role/trạng thái đổi, và chặn xóa cứng nếu user đã có dữ liệu liên quan trong classroom/assignment/exam/submission.
+- `UserManagementPage` giữ layout quản trị đang có, thêm `AdminUserForm`, action `Thêm/Sửa/Xóa`, reload dữ liệu sau mutation và không đụng luồng profile hiện còn mock.
+
+Validation:
+
+- `npx eslint src/api/userApi.js src/api/authApi.js src/hooks/useAuth.jsx src/features/users/components/AdminUserForm.jsx src/features/users/pages/UserManagementPage.jsx` — passed.
+- `npm run build -- --outDir temp-build-admin-users` — passed.
+- `dotnet build ..\backend\EduGuard.Api\EduGuard.Api.csproj -o .\temp-backend-build-admin-users` — passed.
+
+Unresolved questions:
+
+- `npm run lint` toàn frontend hiện vẫn có thể fail vì script đang quét cả các thư mục artifact như `temp-build-ui/**`, làm formatter ESLint văng `RangeError: Invalid string length`; thay đổi này được verify bằng targeted eslint cho đúng các file đã sửa.
+- `npm run build` mặc định ra `dist` có thể gặp `EPERM` nếu file build cũ đang bị process khác giữ; build ra thư mục tạm riêng vẫn pass và không phát sinh lỗi từ code mới.
+
+## Feature: Admin MVP navigation, monitoring center, and title-only management UI
+
+Date: 2026-06-18
+
+Branch/source: `devH`
+
+Description:
+
+- Hoàn thiện cụm tính năng `Admin` theo sitemap MVP đã chốt: `Dashboard`, `Quản lí lớp học`, `Quản lí bài kiểm tra`, `Giám sát`, `Quản lí người dùng`, `Hồ sơ cá nhân`.
+- Thêm trang `Giám sát` riêng cho Admin để theo dõi anti-cheat thay vì chỉ nhìn số liệu trong dashboard: có bộ lọc theo từ khóa, mức độ, loại vi phạm; có danh sách đề thi rủi ro, sinh viên cần chú ý và sự kiện gần đây.
+- Nâng giao diện admin theo hướng `title-only`: các block chỉ còn tiêu đề, bỏ mô tả thừa ở phần header admin và các màn shared như `Lớp học` / `Bài kiểm tra` khi truy cập bằng role Admin.
+- Làm lại trang `Người dùng` thành bố cục quản trị rõ hơn với bộ lọc, danh sách chọn nhanh và panel chi tiết người dùng.
+
+Changed files:
+
+- `frontend/src/routes/routeConfig.js`
+- `frontend/src/routes/roleRoutes.js`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/api/dashboardApi.js`
+- `frontend/src/features/admin/admin-monitoring-helpers.js`
+- `frontend/src/features/admin/pages/AdminMonitoringPage.jsx`
+- `frontend/src/features/dashboard/pages/AdminDashboardPage.jsx`
+- `frontend/src/features/users/pages/UserManagementPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Bổ sung route `routeConfig.adminMonitoring`, thêm menu `Giám sát` cho Admin, gắn breadcrumb label và icon riêng trong `TopBar` / `Sidebar`, đồng thời mount route mới trong `AppRoutes`.
+- Mở rộng `dashboardApi` cho Admin với dữ liệu trạng thái đề thi, lượt làm rủi ro cao, breakdown vi phạm, bảng xếp hạng đề thi rủi ro, bảng xếp hạng sinh viên cần chú ý và sự kiện anti-cheat gần đây.
+- Tạo `AdminMonitoringPage` với bộ lọc client-side theo từ khóa, severity và loại vi phạm; dữ liệu hiển thị ở dạng summary cards, metric bar và danh sách thao tác nhanh, không dùng phần mô tả phụ.
+- Dựng lại `AdminDashboardPage` để hiển thị các khối chính xác hơn cho vận hành: vai trò, trạng thái bài kiểm tra, lớp học, lượt làm cần chú ý, hoạt động gần đây và hành vi anti-cheat.
+- Dựng lại `UserManagementPage` với filter bar, danh sách chọn user, panel chi tiết và lớp học do giảng viên quản lý; không thêm text mô tả ở đầu khối.
+- Chỉnh `ClassroomListPage` và `ExamListPage` để role Admin chỉ hiển thị header/title và empty state ngắn gọn, không còn eyebrow hoặc mô tả phụ.
+
+Validation:
+
+- `npx eslint src/routes/routeConfig.js src/routes/roleRoutes.js src/routes/AppRoutes.jsx src/components/layout/TopBar.jsx src/components/layout/Sidebar.jsx src/api/dashboardApi.js src/features/admin/admin-monitoring-helpers.js src/features/admin/pages/AdminMonitoringPage.jsx src/features/dashboard/pages/AdminDashboardPage.jsx src/features/users/pages/UserManagementPage.jsx src/features/classrooms/pages/ClassroomListPage.jsx src/features/exams/pages/ExamListPage.jsx` — passed.
+- `npm run build -- --outDir temp-build-admin-mvp-final` — passed.
+
+Unresolved questions:
+
+- Dữ liệu `Giám sát` của Admin hiện đang tổng hợp từ nguồn mock admin dashboard vì backend chưa có bộ endpoint admin anti-cheat riêng; khi BE mở API phù hợp, nên thay dần phần tổng hợp FE này bằng nguồn thật.
+- Build vẫn còn warning sẵn có từ `@microsoft/signalr` PURE annotation và cảnh báo chunk lớn của Rolldown; thay đổi này không làm phát sinh lỗi build mới.
+
+## Feature: Student profile UX refresh and dashboard removal
+
+Date: 2026-06-18
+
+Branch/source: `devH`
+
+Description:
+
+- Gỡ `Dashboard` khỏi điều hướng Student vì không còn cần thiết trong flow hiện tại; Student vào app sẽ đi thẳng tới `Lớp của tôi` và route cũ `/student/dashboard` được giữ dưới dạng redirect để không làm hỏng bookmark cũ.
+- Làm mới hoàn toàn trang `Hồ sơ` của Student theo hướng nổi bật hơn và dễ thao tác hơn: đầu trang có hero nhận diện rõ ngữ cảnh, các khối chỉ giữ title, khu avatar tách riêng, form cập nhật gọn hơn và có trạng thái `Đã đồng bộ` / `Chưa lưu` cùng nút `Hoàn tác`.
+- Sửa breadcrumb `Trang chủ` cho Student để không còn trỏ về dashboard đã bị gỡ khỏi UI.
+
+Changed files:
+
+- `frontend/src/routes/roleRoutes.js`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- `getNavigationItemsByRole` không còn trả menu `Dashboard` cho Student và `getDefaultPathByRole` nay trả `routeConfig.studentClassrooms` để login/root redirect đưa Student về danh sách lớp thay vì dashboard.
+- `AppRoutes` không còn mount `StudentDashboardPage` cho route công khai của Student; `routeConfig.studentDashboard` giờ render `Navigate` sang `studentClassrooms` để giữ tương thích với link cũ.
+- `TopBar.buildBreadcrumbTrail` chuyển `Trang chủ` của Student sang `routeConfig.studentClassrooms` thay vì hard-code `/${rolePrefix}/dashboard`.
+- `ProfilePage` được dựng lại với hero profile nổi bật, card thông tin theo bố cục mới, dirty-state detection cho form, nút `Hoàn tác`, khu avatar độc lập và submit payload đã được normalize trước khi lưu.
+
+Validation:
+
+- `npx eslint src/routes/roleRoutes.js src/routes/AppRoutes.jsx src/components/layout/TopBar.jsx src/features/users/pages/ProfilePage.jsx` — passed.
+- `npm run build -- --outDir temp-build-student-profile-refresh` — passed.
+
+Unresolved questions:
+
+- Build vẫn còn warning sẵn có từ `@microsoft/signalr` PURE annotation và cảnh báo chunk lớn của Rolldown; thay đổi này không làm phát sinh lỗi build mới.
+
+## Feature: Student classroom navigation active-state fix
+
+Date: 2026-06-18
+
+Branch/source: `devH`
+
+Description:
+
+- Bug fix: sửa lỗi ở role Student khi mở `Tham gia lớp` thì sidebar cũng tô sáng `Lớp của tôi`, gây cảm giác như người dùng đang đứng ở hai mục điều hướng cùng lúc.
+- Giữ nguyên routing và flow tham gia lớp hiện tại; thay đổi chỉ giới hạn ở logic xác định menu active nên không ảnh hưởng render trang hoặc API join classroom.
+
+Changed files:
+
+- `frontend/src/components/layout/Sidebar.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- `getNavigationItemIsActive` trước đó dùng `matchPath(routeConfig.studentClassroomDetail, pathname)` cho mục `Lớp của tôi`; pattern `/student/classrooms/:classroomId` match luôn `/student/classrooms/join`, nên cả `Lớp của tôi` và `Tham gia lớp` cùng được đánh dấu active.
+- Thêm điều kiện loại trừ rõ ràng `routeConfig.studentJoinClassroom` trước khi match route detail của classroom để trang `/student/classrooms/join` chỉ kích hoạt đúng menu `Tham gia lớp`.
+
+Validation:
+
+- `npx eslint src/components/layout/Sidebar.jsx` — passed.
+- `npm run build -- --outDir temp-build-student-join-active-fix` — passed.
+- `npm run lint` — failed do script hiện quét cả các thư mục build tạm như `frontend/temp-build-ui/**`; ESLint formatter đụng `RangeError: Invalid string length` trên artifact sinh sẵn này, không phải do thay đổi ở `Sidebar.jsx`.
+
+Unresolved questions:
+
+- Nên loại trừ hoặc dọn các thư mục `temp-build-*` khỏi phạm vi lint để `npm run lint` tiếp tục là bước verify toàn dự án đáng tin cậy.
+
+## Feature: Auth UI refinement with centered two-column login experience
+
+Date: 2026-06-17
+
+Branch/source: `devH`
+
+Description:
+
+- Thiết kế lại giao diện đăng nhập theo layout 2 cột cân giữa màn hình: brand panel navy gradient bên trái và login card trắng bên phải, không còn tình trạng form kéo full width như trước.
+- Tăng khoảng trắng, giới hạn chiều rộng tổng thể, làm lại hierarchy chữ, input, checkbox row và nút CTA để khu vực xác thực nhìn rõ ràng và chuyên nghiệp hơn trên desktop lẫn mobile.
+- Giữ nguyên toàn bộ logic đăng nhập hiện tại; chỉ thay đổi UI/CSS/layout và làm mới skin của toast để popup lỗi/thông báo đồng bộ hơn với màn xác thực.
+
+Changed files:
+
+- `frontend/src/features/auth/components/AuthLayout.jsx`
+- `frontend/src/features/auth/pages/LoginPage.jsx`
+- `frontend/src/index.css`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Rebuilt `AuthLayout` into a true two-column auth shell with a centered brand panel, a fixed-width form card, and responsive breakpoints that collapse cleanly to one column on smaller screens.
+- Replaced the previous auth styling with dedicated `eg-auth-*` CSS for spacing, card radius, panel shadows, input height/focus state, CTA sizing, checkbox row alignment, and mobile behavior.
+- Shortened the login copy to keep the card visually clean and moved the inline credential error into a dedicated auth alert style without touching submit/auth state handling.
+- Tuned global toast presentation so danger/info/success toasts match the requested lighter card treatment and close button layout.
+
+Validation:
+
+- `npm run lint` — passed.
+- `npm run build -- --outDir temp-build-auth-ui` — passed.
+
+Unresolved questions:
+
+- Vite/Rolldown still emits the existing non-blocking `@microsoft/signalr` PURE annotation warnings and large chunk warning during build; this change does not alter that behavior.
+
+## Feature: Frontend dependency baseline for stable devH/release merges
+
+Date: 2026-06-17
+
+Branch/source: `devH`
+
+Description:
+
+- Ổn định bộ dependency frontend giữa `devH` và `release` bằng cách khóa exact version cho React, React Router, Vite, Tailwind và các package trực tiếp khác thay vì tiếp tục để semver range trôi theo `^`.
+- Bổ sung metadata/cấu hình npm để những lần `npm install` sau không tự ghi thêm range mới vào manifest, từ đó giảm diff `package-lock.json` vô nghĩa khi sync hoặc merge nhánh.
+- Đồng bộ lại lockfile theo bộ version đã chốt và kiểm tra lại build frontend trên codebase hiện tại để tránh tái phát lỗi thư viện Vite do drift dependency sau merge.
+
+Changed files:
+
+- `frontend/.npmrc`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Thêm `packageManager: npm@11.6.2` và `.npmrc` với `save-exact=true` để chuẩn hóa công cụ cài package ở frontend.
+- Đổi toàn bộ direct dependency/devDependency từ semver range sang exact version khớp với bộ đã verify: React `19.2.7`, React Router `7.18.0`, Vite `8.0.16`, `@tailwindcss/vite`/`tailwindcss` `4.3.1`, `axios` `1.18.0`, `lucide-react` `1.20.0`, cùng các package lint/type liên quan.
+- Re-sync `frontend/package-lock.json` để metadata ở root khớp manifest mới và bỏ các entry stale không còn nên được track sau những lần cài đặt trôi version trước đó.
+- Giữ nguyên `vite.config.js`; sau rà soát, khác biệt gây merge noise nằm ở dependency resolution chứ không phải cấu hình proxy/alias của Vite.
+
+Validation:
+
+- `npm install --package-lock-only` — passed.
+- `npm run build -- --outDir temp-build-verify-pinned` — passed.
+- `git merge-tree $(git merge-base origin/release devH) origin/release devH` — inspected; không xuất hiện textual conflict marker ở `frontend/package.json`, `frontend/package-lock.json`, `frontend/vite.config.js`.
+
+Unresolved questions:
+
+- `npm ls --depth=0` vẫn báo một số package WASM helper ở `node_modules` là extraneous từ lần cài trước; build hiện không bị ảnh hưởng, nhưng nên chạy `npm prune` hoặc `npm ci` khi workspace không còn process `node` giữ file.
+- Vite/Rolldown vẫn in warning không chặn build từ `@microsoft/signalr` PURE annotation và cảnh báo chunk size lớn mặc định.
+
+## Feature: Frontend exam publish readiness and Vietnam timezone workflow
+
+Date: 2026-06-17
+
+Branch/source: `devH`
+
+Description:
+
+- Resolved the local `devH` pull conflict from `release` by keeping the release-side merge result, then continued implementation on top of that baseline.
+- Synced Exam Management frontend with the backend exam validation/publish flow: teacher now configures schedule in Vietnam time (`UTC+7`), saves drafts explicitly, sees publish-readiness issues on exam detail, and can call the real `POST /api/exams/{id}/publish` action only when the draft is valid.
+- Audited the current backend exam/question API surface against frontend flows and confirmed there is no remaining user-facing gap beyond the publish readiness workflow and question-management polish completed in this sync.
+- Reworked the exam form layout into clearer UI groups that match the project design docs: basic information, schedule, exam behavior, and monitoring.
+- Added frontend validation for duration, max attempts, and exam window consistency before request submission; backend publish errors are now surfaced as teacher-readable issue lists.
+
+Changed files:
+
+- `frontend/src/features/exams/components/ExamForm.jsx`
+- `frontend/src/features/exams/components/exam-form-basic-section.jsx`
+- `frontend/src/features/exams/components/exam-form-config-section.jsx`
+- `frontend/src/features/exams/components/exam-form-helpers.js`
+- `frontend/src/features/exams/components/exam-form-schedule-section.jsx`
+- `frontend/src/features/exams/components/exam-form-monitoring-section.jsx`
+- `frontend/src/features/exams/components/QuestionForm.jsx`
+- `frontend/src/features/exams/components/question-form-helpers.js`
+- `frontend/src/features/exams/examHelpers.js`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/package-lock.json`
+- `Todo List.md`
+- `docs/project-changelog.md`
+- `CHANGELOG.md`
+
+Technical summary:
+
+- Reused the existing timezone helpers so `datetime-local` inputs round-trip as Vietnam local time in the UI while still sending UTC to the backend.
+- Removed the ambiguous publish checkbox from the exam form; create/update now stay draft-oriented in the UI, while publish is handled from the exam detail screen with a dedicated action and readiness card.
+- Mirrored the backend publish checks in frontend helpers to show actionable issues for missing/invalid question content, answer correctness, score, duration, max attempts, and exam window rules.
+- Added question-type guidance inside the teacher question form and surfaced full question-type statistics, including short-answer coverage already supported by the backend exam model.
+- Cleaned a few unused layout imports/props from release-side files so frontend lint could be used as a real verification step after the merge.
+- Ran `npm install` inside `frontend/` to restore the missing `tw-animate-css` dependency referenced by the merged release stylesheet.
+
+Validation:
+
+- `npm.cmd --prefix frontend run lint` — passed.
+- `npm.cmd --prefix frontend install` — succeeded, restored missing frontend dependency state after merge.
+- `npm.cmd --prefix frontend run build` — passed.
+
+Unresolved questions:
+
+- Vite/Rolldown still reports non-blocking warnings from `@microsoft/signalr` PURE annotations and the main bundle size remains above the default 500 kB warning threshold.
+- `Todo List.md` still contains older historical notes from other branches/releases outside the scope of this focused frontend sync.
 ## Feature: App shell, loading UX, and teacher pages
 
 Date: 2026-06-16

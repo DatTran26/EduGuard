@@ -1,4 +1,4 @@
-import { formatShortDateTime } from "../../utils/formatDate";
+import { formatShortDateTime, parseDateValue } from "../../utils/formatDate";
 
 export function buildAttemptAnswerState(savedAnswers = []) {
   return savedAnswers.reduce((accumulator, answer) => ({
@@ -65,7 +65,13 @@ export function calculateAttemptEndTime(attempt, durationMinutes) {
     return null;
   }
 
-  return new Date(attempt.startedAt).getTime() + Number(durationMinutes) * 60 * 1000;
+  const startedAt = parseDateValue(attempt.startedAt);
+
+  if (!startedAt) {
+    return null;
+  }
+
+  return startedAt.getTime() + Number(durationMinutes) * 60 * 1000;
 }
 
 export function formatRemainingDuration(remainingMs) {

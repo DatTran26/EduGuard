@@ -7,8 +7,8 @@ import RegisterPage from "../features/auth/pages/RegisterPage";
 import ClassroomDetailPage from "../features/classrooms/pages/ClassroomDetailPage";
 import ClassroomListPage from "../features/classrooms/pages/ClassroomListPage";
 import JoinClassroomPage from "../features/classrooms/pages/JoinClassroomPage";
+import AdminMonitoringPage from "../features/admin/pages/AdminMonitoringPage";
 import AdminDashboardPage from "../features/dashboard/pages/AdminDashboardPage";
-import StudentDashboardPage from "../features/dashboard/pages/StudentDashboardPage";
 import TeacherDashboardPage from "../features/dashboard/pages/TeacherDashboardPage";
 import ExamAttemptPage from "../features/exam-attempts/pages/ExamAttemptPage";
 import ExamDetailPage from "../features/exams/pages/ExamDetailPage";
@@ -51,85 +51,87 @@ export default function AppRoutes() {
         <Route element={<RegisterPage />} path={routeConfig.register} />
       </Route>
 
-      <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+      <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
-          <Route
-            element={<AdminDashboardPage />}
-            path={routeConfig.adminDashboard}
-          />
-          <Route
-            element={<ClassroomListPage />}
-            path={routeConfig.adminClassrooms}
-          />
-          <Route
-            element={<ClassroomDetailPage />}
-            path={routeConfig.adminClassroomDetail}
-          />
-          <Route element={<ExamListPage />} path={routeConfig.adminExams} />
-          <Route
-            element={<ExamDetailPage />}
-            path={routeConfig.adminExamDetail}
-          />
-          <Route
-            element={<UserManagementPage />}
-            path={routeConfig.adminUsers}
-          />
-          <Route element={<ProfilePage />} path={routeConfig.adminProfile} />
-        </Route>
-      </Route>
+          <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+            <Route
+              element={<AdminDashboardPage />}
+              path={routeConfig.adminDashboard}
+            />
+            <Route
+              element={<ClassroomListPage />}
+              path={routeConfig.adminClassrooms}
+            />
+            <Route
+              element={<ClassroomDetailPage />}
+              path={routeConfig.adminClassroomDetail}
+            />
+            <Route element={<ExamListPage />} path={routeConfig.adminExams} />
+            <Route
+              element={<ExamDetailPage />}
+              path={routeConfig.adminExamDetail}
+            />
+            <Route
+              element={<AdminMonitoringPage />}
+              path={routeConfig.adminMonitoring}
+            />
+            <Route
+              element={<UserManagementPage />}
+              path={routeConfig.adminUsers}
+            />
+            <Route element={<ProfilePage />} path={routeConfig.adminProfile} />
+          </Route>
 
-      <Route element={<ProtectedRoute allowedRoles={["Teacher"]} />}>
-        <Route element={<AppShell />}>
-          <Route
-            element={<TeacherDashboardPage />}
-            path={routeConfig.teacherDashboard}
-          />
-          <Route
-            element={<ClassroomListPage />}
-            path={routeConfig.teacherClassrooms}
-          />
-          <Route
-            element={<ClassroomDetailPage />}
-            path={routeConfig.teacherClassroomDetail}
-          />
-          <Route element={<ExamListPage />} path={routeConfig.teacherExams} />
-          <Route
-            element={<ExamDetailPage />}
-            path={routeConfig.teacherExamDetail}
-          />
-          <Route element={<ProfilePage />} path={routeConfig.teacherProfile} />
+          <Route element={<ProtectedRoute allowedRoles={["Teacher"]} />}>
+            <Route
+              element={<TeacherDashboardPage />}
+              path={routeConfig.teacherDashboard}
+            />
+            <Route
+              element={<ClassroomListPage />}
+              path={routeConfig.teacherClassrooms}
+            />
+            <Route
+              element={<ClassroomDetailPage />}
+              path={routeConfig.teacherClassroomDetail}
+            />
+            <Route element={<ExamListPage />} path={routeConfig.teacherExams} />
+            <Route
+              element={<ExamDetailPage />}
+              path={routeConfig.teacherExamDetail}
+            />
+            <Route element={<ProfilePage />} path={routeConfig.teacherProfile} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedRoles={["Student"]} />}>
+            <Route
+              element={<ClassroomListPage />}
+              path={routeConfig.studentClassrooms}
+            />
+            <Route
+              element={<JoinClassroomPage />}
+              path={routeConfig.studentJoinClassroom}
+            />
+            <Route
+              element={<ClassroomDetailPage />}
+              path={routeConfig.studentClassroomDetail}
+            />
+            <Route element={<ExamListPage />} path={routeConfig.studentExams} />
+            <Route
+              element={<ExamDetailPage />}
+              path={routeConfig.studentExamDetail}
+            />
+            <Route
+              element={<Navigate replace to={routeConfig.studentClassrooms} />}
+              path={routeConfig.studentDashboard}
+            />
+            <Route element={<ProfilePage />} path={routeConfig.studentProfile} />
+          </Route>
         </Route>
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={["Student"]} />}>
         <Route element={<ExamAttemptPage />} path={routeConfig.studentExamAttempt} />
-      </Route>
-
-      <Route element={<ProtectedRoute allowedRoles={["Student"]} />}>
-        <Route element={<AppShell />}>
-          <Route
-            element={<ClassroomListPage />}
-            path={routeConfig.studentClassrooms}
-          />
-          <Route
-            element={<JoinClassroomPage />}
-            path={routeConfig.studentJoinClassroom}
-          />
-          <Route
-            element={<ClassroomDetailPage />}
-            path={routeConfig.studentClassroomDetail}
-          />
-          <Route element={<ExamListPage />} path={routeConfig.studentExams} />
-          <Route
-            element={<ExamDetailPage />}
-            path={routeConfig.studentExamDetail}
-          />
-          <Route
-            element={<StudentDashboardPage />}
-            path={routeConfig.studentDashboard}
-          />
-          <Route element={<ProfilePage />} path={routeConfig.studentProfile} />
-        </Route>
       </Route>
 
       <Route element={<Navigate replace to={routeConfig.root} />} path="*" />

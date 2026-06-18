@@ -3,6 +3,7 @@ import TextInput from "../../../components/forms/TextInput";
 import { getMinimumAnswerCount } from "./question-form-helpers";
 
 export default function QuestionFormAnswersSection({
+  errors = {},
   formValues,
   question,
   isSubmitting,
@@ -16,7 +17,12 @@ export default function QuestionFormAnswersSection({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-sm font-semibold text-primary">Đáp án</p>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-primary">Đáp án</p>
+        {errors.answersGroup ? (
+          <p className="text-sm font-medium text-danger">{errors.answersGroup}</p>
+        ) : null}
+      </div>
 
       <div className="space-y-3">
         {formValues.answers.map((answer, index) => (
@@ -26,6 +32,7 @@ export default function QuestionFormAnswersSection({
           >
             <div className="grid gap-3 md:grid-cols-[1fr_auto]">
               <TextInput
+                error={errors.answers?.[index]}
                 id={`question-answer-${question?.id ?? "create"}-${index}`}
                 label={
                   isShortAnswer ? `Đáp án mẫu ${index + 1}` : `Đáp án ${index + 1}`

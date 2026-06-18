@@ -149,6 +149,10 @@ public class AuthService : IAuthService
         Id = user.Id,
         FullName = user.FullName,
         Email = user.Email ?? string.Empty,
+        AvatarUrl = user.AvatarUrl,
+        IsActive = user.IsActive,
+        CreatedAt = user.CreatedAt,
+        UpdatedAt = user.UpdatedAt,
         Roles = roles
     };
 }

@@ -28,6 +28,12 @@ public class ClassroomRepository : IClassroomRepository
     public Task<bool> JoinCodeExistsAsync(string joinCode, CancellationToken ct = default) =>
         _db.Classrooms.AnyAsync(x => x.JoinCode == joinCode, ct);
 
+    public Task<List<Classroom>> GetAllAsync(CancellationToken ct = default) =>
+        _db.Classrooms
+            .Include(x => x.Teacher)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(ct);
+
     public Task<List<Classroom>> GetByTeacherIdAsync(string teacherId, CancellationToken ct = default) =>
         _db.Classrooms
             .Include(x => x.Teacher)

@@ -2,56 +2,47 @@ import CheckboxField from "../../../components/forms/CheckboxField";
 import TextInput from "../../../components/forms/TextInput";
 
 export default function ExamFormConfigSection({
+  errors = {},
   formValues,
-  exam,
-  isEditingExam,
-  onFieldChange,
   onSettingChange,
+  showDescriptions = true,
 }) {
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2">
+    <section className="space-y-4 rounded-[20px] border border-border bg-neutral p-5">
+      <div className="space-y-1">
+        <h4 className="text-base font-semibold text-primary">Cấu hình làm bài</h4>
+        {showDescriptions ? (
+          <p className="text-sm leading-6 text-secondary">
+            Thiết lập số lượt làm, thứ tự hiển thị câu hỏi và thời điểm sinh viên được xem kết quả.
+          </p>
+        ) : null}
+      </div>
+
+      <div className={showDescriptions ? "grid gap-4 md:grid-cols-2" : "grid gap-4"}>
         <TextInput
           id="exam-max-attempts"
           label="Số lần làm tối đa"
+          error={errors.maxAttempts}
           min="1"
           onChange={(event) => onSettingChange("maxAttempts", event.target.value)}
           required
           type="number"
           value={formValues.settings.maxAttempts}
         />
-        <div className="rounded-[12px] border border-border bg-neutral px-4 py-4">
-          <p className="text-sm font-semibold text-primary">Trạng thái hiển thị</p>
-          {exam?.isPublished ? (
-            <p className="mt-2 text-sm text-secondary">Đã publish</p>
-          ) : (
-            <div className="mt-3">
-              <CheckboxField
-                checked={formValues.isPublished}
-                id="exam-is-published"
-                label={isEditingExam ? "Publish sau khi lưu" : "Publish ngay khi tạo"}
-                onChange={(event) => onFieldChange("isPublished", event.target.checked)}
-              />
-            </div>
-          )}
-        </div>
+        {showDescriptions ? (
+          <div className="rounded-[12px] border border-border bg-surface px-4 py-4">
+            <p className="text-sm font-semibold text-primary">Luồng publish</p>
+            <p className="mt-2 text-sm leading-6 text-secondary">
+              Đề mới sẽ được lưu ở trạng thái nháp. Sau khi đã có câu hỏi hợp lệ, hãy dùng nút
+              publish ở trang chi tiết để phát hành đề.
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-3">
-        <p className="text-sm font-semibold text-primary">Cấu hình đề thi</p>
+        <p className="text-sm font-semibold text-primary">Hành vi trong bài thi</p>
         <div className="grid gap-3 md:grid-cols-2">
-          <CheckboxField
-            checked={formValues.enableAntiCheat}
-            id="exam-enable-anti-cheat"
-            label="Bật anti-cheat"
-            onChange={(event) => onFieldChange("enableAntiCheat", event.target.checked)}
-          />
-          <CheckboxField
-            checked={formValues.settings.requireFullscreen}
-            id="exam-require-fullscreen"
-            label="Yêu cầu fullscreen"
-            onChange={(event) => onSettingChange("requireFullscreen", event.target.checked)}
-          />
           <CheckboxField
             checked={formValues.settings.shuffleQuestions}
             id="exam-shuffle-questions"
@@ -72,6 +63,6 @@ export default function ExamFormConfigSection({
           />
         </div>
       </div>
-    </div>
+    </section>
   );
 }

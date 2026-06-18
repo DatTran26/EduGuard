@@ -202,9 +202,11 @@ public class ClassroomsController : ControllerBase
         if (userId is null)
             return Unauthorized(ApiResponse<IReadOnlyList<ClassroomMemberDto>>.CreateFailure("Token không hợp lệ."));
 
+        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
         try
         {
-            var data = await _classroomService.GetMembersAsync(id, userId, ct);
+            var data = await _classroomService.GetMembersAsync(id, userId, roles, ct);
             return Ok(ApiResponse<IReadOnlyList<ClassroomMemberDto>>.CreateSuccess(data));
         }
         catch (KeyNotFoundException ex)

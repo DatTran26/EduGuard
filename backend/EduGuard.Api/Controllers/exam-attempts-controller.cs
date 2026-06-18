@@ -121,16 +121,20 @@ public class ExamAttemptsController : ControllerBase
     }
 
     [HttpGet("api/exams/{examId:int}/attempts")]
-    [Authorize(Roles = "Teacher")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ExamAttemptDto>>>> GetAttemptsByExam(int examId, CancellationToken ct)
     {
-        var userId = GetCurrentUserId();
-        if (userId is null)
+        var user = GetCurrentUser();
+        if (user is null)
             return Unauthorized(ApiResponse<IReadOnlyList<ExamAttemptDto>>.CreateFailure("Token không hợp lệ."));
 
         try
         {
-            var data = await _attemptService.GetAttemptsByExamAsync(examId, userId, ct);
+            var data = await _attemptService.GetAttemptsByExamAsync(
+                examId,
+                user.Value.userId,
+                user.Value.roles,
+                ct);
             return Ok(ApiResponse<IReadOnlyList<ExamAttemptDto>>.CreateSuccess(data));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<IReadOnlyList<ExamAttemptDto>>.CreateFailure(ex.Message)); }

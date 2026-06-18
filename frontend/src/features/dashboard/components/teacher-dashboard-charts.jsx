@@ -1,6 +1,7 @@
 import {
   ResponsiveContainer,
   ComposedChart,
+  LineChart,
   Bar,
   Line,
   XAxis,
@@ -13,95 +14,172 @@ import {
   Cell,
 } from "recharts";
 
-// Institutional Slate Colors
 const CHART_COLORS = {
-  averageScore: "#1D4ED8", // Tertiary (Accent Blue)
-  submissionRate: "#047857", // Success Green
-  pieSlice1: "#DC2626", // Danger Red
-  pieSlice2: "#B45309", // Caution Orange
-  pieSlice3: "#0369A1", // Info Blue
-  pieSlice4: "#1D4ED8", // Accent Blue
-  pieSlice5: "#64748B", // Secondary Slate
+  activityPrimary: "#1D4ED8",
+  activitySecondary: "#DC2626",
+  averageScore: "#0F766E",
+  submissionRate: "#D97706",
 };
 
-const PIE_COLORS = [
-  CHART_COLORS.pieSlice1,
-  CHART_COLORS.pieSlice2,
-  CHART_COLORS.pieSlice3,
-  CHART_COLORS.pieSlice4,
-  CHART_COLORS.pieSlice5,
-];
+const EXAM_STATUS_COLOR_MAP = {
+  "Bản nháp": "#64748B",
+  "Sắp mở": "#D97706",
+  "Đang mở": "#0284C7",
+  "Đã đóng": "#059669",
+};
 
-// Custom Tooltip for Classroom Performance
+const FALLBACK_PIE_COLORS = ["#1D4ED8", "#DC2626", "#7C3AED", "#0F766E"];
+
+function CustomActivityTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const attemptPoint = payload.find((item) => item.dataKey === "attemptCount");
+  const alertPoint = payload.find((item) => item.dataKey === "alertCount");
+
+  return (
+    <div className="rounded-[14px] border border-border bg-surface p-3 text-xs text-primary shadow-none">
+      <p className="mb-2 font-semibold text-primary">{label}</p>
+      <div className="space-y-1.5">
+        <p className="flex items-center gap-2 text-secondary">
+          <span className="block h-2.5 w-2.5 rounded-full bg-[#1D4ED8]" />
+          Lượt nộp bài thi
+          <span className="font-semibold text-[#1D4ED8]">{attemptPoint?.value ?? 0}</span>
+        </p>
+        <p className="flex items-center gap-2 text-secondary">
+          <span className="block h-2.5 w-2.5 rounded-full bg-[#DC2626]" />
+          Cảnh báo bất thường
+          <span className="font-semibold text-[#DC2626]">{alertPoint?.value ?? 0}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function CustomPerformanceTooltip({ active, payload, label }) {
-  if (active && payload && payload.length) {
-    return (
-      <div className="rounded-[12px] border border-border bg-surface p-3 text-xs text-primary shadow-none">
-        <p className="font-semibold mb-2 text-primary">{label}</p>
-        <div className="space-y-1">
-          <p className="text-secondary flex items-center gap-1.5 font-medium">
-            <span className="w-2.5 h-2.5 rounded-[4px] bg-[#047857] block"></span>
-            Tỉ lệ nộp bài:{" "}
-            <span className="font-semibold text-[#047857]">
-              {payload[0].value}%
-            </span>
-          </p>
-          {payload[1] && (
-            <p className="text-secondary flex items-center gap-1.5 font-medium">
-              <span className="w-2.5 h-2.5 rounded-[4px] bg-[#1D4ED8] block"></span>
-              Điểm trung bình:{" "}
-              <span className="font-semibold text-[#1D4ED8]">
-                {payload[1].value}/10
-              </span>
-            </p>
-          )}
-        </div>
-      </div>
-    );
+  if (!active || !payload?.length) {
+    return null;
   }
-  return null;
+
+  const submissionPoint = payload.find((item) => item.dataKey === "submissionRate");
+  const scorePoint = payload.find((item) => item.dataKey === "averageScore");
+
+  return (
+    <div className="rounded-[14px] border border-border bg-surface p-3 text-xs text-primary shadow-none">
+      <p className="mb-2 font-semibold text-primary">{label}</p>
+      <div className="space-y-1.5">
+        <p className="flex items-center gap-2 text-secondary">
+          <span className="block h-2.5 w-2.5 rounded-[4px] bg-[#D97706]" />
+          Tỉ lệ nộp bài
+          <span className="font-semibold text-[#D97706]">{submissionPoint?.value ?? 0}%</span>
+        </p>
+        <p className="flex items-center gap-2 text-secondary">
+          <span className="block h-2.5 w-2.5 rounded-[4px] bg-[#0F766E]" />
+          Điểm trung bình
+          <span className="font-semibold text-[#0F766E]">{scorePoint?.value ?? 0}/10</span>
+        </p>
+      </div>
+    </div>
+  );
 }
 
-// Custom Tooltip for Cheating Pie Chart
 function CustomPieTooltip({ active, payload }) {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const data = payload[0].payload;
+
+  return (
+    <div className="rounded-[14px] border border-border bg-surface p-3 text-xs text-primary shadow-none">
+      <p className="mb-2 font-semibold text-primary">{data.label}</p>
+      <div className="space-y-1.5">
+        <p className="text-secondary">
+          Số lượng đề <span className="font-semibold text-primary">{data.value}</span>
+        </p>
+        <p className="text-secondary">
+          Tỉ lệ <span className="font-semibold text-primary">{data.percentage}%</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function TeacherActivityTrendChart({ data }) {
+  if (!data?.length) {
     return (
-      <div className="rounded-[12px] border border-border bg-surface p-3 text-xs text-primary shadow-none">
-        <p className="font-semibold mb-2 text-primary">{data.label}</p>
-        <div className="space-y-1">
-          <p className="text-secondary flex items-center gap-1.5">
-            Số lượt vi phạm:{" "}
-            <span className="font-semibold text-primary">{data.value}</span>
-          </p>
-          <p className="text-secondary flex items-center gap-1.5">
-            Tỉ lệ:{" "}
-            <span className="font-semibold text-primary">{data.percentage}%</span>
-          </p>
-        </div>
+      <div className="flex h-[300px] items-center justify-center text-sm text-secondary">
+        Không có dữ liệu hoạt động để hiển thị.
       </div>
     );
   }
-  return null;
+
+  return (
+    <div className="h-[320px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+          <XAxis
+            dataKey="label"
+            stroke="#64748B"
+            fontSize={12}
+            tickLine={false}
+            axisLine={false}
+            dy={8}
+          />
+          <YAxis
+            stroke="#64748B"
+            fontSize={12}
+            tickLine={false}
+            axisLine={false}
+            allowDecimals={false}
+          />
+          <Tooltip content={<CustomActivityTooltip />} />
+          <Legend
+            verticalAlign="top"
+            height={34}
+            iconType="circle"
+            iconSize={8}
+            wrapperStyle={{ fontSize: "12px", color: "#64748B" }}
+          />
+          <Line
+            type="monotone"
+            dataKey="attemptCount"
+            name="Lượt nộp bài thi"
+            stroke={CHART_COLORS.activityPrimary}
+            strokeWidth={3}
+            dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.activityPrimary }}
+            activeDot={{ r: 6 }}
+          />
+          <Line
+            type="monotone"
+            dataKey="alertCount"
+            name="Cảnh báo bất thường"
+            stroke={CHART_COLORS.activitySecondary}
+            strokeWidth={3}
+            dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.activitySecondary }}
+            activeDot={{ r: 6 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
 }
 
-// 1. Performance Chart Component (Composed Chart)
 export function ClassroomPerformanceChart({ data }) {
-  if (!data || data.length === 0) {
+  if (!data?.length) {
     return (
-      <div className="flex items-center justify-center h-[260px] text-sm text-secondary">
+      <div className="flex h-[260px] items-center justify-center text-sm text-secondary">
         Không có dữ liệu lớp học để hiển thị.
       </div>
     );
   }
 
   return (
-    <div className="h-[280px] w-full">
+    <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart
-          data={data}
-          margin={{ top: 10, right: -10, left: -20, bottom: 0 }}
-        >
+        <ComposedChart data={data} margin={{ top: 10, right: -8, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
           <XAxis
             dataKey="name"
@@ -113,7 +191,6 @@ export function ClassroomPerformanceChart({ data }) {
           />
           <YAxis
             yAxisId="left"
-            orientation="left"
             stroke="#64748B"
             fontSize={12}
             tickLine={false}
@@ -134,30 +211,27 @@ export function ClassroomPerformanceChart({ data }) {
           <Tooltip content={<CustomPerformanceTooltip />} />
           <Legend
             verticalAlign="top"
-            height={36}
+            height={34}
             iconType="circle"
             iconSize={8}
             wrapperStyle={{ fontSize: "12px", color: "#64748B" }}
-            formatter={(value) => (
-              <span className="text-secondary font-medium mr-2">
-                {value === "submissionRate" ? "Tỉ lệ nộp bài" : "Điểm trung bình"}
-              </span>
-            )}
           />
           <Bar
             yAxisId="left"
             dataKey="submissionRate"
+            name="Tỉ lệ nộp bài"
             fill={CHART_COLORS.submissionRate}
-            radius={[4, 4, 0, 0]}
-            maxBarSize={32}
+            radius={[8, 8, 0, 0]}
+            maxBarSize={34}
           />
           <Line
             yAxisId="right"
             type="monotone"
             dataKey="averageScore"
+            name="Điểm trung bình"
             stroke={CHART_COLORS.averageScore}
-            strokeWidth={2}
-            dot={{ r: 4, strokeWidth: 1 }}
+            strokeWidth={3}
+            dot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.averageScore }}
             activeDot={{ r: 6 }}
           />
         </ComposedChart>
@@ -166,78 +240,75 @@ export function ClassroomPerformanceChart({ data }) {
   );
 }
 
-// 2. Cheating Breakdown Chart Component (Donut Pie Chart)
-export function CheatingBreakdownChart({ data }) {
-  if (!data || data.length === 0) {
+export function ExamStatusBreakdownChart({ data }) {
+  if (!data?.length) {
     return (
-      <div className="flex items-center justify-center h-[260px] text-sm text-secondary">
-        Không có dữ liệu cảnh báo để hiển thị.
+      <div className="flex h-[260px] items-center justify-center text-sm text-secondary">
+        Không có dữ liệu trạng thái đề thi.
       </div>
     );
   }
 
-  const totalIncidents = data.reduce((sum, item) => sum + item.value, 0);
+  const chartData = data.filter((item) => item.value > 0);
+  const totalExams = data.reduce((sum, item) => sum + item.value, 0);
+
+  if (!chartData.length) {
+    return (
+      <div className="flex h-[260px] items-center justify-center text-sm text-secondary">
+        Chưa có bài kiểm tra để phân tích.
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col md:flex-row items-center justify-between gap-6 py-2">
-      <div className="relative h-[200px] w-[200px] flex-shrink-0">
+    <div className="flex flex-col items-center gap-6 py-2 lg:flex-row lg:items-start lg:justify-between">
+      <div className="relative h-[210px] w-[210px] flex-shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={data}
+              data={chartData}
               cx="50%"
               cy="50%"
-              innerRadius={65}
-              outerRadius={85}
+              innerRadius={68}
+              outerRadius={90}
               paddingAngle={2}
               dataKey="value"
             >
-              {data.map((entry, index) => (
+              {chartData.map((entry, index) => (
                 <Cell
-                  key={`cell-${index}`}
-                  fill={PIE_COLORS[index % PIE_COLORS.length]}
+                  key={entry.label}
+                  fill={EXAM_STATUS_COLOR_MAP[entry.label] ?? FALLBACK_PIE_COLORS[index % FALLBACK_PIE_COLORS.length]}
                 />
               ))}
             </Pie>
             <Tooltip content={<CustomPieTooltip />} />
           </PieChart>
         </ResponsiveContainer>
-        {/* Total label inside the donut hole */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xl font-bold text-primary tracking-tight">
-            {totalIncidents}
-          </span>
-          <span className="text-[10px] font-semibold text-secondary uppercase tracking-[0.12em] mt-0.5">
-            Vi phạm
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-3xl font-bold tracking-tight text-primary">{totalExams}</span>
+          <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-secondary">
+            Bài kiểm tra
           </span>
         </div>
       </div>
 
-      {/* Sleek Custom Legend list */}
-      <div className="flex-1 w-full space-y-2">
+      <div className="w-full flex-1 space-y-2">
         {data.map((item, index) => {
-          const color = PIE_COLORS[index % PIE_COLORS.length];
+          const color =
+            EXAM_STATUS_COLOR_MAP[item.label] ?? FALLBACK_PIE_COLORS[index % FALLBACK_PIE_COLORS.length];
+
           return (
             <div
               key={item.label}
-              className="flex items-center justify-between p-2 rounded-[12px] hover:bg-surface-sunken transition-colors duration-150"
+              className="flex items-center justify-between rounded-[14px] border border-border-subtle bg-neutral px-3 py-2.5 transition-colors duration-150 hover:bg-surface-sunken"
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span
-                  className="w-3 h-3 rounded-[4px] flex-shrink-0"
-                  style={{ backgroundColor: color }}
-                ></span>
-                <span className="text-xs font-semibold text-primary truncate">
-                  {item.label}
-                </span>
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="h-3 w-3 flex-shrink-0 rounded-[4px]" style={{ backgroundColor: color }} />
+                <span className="truncate text-sm font-semibold text-primary">{item.label}</span>
               </div>
               <div className="flex items-center gap-3 text-right">
-                <span className="text-xs font-semibold text-primary">
-                  {item.value}
-                </span>
-                <span className="text-[11px] text-secondary font-medium w-10">
-                  {item.percentage}%
-                </span>
+                <span className="text-sm font-semibold text-primary">{item.value}</span>
+                <span className="w-10 text-[11px] font-medium text-secondary">{item.percentage}%</span>
               </div>
             </div>
           );

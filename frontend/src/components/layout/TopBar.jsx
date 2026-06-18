@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Avatar from "../common/Avatar";
-import Badge from "../common/Badge";
 import Button from "../common/Button";
 import { cn } from "../../utils/cn";
 import { useAuth } from "../../hooks/useAuth";
@@ -41,6 +40,13 @@ const breadcrumbLabelBySegment = {
   profile: "Hồ sơ",
   users: "Người dùng",
   join: "Tham gia lớp",
+  monitoring: "Giám sát",
+};
+
+const homeHrefByRoleSegment = {
+  admin: routeConfig.adminDashboard,
+  teacher: routeConfig.teacherDashboard,
+  student: routeConfig.studentClassrooms,
 };
 
 function labelForBreadcrumbSegment(segment) {
@@ -55,7 +61,7 @@ function buildBreadcrumbTrail(pathname) {
   const items = [
     {
       label: "Trang chủ",
-      href: rolePrefix ? `/${rolePrefix}/dashboard` : "/",
+      href: homeHrefByRoleSegment[rolePrefix] || "/",
     },
   ];
 
@@ -180,9 +186,7 @@ function safeSetLastSeenAt(value) {
 
 // Component này là header chính của khu đã đăng nhập, gom logo, user menu và hành động đăng xuất.
 export default function TopBar({
-  isSidebarCollapsed,
   onOpenSidebar,
-  onToggleSidebarCollapsed,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
