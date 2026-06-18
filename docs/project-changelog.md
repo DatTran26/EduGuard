@@ -1,5 +1,92 @@
 # Project Changelog
 
+## Bug fix: Local frontend/backend dev proxy 502
+
+Date: 2026-06-18
+
+Branch/source: `devB`
+
+Description:
+
+- Fixed local development 502 errors where the Vite frontend proxy targeted `https://127.0.0.1:7168` while the backend default `http` launch profile listens on `http://localhost:5157`.
+- Restored backend NuGet assets after a failed offline restore left `project.assets.json` pointing at an unavailable sandbox package cache.
+- Restarted local backend and frontend dev servers after applying the proxy fix so Swagger and proxied API calls work again.
+
+Changed files:
+
+- `frontend/vite.config.js`
+- `frontend/README.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Added `VITE_DEV_API_TARGET` support in Vite config and defaulted the dev proxy target to `http://127.0.0.1:5157`.
+- Kept `secure: false` for `/api` and `/hubs` proxy entries so developers can still override the target to the HTTPS dev profile with self-signed certs.
+- Updated frontend README local-run instructions to match the backend `http` launch profile.
+
+Validation:
+
+- `dotnet restore backend\EduGuard.slnx` — succeeded.
+- `dotnet build backend\EduGuard.slnx --no-restore` — succeeded, 0 warnings, 0 errors.
+- `npm.cmd run build` — succeeded; Vite emitted existing dependency/chunk-size warnings only.
+- `curl http://127.0.0.1:5157/swagger/index.html` — returned HTTP 200.
+- `curl http://127.0.0.1:5173` — returned HTTP 200.
+- `curl http://127.0.0.1:5173/api/Test` — returned HTTP 200 with backend JSON `{ "message": "EduGuard API is running" }`.
+
+Unresolved questions:
+
+- DataProtection logs warnings about an old DPAPI-protected key that cannot be decrypted in the current user context; this does not block Swagger or API proxy calls but should be cleaned separately if it keeps polluting logs.
+
+## Feature: Backend standard-file objective question import
+
+Date: 2026-06-18
+
+Branch/source: `devB`
+
+Description:
+
+- Added backend support for importing objective exam questions from standard files into an existing exam.
+- Supports `.csv`, `.xlsx`, `.txt`, `.docx`, and text-based `.pdf` files when they follow the approved question-bank template.
+- Scoped import to objective question types only: `single_choice`, `multiple_choice`, and `true_false`; short answer, essay, OCR, ZIP/media imports remain follow-up work.
+- Opened the import endpoint to `Teacher` and `Admin`; teachers can import only into their own exams, while admins can import into any exam.
+- Added the approved question-bank file import standard to docs and linked it from the documentation index.
+- Updated Todo/API/feature tracking so backend and frontend import work are separated clearly.
+
+Changed files:
+
+- `backend/EduGuard.Api/Controllers/exams-controller.cs`
+- `backend/EduGuard.Application/DTOs/Exams/question-import-error-dto.cs`
+- `backend/EduGuard.Application/DTOs/Exams/question-import-result-dto.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-exam-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/question-import-parser.cs`
+- `docs/09_QUESTION_BANK_FILE_IMPORT_STANDARD.md`
+- `docs/README.md`
+- `docs/apiList.md`
+- `docs/features.md`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Added `POST /api/exams/{id}/questions/import` as a Teacher/Admin multipart endpoint using form field `file`.
+- Import validates supported extensions, accepted MIME types, 5 MB max size, required headers/templates, question type, score, answer options, and correct-answer references before saving.
+- CSV/XLSX rows and TXT/DOCX/PDF text blocks are parsed into the existing `Question` / `Answer` model and reuse existing exam question validation before appending imported questions to the target exam.
+- Import is all-or-nothing: if any row has an error, the response includes row-level errors and no database changes are saved.
+
+Validation:
+
+- `dotnet build backend\EduGuard.slnx` — blocked at API output copy because running `EduGuard.Api` / Visual Studio locked DLLs.
+- Backend build with isolated output path — succeeded, 0 warnings, 0 errors.
+- Backend test with isolated output path — succeeded with exit code 0.
+- Parser smoke checks — passed for `.csv`, `.xlsx`, `.txt`, `.docx`, and text-based `.pdf`.
+- Backend API E2E import check — passed: imported a standard CSV with 3 objective rows into an exam, verified saved question types `single_choice`, `multiple_choice`, `true_false`, and verified correct-answer counts.
+
+Unresolved questions:
+
+- Frontend upload UI, template download, and row-level/case-level error display are still pending.
+- Images/media, ZIP import, OCR for scanned PDFs, short-answer, essay, persistent import batches, and duplicate detection remain later phases.
+
 ## Feature: App shell, loading UX, and teacher pages
 
 Date: 2026-06-16

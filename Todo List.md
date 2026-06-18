@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD` / `devH` / `devB` (nhánh dev theo feature)
-**Cập nhật:** 2026-06-16 (devD: app shell, loading UX, teacher pages merged to release)
+**Cập nhật:** 2026-06-18 (devB: backend import file chuẩn tạo câu hỏi trắc nghiệm cho Teacher/Admin; fix dev proxy 502 frontend/backend)
 **Ghi chú devB:** 2026-06-15 (backend cấu hình bài kiểm tra UTC, validation publish trắc nghiệm MVP; Phase 8 SignalR xong; Phase 9 Redis — kế hoạch chi tiết)
 **Ghi chú devH:** 2026-06-13 (backend Phase 7 anti-cheat; frontend auth/classroom/exam nối backend; auth session refresh token khi role đổi)
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
@@ -178,6 +178,9 @@
 - [x] `ExamsController` + Service + Repository (11 API + question bank)
 - [x] API CRUD đề thi theo lớp
 - [x] API thêm / sửa / xóa câu hỏi & đáp án
+- [x] API upload/import file chuẩn tạo câu hỏi trắc nghiệm vào đề thi (`POST /api/exams/{id}/questions/import`) cho Teacher/Admin
+- [x] Validate file import backend: `.csv`, `.xlsx`, `.txt`, `.docx`, PDF text, MIME type, giới hạn 5MB, cột/template bắt buộc, `question_type`, `correct_answer`, `score`
+- [x] Import backend hỗ trợ `single_choice`, `multiple_choice`, `true_false`; tự luận ngắn/dài để phát triển sau
 - [x] API publish đề thi *(cho phép công khai metadata trước; student chỉ start khi đề đã có câu hỏi)*
 
 ### Frontend
@@ -188,6 +191,10 @@
 - [x] UI cập nhật / xóa đề thi *(Teacher, có xác nhận xóa 2 bước và publish qua endpoint riêng)*
 - [x] UI cấu hình đề thi *(thời gian mở-đóng, anti-cheat, fullscreen, random, max attempts, show result; classroom không còn đổi được sau khi tạo vì backend chưa hỗ trợ)*
 - [x] UI quản lý câu hỏi & đáp án *(Teacher thêm/sửa/xóa câu hỏi qua backend thật; Admin xem được question bank; Student không thấy đáp án ở trang detail)*
+- [ ] UI upload file chuẩn tạo câu hỏi trắc nghiệm bài kiểm tra
+- [ ] Hiển thị lỗi import theo từng dòng/cột từ backend
+- [ ] Tải file mẫu `.csv`, `.xlsx`, `.txt`, `.docx` theo định chuẩn import ngân hàng câu hỏi
+- [ ] UI tự luận/essay import để phát triển sau khi hoàn thiện trắc nghiệm
 
 ### Backend — Cấu hình bài kiểm tra & trắc nghiệm MVP cần bổ sung
 
@@ -210,7 +217,7 @@
 - [ ] Hiển thị trạng thái đủ/chưa đủ điều kiện publish trên trang chi tiết đề thi.
 - [ ] Chặn hoặc cảnh báo ở frontend khi cấu hình lịch thi/duration/max attempts không hợp lệ trước khi gửi API.
 - [ ] Hiển thị lỗi publish từ backend theo cách teacher biết cần sửa câu hỏi/cấu hình nào.
-- [ ] Ưu tiên UI quản lý câu hỏi trắc nghiệm trước: một đáp án, nhiều đáp án, đúng/sai; chưa mở rộng tự luận/import file trong bước này.
+- [ ] Ưu tiên UI quản lý câu hỏi trắc nghiệm trước: một đáp án, nhiều đáp án, đúng/sai; chưa mở rộng tự luận/import file tự luận trong bước này.
 
 **Tiêu chí hoàn thành:** Teacher cấu hình được đề trắc nghiệm theo giờ Việt Nam, publish được đề hợp lệ và Student bắt đầu làm bài đúng thời gian mở đề.
 

@@ -270,6 +270,8 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 | F-EXM-16 | Bật/tắt anti-cheat trên đề | BE | Teacher | ✓ |
 | F-EXM-17 | FE UI tạo & quản lý đề thi | FE | Teacher | ✓ |
 | F-EXM-18 | FE UI quản lý câu hỏi & đáp án | FE | Teacher | ✓ |
+| F-EXM-19 | `POST /api/exams/{id}/questions/import` — import câu hỏi trắc nghiệm từ file chuẩn | BE | Teacher/Admin | ✓ |
+| F-EXM-20 | FE UI upload file chuẩn tạo câu hỏi trắc nghiệm bài kiểm tra | FE | Teacher/Admin | |
 
 - [ ] F-EXM-01 Entities
 - [ ] F-EXM-02 Migration
@@ -289,6 +291,8 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 - [ ] F-EXM-16 Anti-cheat toggle
 - [ ] F-EXM-17 FE exam builder
 - [ ] F-EXM-18 FE question editor
+- [x] F-EXM-19 BE standard-file objective question import
+- [ ] F-EXM-20 FE standard-file objective question import UI
 
 ---
 
