@@ -287,6 +287,28 @@ export const examApi = {
     };
   },
 
+  async importQuestionFile(examId, file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const apiResponse = await requestApi(() =>
+      axiosClient.post(`/exams/${examId}/questions/import`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }),
+    );
+
+    return {
+      ...apiResponse,
+      data: {
+        examId: Number(apiResponse.data?.examId) || Number(examId) || 0,
+        importedQuestionCount: Number(apiResponse.data?.importedQuestionCount) || 0,
+        raw: apiResponse.data ?? null,
+      },
+    };
+  },
+
   async updateQuestion(_examId, questionId, payload) {
     const apiResponse = await requestApi(() =>
       axiosClient.put(`/questions/${questionId}`, buildQuestionWritePayload(payload)),

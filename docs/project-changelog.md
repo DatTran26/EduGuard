@@ -1,5 +1,43 @@
 # Project Changelog
 
+## Feature: Teacher exam file import UI and richer anti-cheat telemetry
+
+Date: 2026-06-18
+
+Branch/source: `devH`
+
+Description:
+
+- Thêm luồng Teacher upload file ngay trong trang chi tiết bài kiểm tra để nhập dữ liệu đề thi theo định dạng mẫu, giữ phạm vi frontend-only và gọi sang contract API để backend nối parser sau.
+- Hoàn thiện anti-cheat ở trang làm bài bằng cách bổ sung ghi nhận `WINDOW_BLUR`, chuẩn hóa metadata client cho các event gian lận và dọn lại thứ tự callback/hook để tránh lỗi runtime do tham chiếu callback trước khi khởi tạo.
+- Giữ nguyên layout quản lý đề thi hiện có; phần mới được gắn đúng vào `Teacher > Bài kiểm tra > Chi tiết đề thi` thay vì mở thêm flow riêng.
+
+Changed files:
+
+- `frontend/src/api/examApi.js`
+- `frontend/src/features/exams/components/ExamImportForm.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Bổ sung `examApi.importQuestionFile(examId, file)` gửi `multipart/form-data` tới contract `POST /api/exams/{id}/questions/import`; frontend hiện validate đuôi file `.json/.xlsx/.xls/.csv` và giới hạn kích thước 10 MB trước khi submit.
+- Tạo `ExamImportForm` dạng card title-only cho Teacher: chọn file, bỏ chọn, gửi file và báo lỗi nội bộ bằng UI hiện đại thay vì prompt mặc định của trình duyệt.
+- `ExamDetailPage` nay hiển thị card nhập file ngay trong khu `Ngân hàng câu hỏi`, reload lại dữ liệu đề sau khi gửi thành công để đồng bộ số câu hỏi và summary.
+- `ExamAttemptPage` được mở rộng telemetry anti-cheat: thêm `WINDOW_BLUR`, chuẩn hóa metadata JSON cho `TAB_SWITCH`, `COPY_PASTE`, `EXIT_FULLSCREEN`, `PAGE_RELOAD`, `DISCONNECTED`, đồng thời dời các callback `saveQuestion` / `flushDirtyAnswers` / `logAntiCheatEvent` / `handleSubmitAttempt` lên trước các `useEffect` đang dùng chúng.
+
+Validation:
+
+- `npx eslint src/api/examApi.js src/features/exams/components/ExamImportForm.jsx src/features/exams/pages/ExamDetailPage.jsx src/features/exam-attempts/pages/ExamAttemptPage.jsx` — passed.
+- `npm run build -- --outDir temp-build-teacher-exam-import-anticheat` — passed.
+
+Unresolved questions:
+
+- Backend hiện chưa có endpoint import thật trong repo; frontend đang chốt trước contract `POST /api/exams/{id}/questions/import` để teammate backend triển khai parser và response tương ứng.
+- Build frontend vẫn còn warning sẵn có từ `@microsoft/signalr` PURE annotation và cảnh báo chunk lớn; thay đổi này không làm phát sinh lỗi build mới.
+
 ## Feature: Admin real-data sync for dashboard, classrooms, and exams
 
 Date: 2026-06-18

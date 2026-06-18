@@ -20,6 +20,7 @@ import {
 import { formatShortDateTime } from "../../../utils/formatDate";
 import AttemptMonitorPanel from "../../anti-cheat/components/AttemptMonitorPanel";
 import ExamForm from "../components/ExamForm";
+import ExamImportForm from "../components/ExamImportForm";
 import QuestionCard from "../components/QuestionCard";
 import QuestionForm from "../components/QuestionForm";
 import {
@@ -140,6 +141,7 @@ export default function ExamDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isImportSubmitting, setIsImportSubmitting] = useState(false);
   const [isQuestionSubmitting, setIsQuestionSubmitting] = useState(false);
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
   const [antiCheatSummary, setAntiCheatSummary] = useState(null);
@@ -334,6 +336,30 @@ export default function ExamDetailPage() {
       return false;
     } finally {
       setIsQuestionSubmitting(false);
+    }
+  }
+
+  async function handleImportQuestionFile(file) {
+    setIsImportSubmitting(true);
+
+    try {
+      const response = await examApi.importQuestionFile(examId, file);
+      await loadExamDetail();
+      showToast({
+        tone: "success",
+        title: "Đã gửi file đề thi",
+        message: response.message,
+      });
+      return true;
+    } catch (error) {
+      showToast({
+        tone: "danger",
+        title: "Gửi file thất bại",
+        message: error.message || "Không thể gửi file đề thi lúc này.",
+      });
+      return false;
+    } finally {
+      setIsImportSubmitting(false);
     }
   }
 
@@ -714,6 +740,13 @@ export default function ExamDetailPage() {
                 ))}
               </div>
             </Card>
+          ) : null}
+
+          {exam.canEdit && exam.canViewQuestionBank ? (
+            <ExamImportForm
+              isSubmitting={isImportSubmitting}
+              onSubmitFile={handleImportQuestionFile}
+            />
           ) : null}
 
           {exam.canEdit && exam.canViewQuestionBank ? (
