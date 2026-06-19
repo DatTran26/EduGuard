@@ -10,6 +10,50 @@ namespace EduGuard.Infrastructure.Exams;
 
 public class ExamService : IExamService
 {
+    private const long MaxQuestionImportFileBytes = 5 * 1024 * 1024;
+
+    private static readonly HashSet<string> SupportedQuestionImportExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".csv",
+        ".xlsx",
+        ".txt",
+        ".docx",
+        ".pdf"
+    };
+
+    private static readonly Dictionary<string, HashSet<string>> AllowedQuestionImportContentTypesByExtension = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".csv"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "text/csv",
+            "application/csv",
+            "application/vnd.ms-excel",
+            "application/octet-stream"
+        },
+        [".xlsx"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/octet-stream",
+            "application/zip"
+        },
+        [".txt"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "text/plain",
+            "application/octet-stream"
+        },
+        [".docx"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/octet-stream",
+            "application/zip"
+        },
+        [".pdf"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "application/pdf",
+            "application/octet-stream"
+        }
+    };
+
     private readonly IExamRepository _examRepository;
     private readonly IClassroomRepository _classroomRepository;
     private readonly IValidator<CreateExamRequest> _createValidator;
@@ -161,6 +205,98 @@ public class ExamService : IExamService
         _examRepository.Update(exam);
         await _examRepository.SaveChangesAsync(ct);
         return ExamMapper.MapExam(exam);
+    }
+
+    public async Task<QuestionImportResultDto> ImportQuestionsAsync(
+        int examId,
+        Stream fileStream,
+        string fileName,
+        string contentType,
+        long fileLength,
+        string userId,
+        IReadOnlyList<string> roles,
+        CancellationToken ct = default)
+    {
+        var result = new QuestionImportResultDto
+        {
+            FileName = Path.GetFileName(fileName)
+        };
+
+        var exam = await RequireQuestionImportExamAsync(examId, userId, roles, ct);
+        AddQuestionImportFileErrors(result, fileName, contentType, fileLength);
+        if (result.Errors.Count > 0)
+        {
+            result.FailedCount = CountFailedRows(result.Errors);
+            return result;
+        }
+
+        if (fileStream.CanSeek)
+            fileStream.Position = 0;
+
+        var parsed = await QuestionImportParser.ParseAsync(fileStream, fileName, ct);
+        result.TotalRows = parsed.TotalRows;
+
+        if (parsed.Errors.Count > 0)
+        {
+            result.Errors.AddRange(parsed.Errors);
+            result.FailedCount = CountFailedRows(result.Errors);
+            return result;
+        }
+
+        if (parsed.Questions.Count == 0)
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 1,
+                FieldName = "file",
+                ErrorMessage = "Import file does not contain valid questions."
+            });
+            result.FailedCount = CountFailedRows(result.Errors);
+            return result;
+        }
+
+        var nextOrderIndex = exam.Questions.Count == 0
+            ? 1
+            : exam.Questions.Max(x => x.OrderIndex) + 1;
+        var importedQuestions = new List<Question>();
+
+        foreach (var request in parsed.Questions)
+        {
+            var normalizedAnswers = ExamQuestionValidator.NormalizeAnswers(request.QuestionType, request.Answers);
+            ExamQuestionValidator.ValidateQuestionInput(request.QuestionType, normalizedAnswers);
+
+            var question = new Question
+            {
+                ExamId = exam.Id,
+                Content = request.Content.Trim(),
+                QuestionType = request.QuestionType,
+                Score = request.Score,
+                OrderIndex = nextOrderIndex++,
+                CreatedAt = DateTime.UtcNow,
+                Answers = normalizedAnswers.Select((answer, index) => new Answer
+                {
+                    Content = answer.Content,
+                    IsCorrect = answer.IsCorrect,
+                    OrderIndex = index + 1
+                }).ToList()
+            };
+
+            importedQuestions.Add(question);
+            await _examRepository.AddQuestionAsync(question, ct);
+        }
+
+        exam.UpdatedAt = DateTime.UtcNow;
+        _examRepository.Update(exam);
+        await _examRepository.SaveChangesAsync(ct);
+
+        result.ImportedCount = importedQuestions.Count;
+        result.Questions = importedQuestions
+            .OrderBy(x => x.OrderIndex)
+            .ThenBy(x => x.Id)
+            .Select(x => ExamMapper.MapQuestion(x))
+            .ToList();
+
+        return result;
     }
 
     public async Task<IReadOnlyList<QuestionDto>> GetQuestionsAsync(
@@ -340,6 +476,94 @@ public class ExamService : IExamService
         return ExamMapper.MapAnswer(answer);
     }
 
+    private static void AddQuestionImportFileErrors(
+        QuestionImportResultDto result,
+        string fileName,
+        string contentType,
+        long fileLength)
+    {
+        var safeFileName = Path.GetFileName(fileName);
+        var extension = Path.GetExtension(safeFileName);
+        var normalizedContentType = contentType.Split(';', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim()
+            ?? string.Empty;
+
+        if (fileLength <= 0)
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "file",
+                ErrorMessage = "Import file is empty."
+            });
+        }
+
+        if (fileLength > MaxQuestionImportFileBytes)
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "file",
+                ErrorMessage = "Import file must not exceed 5 MB."
+            });
+        }
+
+        if (string.Equals(extension, ".doc", StringComparison.OrdinalIgnoreCase))
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "file",
+                ErrorMessage = "Legacy .doc files are not supported. Please convert the file to .docx and use the standard question template."
+            });
+        }
+        else if (string.Equals(extension, ".xls", StringComparison.OrdinalIgnoreCase))
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "file",
+                ErrorMessage = "Legacy .xls files are not supported. Please convert the file to .xlsx and use the standard question template."
+            });
+        }
+        else if (string.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "file",
+                ErrorMessage = ".zip media imports are not supported until image/file attachments are implemented."
+            });
+        }
+        else if (!SupportedQuestionImportExtensions.Contains(extension))
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "file",
+                ErrorMessage = "Question import supports .csv, .xlsx, .txt, .docx, and text-based .pdf files."
+            });
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedContentType)
+            && SupportedQuestionImportExtensions.Contains(extension)
+            && !IsAllowedQuestionImportContentType(extension, normalizedContentType))
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "contentType",
+                ErrorMessage = "Invalid content type for the selected question import file."
+            });
+        }
+    }
+
+    private static bool IsAllowedQuestionImportContentType(string extension, string contentType) =>
+        AllowedQuestionImportContentTypesByExtension.TryGetValue(extension, out var allowedContentTypes)
+        && allowedContentTypes.Contains(contentType);
+
+    private static int CountFailedRows(IEnumerable<QuestionImportErrorDto> errors) =>
+        errors.Select(x => x.RowNumber).Distinct().Count();
+
     private static ExamSetting BuildSetting(ExamSettingDto dto) => new()
     {
         ShuffleQuestions = dto.ShuffleQuestions,
@@ -500,6 +724,24 @@ public class ExamService : IExamService
 
     private Task<Exam> RequireTeacherOwnedExamWithQuestionsAsync(int examId, string teacherId, CancellationToken ct) =>
         RequireTeacherOwnedExamAsync(examId, teacherId, ct);
+
+    private async Task<Exam> RequireQuestionImportExamAsync(
+        int examId,
+        string userId,
+        IReadOnlyList<string> roles,
+        CancellationToken ct)
+    {
+        var exam = await _examRepository.GetByIdWithDetailsAsync(examId, ct)
+            ?? throw new KeyNotFoundException("KhÃ´ng tÃ¬m tháº¥y Ä‘á» thi.");
+
+        if (roles.Contains("Admin"))
+            return exam;
+
+        if (roles.Contains("Teacher") && exam.TeacherId == userId)
+            return exam;
+
+        throw new UnauthorizedAccessException("Only the teacher who created the exam or an admin can import questions.");
+    }
 
     private async Task<Question> RequireTeacherOwnedQuestionAsync(int questionId, string teacherId, CancellationToken ct)
     {

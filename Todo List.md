@@ -180,6 +180,9 @@
 - [x] `ExamsController` + Service + Repository (11 API + question bank)
 - [x] API CRUD đề thi theo lớp
 - [x] API thêm / sửa / xóa câu hỏi & đáp án
+- [x] API upload/import file chuẩn tạo câu hỏi trắc nghiệm vào đề thi (`POST /api/exams/{id}/questions/import`) cho Teacher/Admin
+- [x] Validate file import backend: `.csv`, `.xlsx`, `.txt`, `.docx`, PDF text, MIME type, giới hạn 5MB, cột/template bắt buộc, `question_type`, `correct_answer`, `score`
+- [x] Import backend hỗ trợ `single_choice`, `multiple_choice`, `true_false`; tự luận ngắn/dài để phát triển sau
 - [x] API publish đề thi *(cho phép công khai metadata trước; student chỉ start khi đề đã có câu hỏi)*
 
 ### Frontend
@@ -190,6 +193,10 @@
 - [x] UI cập nhật / xóa đề thi *(Teacher, có xác nhận xóa 2 bước và publish qua endpoint riêng)*
 - [x] UI cấu hình đề thi *(thời gian mở-đóng, anti-cheat, fullscreen, random, max attempts, show result; classroom không còn đổi được sau khi tạo vì backend chưa hỗ trợ)*
 - [x] UI quản lý câu hỏi & đáp án *(Teacher thêm/sửa/xóa câu hỏi qua backend thật; Admin xem được question bank; Student không thấy đáp án ở trang detail)*
+- [ ] UI upload file chuẩn tạo câu hỏi trắc nghiệm bài kiểm tra
+- [ ] Hiển thị lỗi import theo từng dòng/cột từ backend
+- [ ] Tải file mẫu `.csv`, `.xlsx`, `.txt`, `.docx` theo định chuẩn import ngân hàng câu hỏi
+- [ ] UI tự luận/essay import để phát triển sau khi hoàn thiện trắc nghiệm
 
 ### Backend — Cấu hình bài kiểm tra & trắc nghiệm MVP cần bổ sung
 

@@ -195,6 +195,7 @@ Tick `- [ ]` khi endpoint **có controller + Swagger + test cơ bản**.
 | API-EXM-05 | DELETE | `/api/exams/{id}` | Bearer | Teacher | ✓ | F-EXM-07 | Xóa đề |
 | API-EXM-06 | POST | `/api/exams/{id}/publish` | Bearer | Teacher | ✓ | F-EXM-08 | Công khai metadata đề thi |
 | API-EXM-07 | POST | `/api/exams/{id}/questions` | Bearer | Teacher | ✓ | F-EXM-09 | Thêm câu hỏi |
+| API-EXM-07I | POST | `/api/exams/{id}/questions/import` | Bearer | Teacher/Admin | ✓ | F-EXM-19 | Import câu hỏi trắc nghiệm từ `.csv`, `.xlsx`, `.txt`, `.docx`, PDF text |
 | API-EXM-08 | PUT | `/api/questions/{id}` | Bearer | Teacher | ✓ | F-EXM-10 | Sửa câu hỏi + đáp án (đầy đủ) |
 | API-EXM-08P | PATCH | `/api/questions/{id}` | Bearer | Teacher | ✓ | F-EXM-10 | Sửa một phần câu hỏi (không đổi đáp án) |
 | API-EXM-09 | DELETE | `/api/questions/{id}` | Bearer | Teacher | ✓ | F-EXM-11 | Xóa câu hỏi |
@@ -210,6 +211,7 @@ Tick `- [ ]` khi endpoint **có controller + Swagger + test cơ bản**.
 - [x] API-EXM-05 Delete exam
 - [x] API-EXM-06 Publish exam
 - [x] API-EXM-07 Add question
+- [x] API-EXM-07I Import objective questions from supported standard files
 - [x] API-EXM-08 Update question (PUT)
 - [x] API-EXM-08P Patch question
 - [x] API-EXM-09 Delete question
