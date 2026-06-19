@@ -8,6 +8,7 @@ export const routeConfig = {
   adminClassroomDetail: "/admin/classrooms/:classroomId",
   adminExams: "/admin/exams",
   adminExamDetail: "/admin/exams/:examId",
+  adminMonitoring: "/admin/monitoring",
   adminUsers: "/admin/users",
   adminProfile: "/admin/profile",
   teacherDashboard: "/teacher/dashboard",

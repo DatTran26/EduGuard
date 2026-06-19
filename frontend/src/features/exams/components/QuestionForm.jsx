@@ -1,14 +1,22 @@
 import { useState } from "react";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
+import FormErrorSummary from "../../../components/forms/FormErrorSummary";
 import Select from "../../../components/forms/Select";
 import TextInput from "../../../components/forms/TextInput";
+import {
+  getFirstValidationError,
+  hasValidationErrors,
+  validateNumberField,
+  validateRequiredText,
+} from "../../../utils/formValidation";
 import { QUESTION_TYPE_OPTIONS } from "../examHelpers";
 import {
   buildAnswerFormValue,
   getMinimumAnswerCount,
   buildDefaultAnswerValues,
   buildQuestionFormValues,
+  getQuestionTypeGuidance,
   isTrueFalseQuestion,
   allowsMultipleCorrectAnswers,
   isShortAnswerQuestion,
@@ -22,14 +30,20 @@ export default function QuestionForm({
   onCancel = null,
   onSubmitQuestion,
   question = null,
+  showDescriptions = true,
   submitLabel = "Lưu câu hỏi",
   title = "Câu hỏi mới",
 }) {
   const [formValues, setFormValues] = useState(() =>
     buildQuestionFormValues(question, defaultOrderIndex),
   );
+  const [validationErrors, setValidationErrors] = useState({});
 
   function handleFieldChange(fieldName, value) {
+    setValidationErrors((previousErrors) => ({
+      ...previousErrors,
+      [fieldName]: "",
+    }));
     setFormValues((previousValues) => ({
       ...previousValues,
       [fieldName]: value,
@@ -37,6 +51,11 @@ export default function QuestionForm({
   }
 
   function handleQuestionTypeChange(nextQuestionType) {
+    setValidationErrors((previousErrors) => ({
+      ...previousErrors,
+      answers: [],
+      answersGroup: "",
+    }));
     setFormValues((previousValues) => ({
       ...previousValues,
       questionType: nextQuestionType,
@@ -45,6 +64,22 @@ export default function QuestionForm({
   }
 
   function handleAnswerFieldChange(answerIndex, fieldName, value) {
+    setValidationErrors((previousErrors) => {
+      const nextErrors = {
+        ...previousErrors,
+      };
+
+      if (fieldName === "content" && Array.isArray(nextErrors.answers)) {
+        nextErrors.answers = [...nextErrors.answers];
+        nextErrors.answers[answerIndex] = "";
+      }
+
+      if (fieldName === "isCorrect") {
+        nextErrors.answersGroup = "";
+      }
+
+      return nextErrors;
+    });
     setFormValues((previousValues) => ({
       ...previousValues,
       answers: previousValues.answers.map((answer, index) => {
@@ -61,6 +96,10 @@ export default function QuestionForm({
   }
 
   function handleSingleCorrectAnswerChange(answerIndex) {
+    setValidationErrors((previousErrors) => ({
+      ...previousErrors,
+      answersGroup: "",
+    }));
     setFormValues((previousValues) => ({
       ...previousValues,
       answers: previousValues.answers.map((answer, index) => ({
@@ -71,6 +110,10 @@ export default function QuestionForm({
   }
 
   function handleAddAnswer() {
+    setValidationErrors((previousErrors) => ({
+      ...previousErrors,
+      answersGroup: "",
+    }));
     setFormValues((previousValues) => ({
       ...previousValues,
       answers: [...previousValues.answers, buildAnswerFormValue()],
@@ -78,6 +121,11 @@ export default function QuestionForm({
   }
 
   function handleRemoveAnswer(answerIndex) {
+    setValidationErrors((previousErrors) => ({
+      ...previousErrors,
+      answers: [],
+      answersGroup: "",
+    }));
     setFormValues((previousValues) => {
       if (
         previousValues.answers.length <= getMinimumAnswerCount(previousValues.questionType)
@@ -105,6 +153,57 @@ export default function QuestionForm({
     });
   }
 
+  function validateFormValues() {
+    const isShortAnswer = isShortAnswerQuestion(formValues.questionType);
+    const supportsMultipleCorrect = allowsMultipleCorrectAnswers(formValues.questionType);
+    const correctAnswerCount = formValues.answers.filter((answer) => answer.isCorrect).length;
+    const minimumAnswerCount = getMinimumAnswerCount(formValues.questionType);
+    const nextErrors = {
+      content: validateRequiredText(formValues.content, "Nội dung câu hỏi không được để trống."),
+      score: validateNumberField(formValues.score, {
+        requiredMessage: "Điểm không được để trống.",
+        invalidMessage: "Điểm phải là số hợp lệ.",
+        min: 0.25,
+        minMessage: "Điểm phải lớn hơn hoặc bằng 0.25.",
+      }),
+      orderIndex: validateNumberField(formValues.orderIndex, {
+        requiredMessage: "Thứ tự hiển thị không được để trống.",
+        invalidMessage: "Thứ tự hiển thị phải là số hợp lệ.",
+        min: 1,
+        minMessage: "Thứ tự hiển thị phải lớn hơn hoặc bằng 1.",
+        integer: true,
+        integerMessage: "Thứ tự hiển thị phải là số nguyên.",
+      }),
+      answers: formValues.answers.map((answer, index) =>
+        validateRequiredText(
+          answer.content,
+          isShortAnswer
+            ? `Đáp án mẫu ${index + 1} không được để trống.`
+            : `Đáp án ${index + 1} không được để trống.`,
+        ),
+      ),
+      answersGroup: "",
+    };
+
+    if (formValues.answers.length < minimumAnswerCount) {
+      nextErrors.answersGroup =
+        minimumAnswerCount === 1 ? "Cần ít nhất 1 đáp án mẫu." : "Cần ít nhất 2 đáp án.";
+      return nextErrors;
+    }
+
+    if (!isShortAnswer) {
+      if (supportsMultipleCorrect && correctAnswerCount === 0) {
+        nextErrors.answersGroup = "Hãy chọn ít nhất 1 đáp án đúng.";
+      }
+
+      if (!supportsMultipleCorrect && correctAnswerCount !== 1) {
+        nextErrors.answersGroup = "Hãy chọn đúng 1 đáp án đúng.";
+      }
+    }
+
+    return nextErrors;
+  }
+
   function buildSubmitPayload() {
     return {
       content: formValues.content.trim(),
@@ -122,9 +221,17 @@ export default function QuestionForm({
   async function handleSubmit(event) {
     event.preventDefault();
 
+    const nextValidationErrors = validateFormValues();
+    setValidationErrors(nextValidationErrors);
+
+    if (hasValidationErrors(nextValidationErrors)) {
+      return;
+    }
+
     const shouldReset = await onSubmitQuestion(buildSubmitPayload());
 
     if (shouldReset && !question) {
+      setValidationErrors({});
       setFormValues(buildQuestionFormValues(null, defaultOrderIndex));
     }
   }
@@ -132,14 +239,18 @@ export default function QuestionForm({
   const isTrueFalse = isTrueFalseQuestion(formValues.questionType);
   const isShortAnswer = isShortAnswerQuestion(formValues.questionType);
   const supportsMultipleCorrect = allowsMultipleCorrectAnswers(formValues.questionType);
+  const questionTypeGuidance = getQuestionTypeGuidance(formValues.questionType);
 
   return (
     <Card className="space-y-5">
       <h3 className="text-lg font-semibold text-primary">{title}</h3>
 
-      <form className="space-y-5" onSubmit={handleSubmit}>
+      <form className="space-y-5" noValidate onSubmit={handleSubmit}>
+        <FormErrorSummary message={getFirstValidationError(validationErrors)} />
+
         <TextInput
           as="textarea"
+          error={validationErrors.content}
           id={`question-content-${question?.id ?? "create"}`}
           label="Nội dung câu hỏi"
           onChange={(event) => handleFieldChange("content", event.target.value)}
@@ -157,6 +268,7 @@ export default function QuestionForm({
             value={formValues.questionType}
           />
           <TextInput
+            error={validationErrors.score}
             id={`question-score-${question?.id ?? "create"}`}
             label="Điểm"
             min="0.25"
@@ -167,6 +279,7 @@ export default function QuestionForm({
             value={formValues.score}
           />
           <TextInput
+            error={validationErrors.orderIndex}
             id={`question-order-${question?.id ?? "create"}`}
             label="Thứ tự hiển thị"
             min="1"
@@ -178,7 +291,15 @@ export default function QuestionForm({
           />
         </div>
 
+        {showDescriptions && questionTypeGuidance ? (
+          <div className="rounded-[12px] border border-info/20 bg-info-muted px-4 py-3 text-sm leading-6 text-secondary">
+            <p className="font-semibold text-primary">{questionTypeGuidance.title}</p>
+            <p className="mt-1">{questionTypeGuidance.description}</p>
+          </div>
+        ) : null}
+
         <QuestionFormAnswersSection
+          errors={validationErrors}
           formValues={formValues}
           question={question}
           isSubmitting={isSubmitting}

@@ -14,8 +14,8 @@ function getQuickLinkClassName({ isActive }) {
   return cn(
     "rounded-full px-4 py-2 text-sm font-medium transition-all duration-200",
     isActive
-      ? "bg-primary text-white shadow-[0_12px_24px_rgba(29,29,31,0.18)]"
-      : "bg-neutral text-secondary hover:bg-[rgba(29,29,31,0.06)] hover:text-primary",
+      ? "border border-info/20 bg-info-muted text-link"
+      : "border border-transparent bg-neutral text-secondary hover:bg-surface-sunken hover:text-primary",
   );
 }
 
@@ -25,10 +25,10 @@ export default function BrandNavbar() {
   const navigationItems = getBrandNavigationItems(getNavigationItemsByRole(user?.role));
 
   return (
-    <header className="rounded-[28px] border border-border bg-surface px-5 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.06)] md:px-6">
+    <header className="rounded-[28px] border border-border bg-surface px-5 py-4 md:px-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-[linear-gradient(135deg,#14233C,#2D5B8C)] text-lg font-semibold text-white shadow-[0_12px_28px_rgba(20,35,60,0.24)]">
+          <div className="flex h-14 w-14 items-center justify-center rounded-[18px] border border-border bg-surface-sunken text-lg font-semibold text-primary">
             EG
           </div>
           <div className="space-y-1">

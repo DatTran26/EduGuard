@@ -14,7 +14,7 @@ export function buildSummaryItems(classrooms) {
   );
 
   return [
-    { label: "Tổng lớp học", value: classrooms.length },
+    { label: "Tổng số lớp học", value: classrooms.length },
     { label: "Giảng viên", value: teacherCount },
     { label: "Thành viên", value: totalMembers },
   ];
@@ -36,7 +36,7 @@ export function getPageCopyByRole(role) {
   }
 
   return {
-    title: "Lớp học của sinh viên",
+    title: "Lớp của tôi",
     actionLabel: "Tham gia lớp",
   };
 }

@@ -1,5 +1,6 @@
 import axiosClient from "./axiosClient";
 import {
+  normalizeUserId,
   normalizeAttemptStatus,
   normalizeQuestionType,
   requestApi,
@@ -37,7 +38,7 @@ function normalizeAttemptDto(attempt) {
   return {
     id: Number(attempt?.id) || 0,
     examId: Number(attempt?.examId) || 0,
-    studentId: Number(attempt?.studentId) || 0,
+    studentId: normalizeUserId(attempt?.studentId),
     studentName: attempt?.studentName ?? "",
     startedAt: attempt?.startedAt ?? null,
     submittedAt: attempt?.submittedAt ?? null,

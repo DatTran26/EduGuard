@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FiUsers } from "react-icons/fi";
 import { classroomApi } from "../../../api/classroomApi";
-import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { buildClassroomDetailPathByRole } from "../../../routes/routeConfig";
@@ -45,12 +45,23 @@ export default function JoinClassroomPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="Sinh viên"
-        title="Tham gia lớp học"
-      />
+      <div className="flex flex-col gap-4 rounded-[24px] border border-border bg-surface p-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-3">
+          <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-4 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-info">
+            Sinh viên
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-[2.2rem]">
+            Tham gia lớp học
+          </h1>
+        </div>
 
-      <div className="max-w-xl">
+        <div className="flex items-center gap-3 rounded-full border border-border bg-neutral px-5 py-3 text-sm font-medium text-secondary">
+          <FiUsers className="h-4 w-4 text-info" />
+          <span>Nhập mã lớp</span>
+        </div>
+      </div>
+
+      <div className="max-w-3xl">
         <JoinClassroomForm isSubmitting={isSubmitting} onJoinClassroom={handleJoinClassroom} />
       </div>
     </div>

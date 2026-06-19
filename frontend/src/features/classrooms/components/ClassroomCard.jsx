@@ -23,11 +23,18 @@ function getCardBadgeLabel(classroom, role) {
 export default function ClassroomCard({ classroom, onCopyCode }) {
   const { user } = useAuth();
   const detailPath = buildClassroomDetailPathByRole(user?.role, classroom.id);
+  const isTeacherView = user?.role === "Teacher";
+  const isStudentView = user?.role === "Student";
+  const canCopyCode = typeof onCopyCode === "function" && Boolean(classroom.joinCode);
   const memberCountLabel =
     typeof classroom.memberCount === "number" ? `${classroom.memberCount} người` : "Chưa có số liệu";
 
   // Hàm này bắn callback lên page cha khi người dùng muốn sao chép mã lớp hiện tại.
   function handleCopyCodeClick() {
+    if (!canCopyCode) {
+      return;
+    }
+
     onCopyCode(classroom.joinCode);
   }
 
@@ -38,14 +45,20 @@ export default function ClassroomCard({ classroom, onCopyCode }) {
           <Badge variant={classroom.canEdit ? "success" : "info"}>
             {getCardBadgeLabel(classroom, user?.role)}
           </Badge>
-          <span className="rounded-full border border-border px-3 py-1 font-mono text-xs text-secondary">
-            {classroom.joinCode}
-          </span>
+          {!isTeacherView ? (
+            <span className="rounded-full border border-border px-3 py-1 font-mono text-xs text-secondary">
+              {classroom.joinCode}
+            </span>
+          ) : null}
         </div>
         <p className="text-sm text-secondary">Tạo ngày {formatShortDate(classroom.createdAt)}</p>
       </div>
 
-      <h3 className="text-xl font-semibold text-primary">{classroom.name}</h3>
+      <h3 className="text-xl font-semibold text-primary">
+        <Link className="eg-classroom-title-link" to={detailPath}>
+          {classroom.name}
+        </Link>
+      </h3>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-[16px] border border-border bg-neutral p-4">
@@ -56,24 +69,47 @@ export default function ClassroomCard({ classroom, onCopyCode }) {
           <p className="text-[0.82rem] font-medium text-secondary">Thành viên</p>
           <p className="mt-2 text-sm font-semibold text-primary">{memberCountLabel}</p>
         </div>
-        <div className="rounded-[16px] border border-border bg-neutral p-4">
-          <p className="text-[0.82rem] font-medium text-secondary">Cập nhật</p>
-          <p className="mt-2 text-sm font-semibold text-primary">
-            {formatShortDate(classroom.updatedAt || classroom.createdAt)}
-          </p>
-        </div>
+        {isTeacherView ? (
+          <button
+            className="eg-classroom-code-button rounded-[16px] p-4"
+            disabled={!canCopyCode}
+            onClick={handleCopyCodeClick}
+            type="button"
+          >
+            <p className="text-[0.82rem] font-medium text-secondary">Mã lớp</p>
+            <p className="mt-2 text-sm font-semibold text-primary">
+              {classroom.joinCode || "Chưa có mã"}
+            </p>
+            <p className="mt-2 text-xs text-secondary">
+              {canCopyCode ? "Nhấn để sao chép" : "Không thể sao chép lúc này"}
+            </p>
+          </button>
+        ) : (
+          <div className="rounded-[16px] border border-border bg-neutral p-4">
+            <p className="text-[0.82rem] font-medium text-secondary">
+              {isStudentView ? "Ngày tham gia" : "Cập nhật"}
+            </p>
+            <p className="mt-2 text-sm font-semibold text-primary">
+              {formatShortDate(
+                isStudentView ? classroom.joinedAt || classroom.createdAt : classroom.updatedAt || classroom.createdAt,
+              )}
+            </p>
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        {user?.role !== "Student" ? (
-          <Button variant="secondary" onClick={handleCopyCodeClick}>
-            Sao chép mã lớp
-          </Button>
-        ) : null}
-        <Link className="eg-button eg-button-secondary" to={detailPath}>
-          Xem chi tiết
-        </Link>
-      </div>
+      {!isTeacherView ? (
+        <div className="flex flex-wrap gap-3">
+          {user?.role !== "Student" ? (
+            <Button variant="secondary" onClick={handleCopyCodeClick}>
+              Sao chép mã lớp
+            </Button>
+          ) : null}
+          <Link className="eg-button eg-button-secondary" to={detailPath}>
+            Xem chi tiết
+          </Link>
+        </div>
+      ) : null}
     </Card>
   );
 }

@@ -72,7 +72,7 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 
 | ID | Feature | Layer | Role | MVP |
 |----|---------|-------|------|-----|
-| F-DB-01 | Entity `ApplicationUser` (`IdentityUser<int>`) | DB | System | ✓ |
+| F-DB-01 | Entity `ApplicationUser` (`IdentityUser`, string GUID key) | DB | System | ✓ |
 | F-DB-02 | Entity `RefreshToken` | DB | System | ✓ |
 | F-DB-03 | Entity `Classroom` | DB | System | ✓ |
 | F-DB-04 | Entity `ClassroomMember` | DB | System | ✓ |

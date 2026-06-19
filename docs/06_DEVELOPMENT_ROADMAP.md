@@ -62,7 +62,7 @@ Mục tiêu:
 Entity nên làm trước:
 
 ```txt
-ApplicationUser (IdentityUser<int>)
+ApplicationUser (IdentityUser, string GUID key)
 RefreshToken
 Classroom
 ClassroomMember
@@ -71,11 +71,11 @@ ClassroomMember
 Checklist:
 
 ```txt
-[x] Tạo ApplicationUser kế thừa IdentityUser<int>
+[x] Tạo ApplicationUser kế thừa IdentityUser
 [x] Tạo entity RefreshToken
 [x] Tạo entity Classroom
 [x] Tạo entity ClassroomMember
-[x] AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
+[x] AppDbContext : IdentityDbContext<ApplicationUser>
 [x] Seed roles Admin, Teacher, Student
 [x] Cấu hình SQL Server connection string (DefaultConnection)
 [x] Add-Migration InitialIdentityAndClassroom

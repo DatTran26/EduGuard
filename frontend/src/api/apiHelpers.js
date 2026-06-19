@@ -1,4 +1,5 @@
 import { getStoredUser } from "../utils/tokenStorage";
+import { parseDateValue } from "../utils/formatDate";
 
 export const QUESTION_TYPE_VALUE_BY_CODE = {
   1: "SingleChoice",
@@ -73,6 +74,23 @@ export function hasAnyRole(user, roles = []) {
   return roles.includes(user.role);
 }
 
+// Hàm này chuẩn hóa khóa user từ backend Identity. Sau migration, user id là GUID string.
+export function normalizeUserId(userId) {
+  if (userId === null || typeof userId === "undefined") {
+    return "";
+  }
+
+  return String(userId).trim();
+}
+
+// Hàm này so sánh user id mà không ép GUID string thành number.
+export function areUserIdsEqual(firstUserId, secondUserId) {
+  const firstNormalizedId = normalizeUserId(firstUserId);
+  const secondNormalizedId = normalizeUserId(secondUserId);
+
+  return Boolean(firstNormalizedId && secondNormalizedId && firstNormalizedId === secondNormalizedId);
+}
+
 // Hàm này suy ra trạng thái đề thi từ publish flag và mốc thời gian để UI không tự lặp logic.
 export function buildExamStatusLabel(exam) {
   if (!exam?.isPublished) {
@@ -80,8 +98,8 @@ export function buildExamStatusLabel(exam) {
   }
 
   const now = Date.now();
-  const startTime = exam.startTime ? new Date(exam.startTime).getTime() : null;
-  const endTime = exam.endTime ? new Date(exam.endTime).getTime() : null;
+  const startTime = parseDateValue(exam.startTime)?.getTime() ?? null;
+  const endTime = parseDateValue(exam.endTime)?.getTime() ?? null;
 
   if (startTime && now < startTime) {
     return "Sắp mở";

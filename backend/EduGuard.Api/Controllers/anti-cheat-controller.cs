@@ -45,7 +45,7 @@ public class AntiCheatController : ControllerBase
     }
 
     [HttpGet("api/anti-cheat/attempts/{attemptId:int}/logs")]
-    [Authorize(Roles = "Teacher")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<CheatingLogDto>>>> GetLogsByAttempt(
         int attemptId,
         CancellationToken ct)
@@ -67,7 +67,7 @@ public class AntiCheatController : ControllerBase
     }
 
     [HttpGet("api/anti-cheat/attempts/{attemptId:int}/score")]
-    [Authorize(Roles = "Teacher")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<ActionResult<ApiResponse<SuspicionScoreDto>>> GetSuspicionScore(
         int attemptId,
         CancellationToken ct)
@@ -89,18 +89,22 @@ public class AntiCheatController : ControllerBase
     }
 
     [HttpGet("api/anti-cheat/exams/{examId:int}/summary")]
-    [Authorize(Roles = "Teacher")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<ActionResult<ApiResponse<ExamAntiCheatSummaryDto>>> GetExamSummary(
         int examId,
         CancellationToken ct)
     {
-        var userId = GetCurrentUserId();
-        if (userId is null)
+        var user = GetCurrentUser();
+        if (user is null)
             return Unauthorized(ApiResponse<ExamAntiCheatSummaryDto>.CreateFailure("Token không hợp lệ."));
 
         try
         {
-            var data = await _antiCheatService.GetExamSummaryAsync(examId, userId, ct);
+            var data = await _antiCheatService.GetExamSummaryAsync(
+                examId,
+                user.Value.userId,
+                user.Value.roles,
+                ct);
             return Ok(ApiResponse<ExamAntiCheatSummaryDto>.CreateSuccess(data));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<ExamAntiCheatSummaryDto>.CreateFailure(ex.Message)); }

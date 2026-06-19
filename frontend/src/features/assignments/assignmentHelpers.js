@@ -26,7 +26,8 @@ function writeSubmissionCache(nextCache) {
 }
 
 function buildCacheKey(userId, assignmentId) {
-  return `${Number(userId) || 0}:${Number(assignmentId) || 0}`;
+  const normalizedUserId = userId === null || typeof userId === "undefined" ? "" : String(userId).trim();
+  return `${normalizedUserId || "anonymous"}:${Number(assignmentId) || 0}`;
 }
 
 export function getCachedSubmission(userId, assignmentId) {

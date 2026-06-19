@@ -580,7 +580,7 @@ export default function ExamAttemptPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-neutral px-4 py-6 md:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1280px] rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
+      <div className="eg-feedback-panel mx-auto max-w-[1280px]">
           Đang tải phòng làm bài...
         </div>
       </div>

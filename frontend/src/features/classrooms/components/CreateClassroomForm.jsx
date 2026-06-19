@@ -1,7 +1,13 @@
 import { useState } from "react";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
+import FormErrorSummary from "../../../components/forms/FormErrorSummary";
 import TextInput from "../../../components/forms/TextInput";
+import {
+  getFirstValidationError,
+  hasValidationErrors,
+  validateRequiredText,
+} from "../../../utils/formValidation";
 
 // Hàm này đổi dữ liệu classroom đầu vào về state form gọn để create và edit dùng chung được.
 function buildFormValues(classroom) {
@@ -20,18 +26,36 @@ export default function CreateClassroomForm({
   title = "Thông tin lớp học",
 }) {
   const [formValues, setFormValues] = useState(() => buildFormValues(classroom));
+  const [validationErrors, setValidationErrors] = useState({});
 
   // Hàm này cập nhật giá trị field tương ứng để các input đều đi qua một luồng state thống nhất.
   function handleFieldChange(fieldName, value) {
+    setValidationErrors((previousErrors) => ({
+      ...previousErrors,
+      [fieldName]: "",
+    }));
     setFormValues((previousValues) => ({
       ...previousValues,
       [fieldName]: value,
     }));
   }
 
+  function validateFormValues() {
+    return {
+      name: validateRequiredText(formValues.name, "Tên lớp học không được để trống."),
+    };
+  }
+
   // Hàm này submit dữ liệu đã chuẩn hóa để page cha xử lý create hoặc update giống gọi API thật.
   async function handleSubmit(event) {
     event.preventDefault();
+    const nextValidationErrors = validateFormValues();
+
+    setValidationErrors(nextValidationErrors);
+
+    if (hasValidationErrors(nextValidationErrors)) {
+      return;
+    }
 
     const shouldReset = await onSubmitClassroom({
       description: formValues.description.trim(),
@@ -39,6 +63,7 @@ export default function CreateClassroomForm({
     });
 
     if (shouldReset && !classroom) {
+      setValidationErrors({});
       setFormValues({
         description: "",
         name: "",
@@ -50,8 +75,11 @@ export default function CreateClassroomForm({
     <Card className="space-y-5">
       <h3 className="text-lg font-semibold text-primary">{title}</h3>
 
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form className="space-y-4" noValidate onSubmit={handleSubmit}>
+        <FormErrorSummary message={getFirstValidationError(validationErrors)} />
+
         <TextInput
+          error={validationErrors.name}
           id="classroom-name"
           label="Tên lớp học"
           onChange={(event) => handleFieldChange("name", event.target.value)}

@@ -9,5 +9,9 @@ public interface IAntiCheatService
         int attemptId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default);
     Task<SuspicionScoreDto> GetSuspicionScoreAsync(
         int attemptId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default);
-    Task<ExamAntiCheatSummaryDto> GetExamSummaryAsync(int examId, string teacherId, CancellationToken ct = default);
+    Task<ExamAntiCheatSummaryDto> GetExamSummaryAsync(
+        int examId,
+        string userId,
+        IReadOnlyList<string> roles,
+        CancellationToken ct = default);
 }
