@@ -62,7 +62,7 @@ Routing tách path theo role (`/admin/...`, `/teacher/...`, `/student/...`) — 
 ### Yêu cầu
 
 - Node.js 18+
-- Backend EduGuard chạy HTTPS tại `https://localhost:7168` (profile mặc định)
+- Backend EduGuard chạy HTTP tại `http://localhost:5157` (profile `http` mặc định)
 
 ### Cài đặt
 
@@ -83,8 +83,8 @@ Vite proxy (trong `vite.config.js`):
 
 | Path | Target |
 |------|--------|
-| `/api/*` | `https://127.0.0.1:7168` |
-| `/hubs/*` | `https://127.0.0.1:7168` (WebSocket) |
+| `/api/*` | `http://127.0.0.1:5157` |
+| `/hubs/*` | `http://127.0.0.1:5157` (WebSocket) |
 
 Axios mặc định dùng `baseURL = "/api"` — request đi qua proxy, không cần CORS thủ công khi dev.
 
@@ -115,6 +115,9 @@ Biến môi trường tùy chọn (file `.env` trong `frontend/`):
 ```env
 # Mặc định "/api" — dùng Vite proxy khi dev
 VITE_API_BASE_URL=/api
+
+# Tùy chọn: đổi backend target của Vite proxy nếu chạy API bằng profile HTTPS
+VITE_DEV_API_TARGET=https://127.0.0.1:7168
 ```
 
 ---

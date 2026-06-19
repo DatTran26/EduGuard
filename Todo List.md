@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD` / `devH` / `devB` (nhánh dev theo feature)
-**Cập nhật:** 2026-06-18 (devH: hoàn thiện cụm màn hình Admin theo sitemap MVP gồm `Dashboard`, `Người dùng`, `Lớp học`, `Bài kiểm tra`, `Giám sát`, `Hồ sơ`; đã thêm route/menu `Giám sát`, nâng `Dashboard` admin với trạng thái đề thi và lượt làm cần chú ý, làm lại `Người dùng` theo bố cục filter + danh sách + chi tiết, rồi nối `Người dùng` sang backend thật với API admin CRUD thêm/sửa/xóa user và dữ liệu thật thay cho mock; cùng ngày đã gỡ Student Dashboard khỏi điều hướng/route công khai, chuyển điểm vào mặc định của Student về `Lớp của tôi`, sửa breadcrumb `Trang chủ` cho Student và làm mới toàn bộ trang `Hồ sơ` theo layout nổi bật hơn với hero rõ ngữ cảnh, card title-only, khu avatar riêng, trạng thái đồng bộ/chưa lưu và hành động hoàn tác; đồng thời đã sửa lỗi active state sidebar của Student để trang `Tham gia lớp` không còn làm sáng nhầm `Lớp của tôi`, rồi đồng bộ `Dashboard`, `Lớp học` và `Bài kiểm tra` của Admin sang dữ liệu backend thật bằng cách mở quyền đọc classroom/member/attempt/anti-cheat cho admin và chuyển dashboard admin sang tổng hợp từ API thật; mới nhất đã thêm card import file đề thi cho Teacher ở trang chi tiết đề thi, validate đuôi file/kích thước trước khi gửi `multipart/form-data` tới backend, đồng thời hoàn thiện anti-cheat FE với event `WINDOW_BLUR` và metadata client đầy đủ hơn cho tab/fullscreen/clipboard/reload/disconnect.)
+**Cập nhật:** 2026-06-18 (devH: hoàn thiện cụm màn hình Admin theo sitemap MVP gồm `Dashboard`, `Người dùng`, `Lớp học`, `Bài kiểm tra`, `Giám sát`, `Hồ sơ`; đã thêm route/menu `Giám sát`, nâng `Dashboard` admin với trạng thái đề thi và lượt làm cần chú ý, làm lại `Người dùng` theo bố cục filter + danh sách + chi tiết, rồi nối `Người dùng` sang backend thật với API admin CRUD thêm/sửa/xóa user và dữ liệu thật thay cho mock; cùng ngày đã gỡ Student Dashboard khỏi điều hướng/route công khai, chuyển điểm vào mặc định của Student về `Lớp của tôi`, sửa breadcrumb `Trang chủ` cho Student và làm mới toàn bộ trang `Hồ sơ` theo layout nổi bật hơn với hero rõ ngữ cảnh, card title-only, khu avatar riêng, trạng thái đồng bộ/chưa lưu và hành động hoàn tác; đồng thời đã sửa lỗi active state sidebar của Student để trang `Tham gia lớp` không còn làm sáng nhầm `Lớp của tôi`, rồi đồng bộ `Dashboard`, `Lớp học` và `Bài kiểm tra` của Admin sang dữ liệu backend thật bằng cách mở quyền đọc classroom/member/attempt/anti-cheat cho admin và chuyển dashboard admin sang tổng hợp từ API thật.)
 **Ghi chú devB:** 2026-06-15 (backend cấu hình bài kiểm tra UTC, validation publish trắc nghiệm MVP; Phase 8 SignalR xong; Phase 9 Redis — kế hoạch chi tiết)
 **Ghi chú devH:** 2026-06-17 (đã xử lý conflict khi pull từ `release` theo hướng giữ bản release; hoàn thiện FE cho cấu hình lịch thi UTC+7, chia nhóm form, bỏ checkbox publish, thêm checklist điều kiện publish và nút `Publish đề` gọi backend thật, đồng thời bổ sung hướng dẫn theo loại câu hỏi và thống kê đầy đủ các dạng câu ở trang chi tiết đề thi; khóa exact version dependency frontend, thêm `.npmrc` `save-exact` và chuẩn hóa `package-lock.json` để giảm conflict merge với `release`; làm mới UI đăng nhập theo layout 2 cột cân giữa màn hình với panel thương hiệu và login card riêng)
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
@@ -20,9 +20,9 @@
 | 2 | Authentication & Authorization | 🟡 Backend auth + admin user CRUD xong, FE auth/user management thật xong; profile/avatar vẫn còn mock |
 | 3 | Classroom Management | 🟡 Backend xong (8/8 API), FE classroom thật xong cho teacher/student/admin; admin đã xem được toàn bộ classroom và member list theo dữ liệu backend |
 | 4 | Assignment Management | 🟡 Backend + FE core xong; trạng thái bài nộp của student sau reload còn giới hạn do BE chưa có endpoint lấy bài nộp cá nhân |
-| 5 | Exam Management | 🟡 Backend/FE core xong; UI cấu hình UTC+7 + publish checklist/action đã nối backend, FE đã có import file theo exam, còn backlog question bank dùng lại và backend parse file |
+| 5 | Exam Management | 🟡 Backend/FE core xong; UI cấu hình UTC+7 + publish checklist/action đã nối backend, còn backlog mở rộng question bank/import file |
 | 6 | Online Testing / Exam Attempt | ✅ Backend + FE core xong (start/resume, save answer, timer, auto submit, result, teacher attempt monitor) |
-| 7 | Anti-cheat Monitoring | ✅ Backend + FE REST cơ bản xong; realtime warning đã xử lý ở Phase 8 và FE đã ghi nhận thêm `WINDOW_BLUR` cùng metadata client đầy đủ hơn |
+| 7 | Anti-cheat Monitoring | ✅ Backend + FE REST cơ bản xong; realtime warning đã xử lý ở Phase 8 |
 | 8 | SignalR Realtime | ✅ Hoàn thành |
 | 9 | Redis | ⬜ Chưa bắt đầu |
 | 10 | Dashboard & Reporting | 🟡 Đang làm |
@@ -180,6 +180,9 @@
 - [x] `ExamsController` + Service + Repository (11 API + question bank)
 - [x] API CRUD đề thi theo lớp
 - [x] API thêm / sửa / xóa câu hỏi & đáp án
+- [x] API upload/import file chuẩn tạo câu hỏi trắc nghiệm vào đề thi (`POST /api/exams/{id}/questions/import`) cho Teacher/Admin
+- [x] Validate file import backend: `.csv`, `.xlsx`, `.txt`, `.docx`, PDF text, MIME type, giới hạn 5MB, cột/template bắt buộc, `question_type`, `correct_answer`, `score`
+- [x] Import backend hỗ trợ `single_choice`, `multiple_choice`, `true_false`; tự luận ngắn/dài để phát triển sau
 - [x] API publish đề thi *(cho phép công khai metadata trước; student chỉ start khi đề đã có câu hỏi)*
 
 ### Frontend
@@ -190,7 +193,10 @@
 - [x] UI cập nhật / xóa đề thi *(Teacher, có xác nhận xóa 2 bước và publish qua endpoint riêng)*
 - [x] UI cấu hình đề thi *(thời gian mở-đóng, anti-cheat, fullscreen, random, max attempts, show result; classroom không còn đổi được sau khi tạo vì backend chưa hỗ trợ)*
 - [x] UI quản lý câu hỏi & đáp án *(Teacher thêm/sửa/xóa câu hỏi qua backend thật; Admin xem được question bank; Student không thấy đáp án ở trang detail)*
-- [x] UI nhập file đề thi *(Teacher có card upload ngay trong exam detail, validate `.json/.xlsx/.xls/.csv` + giới hạn 10 MB và gửi `multipart/form-data` tới contract `POST /api/exams/{id}/questions/import`; backend parse file còn chờ triển khai)*
+- [ ] UI upload file chuẩn tạo câu hỏi trắc nghiệm bài kiểm tra
+- [ ] Hiển thị lỗi import theo từng dòng/cột từ backend
+- [ ] Tải file mẫu `.csv`, `.xlsx`, `.txt`, `.docx` theo định chuẩn import ngân hàng câu hỏi
+- [ ] UI tự luận/essay import để phát triển sau khi hoàn thiện trắc nghiệm
 
 ### Backend — Cấu hình bài kiểm tra & trắc nghiệm MVP cần bổ sung
 
@@ -214,7 +220,7 @@
 - [x] Chặn hoặc cảnh báo ở frontend khi cấu hình lịch thi/duration/max attempts không hợp lệ trước khi gửi API.
 - [x] Hiển thị lỗi publish từ backend theo cách teacher biết cần sửa câu hỏi/cấu hình nào.
 - [x] Ưu tiên UI quản lý câu hỏi trắc nghiệm trước: một đáp án, nhiều đáp án, đúng/sai; teacher có hướng dẫn theo loại câu hỏi và trang chi tiết đã thống kê đủ cả dạng tự luận ngắn mà backend đang hỗ trợ.
-- [ ] Mở rộng question bank dùng lại giữa nhiều đề và hoàn tất luồng import file end-to-end ở backend.
+- [ ] Mở rộng question bank dùng lại giữa nhiều đề và import file ở bước sau.
 
 **Tiêu chí hoàn thành:** Teacher cấu hình được đề trắc nghiệm theo giờ Việt Nam, publish được đề hợp lệ và Student bắt đầu làm bài đúng thời gian mở đề.
 
@@ -261,8 +267,7 @@
 - [x] Bắt sự kiện chuyển tab *(ghi log `TAB_SWITCH` trong lúc làm bài)*
 - [x] Bắt sự kiện copy/paste *(ghi log `COPY_PASTE` cho copy/cut/paste)*
 - [x] Bắt sự kiện fullscreen *(ghi log `EXIT_FULLSCREEN` khi rời fullscreen)*
-- [x] Bắt sự kiện rời cửa sổ / mất focus *(ghi log `WINDOW_BLUR` khi cửa sổ làm bài mất focus nhưng tab chưa hidden; metadata client gửi lên cũng gồm trạng thái visibility/fullscreen/thời điểm phát sinh)*
-- [x] Bắt reload / mất kết nối cơ bản *(ghi log `PAGE_RELOAD` bằng keepalive và `DISCONNECTED` khi kết nối quay lại; metadata gửi BE đã được chuẩn hóa theo từng event)*
+- [x] Bắt reload / mất kết nối cơ bản *(ghi log `PAGE_RELOAD` bằng keepalive và `DISCONNECTED` khi kết nối quay lại)*
 - [x] Dashboard anti-cheat cho Teacher *(exam detail có attempt monitor, suspicion score và timeline log theo từng attempt)*
 - [x] Giám sát anti-cheat cho Admin *(đã thêm menu `Giám sát`, bộ lọc theo từ khóa/mức độ/loại vi phạm, bảng đề thi rủi ro, sinh viên cần chú ý và sự kiện gần đây; dữ liệu hiện tổng hợp từ mock admin dashboard source để phục vụ vận hành FE trước khi BE có endpoint admin riêng)*
 

@@ -203,6 +203,54 @@ public class ExamsController : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(ApiResponse<QuestionDto>.CreateFailure(ex.Message)); }
     }
 
+    [HttpPost("api/exams/{id:int}/questions/import")]
+    [Authorize(Roles = "Teacher,Admin")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<ActionResult<ApiResponse<QuestionImportResultDto>>> ImportQuestions(
+        int id,
+        [FromForm] IFormFile? file,
+        CancellationToken ct)
+    {
+        var user = GetCurrentUser();
+        if (user is null)
+            return Unauthorized(ApiResponse<QuestionImportResultDto>.CreateFailure("Token khong hop le."));
+
+        if (file is null)
+            return BadRequest(ApiResponse<QuestionImportResultDto>.CreateFailure("Vui long chon file import."));
+
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            var data = await _examService.ImportQuestionsAsync(
+                id,
+                stream,
+                file.FileName,
+                file.ContentType,
+                file.Length,
+                user.Value.userId,
+                user.Value.roles,
+                ct);
+
+            if (data.Errors.Count > 0)
+            {
+                return BadRequest(new ApiResponse<QuestionImportResultDto>
+                {
+                    Success = false,
+                    Message = "File import co loi. Khong co cau hoi nao duoc luu.",
+                    Data = data
+                });
+            }
+
+            return Ok(ApiResponse<QuestionImportResultDto>.CreateSuccess(data, "Import cau hoi thanh cong."));
+        }
+        catch (KeyNotFoundException ex) { return NotFound(ApiResponse<QuestionImportResultDto>.CreateFailure(ex.Message)); }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<QuestionImportResultDto>.CreateFailure(ex.Message));
+        }
+    }
+
     [HttpPut("api/questions/{id:int}")]
     [Authorize(Roles = "Teacher")]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> UpdateQuestion(

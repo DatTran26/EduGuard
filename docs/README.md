@@ -54,6 +54,7 @@ Hệ thống theo kiến trúc **Client – Server**:
 | `06_DEVELOPMENT_ROADMAP.md` | Lộ trình triển khai MVP theo từng giai đoạn |
 | `07_DEVELOPMENT_RULES.md` | **Bắt buộc đọc** — quy tắc Git, push/ship workflow, cập nhật Todo List |
 | `08_DEPLOY_WORKFLOW.md` | Flow overview deploy (ASCII + SVG), Local → Staging → Prod |
+| `09_QUESTION_BANK_FILE_IMPORT_STANDARD.md` | Định chuẩn import file ngân hàng câu hỏi / tạo câu hỏi bài kiểm tra |
 | `design-guidelines.md` | **Bắt buộc cho UI** — design system Apple-inspired, tokens, component, checklist merge |
 | `project-changelog.md` | Lịch sử thay đổi theo feature |
 
@@ -90,6 +91,7 @@ EduGuard/
 │   ├── 06_DEVELOPMENT_ROADMAP.md
 │   ├── 07_DEVELOPMENT_RULES.md
 │   ├── 08_DEPLOY_WORKFLOW.md
+│   ├── 09_QUESTION_BANK_FILE_IMPORT_STANDARD.md
 │   ├── design-guidelines.md
 │   ├── assets/deploy-flow-overview.png
 │   ├── assets/deploy-flow-overview.svg

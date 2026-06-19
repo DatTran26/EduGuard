@@ -1,43 +1,21 @@
 # Project Changelog
 
-## Feature: Teacher exam file import UI and richer anti-cheat telemetry
+## Bug fix: Local frontend/backend dev proxy 502
 
 Date: 2026-06-18
 
-Branch/source: `devH`
+Branch/source: `devB`
 
 Description:
 
-- Thêm luồng Teacher upload file ngay trong trang chi tiết bài kiểm tra để nhập dữ liệu đề thi theo định dạng mẫu, giữ phạm vi frontend-only và gọi sang contract API để backend nối parser sau.
-- Hoàn thiện anti-cheat ở trang làm bài bằng cách bổ sung ghi nhận `WINDOW_BLUR`, chuẩn hóa metadata client cho các event gian lận và dọn lại thứ tự callback/hook để tránh lỗi runtime do tham chiếu callback trước khi khởi tạo.
-- Giữ nguyên layout quản lý đề thi hiện có; phần mới được gắn đúng vào `Teacher > Bài kiểm tra > Chi tiết đề thi` thay vì mở thêm flow riêng.
+- Fixed local development 502 errors where the Vite frontend proxy targeted `https://127.0.0.1:7168` while the backend default `http` launch profile listens on `http://localhost:5157`.
+- Restored backend NuGet assets after a failed offline restore left `project.assets.json` pointing at an unavailable sandbox package cache.
+- Restarted local backend and frontend dev servers after applying the proxy fix so Swagger and proxied API calls work again.
 
 Changed files:
 
-- `frontend/src/api/examApi.js`
-- `frontend/src/features/exams/components/ExamImportForm.jsx`
-- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
-- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
-- `Todo List.md`
-- `docs/project-changelog.md`
-
-Technical summary:
-
-- Bổ sung `examApi.importQuestionFile(examId, file)` gửi `multipart/form-data` tới contract `POST /api/exams/{id}/questions/import`; frontend hiện validate đuôi file `.json/.xlsx/.xls/.csv` và giới hạn kích thước 10 MB trước khi submit.
-- Tạo `ExamImportForm` dạng card title-only cho Teacher: chọn file, bỏ chọn, gửi file và báo lỗi nội bộ bằng UI hiện đại thay vì prompt mặc định của trình duyệt.
-- `ExamDetailPage` nay hiển thị card nhập file ngay trong khu `Ngân hàng câu hỏi`, reload lại dữ liệu đề sau khi gửi thành công để đồng bộ số câu hỏi và summary.
-- `ExamAttemptPage` được mở rộng telemetry anti-cheat: thêm `WINDOW_BLUR`, chuẩn hóa metadata JSON cho `TAB_SWITCH`, `COPY_PASTE`, `EXIT_FULLSCREEN`, `PAGE_RELOAD`, `DISCONNECTED`, đồng thời dời các callback `saveQuestion` / `flushDirtyAnswers` / `logAntiCheatEvent` / `handleSubmitAttempt` lên trước các `useEffect` đang dùng chúng.
-
-Validation:
-
-- `npx eslint src/api/examApi.js src/features/exams/components/ExamImportForm.jsx src/features/exams/pages/ExamDetailPage.jsx src/features/exam-attempts/pages/ExamAttemptPage.jsx` — passed.
-- `npm run build -- --outDir temp-build-teacher-exam-import-anticheat` — passed.
-
-Unresolved questions:
-
-- Backend hiện chưa có endpoint import thật trong repo; frontend đang chốt trước contract `POST /api/exams/{id}/questions/import` để teammate backend triển khai parser và response tương ứng.
-- Build frontend vẫn còn warning sẵn có từ `@microsoft/signalr` PURE annotation và cảnh báo chunk lớn; thay đổi này không làm phát sinh lỗi build mới.
-
+- `frontend/vite.config.js`
+- `frontend/README.md`
 ## Feature: Admin real-data sync for dashboard, classrooms, and exams
 
 Date: 2026-06-18
@@ -216,6 +194,50 @@ Changed files:
 
 Technical summary:
 
+- Added `VITE_DEV_API_TARGET` support in Vite config and defaulted the dev proxy target to `http://127.0.0.1:5157`.
+- Kept `secure: false` for `/api` and `/hubs` proxy entries so developers can still override the target to the HTTPS dev profile with self-signed certs.
+- Updated frontend README local-run instructions to match the backend `http` launch profile.
+
+Validation:
+
+- `dotnet restore backend\EduGuard.slnx` — succeeded.
+- `dotnet build backend\EduGuard.slnx --no-restore` — succeeded, 0 warnings, 0 errors.
+- `npm.cmd run build` — succeeded; Vite emitted existing dependency/chunk-size warnings only.
+- `curl http://127.0.0.1:5157/swagger/index.html` — returned HTTP 200.
+- `curl http://127.0.0.1:5173` — returned HTTP 200.
+- `curl http://127.0.0.1:5173/api/Test` — returned HTTP 200 with backend JSON `{ "message": "EduGuard API is running" }`.
+
+Unresolved questions:
+
+- DataProtection logs warnings about an old DPAPI-protected key that cannot be decrypted in the current user context; this does not block Swagger or API proxy calls but should be cleaned separately if it keeps polluting logs.
+
+## Feature: Backend standard-file objective question import
+
+Date: 2026-06-18
+
+Branch/source: `devB`
+
+Description:
+
+- Added backend support for importing objective exam questions from standard files into an existing exam.
+- Supports `.csv`, `.xlsx`, `.txt`, `.docx`, and text-based `.pdf` files when they follow the approved question-bank template.
+- Scoped import to objective question types only: `single_choice`, `multiple_choice`, and `true_false`; short answer, essay, OCR, ZIP/media imports remain follow-up work.
+- Opened the import endpoint to `Teacher` and `Admin`; teachers can import only into their own exams, while admins can import into any exam.
+- Added the approved question-bank file import standard to docs and linked it from the documentation index.
+- Updated Todo/API/feature tracking so backend and frontend import work are separated clearly.
+
+Changed files:
+
+- `backend/EduGuard.Api/Controllers/exams-controller.cs`
+- `backend/EduGuard.Application/DTOs/Exams/question-import-error-dto.cs`
+- `backend/EduGuard.Application/DTOs/Exams/question-import-result-dto.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-exam-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/question-import-parser.cs`
+- `docs/09_QUESTION_BANK_FILE_IMPORT_STANDARD.md`
+- `docs/README.md`
+- `docs/apiList.md`
+- `docs/features.md`
 - Bổ sung route `routeConfig.adminMonitoring`, thêm menu `Giám sát` cho Admin, gắn breadcrumb label và icon riêng trong `TopBar` / `Sidebar`, đồng thời mount route mới trong `AppRoutes`.
 - Mở rộng `dashboardApi` cho Admin với dữ liệu trạng thái đề thi, lượt làm rủi ro cao, breakdown vi phạm, bảng xếp hạng đề thi rủi ro, bảng xếp hạng sinh viên cần chú ý và sự kiện anti-cheat gần đây.
 - Tạo `AdminMonitoringPage` với bộ lọc client-side theo từ khóa, severity và loại vi phạm; dữ liệu hiển thị ở dạng summary cards, metric bar và danh sách thao tác nhanh, không dùng phần mô tả phụ.
@@ -255,6 +277,24 @@ Changed files:
 - `docs/project-changelog.md`
 
 Technical summary:
+
+- Added `POST /api/exams/{id}/questions/import` as a Teacher/Admin multipart endpoint using form field `file`.
+- Import validates supported extensions, accepted MIME types, 5 MB max size, required headers/templates, question type, score, answer options, and correct-answer references before saving.
+- CSV/XLSX rows and TXT/DOCX/PDF text blocks are parsed into the existing `Question` / `Answer` model and reuse existing exam question validation before appending imported questions to the target exam.
+- Import is all-or-nothing: if any row has an error, the response includes row-level errors and no database changes are saved.
+
+Validation:
+
+- `dotnet build backend\EduGuard.slnx` — blocked at API output copy because running `EduGuard.Api` / Visual Studio locked DLLs.
+- Backend build with isolated output path — succeeded, 0 warnings, 0 errors.
+- Backend test with isolated output path — succeeded with exit code 0.
+- Parser smoke checks — passed for `.csv`, `.xlsx`, `.txt`, `.docx`, and text-based `.pdf`.
+- Backend API E2E import check — passed: imported a standard CSV with 3 objective rows into an exam, verified saved question types `single_choice`, `multiple_choice`, `true_false`, and verified correct-answer counts.
+
+Unresolved questions:
+
+- Frontend upload UI, template download, and row-level/case-level error display are still pending.
+- Images/media, ZIP import, OCR for scanned PDFs, short-answer, essay, persistent import batches, and duplicate detection remain later phases.
 
 - `getNavigationItemsByRole` không còn trả menu `Dashboard` cho Student và `getDefaultPathByRole` nay trả `routeConfig.studentClassrooms` để login/root redirect đưa Student về danh sách lớp thay vì dashboard.
 - `AppRoutes` không còn mount `StudentDashboardPage` cho route công khai của Student; `routeConfig.studentDashboard` giờ render `Navigate` sang `studentClassrooms` để giữ tương thích với link cũ.

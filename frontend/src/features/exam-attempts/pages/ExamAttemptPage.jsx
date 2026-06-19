@@ -78,15 +78,6 @@ function buildUnansweredQuestionIndexes(questions = [], answersByQuestionId = {}
     .map((question) => question.orderIndex);
 }
 
-function buildAntiCheatMetadata(metadata = {}) {
-  return JSON.stringify({
-    ...metadata,
-    occurredAtClient: new Date().toISOString(),
-    visibilityState: typeof document === "undefined" ? "" : document.visibilityState,
-    isFullscreen: typeof document !== "undefined" ? Boolean(document.fullscreenElement) : false,
-  });
-}
-
 export default function ExamAttemptPage() {
   const { attemptId } = useParams();
   const { user } = useAuth();
@@ -121,7 +112,6 @@ export default function ExamAttemptPage() {
   const offlineStartedAtRef = useRef(0);
   const hasAutoSubmittedRef = useRef(false);
   const isSubmittingRef = useRef(false);
-  const isFullscreenRef = useRef(isFullscreen);
 
   const answeredQuestionCount = useMemo(
     () => countAnsweredQuestions(questions, answersByQuestionId),
@@ -159,8 +149,231 @@ export default function ExamAttemptPage() {
   }, [isSubmitting]);
 
   useEffect(() => {
-    isFullscreenRef.current = isFullscreen;
-  }, [isFullscreen]);
+    let isMounted = true;
+
+    async function loadAttemptPage() {
+      try {
+        const attemptResponse = await examAttemptApi.getById(attemptId);
+
+        if (!isMounted) {
+          return;
+        }
+
+        const attemptData = attemptResponse.data;
+        const examResponse = await examApi.getById(attemptData.examId);
+
+        if (!isMounted) {
+          return;
+        }
+
+        const initialAnswers = buildAttemptAnswerState(attemptData.savedAnswers);
+        let nextResult = null;
+
+        if (attemptData.status === "Submitted") {
+          const resultResponse = await examAttemptApi.getResult(attemptId);
+          nextResult = resultResponse.data;
+        }
+
+        setAttempt(attemptData);
+        setExam(examResponse.data);
+        setQuestions(attemptData.questions);
+        setAnswersByQuestionId(initialAnswers);
+        setResult(nextResult);
+        setLoadErrorMessage("");
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setAttempt(null);
+        setExam(null);
+        setQuestions([]);
+        setResult(null);
+        setLoadErrorMessage(error.message || "Không thể tải phòng làm bài.");
+        showToast({
+          tone: "danger",
+          title: "Tải phòng làm bài thất bại",
+          message: error.message || "Không thể tải phòng làm bài.",
+        });
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadAttemptPage();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [attemptId, showToast]);
+
+  useEffect(() => {
+    if (attempt?.status !== "InProgress") {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setClockTickMs(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [attempt?.status]);
+
+  useEffect(() => {
+    if (attempt?.status !== "InProgress" || !attemptEndTime || remainingTimeMs > 0) {
+      return;
+    }
+
+    if (hasAutoSubmittedRef.current || isSubmittingRef.current) {
+      return;
+    }
+
+    hasAutoSubmittedRef.current = true;
+    handleSubmitAttempt({ isAutoSubmit: true });
+  }, [attempt?.status, attemptEndTime, handleSubmitAttempt, remainingTimeMs]);
+
+  useEffect(() => {
+    const activeTimers = questionSaveTimersRef.current;
+
+    return () => {
+      activeTimers.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
+      activeTimers.clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (attempt?.status !== "InProgress") {
+      return undefined;
+    }
+
+    function handleOffline() {
+      offlineStartedAtRef.current = Date.now();
+      setIsOnline(false);
+    }
+
+    function handleOnline() {
+      const disconnectedDurationMs = offlineStartedAtRef.current
+        ? Date.now() - offlineStartedAtRef.current
+        : 0;
+      offlineStartedAtRef.current = 0;
+      setIsOnline(true);
+      flushDirtyAnswers();
+
+      if (examRef.current?.enableAntiCheat) {
+        logAntiCheatEvent({
+          type: ANTI_CHEAT_EVENT_TYPES.disconnected,
+          description: "Hệ thống ghi nhận mất kết nối trong lúc làm bài.",
+          metadata:
+            disconnectedDurationMs > 0
+              ? JSON.stringify({
+                  disconnectedDurationSeconds: Math.round(disconnectedDurationMs / 1000),
+                })
+              : "",
+        });
+      }
+    }
+
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [attempt?.status, flushDirtyAnswers, logAntiCheatEvent]);
+
+  useEffect(() => {
+    if (attempt?.status !== "InProgress" || !exam?.enableAntiCheat) {
+      return undefined;
+    }
+
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        logAntiCheatEvent({
+          type: ANTI_CHEAT_EVENT_TYPES.tabSwitch,
+          description: "Hệ thống ghi nhận bạn rời màn hình làm bài.",
+        });
+      }
+    }
+
+    function handleClipboardEvent(event) {
+        logAntiCheatEvent({
+          type: ANTI_CHEAT_EVENT_TYPES.copyPaste,
+        description: "Hệ thống ghi nhận thao tác copy / cut / paste trong lúc làm bài.",
+        metadata: JSON.stringify({ eventType: event.type }),
+      });
+    }
+
+    function handleFullscreenChange() {
+      const nextIsFullscreen = Boolean(document.fullscreenElement);
+      const previousIsFullscreen = isFullscreen;
+      setIsFullscreen(nextIsFullscreen);
+
+      if (previousIsFullscreen && !nextIsFullscreen) {
+        logAntiCheatEvent({
+          type: ANTI_CHEAT_EVENT_TYPES.exitFullscreen,
+          description: "Hệ thống ghi nhận bạn đã thoát chế độ toàn màn hình.",
+        });
+      }
+    }
+
+    function handleBeforeUnload() {
+      postKeepAliveLog({
+        examAttemptId: Number(attemptRef.current?.id) || 0,
+        type: ANTI_CHEAT_EVENT_TYPES.pageReload,
+        description: "Hệ thống ghi nhận trang làm bài bị tải lại hoặc đóng đột ngột.",
+      });
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("copy", handleClipboardEvent);
+    document.addEventListener("cut", handleClipboardEvent);
+    document.addEventListener("paste", handleClipboardEvent);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("copy", handleClipboardEvent);
+      document.removeEventListener("cut", handleClipboardEvent);
+      document.removeEventListener("paste", handleClipboardEvent);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [attempt?.status, exam?.enableAntiCheat, isFullscreen, logAntiCheatEvent, postKeepAliveLog]);
+
+  function setAnswerState(questionId, nextAnswerState) {
+    setAnswersByQuestionId((previousValue) => {
+      const nextValue = {
+        ...previousValue,
+        [questionId]: nextAnswerState,
+      };
+      answersRef.current = nextValue;
+      return nextValue;
+    });
+  }
+
+  function scheduleQuestionSave(questionId) {
+    const matchedTimer = questionSaveTimersRef.current.get(questionId);
+
+    if (matchedTimer) {
+      window.clearTimeout(matchedTimer);
+    }
+
+    dirtyQuestionIdsRef.current.add(questionId);
+
+    const timeoutId = window.setTimeout(() => {
+      saveQuestion(questionId);
+    }, QUESTION_SAVE_DELAY_MS);
+
+    questionSaveTimersRef.current.set(questionId, timeoutId);
+  }
 
   const saveQuestion = useCallback(async (questionId) => {
     const nextAttempt = attemptRef.current;
@@ -276,6 +489,36 @@ export default function ExamAttemptPage() {
     }
   }, []);
 
+  function handleSelectSingleAnswer(questionId, answerId) {
+    setAnswerState(questionId, {
+      answerIds: [answerId],
+      textAnswer: "",
+    });
+    scheduleQuestionSave(questionId);
+  }
+
+  function handleToggleMultipleAnswer(questionId, answerId) {
+    const currentAnswerState = buildQuestionAnswerState(
+      currentQuestion,
+      answersByQuestionId[questionId],
+    );
+    const nextAnswerIds = toggleAnswerSelection(currentAnswerState.answerIds, answerId);
+
+    setAnswerState(questionId, {
+      answerIds: nextAnswerIds,
+      textAnswer: "",
+    });
+    scheduleQuestionSave(questionId);
+  }
+
+  function handleShortAnswerChange(questionId, value) {
+    setAnswerState(questionId, {
+      answerIds: [],
+      textAnswer: value,
+    });
+    scheduleQuestionSave(questionId);
+  }
+
   const handleSubmitAttempt = useCallback(async ({ isAutoSubmit = false } = {}) => {
     if (!attemptRef.current) {
       return;
@@ -312,295 +555,6 @@ export default function ExamAttemptPage() {
     }
   }, [flushDirtyAnswers, showToast]);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadAttemptPage() {
-      try {
-        const attemptResponse = await examAttemptApi.getById(attemptId);
-
-        if (!isMounted) {
-          return;
-        }
-
-        const attemptData = attemptResponse.data;
-        const examResponse = await examApi.getById(attemptData.examId);
-
-        if (!isMounted) {
-          return;
-        }
-
-        const initialAnswers = buildAttemptAnswerState(attemptData.savedAnswers);
-        let nextResult = null;
-
-        if (attemptData.status === "Submitted") {
-          const resultResponse = await examAttemptApi.getResult(attemptId);
-          nextResult = resultResponse.data;
-        }
-
-        setAttempt(attemptData);
-        setExam(examResponse.data);
-        setQuestions(attemptData.questions);
-        setAnswersByQuestionId(initialAnswers);
-        setResult(nextResult);
-        setLoadErrorMessage("");
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        setAttempt(null);
-        setExam(null);
-        setQuestions([]);
-        setResult(null);
-        setLoadErrorMessage(error.message || "Không thể tải phòng làm bài.");
-        showToast({
-          tone: "danger",
-          title: "Tải phòng làm bài thất bại",
-          message: error.message || "Không thể tải phòng làm bài.",
-        });
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    loadAttemptPage();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [attemptId, showToast]);
-
-  useEffect(() => {
-    if (attempt?.status !== "InProgress") {
-      return undefined;
-    }
-
-    const intervalId = window.setInterval(() => {
-      setClockTickMs(Date.now());
-    }, 1000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [attempt?.status]);
-
-  useEffect(() => {
-    if (attempt?.status !== "InProgress" || !attemptEndTime || remainingTimeMs > 0) {
-      return;
-    }
-
-    if (hasAutoSubmittedRef.current || isSubmittingRef.current) {
-      return;
-    }
-
-    hasAutoSubmittedRef.current = true;
-    void handleSubmitAttempt({ isAutoSubmit: true });
-  }, [attempt?.status, attemptEndTime, handleSubmitAttempt, remainingTimeMs]);
-
-  useEffect(() => {
-    const activeTimers = questionSaveTimersRef.current;
-
-    return () => {
-      activeTimers.forEach((timeoutId) => {
-        window.clearTimeout(timeoutId);
-      });
-      activeTimers.clear();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (attempt?.status !== "InProgress") {
-      return undefined;
-    }
-
-    function handleOffline() {
-      offlineStartedAtRef.current = Date.now();
-      setIsOnline(false);
-    }
-
-    function handleOnline() {
-      const disconnectedDurationMs = offlineStartedAtRef.current
-        ? Date.now() - offlineStartedAtRef.current
-        : 0;
-      offlineStartedAtRef.current = 0;
-      setIsOnline(true);
-      void flushDirtyAnswers();
-
-      if (examRef.current?.enableAntiCheat) {
-        void logAntiCheatEvent({
-          type: ANTI_CHEAT_EVENT_TYPES.disconnected,
-          description: "Hệ thống ghi nhận mất kết nối trong lúc làm bài.",
-          metadata: buildAntiCheatMetadata({
-            disconnectedDurationSeconds:
-              disconnectedDurationMs > 0 ? Math.round(disconnectedDurationMs / 1000) : 0,
-            eventType: "online",
-          }),
-        });
-      }
-    }
-
-    window.addEventListener("offline", handleOffline);
-    window.addEventListener("online", handleOnline);
-
-    return () => {
-      window.removeEventListener("offline", handleOffline);
-      window.removeEventListener("online", handleOnline);
-    };
-  }, [attempt?.status, flushDirtyAnswers, logAntiCheatEvent]);
-
-  useEffect(() => {
-    if (attempt?.status !== "InProgress" || !exam?.enableAntiCheat) {
-      return undefined;
-    }
-
-    function handleVisibilityChange() {
-      if (document.hidden) {
-        void logAntiCheatEvent({
-          type: ANTI_CHEAT_EVENT_TYPES.tabSwitch,
-          description: "Hệ thống ghi nhận bạn rời màn hình làm bài.",
-          metadata: buildAntiCheatMetadata({
-            eventType: "visibilitychange",
-            hidden: true,
-          }),
-        });
-      }
-    }
-
-    function handleWindowBlur() {
-      if (document.hidden) {
-        return;
-      }
-
-      void logAntiCheatEvent({
-        type: ANTI_CHEAT_EVENT_TYPES.windowBlur,
-        description: "Hệ thống ghi nhận cửa sổ làm bài bị mất focus.",
-        metadata: buildAntiCheatMetadata({
-          eventType: "blur",
-          hasFocus: typeof document.hasFocus === "function" ? document.hasFocus() : false,
-        }),
-      });
-    }
-
-    function handleClipboardEvent(event) {
-      void logAntiCheatEvent({
-        type: ANTI_CHEAT_EVENT_TYPES.copyPaste,
-        description: "Hệ thống ghi nhận thao tác copy / cut / paste trong lúc làm bài.",
-        metadata: buildAntiCheatMetadata({
-          eventType: event.type,
-          targetTagName: event.target?.tagName ?? "",
-        }),
-      });
-    }
-
-    function handleFullscreenChange() {
-      const nextIsFullscreen = Boolean(document.fullscreenElement);
-      const previousIsFullscreen = isFullscreenRef.current;
-      isFullscreenRef.current = nextIsFullscreen;
-      setIsFullscreen(nextIsFullscreen);
-
-      if (previousIsFullscreen && !nextIsFullscreen) {
-        void logAntiCheatEvent({
-          type: ANTI_CHEAT_EVENT_TYPES.exitFullscreen,
-          description: "Hệ thống ghi nhận bạn đã thoát chế độ toàn màn hình.",
-          metadata: buildAntiCheatMetadata({
-            eventType: "fullscreenchange",
-            previousIsFullscreen,
-          }),
-        });
-      }
-    }
-
-    function handleBeforeUnload() {
-      postKeepAliveLog({
-        examAttemptId: Number(attemptRef.current?.id) || 0,
-        type: ANTI_CHEAT_EVENT_TYPES.pageReload,
-        description: "Hệ thống ghi nhận trang làm bài bị tải lại hoặc đóng đột ngột.",
-        metadata: buildAntiCheatMetadata({
-          eventType: "beforeunload",
-          hasFocus: typeof document.hasFocus === "function" ? document.hasFocus() : false,
-        }),
-      });
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    document.addEventListener("copy", handleClipboardEvent);
-    document.addEventListener("cut", handleClipboardEvent);
-    document.addEventListener("paste", handleClipboardEvent);
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    window.addEventListener("blur", handleWindowBlur);
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      document.removeEventListener("copy", handleClipboardEvent);
-      document.removeEventListener("cut", handleClipboardEvent);
-      document.removeEventListener("paste", handleClipboardEvent);
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-      window.removeEventListener("blur", handleWindowBlur);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [attempt?.status, exam?.enableAntiCheat, logAntiCheatEvent, postKeepAliveLog]);
-
-  function setAnswerState(questionId, nextAnswerState) {
-    setAnswersByQuestionId((previousValue) => {
-      const nextValue = {
-        ...previousValue,
-        [questionId]: nextAnswerState,
-      };
-      answersRef.current = nextValue;
-      return nextValue;
-    });
-  }
-
-  function scheduleQuestionSave(questionId) {
-    const matchedTimer = questionSaveTimersRef.current.get(questionId);
-
-    if (matchedTimer) {
-      window.clearTimeout(matchedTimer);
-    }
-
-    dirtyQuestionIdsRef.current.add(questionId);
-
-    const timeoutId = window.setTimeout(() => {
-      saveQuestion(questionId);
-    }, QUESTION_SAVE_DELAY_MS);
-
-    questionSaveTimersRef.current.set(questionId, timeoutId);
-  }
-
-  function handleSelectSingleAnswer(questionId, answerId) {
-    setAnswerState(questionId, {
-      answerIds: [answerId],
-      textAnswer: "",
-    });
-    scheduleQuestionSave(questionId);
-  }
-
-  function handleToggleMultipleAnswer(questionId, answerId) {
-    const currentAnswerState = buildQuestionAnswerState(
-      currentQuestion,
-      answersByQuestionId[questionId],
-    );
-    const nextAnswerIds = toggleAnswerSelection(currentAnswerState.answerIds, answerId);
-
-    setAnswerState(questionId, {
-      answerIds: nextAnswerIds,
-      textAnswer: "",
-    });
-    scheduleQuestionSave(questionId);
-  }
-
-  function handleShortAnswerChange(questionId, value) {
-    setAnswerState(questionId, {
-      answerIds: [],
-      textAnswer: value,
-    });
-    scheduleQuestionSave(questionId);
-  }
-
   async function handleStartFullscreen() {
     if (!document.documentElement.requestFullscreen) {
       showToast({
@@ -613,7 +567,6 @@ export default function ExamAttemptPage() {
 
     try {
       await document.documentElement.requestFullscreen();
-      isFullscreenRef.current = true;
       setIsFullscreen(true);
     } catch {
       showToast({
