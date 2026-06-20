@@ -506,7 +506,7 @@ public class ExamService : IExamService
             previewQuestions.Add(await BuildQuestionEntityFromRequestAsync(parsed.Questions[index], index, "Câu import", ct));
 
         ExamQuestionOrderHelper.Renumber(previewQuestions);
-        result.Questions = previewQuestions.Select(ExamMapper.MapQuestion).ToList();
+        result.Questions = previewQuestions.Select(x => ExamMapper.MapQuestion(x)).ToList();
         result.ImportedCount = result.Questions.Count;
         result.FailedCount = 0;
         return result;

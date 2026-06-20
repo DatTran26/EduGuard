@@ -69,6 +69,39 @@ function normalizeQuestionDto(question) {
   };
 }
 
+function normalizeQuestionImportTemplateDto(template) {
+  return {
+    fileName: template?.fileName ?? "",
+    questionType: template?.questionType ?? "",
+    format: template?.format ?? "",
+    displayName: template?.displayName ?? template?.fileName ?? "",
+    contentType: template?.contentType ?? "application/octet-stream",
+    downloadUrl: template?.downloadUrl ?? "",
+    fileSizeBytes: Number(template?.fileSizeBytes) || 0,
+  };
+}
+
+function normalizeQuestionImportPromptDto(prompt) {
+  return {
+    fileName: prompt?.fileName ?? "",
+    displayName: prompt?.displayName ?? "Prompt chuyển đổi đề import",
+    content: prompt?.content ?? "",
+  };
+}
+
+function triggerBrowserDownload(blob, fileName) {
+  const objectUrl = window.URL.createObjectURL(blob);
+  const anchorElement = document.createElement("a");
+
+  anchorElement.href = objectUrl;
+  anchorElement.download = fileName;
+  anchorElement.style.display = "none";
+  document.body.appendChild(anchorElement);
+  anchorElement.click();
+  anchorElement.remove();
+  window.URL.revokeObjectURL(objectUrl);
+}
+
 function calculateTotalQuestionScore(questions = []) {
   return roundToOneDecimal(
     questions.reduce((totalValue, question) => totalValue + Number(question.score || 0), 0),
@@ -319,6 +352,49 @@ export const examApi = {
       ...apiResponse,
       data: apiResponse.data ?? null,
     };
+  },
+
+  async getQuestionImportTemplates() {
+    const apiResponse = await requestApi(() => axiosClient.get("/exams/question-import/templates"));
+
+    return {
+      ...apiResponse,
+      data: Array.isArray(apiResponse.data)
+        ? apiResponse.data.map((template) => normalizeQuestionImportTemplateDto(template))
+        : [],
+    };
+  },
+
+  async getQuestionImportPrompt() {
+    const apiResponse = await requestApi(() => axiosClient.get("/exams/question-import/prompt"));
+
+    return {
+      ...apiResponse,
+      data: normalizeQuestionImportPromptDto(apiResponse.data),
+    };
+  },
+
+  async downloadQuestionImportTemplate(template) {
+    const fileName = typeof template === "string" ? template : template?.fileName;
+
+    if (!fileName) {
+      throw new Error("Không tìm thấy tên file cần tải.");
+    }
+
+    try {
+      const response = await axiosClient.get(
+        `/exams/question-import/templates/${encodeURIComponent(fileName)}`,
+        { responseType: "blob" },
+      );
+      const blob =
+        response.data instanceof Blob
+          ? response.data
+          : new Blob([response.data], { type: template?.contentType || "application/octet-stream" });
+
+      triggerBrowserDownload(blob, fileName);
+    } catch (error) {
+      throw buildClientError(error);
+    }
   },
 
   async previewQuestionImportFile(file) {

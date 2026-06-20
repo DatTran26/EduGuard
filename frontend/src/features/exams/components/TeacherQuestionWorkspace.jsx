@@ -4,6 +4,7 @@ import EmptyState from "../../../components/common/EmptyState";
 import QuestionCard from "./QuestionCard";
 import QuestionForm from "./QuestionForm";
 import QuestionImportPanel from "./QuestionImportPanel";
+import QuestionImportResources from "./QuestionImportResources";
 import {
   buildQuestionSummaryItems,
   filterQuestionItems,
@@ -107,6 +108,8 @@ export default function TeacherQuestionWorkspace({
           ))}
         </div>
       </Card>
+
+      <QuestionImportResources />
 
       <div
         className={

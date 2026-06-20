@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text;
 using EduGuard.Api.Contracts.Exams;
 using EduGuard.Application.DTOs.Common;
 using EduGuard.Application.DTOs.Exams;
@@ -14,6 +15,16 @@ namespace EduGuard.Api.Controllers;
 [Authorize]
 public class ExamsController : ControllerBase
 {
+    private const string StandardQuestionImportFileName = "Dinh_dang_chuan_de_import_file.md";
+    private const string QuestionImportPromptFileName = "Prompt_Chuyen_Doi_De_Import.txt";
+
+    private static readonly QuestionImportTemplateMetadata StandardQuestionImportTemplate = new(
+        StandardQuestionImportFileName,
+        "standard",
+        "md",
+        "Định dạng chuẩn để import file đề (MD)",
+        "text/markdown");
+
     private static readonly IReadOnlyList<QuestionImportTemplateKind> QuestionImportTemplateKinds =
     [
         new("01", "single_choice", "Trac nghiem mot dap an", "Trac_Nghiem_Mot_Dap_An"),
@@ -211,6 +222,54 @@ public class ExamsController : ControllerBase
         }
     }
 
+    [HttpGet("api/exams/question-import/templates")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public ActionResult<ApiResponse<IReadOnlyList<QuestionImportTemplateDto>>> GetQuestionImportTemplates()
+    {
+        var data = BuildQuestionImportTemplateDtos();
+        return Ok(ApiResponse<IReadOnlyList<QuestionImportTemplateDto>>.CreateSuccess(data, "Tai danh sach file mau import thanh cong."));
+    }
+
+    [HttpGet("api/exams/question-import/templates/{fileName}")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public IActionResult DownloadQuestionImportTemplate(string fileName)
+    {
+        var safeFileName = Path.GetFileName(fileName);
+        if (!QuestionImportTemplateLookup.TryGetValue(safeFileName, out var metadata))
+        {
+            return NotFound(ApiResponse<object>.CreateFailure("Khong tim thay file mau import."));
+        }
+
+        var filePath = Path.Combine(GetQuestionImportTemplateDirectory(), metadata.FileName);
+        if (!System.IO.File.Exists(filePath))
+        {
+            return NotFound(ApiResponse<object>.CreateFailure("File mau import chua duoc cau hinh tren server."));
+        }
+
+        return PhysicalFile(filePath, metadata.ContentType, metadata.FileName);
+    }
+
+    [HttpGet("api/exams/question-import/prompt")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<ActionResult<ApiResponse<QuestionImportPromptDto>>> GetQuestionImportPrompt(CancellationToken ct)
+    {
+        var filePath = Path.Combine(GetQuestionImportTemplateDirectory(), QuestionImportPromptFileName);
+        if (!System.IO.File.Exists(filePath))
+        {
+            return NotFound(ApiResponse<QuestionImportPromptDto>.CreateFailure("Prompt import chua duoc cau hinh tren server."));
+        }
+
+        var content = await System.IO.File.ReadAllTextAsync(filePath, Encoding.UTF8, ct);
+        var data = new QuestionImportPromptDto
+        {
+            FileName = QuestionImportPromptFileName,
+            DisplayName = "Prompt chuyển đổi đề import",
+            Content = content
+        };
+
+        return Ok(ApiResponse<QuestionImportPromptDto>.CreateSuccess(data, "Tai prompt import thanh cong."));
+    }
+
     [HttpPost("api/exams/{id:int}/questions")]
     [Authorize(Roles = "Teacher")]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> AddQuestion(
@@ -284,8 +343,6 @@ public class ExamsController : ControllerBase
         [FromForm] ImportQuestionsFormRequest request,
         CancellationToken ct)
     {
-        var file = request.File;
-
         var user = GetCurrentUser();
         if (user is null)
             return Unauthorized(ApiResponse<QuestionImportResultDto>.CreateFailure("Token khong hop le."));
@@ -459,8 +516,9 @@ public class ExamsController : ControllerBase
         }
     }
 
-    private static IReadOnlyList<QuestionImportTemplateMetadata> BuildQuestionImportTemplateDefinitions() =>
-        QuestionImportTemplateFormats
+    private static IReadOnlyList<QuestionImportTemplateMetadata> BuildQuestionImportTemplateDefinitions()
+    {
+        var data = QuestionImportTemplateFormats
             .SelectMany(format => QuestionImportTemplateKinds.Select(kind => new QuestionImportTemplateMetadata(
                 FileName: $"Mau_De_Thi_{kind.FileNameSegment}.{format.Extension}",
                 QuestionType: kind.QuestionType,
@@ -468,6 +526,10 @@ public class ExamsController : ControllerBase
                 DisplayName: $"Mau de thi {kind.Code} - {kind.DisplayName} ({format.Extension.ToUpperInvariant()})",
                 ContentType: format.ContentType)))
             .ToList();
+
+        data.Insert(0, StandardQuestionImportTemplate);
+        return data;
+    }
 
     private IReadOnlyList<QuestionImportTemplateDto> BuildQuestionImportTemplateDtos()
     {
