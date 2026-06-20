@@ -40,6 +40,11 @@ export default function ClassroomListPage() {
     label: "Tổng số lớp học",
     value: classrooms.length,
   };
+  const isCompactGridView = isTeacherView || isStudentView;
+  const classroomGridClassName = isCompactGridView
+    ? "grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+    : "grid gap-6";
+  const classroomCardLayout = isCompactGridView ? "tile" : "default";
   const visibleClassrooms = isAdminView
     ? filterAndSortAdminClassrooms(classrooms, adminSearchTerm, adminSortOption)
     : classrooms;
@@ -194,7 +199,7 @@ export default function ClassroomListPage() {
   return (
     <div className="space-y-6">
       {isTeacherView ? (
-        <div className="flex flex-col gap-4 rounded-[24px] border border-border bg-surface p-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="eg-page-hero flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
             <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-4 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-info">
               {getRoleLabel(user?.role)}
@@ -220,7 +225,7 @@ export default function ClassroomListPage() {
           </Button>
         </div>
       ) : isStudentView ? (
-        <div className="flex flex-col gap-4 rounded-[24px] border border-border bg-surface p-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="eg-page-hero flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
             <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-4 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-info">
               {getRoleLabel(user?.role)}
@@ -269,15 +274,20 @@ export default function ClassroomListPage() {
       ) : null}
 
       {isLoading ? (
-        <div className="grid gap-6">
-          <SkeletonClassroomCard />
-          <SkeletonClassroomCard />
-          <SkeletonClassroomCard />
+        <div className={classroomGridClassName}>
+          {Array.from({ length: isCompactGridView ? 8 : 3 }).map((_, index) => (
+            <SkeletonClassroomCard key={`classroom-skeleton-${index}`} layout={classroomCardLayout} />
+          ))}
         </div>
       ) : visibleClassrooms.length > 0 ? (
-        <div className="grid gap-6">
+        <div className={classroomGridClassName}>
           {visibleClassrooms.map((classroom) => (
-            <ClassroomCard key={classroom.id} classroom={classroom} onCopyCode={handleCopyCode} />
+            <ClassroomCard
+              key={classroom.id}
+              classroom={classroom}
+              layout={classroomCardLayout}
+              onCopyCode={handleCopyCode}
+            />
           ))}
         </div>
       ) : isAdminView && classrooms.length > 0 ? (
