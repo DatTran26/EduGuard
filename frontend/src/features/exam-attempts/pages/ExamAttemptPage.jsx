@@ -36,6 +36,7 @@ import { getQuestionTypeLabel } from "../../exams/examHelpers";
 
 const QUESTION_SAVE_DELAY_MS = 700;
 const ANTI_CHEAT_THROTTLE_MS = 4000;
+const HEARTBEAT_INTERVAL_MS = 30000;
 
 function buildDefaultSaveState() {
   return {
@@ -287,6 +288,32 @@ export default function ExamAttemptPage() {
       window.removeEventListener("online", handleOnline);
     };
   }, [attempt?.status, flushDirtyAnswers, logAntiCheatEvent]);
+
+  useEffect(() => {
+    if (attempt?.status !== "InProgress") {
+      return undefined;
+    }
+
+    function sendHeartbeat() {
+      if (document.hidden) {
+        return;
+      }
+
+      const currentAttemptId = Number(attemptRef.current?.id) || 0;
+      if (!currentAttemptId) {
+        return;
+      }
+
+      examAttemptApi.sendHeartbeat(currentAttemptId, { client: "web" }).catch(() => {});
+    }
+
+    sendHeartbeat();
+    const intervalId = window.setInterval(sendHeartbeat, HEARTBEAT_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [attempt?.status]);
 
   useEffect(() => {
     if (attempt?.status !== "InProgress" || !exam?.enableAntiCheat) {

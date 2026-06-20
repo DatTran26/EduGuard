@@ -8,9 +8,13 @@ using EduGuard.Infrastructure.Auth;
 using EduGuard.Infrastructure.Classrooms;
 using EduGuard.Infrastructure.Exams;
 using EduGuard.Infrastructure.Data;
+using EduGuard.Application.Options;
+using EduGuard.Infrastructure.Redis;
 using EduGuard.Infrastructure.Repositories;
 using EduGuard.Infrastructure.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Logging;
+using StackExchange.Redis;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -102,6 +106,32 @@ public static class DependencyInjection
         services.AddScoped<IExamMonitoringService, ExamMonitoringService>();
         services.AddScoped<ICheatingLogRepository, CheatingLogRepository>();
         services.AddScoped<IAntiCheatService, AntiCheatService>();
+
+        services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionName));
+        var redisOptions = configuration.GetSection(RedisOptions.SectionName).Get<RedisOptions>() ?? new RedisOptions();
+
+        if (redisOptions.Enabled)
+        {
+            services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                var connectionString = configuration.GetConnectionString("Redis") ?? "localhost:6379";
+                var options = ConfigurationOptions.Parse(connectionString);
+                options.AbortOnConnectFail = redisOptions.AbortOnConnectFail;
+                var multiplexer = ConnectionMultiplexer.Connect(options);
+                var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("Redis");
+                logger.LogInformation("Redis connection established.");
+                return multiplexer;
+            });
+            services.AddScoped<ICacheService, RedisCacheService>();
+            services.AddScoped<IAttemptPresenceService, RedisAttemptPresenceService>();
+        }
+        else
+        {
+            services.AddScoped<ICacheService, NullCacheService>();
+            services.AddScoped<IAttemptPresenceService, NullAttemptPresenceService>();
+        }
+
+        services.AddScoped<IExamCacheInvalidator, ExamCacheInvalidator>();
 
         return services;
     }

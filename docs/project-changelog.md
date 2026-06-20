@@ -1,5 +1,40 @@
 # Project Changelog
 
+## Feature: Redis cache & attempt presence (Phase 9)
+
+Date: 2026-06-19
+
+Branch/source: local dev
+
+Description:
+
+- Tích hợp Redis cache-aside cho question bank giáo viên và anti-cheat summary (TTL 45s).
+- Thêm heartbeat/presence theo attempt (Hash + Set index, TTL sliding 120s).
+- Graceful degradation: Redis down hoặc `Redis:Enabled=false` → fallback DB / no-op.
+
+Changed files:
+
+- `backend/EduGuard.Application/Services/Interfaces/i-cache-service.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-attempt-presence-service.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-exam-cache-invalidator.cs`
+- `backend/EduGuard.Application/Options/redis-options.cs`
+- `backend/EduGuard.Application/Redis/redis-key-names.cs`
+- `backend/EduGuard.Application/DTOs/Exams/attempt-heartbeat-request.cs`
+- `backend/EduGuard.Infrastructure/Redis/*`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-service.cs`
+- `backend/EduGuard.Infrastructure/AntiCheat/anti-cheat-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-attempt-service.cs`
+- `backend/EduGuard.Api/Controllers/exam-attempts-controller.cs`
+- `backend/EduGuard.Api/appsettings.json`
+- `frontend/src/api/examAttemptApi.js`
+- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
+
+Validation:
+
+- `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` — passed.
+- `dotnet test` — passed.
+
 ## Bug fix: Local frontend/backend dev proxy 502
 
 Date: 2026-06-18

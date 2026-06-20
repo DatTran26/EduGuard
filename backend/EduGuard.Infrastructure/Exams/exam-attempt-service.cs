@@ -13,15 +13,18 @@ public class ExamAttemptService : IExamAttemptService
     private readonly IExamRepository _examRepository;
     private readonly IClassroomRepository _classroomRepository;
     private readonly IValidator<SaveStudentAnswerRequest> _saveAnswerValidator;
+    private readonly IAttemptPresenceService _presenceService;
 
     public ExamAttemptService(
         IExamRepository examRepository,
         IClassroomRepository classroomRepository,
-        IValidator<SaveStudentAnswerRequest> saveAnswerValidator)
+        IValidator<SaveStudentAnswerRequest> saveAnswerValidator,
+        IAttemptPresenceService presenceService)
     {
         _examRepository = examRepository;
         _classroomRepository = classroomRepository;
         _saveAnswerValidator = saveAnswerValidator;
+        _presenceService = presenceService;
     }
 
     public async Task<StartExamResponse> StartAsync(int examId, string studentId, CancellationToken ct = default)
@@ -39,6 +42,7 @@ public class ExamAttemptService : IExamAttemptService
 
         if (inProgress is not null)
         {
+            await _presenceService.TouchAsync(inProgress.Id, studentId, examId, ct: ct);
             return BuildStartResponse(exam, inProgress);
         }
 
@@ -57,6 +61,7 @@ public class ExamAttemptService : IExamAttemptService
         await _examRepository.SaveChangesAsync(ct);
 
         var saved = await _examRepository.GetAttemptByIdAsync(attempt.Id, ct) ?? attempt;
+        await _presenceService.TouchAsync(saved.Id, studentId, examId, ct: ct);
         return BuildStartResponse(exam, saved);
     }
 
@@ -116,8 +121,18 @@ public class ExamAttemptService : IExamAttemptService
         attempt.Status = ExamAttemptStatus.Submitted;
         _examRepository.UpdateAttempt(attempt);
         await _examRepository.SaveChangesAsync(ct);
+        await _presenceService.RemoveAsync(attempt.Id, attempt.ExamId, ct);
 
         return BuildResult(attempt, showDetails: attempt.Exam.Setting?.ShowResultAfterSubmit ?? false);
+    }
+
+    public async Task HeartbeatAsync(int attemptId, string studentId, string? client = null, CancellationToken ct = default)
+    {
+        var attempt = await _examRepository.GetAttemptByIdAsync(attemptId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy lượt thi.");
+
+        EnsureInProgressOwnedByStudent(attempt, studentId);
+        await _presenceService.TouchAsync(attemptId, studentId, attempt.ExamId, client, ct);
     }
 
     public async Task<ExamResultDto> GetResultAsync(

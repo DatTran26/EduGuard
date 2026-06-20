@@ -24,7 +24,7 @@
 | 6 | Online Testing / Exam Attempt | ✅ Backend + FE core xong (start/resume, save answer, timer, auto submit, result, teacher attempt monitor) |
 | 7 | Anti-cheat Monitoring | ✅ Backend + FE REST cơ bản xong; realtime warning đã xử lý ở Phase 8 |
 | 8 | SignalR Realtime | ✅ Hoàn thành |
-| 9 | Redis | ⬜ Chưa bắt đầu |
+| 9 | Redis | 🟡 Backend + FE heartbeat xong; manual test Redis CLI còn lại |
 | 10 | Dashboard & Reporting | 🟡 Đang làm |
 | 11 | Docker Compose | ⬜ Chưa bắt đầu |
 | DOC | README giới thiệu hệ thống | ✅ Hoàn thành |
@@ -497,30 +497,30 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 
 - [ ] Chạy Redis local: `docker run -d --name eduguard-redis -p 6379:6379 redis:7-alpine`
 - [ ] Smoke: `redis-cli PING` → `PONG`; `SET eduguard:smoke 1` / `GET`
-- [ ] Xác nhận `appsettings.json` có `ConnectionStrings:Redis` (đã có) + section `Redis` như trên
+- [x] Xác nhận `appsettings.json` có `ConnectionStrings:Redis` (đã có) + section `Redis` như trên
 - [ ] Document trong `docs/02_SETUP_AND_PROJECT_STRUCTURE.md` (mục Redis) nếu lệnh Docker khác README — **chỉ khi dev hỏi setup**
 
 ### 9.1 — Hạ tầng DI & abstraction
 
-- [ ] Tạo `ICacheService` + `RedisCacheService` + `NullCacheService` (F-REDIS-02)
-- [ ] Tạo `redis-key-names.cs` — không hardcode string trong service
-- [ ] Đăng ký `ConnectionMultiplexer.Connect(configuration["ConnectionStrings:Redis"])` **singleton** trong `dependency-injection.cs` (F-REDIS-01)
-- [ ] Đọc `Redis:Enabled` — false → đăng ký `NullCacheService`
-- [ ] Log `Information` khi connect OK; `Warning` khi operation fail (không throw ra controller)
+- [x] Tạo `ICacheService` + `RedisCacheService` + `NullCacheService` (F-REDIS-02)
+- [x] Tạo `redis-key-names.cs` — không hardcode string trong service
+- [x] Đăng ký `ConnectionMultiplexer.Connect(configuration["ConnectionStrings:Redis"])` **singleton** trong `dependency-injection.cs` (F-REDIS-01)
+- [x] Đọc `Redis:Enabled` — false → đăng ký `NullCacheService`
+- [x] Log `Information` khi connect OK; `Warning` khi operation fail (không throw ra controller)
 - [ ] (Tùy chọn) Health check `/health` tag `redis`
 
 ### 9.2 — UC-1: Cache question bank
 
-- [ ] Bọc `ExamService.GetQuestionsAsync` — key `eduguard:exam:{examId}:questions`
-- [ ] Sau auth (`RequireAccessibleExamAsync` + `EnsureQuestionBankAccess`) mới trả cache — student không có quyền question bank vẫn 403 như cũ
-- [ ] Implement invalidate đủ ma trận (11 method `exam-service.cs`)
-- [ ] `DeleteAsync` exam: remove cả `questions` + `anticheat:summary` keys
+- [x] Bọc `ExamService.GetQuestionsAsync` — key `eduguard:exam:{examId}:questions`
+- [x] Sau auth (`RequireAccessibleExamAsync` + `EnsureQuestionBankAccess`) mới trả cache — student không có quyền question bank vẫn 403 như cũ
+- [x] Implement invalidate đủ ma trận (11 method `exam-service.cs`)
+- [x] `DeleteAsync` exam: remove cả `questions` + `anticheat:summary` keys
 - [ ] Verify FE `ExamDetailPage` / `examApi.getQuestions` — teacher sửa câu hỏi → reload thấy data mới
 
 ### 9.3 — UC-2: Cache anti-cheat summary
 
-- [ ] Bọc `AntiCheatService.GetExamSummaryAsync` — TTL `AntiCheatSummarySeconds`
-- [ ] `LogAsync`: sau `SaveChangesAsync` + `SendAntiCheatWarningAsync`, gọi `InvalidateExamAntiCheatSummaryAsync(examId)`
+- [x] Bọc `AntiCheatService.GetExamSummaryAsync` — TTL `AntiCheatSummarySeconds`
+- [x] `LogAsync`: sau `SaveChangesAsync` + `SendAntiCheatWarningAsync`, gọi `InvalidateExamAntiCheatSummaryAsync(examId)`
 - [ ] Giữ nguyên authorization: chỉ `exam.TeacherId == teacherId`
 - [ ] SignalR realtime **không** thay REST summary — cache giảm tải khi teacher refresh trang
 
@@ -528,16 +528,16 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 
 **Backend**
 
-- [ ] Tạo `IAttemptPresenceService` + `RedisAttemptPresenceService` (F-REDIS-05)
-- [ ] `POST /api/attempts/{attemptId}/heartbeat` — `[Authorize(Roles = Student)]`, attempt `InProgress`, owner đúng `studentId`
-- [ ] Body optional: `{ "client": "web" }` — lưu vào Hash
-- [ ] `ExamAttemptService.SubmitAsync` → `RemoveAsync(attemptId)` + `SREM` exam index
+- [x] Tạo `IAttemptPresenceService` + `RedisAttemptPresenceService` (F-REDIS-05)
+- [x] `POST /api/attempts/{attemptId}/heartbeat` — `[Authorize(Roles = Student)]`, attempt `InProgress`, owner đúng `studentId`
+- [x] Body optional: `{ "client": "web" }` — lưu vào Hash
+- [x] `ExamAttemptService.SubmitAsync` → `RemoveAsync(attemptId)` + `SREM` exam index
 - [ ] (Tùy chọn) `GET /api/exams/{examId}/presence` — Teacher owner — trả `attemptId[]` còn TTL
 
 **Frontend**
 
-- [ ] `examAttemptApi.sendHeartbeat(attemptId)` — gọi mỗi **30s** trong `ExamAttemptPage` (cùng lifecycle anti-cheat, `visibilitychange` pause khi tab hidden nếu muốn tiết kiệm)
-- [ ] Dừng interval khi submit / unmount / `status !== InProgress`
+- [x] `examAttemptApi.sendHeartbeat(attemptId)` — gọi mỗi **30s** trong `ExamAttemptPage` (cùng lifecycle anti-cheat, `visibilitychange` pause khi tab hidden nếu muốn tiết kiệm)
+- [x] Dừng interval khi submit / unmount / `status !== InProgress`
 - [ ] (Tùy chọn) `AttemptMonitorPanel`: hiển thị “Đang online” khi attempt ∈ presence set
 
 ### 9.5 — Kiểm thử *(để sau — không chặn 9.0–9.4)*
@@ -549,7 +549,7 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 - [ ] Manual: gửi anti-cheat log → summary key invalidate hoặc TTL hết → `flaggedAttempts` khớp DB
 - [ ] Manual: heartbeat → TTL refresh; submit → key biến mất
 - [ ] Redis tắt, `Enabled=true` → API vẫn 200 (degrade)
-- [ ] `dotnet test` pass
+- [x] `dotnet test` pass
 
 ---
 

@@ -1,10 +1,13 @@
 using EduGuard.Application.DTOs.AntiCheat;
+using EduGuard.Application.Options;
+using EduGuard.Application.Redis;
 using EduGuard.Application.Repositories.Interfaces;
 using EduGuard.Application.Services.Interfaces;
 using EduGuard.Domain.Entities;
 using EduGuard.Domain.Enums;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace EduGuard.Infrastructure.AntiCheat;
 
@@ -17,19 +20,28 @@ public class AntiCheatService : IAntiCheatService
     private readonly IExamRepository _examRepository;
     private readonly IValidator<CreateCheatingLogRequest> _createLogValidator;
     private readonly ILogger<AntiCheatService> _logger;
+    private readonly ICacheService _cacheService;
+    private readonly IExamCacheInvalidator _cacheInvalidator;
+    private readonly RedisOptions _redisOptions;
 
     public AntiCheatService(
         ICheatingLogRepository cheatingLogRepository,
         IExamMonitoringNotifier examMonitoringNotifier,
         IExamRepository examRepository,
         IValidator<CreateCheatingLogRequest> createLogValidator,
-        ILogger<AntiCheatService> logger)
+        ILogger<AntiCheatService> logger,
+        ICacheService cacheService,
+        IExamCacheInvalidator cacheInvalidator,
+        IOptions<RedisOptions> redisOptions)
     {
         _cheatingLogRepository = cheatingLogRepository;
         _examMonitoringNotifier = examMonitoringNotifier;
         _examRepository = examRepository;
         _createLogValidator = createLogValidator;
         _logger = logger;
+        _cacheService = cacheService;
+        _cacheInvalidator = cacheInvalidator;
+        _redisOptions = redisOptions.Value;
     }
 
     public async Task<CheatingLogDto> LogAsync(
@@ -64,6 +76,7 @@ public class AntiCheatService : IAntiCheatService
         var logDto = AntiCheatMapper.MapLog(log);
         var logCount = await _cheatingLogRepository.CountByAttemptIdAsync(attempt.Id, ct);
         await SendAntiCheatWarningAsync(attempt, logDto, logCount, ct);
+        await _cacheInvalidator.InvalidateExamAntiCheatSummaryAsync(attempt.ExamId, ct);
 
         return logDto;
     }
@@ -103,8 +116,25 @@ public class AntiCheatService : IAntiCheatService
         if (!roles.Contains("Admin") && exam.TeacherId != userId)
             throw new UnauthorizedAccessException("Chỉ giáo viên tạo đề mới được xem tổng hợp anti-cheat.");
 
-        var attempts = await _examRepository.GetAttemptsByExamIdAsync(examId, ct);
-        var logs = await _cheatingLogRepository.GetByExamIdAsync(examId, ct);
+        var cacheKey = RedisKeyNames.ExamAntiCheatSummary(_redisOptions.InstanceName, examId);
+        var cached = await _cacheService.GetAsync<ExamAntiCheatSummaryDto>(cacheKey, ct);
+        if (cached is not null)
+            return cached;
+
+        var summary = await BuildExamSummaryAsync(exam, ct);
+        await _cacheService.SetAsync(
+            cacheKey,
+            summary,
+            TimeSpan.FromSeconds(_redisOptions.AntiCheatSummarySeconds),
+            ct);
+
+        return summary;
+    }
+
+    private async Task<ExamAntiCheatSummaryDto> BuildExamSummaryAsync(Exam exam, CancellationToken ct)
+    {
+        var attempts = await _examRepository.GetAttemptsByExamIdAsync(exam.Id, ct);
+        var logs = await _cheatingLogRepository.GetByExamIdAsync(exam.Id, ct);
         var logCountByAttempt = logs
             .GroupBy(x => x.ExamAttemptId)
             .ToDictionary(x => x.Key, x => x.Count());

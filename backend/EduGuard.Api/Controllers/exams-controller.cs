@@ -209,13 +209,13 @@ public class ExamsController : ControllerBase
     [RequestSizeLimit(5 * 1024 * 1024)]
     public async Task<ActionResult<ApiResponse<QuestionImportResultDto>>> ImportQuestions(
         int id,
-        [FromForm] IFormFile? file,
         CancellationToken ct)
     {
         var user = GetCurrentUser();
         if (user is null)
             return Unauthorized(ApiResponse<QuestionImportResultDto>.CreateFailure("Token khong hop le."));
 
+        var file = Request.Form.Files.GetFile("file");
         if (file is null)
             return BadRequest(ApiResponse<QuestionImportResultDto>.CreateFailure("Vui long chon file import."));
 
