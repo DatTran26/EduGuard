@@ -1,4 +1,6 @@
 // Component này hiển thị tiêu đề trang theo cùng một format để các page nhìn thống nhất hơn.
+import "./PageHeader.css";
+
 export default function PageHeader({ eyebrow, title, description, actions }) {
   return (
     <div className="eg-page-header">

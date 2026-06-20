@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { classroomApi } from "../../../api/classroomApi";
 import { examApi } from "../../../api/examApi";
@@ -83,12 +83,19 @@ function buildExamListFilters(classroomId) {
   return classroomId ? { classroomId } : {};
 }
 
+function buildEditableImportPreviewQuestions(questions = []) {
+  return resequenceDraftQuestions(
+    questions.map((question, index) => buildDraftQuestion(question, index + 1)),
+  );
+}
+
 // Trang này là trung tâm CRUD đề thi cho Teacher và là trang xem danh sách cho Admin/Student.
 export default function ExamListPage() {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const createExamSubmitRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [classrooms, setClassrooms] = useState([]);
   const [exams, setExams] = useState([]);
@@ -276,6 +283,50 @@ export default function ExamListPage() {
     await loadExamPageData(buildExamListFilters(selectedClassroomId), { showPageLoader: false });
   }
 
+  function buildPreviewDraftQuestions(startOrderIndex = createFlowQuestions.length + 1) {
+    return buildEditableImportPreviewQuestions(importPreviewQuestions).map((question, index) => ({
+      ...question,
+      orderIndex: startOrderIndex + index,
+    }));
+  }
+
+  async function persistImportPreviewQuestionsToExam(
+    examId,
+    startOrderIndex = createFlowQuestions.length + 1,
+  ) {
+    const previewQuestionsToPersist = buildPreviewDraftQuestions(startOrderIndex);
+
+    for (const question of previewQuestionsToPersist) {
+      await examApi.createQuestion(examId, question);
+    }
+
+    return previewQuestionsToPersist.length;
+  }
+
+  function buildCreateFlowSaveQuestions() {
+    return resequenceDraftQuestions([
+      ...createFlowQuestions,
+      ...buildPreviewDraftQuestions(),
+    ]);
+  }
+
+  async function syncCreateFlowAfterCreate(examId, classroomId) {
+    const shouldSwitchFilter =
+      selectedClassroomId && Number(selectedClassroomId) !== Number(classroomId);
+
+    await refreshCreateFlowExam(examId);
+    resetCreateFlowQuestionUi();
+    setCreateDraftExamValues(null);
+
+    if (shouldSwitchFilter) {
+      setIsLoading(true);
+      setSearchParams({ classroomId: String(classroomId) });
+      return;
+    }
+
+    await loadExamPageData(buildExamListFilters(selectedClassroomId), { showPageLoader: false });
+  }
+
   function handleToggleCreateForm() {
     if (isCreateFormVisible && questionWorkspaceMode === "manual" && !confirmDiscardQuestionDraft()) {
       return;
@@ -290,6 +341,10 @@ export default function ExamListPage() {
     }
 
     setSearchParams(nextParams);
+  }
+
+  function handleRequestCreateExamSubmit() {
+    void createExamSubmitRef.current?.();
   }
 
   // Hàm này đổi filter lớp học trên URL để user refresh trang vẫn giữ được ngữ cảnh hiện tại.
@@ -328,35 +383,46 @@ export default function ExamListPage() {
   async function handleCreateExam(payload) {
     setIsSubmitting(true);
 
+    const questionsForSave = buildCreateFlowSaveQuestions();
+    const shouldAutoPublish = questionsForSave.length > 0;
+    let createdExamId = null;
+
     try {
       const response = await examApi.create({
         ...payload,
-        questions: createFlowQuestions,
+        questions: questionsForSave,
       });
-      const shouldSwitchFilter =
-        selectedClassroomId && Number(selectedClassroomId) !== Number(payload.classroomId);
+      createdExamId = response.data.id;
+      const publishResponse = shouldAutoPublish ? await examApi.publish(createdExamId) : null;
 
-      await refreshCreateFlowExam(response.data.id);
-      resetCreateFlowQuestionUi();
-      setCreateDraftExamValues(null);
-
-      if (shouldSwitchFilter) {
-        setIsLoading(true);
-        setSearchParams({ classroomId: String(payload.classroomId) });
-      } else {
-        await loadExamPageData(buildExamListFilters(selectedClassroomId), { showPageLoader: false });
-      }
+      await syncCreateFlowAfterCreate(createdExamId, payload.classroomId);
 
       showToast({
         tone: "success",
-        title: "Đã lưu đề thi",
-        message:
-          createFlowQuestions.length > 0
-            ? "Đề thi và toàn bộ câu hỏi nháp đã được lưu thành công. Bạn có thể tiếp tục chỉnh sửa sau."
-            : response.message,
+        title: shouldAutoPublish ? "Đã lưu và publish đề thi" : "Đã lưu đề thi nháp",
+        message: publishResponse?.message || response.message,
       });
       return false;
     } catch (error) {
+      if (createdExamId) {
+        try {
+          await syncCreateFlowAfterCreate(createdExamId, payload.classroomId);
+        } catch {
+          // Nếu refresh hậu save lỗi thì vẫn ưu tiên báo trạng thái publish cho user.
+        }
+
+        showToast({
+          tone: "danger",
+          title: shouldAutoPublish ? "Đề đã lưu nhưng chưa publish" : "Đề đã lưu nhưng chưa đồng bộ xong giao diện",
+          message:
+            error.message ||
+            (shouldAutoPublish
+              ? "Đề thi đã được lưu cùng câu hỏi nhưng chưa thể publish. Hãy kiểm tra lại điều kiện publish."
+              : "Đề thi đã được lưu ở trạng thái nháp nhưng giao diện chưa tải lại hoàn tất. Hãy kiểm tra lại danh sách đề."),
+        });
+        return false;
+      }
+
       showToast({
         tone: "danger",
         title: "Tạo đề thi thất bại",
@@ -375,17 +441,63 @@ export default function ExamListPage() {
 
     setIsSubmitting(true);
 
+    const shouldImportPreviewQuestions = importPreviewQuestions.length > 0;
+    const totalQuestionCountAfterSave = createFlowQuestions.length + importPreviewQuestions.length;
+    const shouldAutoPublish = totalQuestionCountAfterSave > 0 && !activeCreateExam.isPublished;
+    let didSaveExam = false;
+    let didImportPreview = false;
+
     try {
       const response = await examApi.update(activeCreateExam.id, payload);
+      didSaveExam = true;
+
+      if (shouldImportPreviewQuestions) {
+        await persistImportPreviewQuestionsToExam(
+          activeCreateExam.id,
+          createFlowQuestions.length + 1,
+        );
+        didImportPreview = true;
+      }
+
+      const publishResponse = shouldAutoPublish ? await examApi.publish(activeCreateExam.id) : null;
+
+      if (didImportPreview) {
+        handleClearImportFile();
+        setQuestionWorkspaceMode("manual");
+        setQuestionWorkspaceFilter("All");
+        setQuestionWorkspaceSort("OrderAsc");
+      }
+
       setActiveCreateExam(response.data);
       await syncExamListSilently();
+      await refreshCreateFlowExam(activeCreateExam.id);
       showToast({
         tone: "success",
-        title: "Đã cập nhật đề thi",
-        message: response.message,
+        title: shouldAutoPublish ? "Đã lưu và publish đề thi" : "Đã cập nhật đề thi",
+        message: publishResponse?.message || response.message,
       });
       return false;
     } catch (error) {
+      if (didSaveExam || didImportPreview) {
+        try {
+          await refreshCreateFlowExam(activeCreateExam.id);
+          await syncExamListSilently();
+        } catch {
+          // Giữ nguyên lỗi chính nếu bước đồng bộ lại dữ liệu không thành công.
+        }
+
+        showToast({
+          tone: "danger",
+          title: shouldAutoPublish ? "Đề đã lưu nhưng chưa hoàn tất publish" : "Đề đã lưu nhưng chưa đồng bộ xong giao diện",
+          message:
+            error.message ||
+            (shouldAutoPublish
+              ? "Đề thi hoặc câu hỏi preview đã được lưu, nhưng bước publish chưa hoàn tất. Hãy kiểm tra lại trạng thái đề."
+              : "Đề thi đã được lưu nhưng giao diện chưa tải lại hoàn tất. Hãy mở lại đề để kiểm tra trạng thái mới nhất."),
+        });
+        return false;
+      }
+
       showToast({
         tone: "danger",
         title: "Cập nhật đề thi thất bại",
@@ -502,6 +614,44 @@ export default function ExamListPage() {
       tone: "success",
       title: "Đã cập nhật câu nháp",
       message: "Thay đổi của câu hỏi đã được cập nhật trong đề nháp.",
+    });
+
+    return { didSave: true, shouldReset: false };
+  }
+
+  async function handleUpdateImportPreviewQuestion(questionIndex, payload) {
+    let didUpdate = false;
+
+    setImportPreviewQuestions((previousQuestions) => {
+      const currentQuestion = previousQuestions[questionIndex];
+
+      if (!currentQuestion) {
+        return previousQuestions;
+      }
+
+      didUpdate = true;
+
+      return buildEditableImportPreviewQuestions(
+        previousQuestions.map((question, index) =>
+          index === questionIndex
+            ? {
+                ...currentQuestion,
+                ...payload,
+                id: currentQuestion.id,
+              }
+            : question,
+        ),
+      );
+    });
+
+    if (!didUpdate) {
+      return { didSave: false, shouldReset: false };
+    }
+
+    showToast({
+      tone: "success",
+      title: "Đã cập nhật câu review",
+      message: "Câu hỏi import đã được cập nhật trong danh sách review.",
     });
 
     return { didSave: true, shouldReset: false };
@@ -654,32 +804,7 @@ export default function ExamListPage() {
     }
   }
 
-  function handleStageImportFile(file) {
-    const nextValidationMessage = validateQuestionImportFile(file);
-
-    setImportInfoMessage("");
-    setImportPreviewQuestions([]);
-    setImportResultErrors([]);
-    setImportReviewMessage(nextValidationMessage);
-
-    if (nextValidationMessage) {
-      setStagedImportFile(null);
-      return;
-    }
-
-    setQuestionWorkspaceMode("import");
-    setStagedImportFile(file);
-  }
-
-  function handleClearImportFile() {
-    setStagedImportFile(null);
-    setImportInfoMessage("");
-    setImportPreviewQuestions([]);
-    setImportReviewMessage("");
-    setImportResultErrors([]);
-  }
-
-  async function handlePreviewDraftImportedQuestions(file) {
+  async function handlePreviewImportedQuestions(file) {
     const nextValidationMessage = validateQuestionImportFile(file);
 
     setImportInfoMessage("");
@@ -700,10 +825,8 @@ export default function ExamListPage() {
       const response = await examApi.previewQuestionImportFile(file);
       const previewQuestions = Array.isArray(response.data?.questions) ? response.data.questions : [];
 
-      setImportPreviewQuestions(previewQuestions);
-      setImportInfoMessage(
-        `Đã review ${previewQuestions.length} câu hỏi từ file. Bấm thêm vào đề nháp để nhập toàn bộ vào bản soạn hiện tại.`,
-      );
+      setImportPreviewQuestions(buildEditableImportPreviewQuestions(previewQuestions));
+      setImportInfoMessage("");
       showToast({
         tone: "success",
         title: "Đã review file import",
@@ -722,38 +845,12 @@ export default function ExamListPage() {
     }
   }
 
-  async function handleCommitDraftImportedQuestions() {
-    if (importPreviewQuestions.length === 0) {
-      setImportReviewMessage("Chưa có câu hỏi hợp lệ để thêm vào đề nháp.");
-      return;
-    }
-
-    setCreateFlowQuestions((previousQuestions) => {
-      const nextQuestions = [
-        ...previousQuestions,
-        ...importPreviewQuestions.map((question, index) =>
-          buildDraftQuestion(question, previousQuestions.length + index + 1),
-        ),
-      ];
-
-      return resequenceDraftQuestions(nextQuestions);
-    });
-
-    setQuestionWorkspaceMode("manual");
-    setQuestionWorkspaceFilter("All");
-    setQuestionWorkspaceSort("OrderAsc");
-    setExpandedQuestionId(null);
-    setComposerRevision((previousValue) => previousValue + 1);
+  function handleClearImportFile() {
     setStagedImportFile(null);
     setImportInfoMessage("");
     setImportPreviewQuestions([]);
     setImportReviewMessage("");
     setImportResultErrors([]);
-    showToast({
-      tone: "success",
-      title: "Đã thêm câu hỏi import vào nháp",
-      message: "Các câu hỏi từ file đã được thêm vào đề nháp. Bạn có thể tiếp tục chỉnh sửa trước khi lưu đề.",
-    });
   }
 
   async function handleCommitImportedQuestions() {
@@ -761,24 +858,22 @@ export default function ExamListPage() {
       return;
     }
 
-    const nextValidationMessage = validateQuestionImportFile(stagedImportFile);
-
-    if (nextValidationMessage) {
-      setImportReviewMessage(nextValidationMessage);
+    if (importPreviewQuestions.length === 0) {
+      setImportReviewMessage("Chưa có câu hỏi hợp lệ để commit. Hãy upload file để backend review trước.");
       return;
     }
 
     setIsImportSubmitting(true);
     setImportReviewMessage("");
-    setImportInfoMessage("");
-    setImportPreviewQuestions([]);
     setImportResultErrors([]);
 
     try {
-      const response = await examApi.importQuestionFile(activeCreateExam.id, stagedImportFile);
+      await persistImportPreviewQuestionsToExam(activeCreateExam.id, createFlowQuestions.length + 1);
       await refreshCreateFlowExam(activeCreateExam.id);
       await syncExamListSilently();
       setStagedImportFile(null);
+      setImportInfoMessage("");
+      setImportPreviewQuestions([]);
       setQuestionWorkspaceMode("manual");
       setQuestionWorkspaceFilter("All");
       setQuestionWorkspaceSort("OrderAsc");
@@ -787,7 +882,7 @@ export default function ExamListPage() {
       showToast({
         tone: "success",
         title: "Đã import câu hỏi",
-        message: response.message,
+        message: "Các câu hỏi đã được thêm vào đề sau khi review.",
       });
     } catch (error) {
       setImportReviewMessage(error.message || "Không thể import file câu hỏi.");
@@ -947,10 +1042,14 @@ export default function ExamListPage() {
                 classroomOptions={classrooms}
                 defaultClassroomId={defaultCreateClassroomId}
                 exam={activeCreateExam}
+                hideSubmitButton
                 initialFormValues={activeCreateExam ? null : createDraftExamValues}
                 isSubmitting={isSubmitting}
                 key={createFormKey}
                 onFormValuesChange={activeCreateExam ? null : setCreateDraftExamValues}
+                onRegisterSubmit={(submitHandler) => {
+                  createExamSubmitRef.current = submitHandler;
+                }}
                 onSubmitExam={activeCreateExam ? handleUpdateCreateFlowExam : handleCreateExam}
                 showDescriptions={false}
                 submitLabel={activeCreateExam ? "Lưu thay đổi" : "Lưu toàn bộ đề thi"}
@@ -967,35 +1066,55 @@ export default function ExamListPage() {
                 expandedQuestionId={expandedQuestionId}
                 importCommitLabel={activeCreateExam ? "Commit vào đề" : "Thêm vào đề nháp"}
                 importInfoMessage={importInfoMessage}
-                importReadyBadgeLabel={activeCreateExam ? "Sẵn sàng commit" : "Sẵn sàng thêm vào nháp"}
-                importStatusLabel={activeCreateExam ? "Review trước khi commit" : "Review trước khi thêm vào nháp"}
-                importSubmittingLabel={activeCreateExam ? "Đang commit..." : "Đang review..."}
+                importPreviewQuestions={importPreviewQuestions}
+                importReadyBadgeLabel={activeCreateExam ? "Sẵn sàng commit" : "Sẵn sàng lưu cùng đề"}
+                importStatusLabel={activeCreateExam ? "Review trước khi commit" : "Review trước khi tạo đề"}
+                importSubmittingLabel="Đang xử lý..."
                 importResultErrors={importResultErrors}
                 importReviewMessage={importReviewMessage}
                 isImportSubmitting={isImportSubmitting}
                 isDraftMode={isCreateFlowDraftMode}
-                isImportCommitDisabled={isCreateFlowDraftMode && importPreviewQuestions.length === 0}
+                isImportCommitDisabled={importPreviewQuestions.length === 0}
                 isQuestionSubmitting={isQuestionSubmitting}
                 isReady
                 onChangeMode={handleChangeQuestionWorkspaceMode}
                 onClearFile={handleClearImportFile}
-                onCommitImport={activeCreateExam ? handleCommitImportedQuestions : handleCommitDraftImportedQuestions}
+                onCommitImport={activeCreateExam ? handleCommitImportedQuestions : null}
                 onDeleteQuestion={activeCreateExam ? handleDeleteCreateFlowQuestion : handleDeleteDraftQuestion}
                 onEditQuestion={handleStartEditingQuestion}
-                onFileSelected={activeCreateExam ? handleStageImportFile : handlePreviewDraftImportedQuestions}
+                onFileSelected={handlePreviewImportedQuestions}
                 onFilterChange={setQuestionWorkspaceFilter}
                 onQuestionDirtyChange={setIsComposerDirty}
                 onRequestCreateNew={handleReturnToCreateQuestion}
                 onSortChange={setQuestionWorkspaceSort}
                 onSubmitCreateQuestion={activeCreateExam ? handleCreateFlowCreateQuestion : handleCreateDraftQuestion}
+                onSubmitUpdateImportQuestion={handleUpdateImportPreviewQuestion}
                 onSubmitUpdateQuestion={activeCreateExam ? handleUpdateCreateFlowQuestion : handleUpdateDraftQuestion}
                 onToggleExpand={handleToggleQuestionExpand}
                 questionWorkspaceFilter={questionWorkspaceFilter}
                 questionWorkspaceMode={questionWorkspaceMode}
                 questionWorkspaceSort={questionWorkspaceSort}
                 questions={createFlowQuestions}
+                showImportCommitButton={!isCreateFlowDraftMode}
                 stagedImportFile={stagedImportFile}
               />
+
+              <Card className="space-y-4">
+                <div className="flex justify-end">
+                  <Button
+                    className="w-full sm:w-auto"
+                    disabled={isSubmitting || isQuestionSubmitting || isImportSubmitting}
+                    onClick={handleRequestCreateExamSubmit}
+                    type="button"
+                  >
+                    {isSubmitting
+                      ? "Đang lưu..."
+                      : activeCreateExam
+                        ? "Lưu thay đổi đề"
+                        : "Tạo đề"}
+                  </Button>
+                </div>
+              </Card>
             </div>
           ) : null
         ) : (

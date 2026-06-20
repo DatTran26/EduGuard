@@ -284,8 +284,6 @@ public class ExamsController : ControllerBase
         [FromForm] ImportQuestionsFormRequest request,
         CancellationToken ct)
     {
-        var file = request.File;
-
         var user = GetCurrentUser();
         if (user is null)
             return Unauthorized(ApiResponse<QuestionImportResultDto>.CreateFailure("Token khong hop le."));

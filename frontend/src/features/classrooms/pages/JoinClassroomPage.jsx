@@ -45,19 +45,28 @@ export default function JoinClassroomPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-[24px] border border-border bg-surface p-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-3">
-          <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-4 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-info">
-            Sinh viên
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-[2.2rem]">
-            Tham gia lớp học
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-3 rounded-full border border-border bg-neutral px-5 py-3 text-sm font-medium text-secondary">
-          <FiUsers className="h-4 w-4 text-info" />
-          <span>Nhập mã lớp</span>
+      <div className="eg-page-hero">
+        <div
+          className="absolute -right-8 -top-8 h-40 w-40 rounded-full blur-3xl"
+          style={{ background: "rgb(59 130 246 / 8%)" }}
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-2">
+            <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-info">
+              Tham gia lớp học
+            </p>
+            <h1 className="text-3xl font-bold tracking-tight text-primary">
+              Tham gia lớp học mới
+            </h1>
+            <p className="text-sm text-secondary max-w-2xl">
+              Nhập mã lớp được giảng viên cung cấp để tham gia vào lớp học và truy cập các bài thi, tài liệu học tập.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 rounded-full border border-border bg-surface px-4 py-2 text-xs font-semibold text-secondary">
+            <FiUsers className="h-4 w-4 text-info" />
+            <span>Sinh viên</span>
+          </div>
         </div>
       </div>
 

@@ -23,7 +23,12 @@ function attachAccessToken(config) {
 
 // Hàm này xử lý trường hợp token hết hạn để đưa app quay về màn đăng nhập.
 function handleUnauthorizedError(error) {
-  if (error.response?.status === 401) {
+  const accessToken = getStoredAccessToken();
+  const requestUrl = String(error.config?.url || "");
+  const isPublicAuthRequest = requestUrl.includes("/auth/login") || requestUrl.includes("/auth/register");
+
+  // Chỉ ép điều hướng khi đang có phiên đăng nhập để tránh login/register 401 làm trang bị refresh.
+  if (error.response?.status === 401 && accessToken && !isPublicAuthRequest) {
     clearStoredTokens();
     clearStoredUser();
     window.location.assign("/login");

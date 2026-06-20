@@ -36,7 +36,25 @@ export function SkeletonStatCard() {
   );
 }
 
-export function SkeletonClassroomCard() {
+export function SkeletonClassroomCard({ layout = "default" }) {
+  if (layout === "tile") {
+    return (
+      <div className="eg-card min-h-[220px] space-y-5 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <Skeleton className="h-6 w-28 rounded-full" />
+          <Skeleton className="h-6 w-20 rounded-full" />
+        </div>
+        <div className="space-y-3">
+          <Skeleton className="h-6 w-3/4" />
+          <SkeletonText lines={2} className="h-3.5" />
+        </div>
+        <div className="border-t border-border pt-4">
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="eg-card space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">

@@ -32,49 +32,71 @@ function getQuestionTypeBadgeVariant(questionType) {
 // Card này hiển thị một câu hỏi hoàn chỉnh cùng đáp án để teacher/admin theo dõi và chỉnh sửa.
 export default function QuestionCard({
   canManage = false,
+  canDelete = canManage,
+  canEdit = canManage,
   isDeleting = false,
   isEditing = false,
   isExpanded = false,
   onDeleteQuestion,
   onEditQuestion,
-  onToggleExpand,
+  onToggleExpand = null,
   question,
 }) {
+  const canToggleExpand = typeof onToggleExpand === "function";
+
   return (
     <Card className={isEditing ? "eg-question-card eg-question-card-active" : "eg-question-card"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <button
-          className="flex min-w-0 flex-1 flex-col items-start gap-3 text-left"
-          onClick={onToggleExpand}
-          type="button"
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="info">Câu {question.orderIndex}</Badge>
-            <Badge variant={getQuestionTypeBadgeVariant(question.questionType)}>
-              {getQuestionTypeLabel(question.questionType)}
-            </Badge>
-            <Badge variant="neutral">{question.score} điểm</Badge>
+        {canToggleExpand ? (
+          <button
+            className="flex min-w-0 flex-1 flex-col items-start gap-3 text-left"
+            onClick={onToggleExpand}
+            type="button"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="info">Câu {question.orderIndex}</Badge>
+              <Badge variant={getQuestionTypeBadgeVariant(question.questionType)}>
+                {getQuestionTypeLabel(question.questionType)}
+              </Badge>
+              <Badge variant="neutral">{question.score} điểm</Badge>
+            </div>
+            <p className="eg-question-card-preview text-sm leading-6 text-primary">{question.content}</p>
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-secondary">
+              {question.answerCount} đáp án • {getCorrectAnswerSummary(question)}
+            </p>
+          </button>
+        ) : (
+          <div className="flex min-w-0 flex-1 flex-col items-start gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="info">Câu {question.orderIndex}</Badge>
+              <Badge variant={getQuestionTypeBadgeVariant(question.questionType)}>
+                {getQuestionTypeLabel(question.questionType)}
+              </Badge>
+              <Badge variant="neutral">{question.score} điểm</Badge>
+            </div>
+            <p className="eg-question-card-preview text-sm leading-6 text-primary">{question.content}</p>
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-secondary">
+              {question.answerCount} đáp án • {getCorrectAnswerSummary(question)}
+            </p>
           </div>
-          <p className="eg-question-card-preview text-sm leading-6 text-primary">{question.content}</p>
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-secondary">
-            {question.answerCount} đáp án • {getCorrectAnswerSummary(question)}
-          </p>
-        </button>
+        )}
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          {canManage ? (
+          {canEdit ? (
             <Button onClick={onEditQuestion} variant={isEditing ? "primary" : "secondary"}>
               {isEditing ? "Đang chỉnh sửa" : "Sửa"}
             </Button>
           ) : null}
-          {canManage ? (
+          {canDelete ? (
             <Button disabled={isDeleting} onClick={onDeleteQuestion} variant="ghost">
               {isDeleting ? "Đang xóa..." : "Xóa"}
             </Button>
           ) : null}
-          <Button onClick={onToggleExpand} variant="ghost">
-            {isExpanded ? "Thu gọn" : "Xem đáp án"}
-          </Button>
+          {canToggleExpand ? (
+            <Button onClick={onToggleExpand} variant="ghost">
+              {isExpanded ? "Thu gọn" : "Xem đáp án"}
+            </Button>
+          ) : null}
         </div>
       </div>
 

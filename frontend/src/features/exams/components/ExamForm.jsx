@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import FormErrorSummary from "../../../components/forms/FormErrorSummary";
@@ -33,9 +33,12 @@ export default function ExamForm({
   classroomOptions = [],
   defaultClassroomId = "",
   exam = null,
+  formId = undefined,
+  hideSubmitButton = false,
   initialFormValues = null,
   isSubmitting = false,
   onFormValuesChange = null,
+  onRegisterSubmit = null,
   onSubmitExam,
   showDescriptions = true,
   submitLabel = "Lưu bài kiểm tra",
@@ -58,12 +61,25 @@ export default function ExamForm({
     );
   });
   const [validationErrors, setValidationErrors] = useState({});
+  const submitExamRef = useRef(null);
   const isEditingExam = Boolean(exam);
   const expectedEndTimeValue = calculateEndTimeInputValue(formValues.startTime, formValues.durationMinutes);
 
   useEffect(() => {
     onFormValuesChange?.(formValues);
   }, [formValues, onFormValuesChange]);
+
+  useEffect(() => {
+    submitExamRef.current = submitExam;
+  });
+
+  useEffect(() => {
+    onRegisterSubmit?.(() => submitExamRef.current?.());
+
+    return () => {
+      onRegisterSubmit?.(null);
+    };
+  }, [onRegisterSubmit]);
 
   function updateFormValues(nextValues) {
     setFormValues(nextValues);
@@ -145,14 +161,12 @@ export default function ExamForm({
     });
   }
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-
+  async function submitExam() {
     const nextErrors = validateExamFormValues(formValues);
     setValidationErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
-      return;
+      return false;
     }
 
     const shouldReset = await onSubmitExam(buildSubmitPayload(formValues));
@@ -162,6 +176,12 @@ export default function ExamForm({
       setValidationErrors({});
       updateFormValues(buildExamFormValues(null, defaultClassroomId));
     }
+
+    return shouldReset;
+  }
+  async function handleSubmit(event) {
+    event.preventDefault();
+    await submitExam();
   }
 
   const selectOptions = [
@@ -184,7 +204,7 @@ export default function ExamForm({
     <Card className="space-y-5">
       <h3 className="text-lg font-semibold text-primary">{title}</h3>
 
-      <form className="space-y-5" noValidate onSubmit={handleSubmit}>
+      <form className="space-y-5" id={formId} noValidate onSubmit={handleSubmit}>
         <FormErrorSummary message={getFirstValidationError(validationErrors)} />
 
         <ExamFormBasicSection
@@ -221,12 +241,16 @@ export default function ExamForm({
           showDescriptions={showDescriptions}
         />
 
-        <div className="pt-2">
-          {footerNote ? <p className="mb-3 text-sm leading-6 text-secondary">{footerNote}</p> : null}
-          <Button className="w-full sm:w-auto" disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Đang lưu..." : submitLabel}
-          </Button>
-        </div>
+        {footerNote || !hideSubmitButton ? (
+          <div className="pt-2">
+            {footerNote ? <p className="mb-3 text-sm leading-6 text-secondary">{footerNote}</p> : null}
+            {!hideSubmitButton ? (
+              <Button className="w-full sm:w-auto" disabled={isSubmitting} type="submit">
+                {isSubmitting ? "Đang lưu..." : submitLabel}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </form>
     </Card>
   );

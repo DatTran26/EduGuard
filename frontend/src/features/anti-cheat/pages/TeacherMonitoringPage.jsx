@@ -144,30 +144,81 @@ export default function TeacherMonitoringPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="Giám sát thi"
-        title="Exam attempt monitor"
-        description="Theo dõi số lượt đang làm, cảnh báo anti-cheat và mở panel giám sát chi tiết theo từng đề thi."
-      />
+      {/* Page Hero */}
+      <div className="eg-page-hero">
+        <div
+          className="absolute -right-8 -top-8 h-40 w-40 rounded-full blur-3xl"
+          style={{ background: "rgb(239 68 68 / 8%)" }}
+          aria-hidden="true"
+        />
+        <div className="relative space-y-2">
+          <p className="inline-flex rounded-full border border-caution/20 bg-caution-muted px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-caution">
+            Giám sát thi
+          </p>
+          <PageHeader
+            title="Exam attempt monitor"
+            description="Theo dõi số lượt đang làm, cảnh báo anti-cheat và mở panel giám sát chi tiết theo từng đề thi."
+          />
+        </div>
+      </div>
 
+      {/* Summary StatCards */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {summaryItems.map((item) => (
-          <div key={item.label} className="rounded-[20px] border border-border bg-surface p-5">
-            <p className="text-sm font-medium text-secondary">{item.label}</p>
-            <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{item.value}</p>
+          <div key={item.label} className="eg-summary-card">
+            <p className="text-[0.82rem] font-medium text-secondary">{item.label}</p>
+            <p className="text-3xl font-bold tracking-tight text-primary">{item.value}</p>
           </div>
         ))}
       </div>
 
+      {/* Filter bar */}
       <Card className="space-y-4">
-        <h3 className="text-lg font-semibold text-primary">Bộ lọc</h3>
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Select id="teacher-monitor-classroom" label="Lớp học" options={[{ label: "Tất cả lớp học", value: "" }, ...classrooms.map((classroom) => ({ label: classroom.name, value: String(classroom.id) }))]} value={selectedClassroomId} onChange={(event) => setSelectedClassroomId(event.target.value)} />
-          <Select id="teacher-monitor-status" label="Trạng thái đề" options={[{ label: "Tất cả trạng thái", value: "" }, { label: "Sắp mở", value: "Sắp mở" }, { label: "Đang mở", value: "Đang mở" }, { label: "Đã đóng", value: "Đã đóng" }, { label: "Bản nháp", value: "Bản nháp" }]} value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)} />
-          <TextInput id="teacher-monitor-search" label="Tìm kiếm" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Tên đề hoặc lớp học" />
+        <h3 className="eg-section-title">Bộ lọc</h3>
+        <div className="flex flex-wrap gap-4">
+          <div className="flex-1 min-w-[180px]">
+            <Select
+              id="teacher-monitor-classroom"
+              label="Lớp học"
+              options={[
+                { label: "Tất cả lớp học", value: "" },
+                ...classrooms.map((classroom) => ({
+                  label: classroom.name,
+                  value: String(classroom.id),
+                })),
+              ]}
+              value={selectedClassroomId}
+              onChange={(event) => setSelectedClassroomId(event.target.value)}
+            />
+          </div>
+          <div className="flex-1 min-w-[180px]">
+            <Select
+              id="teacher-monitor-status"
+              label="Trạng thái đề"
+              options={[
+                { label: "Tất cả trạng thái", value: "" },
+                { label: "Sắp mở", value: "Sắp mở" },
+                { label: "Đang mở", value: "Đang mở" },
+                { label: "Đã đóng", value: "Đã đóng" },
+                { label: "Bản nháp", value: "Bản nháp" },
+              ]}
+              value={selectedStatus}
+              onChange={(event) => setSelectedStatus(event.target.value)}
+            />
+          </div>
+          <div className="flex-[2] min-w-[200px]">
+            <TextInput
+              id="teacher-monitor-search"
+              label="Tìm kiếm"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Tên đề hoặc lớp học"
+            />
+          </div>
         </div>
       </Card>
 
+      {/* Exam list */}
       {isLoading ? (
         <Card className="text-sm text-secondary">Đang tải dữ liệu giám sát...</Card>
       ) : visibleExamRows.length === 0 ? (
@@ -179,10 +230,16 @@ export default function TeacherMonitoringPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-secondary">
+                    <span className="inline-flex rounded-full border border-border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-secondary">
                       {exam.statusLabel}
                     </span>
-                    <span className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${exam.enableAntiCheat ? "bg-caution-muted text-caution" : "bg-neutral text-secondary"}`}>
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                        exam.enableAntiCheat
+                          ? "border border-caution/20 bg-caution-muted text-caution"
+                          : "border border-border bg-neutral text-secondary"
+                      }`}
+                    >
                       {exam.enableAntiCheat ? "Anti-cheat bật" : "Anti-cheat tắt"}
                     </span>
                   </div>
@@ -190,28 +247,44 @@ export default function TeacherMonitoringPage() {
                   <p className="text-sm text-secondary">{exam.classroomName}</p>
                 </div>
 
-                <Button onClick={() => handleSelectExam(exam.id)} variant={String(exam.id) === selectedExamId ? "secondary" : "primary"}>
+                <Button
+                  onClick={() => handleSelectExam(exam.id)}
+                  variant={String(exam.id) === selectedExamId ? "secondary" : "primary"}
+                >
                   {String(exam.id) === selectedExamId ? "Đang mở giám sát" : "Mở giám sát"}
                 </Button>
               </div>
 
+              {/* Exam stats mini-grid */}
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-[16px] border border-border bg-neutral p-4">
-                  <p className="text-[0.82rem] font-medium text-secondary">Đang làm</p>
-                  <p className="mt-2 text-sm font-semibold text-primary">{exam.inProgressCount}</p>
-                </div>
-                <div className="rounded-[16px] border border-border bg-neutral p-4">
-                  <p className="text-[0.82rem] font-medium text-secondary">Đã nộp</p>
-                  <p className="mt-2 text-sm font-semibold text-primary">{exam.submittedCount}</p>
-                </div>
-                <div className="rounded-[16px] border border-border bg-neutral p-4">
-                  <p className="text-[0.82rem] font-medium text-secondary">Cảnh báo</p>
-                  <p className="mt-2 text-sm font-semibold text-primary">{exam.totalWarnings}</p>
-                </div>
-                <div className="rounded-[16px] border border-border bg-neutral p-4">
-                  <p className="text-[0.82rem] font-medium text-secondary">Rủi ro cao</p>
-                  <p className="mt-2 text-sm font-semibold text-primary">{exam.highRiskCount}</p>
-                </div>
+                {[
+                  { label: "Đang làm", value: exam.inProgressCount, tone: "info" },
+                  { label: "Đã nộp", value: exam.submittedCount, tone: "success" },
+                  { label: "Cảnh báo", value: exam.totalWarnings, tone: "caution" },
+                  { label: "Rủi ro cao", value: exam.highRiskCount, tone: "danger" },
+                ].map((stat) => {
+                  const toneMap = {
+                    info: "border-info/20 bg-info-muted",
+                    success: "border-success/20 bg-success-muted",
+                    caution: "border-caution/20 bg-caution-muted",
+                    danger: "border-danger/20 bg-danger-muted",
+                  };
+                  const textMap = {
+                    info: "text-info",
+                    success: "text-success",
+                    caution: "text-caution",
+                    danger: "text-danger",
+                  };
+                  return (
+                    <div
+                      key={stat.label}
+                      className={`rounded-[14px] border p-4 ${toneMap[stat.tone]}`}
+                    >
+                      <p className="text-[0.78rem] font-medium text-secondary">{stat.label}</p>
+                      <p className={`mt-2 text-2xl font-bold ${textMap[stat.tone]}`}>{stat.value}</p>
+                    </div>
+                  );
+                })}
               </div>
             </Card>
           ))}

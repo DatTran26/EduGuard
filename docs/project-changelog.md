@@ -1,5 +1,224 @@
 # Project Changelog
 
+## Feature: System-wide UX/UI Redesign and Design System Standardization
+
+Date: 2026-06-20
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: System-wide UX/UI Redesign and Design System Standardization.
+- Purpose and user/business impact: Modernize the entire visual interface of the platform across all roles (Admin, Teacher, Student) to present a premium, unified, SaaS-like aesthetic with responsive layouts and dark/light mode consistency.
+- Files or modules changed: Global styles (`index.css`), shared components (`StatCard.jsx`, `MetricBarList.jsx`, `TimelineList.jsx`), Authentication layout/pages (`AuthLayout.jsx`, `GoogleAuthButton.jsx`, `LoginPage.jsx`, `RegisterPage.jsx`), Admin pages, Student pages, Teacher pages, and Profile/ExamAttempt shared screens.
+
+Changed files:
+
+- `frontend/src/index.css`
+- `frontend/src/components/dashboard/StatCard.jsx`
+- `frontend/src/components/dashboard/MetricBarList.jsx`
+- `frontend/src/components/dashboard/TimelineList.jsx`
+- `frontend/src/features/auth/components/AuthLayout.jsx`
+- `frontend/src/features/auth/components/GoogleAuthButton.jsx`
+- `frontend/src/features/auth/pages/LoginPage.jsx`
+- `frontend/src/features/auth/pages/RegisterPage.jsx`
+- `frontend/src/features/dashboard/pages/AdminDashboardPage.jsx`
+- `frontend/src/features/admin/pages/AdminMonitoringPage.jsx`
+- `frontend/src/features/users/pages/UserManagementPage.jsx`
+- `frontend/src/features/dashboard/pages/StudentDashboardPage.jsx`
+- `frontend/src/features/classrooms/pages/JoinClassroomPage.jsx`
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/features/anti-cheat/pages/TeacherMonitoringPage.jsx`
+- `frontend/src/features/results/pages/TeacherResultsPage.jsx`
+- `frontend/src/features/assignments/pages/TeacherAssignmentListPage.jsx`
+- `frontend/src/features/notifications/pages/TeacherNotificationsPage.jsx`
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
+
+Technical summary:
+
+- Appended a comprehensive design system library to `index.css` supporting customized cards, step indicators, system health badges, realtime pulses, custom metric bars, timeline tracks, and heroes.
+- Rewrote core visual dashboard components: upgraded `StatCard` with trend and tone styles; `MetricBarList` with modern gradient fill tracks; `TimelineList` with indicator dots and hover slide animations.
+- Revamped the Authentication modules: implemented a 2-column branding layout with modern SaaS graphics, feature badges, custom Google OAuth buttons, and a 4-step wizard registration flow.
+- Redesigned Admin, Student, and Teacher workspaces to pull hero headers (`eg-page-hero`), structured cards, unified status badges, and cleaner data layouts.
+- Refactored `ProfilePage.jsx` and `ExamAttemptPage.jsx` to replace browser-default `bg-neutral` styles with `bg-surface-sunken` or `bg-surface` to secure clean light/dark theme compliance.
+
+Validation:
+
+- Compiled production build successfully (`npm run build` in `frontend/` folder completed with zero errors).
+- Executed dotnet unit test runner successfully (`dotnet test` passed).
+
+Known risks / rollback / follow-up:
+
+- None. Visual changes are thoroughly checked against structural code, ensuring compatibility with all roles.
+
+## Feature: Teacher classroom detail action simplification
+
+Date: 2026-06-20
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Teacher classroom detail action simplification.
+- Purpose and user/business impact: Giảm độ rối ở trang chi tiết lớp học của Teacher bằng cách làm nổi bật thao tác sao chép mã lớp, bỏ các nút tạo bài tập/đề thi ngay trên header, và dồn việc xem thành viên về đúng tab `Thành viên` để tab `Tổng quan` chỉ còn thông tin lớp và hành động quản trị.
+- Files or modules changed: classroom detail page của Teacher, changelog chính, project changelog, và Todo List.
+
+Changed files:
+
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Rút gọn `PageHeader` của classroom detail để với role khác Student chỉ còn nút `Sao chép mã lớp`; riêng luồng Teacher giờ dùng CTA primary để thao tác này nổi bật hơn khi vào chức năng lớp học.
+- Bỏ block preview thành viên ở tab `Tổng quan` của Teacher vì danh sách thành viên đã có tab chuyên biệt `Thành viên`.
+- Thay panel phụ ở `Tổng quan` bằng đúng hai nút nằm ngang `Chỉnh sửa lớp học` và `Xoá Lớp học` như yêu cầu UI.
+- Giữ lại `CreateClassroomForm` dùng chung cho update, nhưng đổi sang chỉ hiển thị sau khi Teacher bấm `Chỉnh sửa lớp học`, và tự đóng lại sau khi cập nhật thành công để layout tổng quan vẫn gọn.
+
+Validation:
+
+- `npm exec eslint src/features/classrooms/pages/ClassroomDetailPage.jsx` (run in `frontend/`) - passed.
+- `npm run build` (run in `frontend/`) - passed; Vite vẫn báo các warning đã tồn tại từ `@microsoft/signalr` về `INVALID_ANNOTATION` và chunk lớn, nhưng bundle được tạo thành công.
+
+Known risks / rollback / follow-up:
+
+- Teacher cần thêm một lần bấm để mở form chỉnh sửa lớp học; đây là đánh đổi có chủ đích để màn tổng quan gọn hơn.
+- Tab `Thành viên` hiện vẫn giữ cả danh sách thành viên cơ bản lẫn card thống kê theo sinh viên; nếu muốn tiếp tục rút gọn nữa thì cần chốt lại phạm vi hiển thị của tab này ở lượt sau.
+
+## Docs: Frontend inventory Excel workbook
+
+Date: 2026-06-20
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Frontend inventory Excel workbook.
+- Purpose and user/business impact: Tạo một workbook Excel dễ tra cứu để đọc nhanh toàn bộ cây thư mục `frontend`, hiểu vai trò của từng thư mục và tệp, đồng thời xem số lượng/chức năng các hàm trong những file mã nguồn do dự án sở hữu.
+- Files or modules changed: workbook tài liệu frontend, script sinh workbook, và project changelog.
+
+Changed files:
+
+- `docs/doc_hieu.xlsx`
+- `docs/doc_hieu.xlxn`
+- `temp/generate_frontend_inventory_excel.py`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Quét toàn bộ `frontend/` để lập cây thư mục, phân loại thư mục mã nguồn, tài sản tĩnh, cấu hình và artifact build/debug.
+- Phân tích các file `.js/.jsx/.ts/.tsx` thuộc mã nguồn dự án bằng Babel AST để lấy danh sách hàm có tên, loại hàm, dòng bắt đầu và tham số.
+- Sinh workbook nhiều sheet gồm `TongQuan`, `CayThuMuc`, `ThuMuc`, `TapTin`, `Ham`, có freeze pane, filter, tự giãn cột và mô tả tiếng Việt để đọc nhanh.
+- Ghi thêm bản sao `docs/doc_hieu.xlxn` theo đúng đường dẫn người dùng yêu cầu, đồng thời giữ `docs/doc_hieu.xlsx` là bản mở trực tiếp tương thích với Excel.
+
+Validation:
+
+- `python -m py_compile temp/generate_frontend_inventory_excel.py` - passed.
+- `python temp/generate_frontend_inventory_excel.py` - passed; sinh `96` thư mục, `501` tệp và `680` hàm vào workbook.
+- `python -c "from openpyxl import load_workbook; import json; wb=load_workbook(r'docs/doc_hieu.xlsx', read_only=True); ws=wb['TongQuan']; ws2=wb['TapTin']; payload={'sheets': wb.sheetnames, 'a1': ws['A1'].value, 'a2': ws['A2'].value, 'headers': [c.value for c in next(ws2.iter_rows(min_row=1, max_row=1))], 'sample': [c.value for c in next(ws2.iter_rows(min_row=2, max_row=2))]}; print(json.dumps(payload, ensure_ascii=True))"` - passed.
+
+Known risks / rollback / follow-up:
+
+- Mô tả chức năng tệp và hàm hiện được suy ra từ tên file, tên hàm và vị trí thư mục; đây là tài liệu định hướng đọc code, không phải đặc tả nghiệp vụ chuẩn hóa thủ công từng hàm.
+- Các thư mục phụ thuộc như `node_modules` bị loại trừ khỏi chi tiết, và các file build/minified hoặc DLL chỉ được giữ ở mức artifact để workbook không phình quá mức.
+- Đuôi `.xlxn` không phải đuôi Excel chuẩn; nếu cần mở trực tiếp, dùng `docs/doc_hieu.xlsx` hoặc đổi lại đuôi `.xlsx`.
+
+## Feature: Teacher exam upload preview flow and final save placement
+
+Date: 2026-06-20
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Teacher exam upload preview flow and final save placement.
+- Purpose and user/business impact: Let teachers review parsed questions and answers from uploaded files before importing them into an exam, while making the main `Lưu đề` action appear at the end of the create flow so the final confirmation step matches the full drafting workflow.
+- Files or modules changed: teacher exam form, question workspace/review cards, exam create page, exam detail page, Todo List, main changelog, and project changelog.
+
+Changed files:
+
+- `frontend/src/features/exams/components/ExamForm.jsx`
+- `frontend/src/features/exams/components/QuestionCard.jsx`
+- `frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `Todo List.md`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Added a `formId`/`hideSubmitButton` path in the shared exam form so the Teacher create flow can keep exam metadata at the top while rendering the final save button at the bottom of the drafting workspace.
+- Unified teacher file upload handling around `examApi.previewQuestionImportFile()`: when the selected file passes frontend extension/size checks, the frontend now calls the backend preview endpoint immediately instead of only staging the file.
+- Reworked the teacher question workspace import mode so backend preview results render as a dedicated review list with visible questions and answers before the user commits them into the draft exam or the persisted exam.
+- Updated both `ExamListPage` and `ExamDetailPage` to keep preview state (`staged file`, preview questions, row-level import errors, review info message) separate from the real question bank, and only persist questions after explicit commit.
+- Updated the Teacher create-flow final save handler so it now merges draft questions with previewed import questions, saves them on the first create, keeps empty exams as draft, and auto-publishes immediately when the final saved question count is greater than zero.
+- Sanitized draft/preview answer IDs in the shared exam write payload so temporary string IDs from local draft state are converted to `null` before hitting the backend create endpoint, eliminating the `400` deserialization failure on first save.
+- Simplified the final create-flow action area to keep only the button, and removed the extra in-page "backend đã phân tích..." import success copy while keeping the actual review list visible.
+- Replaced the final create CTA form linkage from passive DOM submit wiring with a registered submit callback from `ExamForm`, so the `Tạo đề` button reliably triggers validation and save in the create-flow layout.
+- Hid the `Thêm vào đề nháp` button in draft file-import mode; previewed questions are now only reviewed there and then saved automatically with the final exam create action.
+- Converted import preview questions into editable local draft state in both create and detail workspaces, so teachers can edit review questions directly and the final save/commit path now creates real questions from the edited preview instead of re-importing the original file.
+
+Validation:
+
+- `npm --prefix .\frontend exec eslint frontend/src/features/exams/components/ExamForm.jsx frontend/src/features/exams/components/QuestionCard.jsx frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx frontend/src/features/exams/pages/ExamListPage.jsx frontend/src/features/exams/pages/ExamDetailPage.jsx` - passed.
+- `npm --prefix .\frontend exec eslint frontend/src/features/exams/pages/ExamListPage.jsx` - passed after the create-flow auto-publish fix.
+- `npm --prefix .\frontend exec eslint frontend/src/api/examApi.js frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx frontend/src/features/exams/pages/ExamListPage.jsx frontend/src/features/exams/pages/ExamDetailPage.jsx` - passed after the create-payload sanitation and UI cleanup.
+- `npm --prefix .\frontend exec eslint frontend/src/features/exams/pages/ExamListPage.jsx frontend/src/features/exams/components/QuestionImportPanel.jsx frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx` - passed after the explicit create submit handler and draft-import button removal.
+- `npm --prefix .\frontend exec eslint frontend/src/features/exams/components/ExamForm.jsx frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx frontend/src/features/exams/pages/ExamListPage.jsx frontend/src/features/exams/pages/ExamDetailPage.jsx` - passed after the direct submit callback and editable import-review persistence changes.
+- `npm --prefix .\frontend run build` - passed; Vite still reports pre-existing SignalR `INVALID_ANNOTATION` warnings and the existing large chunk warning, but the production build completed successfully.
+
+Known risks / rollback / follow-up:
+
+- Import review currently uses the backend preview response only for teacher confirmation; if the backend parser changes field semantics, the review card should be rechecked to keep labels/counts aligned.
+- The create-flow save button is now intentionally separated from the metadata form; rollback would mean restoring the original inline submit button inside `ExamForm` for `ExamListPage`.
+
+## Fix: Auth invalid-login refresh and exam import build blockers
+
+Date: 2026-06-20
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Auth invalid-login refresh and exam import build blockers.
+- Purpose and user/business impact: Prevent the login page from refreshing away inline auth errors on wrong credentials, and restore clean backend compilation for the question import flow so auth and exam features remain testable end-to-end.
+- Files or modules changed: frontend auth transport, backend exam import service/controller, Todo List, main changelog, and project changelog.
+
+Changed files:
+
+- `frontend/src/api/axiosClient.js`
+- `backend/EduGuard.Infrastructure/Exams/exam-service.cs`
+- `backend/EduGuard.Api/Controllers/exams-controller.cs`
+- `Todo List.md`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Updated the global axios `401` interceptor to redirect to `/login` only when a real stored access token exists, so `POST /api/auth/login` failures remain on the current page and can render inline errors without losing the user's form input.
+- Replaced the method-group form `previewQuestions.Select(ExamMapper.MapQuestion)` with an explicit lambda so C# can resolve the preview mapping in the exam import flow.
+- Removed the duplicate `var file = request.File;` declaration in the teacher/admin question import action, unblocking compilation of the exams controller path.
+
+Validation:
+
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -o .\temp\backend-check-auth-exam-fixes` - passed with 0 warnings and 0 errors.
+- `npm --prefix frontend exec eslint .\frontend\src\api\axiosClient.js` - passed.
+- `npm --prefix frontend run build` - passed.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj` on the default `bin\Debug` output is still blocked locally by locked files from `EduGuard.Api (PID 2780)` and Visual Studio handles, so the temp output build was used for clean verification.
+
+Known risks / rollback / follow-up:
+
+- The client still intentionally redirects to `/login` for expired or invalid authenticated sessions; the change only stops unauthenticated login failures from causing a hard page refresh.
+- Local in-place backend builds remain sensitive to running API/Visual Studio file locks; stop those processes before rebuilding into the default output if needed.
+
 ## Feature: Teacher import template standardization
 
 Date: 2026-06-20

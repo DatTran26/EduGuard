@@ -1,0 +1,345 @@
+---
+
+# MODULE AUTHENTICATION
+
+## NGUYÊN TẮC
+
+Authentication là điểm chạm đầu tiên của người dùng với hệ thống.
+
+Mục tiêu:
+
+* Tạo cảm giác chuyên nghiệp ngay từ lần truy cập đầu tiên.
+* Tăng độ tin cậy.
+* Làm nổi bật giá trị của EduGuard.
+* Thiết kế theo phong cách SaaS hiện đại.
+* Không giống form đăng nhập đồ án sinh viên.
+
+LƯU Ý:
+
+Chỉ được phép thay đổi:
+
+* UI
+* UX
+* Layout
+* Component
+* Animation
+* Responsive
+
+KHÔNG được thay đổi:
+
+* Logic đăng nhập
+* Logic đăng ký
+* API
+* OAuth
+* OTP
+* Validation business
+* Authentication flow
+
+---
+
+## TRANG ĐĂNG NHẬP
+
+### Layout
+
+Desktop:
+
+Chia 2 cột.
+
+Cột trái:
+
+55%
+
+Cột phải:
+
+45%
+
+---
+
+### Cột trái
+
+Mục tiêu:
+
+Branding.
+
+Giới thiệu hệ thống.
+
+Hiển thị:
+
+* Logo EduGuard
+* Slogan
+* Mô tả ngắn
+* Illustration
+
+Slogan:
+
+"Học tập an toàn. Thi trực tuyến minh bạch."
+
+Mô tả:
+
+"Nền tảng lớp học và thi trực tuyến tích hợp giám sát chống gian lận."
+
+Có thể hiển thị:
+
+* Dashboard preview
+* Exam preview
+* Anti-cheat preview
+
+---
+
+### Cột phải
+
+Authentication Card
+
+Hiển thị:
+
+* Email
+* Mật khẩu
+* Remember Me
+* Quên mật khẩu
+* Đăng nhập Google
+* Đăng nhập
+
+Thiết kế:
+
+* Khoảng trắng lớn
+* Typography rõ
+* Card hiện đại
+* Border nhẹ
+* Shadow nhẹ
+
+---
+
+## TRANG ĐĂNG KÝ
+
+Không sử dụng form dài.
+
+Thiết kế dạng Multi-Step Wizard.
+
+### Bước 1
+
+Thông tin tài khoản
+
+* Email
+* Mật khẩu
+* Xác nhận mật khẩu
+
+### Bước 2
+
+Thông tin cá nhân
+
+* Họ tên
+
+### Bước 3
+
+Vai trò
+
+* Sinh viên
+* Giảng viên
+
+Không cho phép tự đăng ký Admin.
+
+---
+
+## HIỆU ỨNG
+
+Input:
+
+Focus State
+
+Button:
+
+Hover nhẹ
+
+Card:
+
+Fade In
+
+Page:
+
+Slide Up
+
+---
+
+# DASHBOARD ADMIN
+
+## NGUYÊN TẮC
+
+Admin KHÔNG phải Giảng viên.
+
+Admin KHÔNG phải Sinh viên.
+
+Admin là người quản trị hệ thống.
+
+Mục tiêu:
+
+* Quản lý hệ thống
+* Quản lý người dùng
+* Giám sát anti-cheat
+* Audit Log
+* Báo cáo
+* Cấu hình
+
+LƯU Ý:
+
+Chỉ được phép thay đổi:
+
+* UI
+* UX
+* Layout
+* Visualization
+* Component
+
+KHÔNG được thay đổi:
+
+* Permission Logic
+* Business Logic
+* API
+* Database
+* Role Management Logic
+
+---
+
+## SIDEBAR ADMIN
+
+Hiển thị:
+
+* Dashboard
+* Người dùng
+* Lớp học
+* Bài thi
+* Giám sát
+* Báo cáo
+* Nhật ký hoạt động
+* Cấu hình hệ thống
+* Hồ sơ
+
+---
+
+## DASHBOARD ADMIN
+
+### Statistic Cards
+
+* Tổng người dùng
+* Tổng lớp học
+* Tổng bài thi
+* Uptime hệ thống
+
+---
+
+### Realtime Monitoring
+
+Hiển thị:
+
+* Người dùng online
+* Sinh viên đang thi
+* Phiên thi đang diễn ra
+
+---
+
+### Anti-Cheat Monitoring
+
+Hiển thị:
+
+* Tổng vi phạm
+* Vi phạm theo thời gian
+* Top lớp có vi phạm nhiều nhất
+* Top sinh viên rủi ro cao
+
+---
+
+### System Health
+
+Hiển thị:
+
+* API Status
+* Redis Status
+* SignalR Status
+* Database Status
+
+Dưới dạng Dashboard hiện đại.
+
+---
+
+## AUDIT LOG
+
+Timeline View
+
+Hiển thị:
+
+* Ai
+* Làm gì
+* Khi nào
+
+Có Search.
+
+Có Filter.
+
+Có Pagination.
+
+---
+
+## BÁO CÁO
+
+Hiển thị:
+
+* Tăng trưởng người dùng
+* Hoạt động lớp học
+* Kết quả thi
+* Báo cáo gian lận
+
+Ưu tiên Data Visualization hiện đại.
+
+---
+
+# GIỚI HẠN THAY ĐỔI
+
+RẤT QUAN TRỌNG:
+
+Mục tiêu của nhiệm vụ này là:
+
+THIẾT KẾ LẠI UX/UI
+
+KHÔNG PHẢI REFACTOR LOGIC.
+
+AI chỉ được phép:
+
+* Sửa giao diện
+* Sửa bố cục
+* Sửa component
+* Sửa typography
+* Sửa màu sắc
+* Sửa spacing
+* Sửa animation
+* Sửa responsive
+* Sửa accessibility
+* Chuẩn hóa design system
+
+AI KHÔNG ĐƯỢC:
+
+* Đổi API endpoint
+* Đổi service
+* Đổi repository
+* Đổi database
+* Đổi entity
+* Đổi DTO
+* Đổi validation business
+* Đổi authentication logic
+* Đổi authorization logic
+* Đổi anti-cheat logic
+* Đổi Redux/Zustand/Context logic
+* Đổi React Query logic
+* Đổi state management
+* Đổi routing
+* Đổi cấu trúc dữ liệu trả về
+
+Nếu cần dữ liệu mới để hiển thị UI:
+
+Chỉ được dùng mock data hoặc fallback UI.
+
+Không được yêu cầu backend thay đổi.
+
+Mọi thay đổi phải đảm bảo:
+
+* Build thành công.
+* Chức năng hiện tại hoạt động như cũ.
+* Chỉ nâng cấp trải nghiệm người dùng và giao diện.
