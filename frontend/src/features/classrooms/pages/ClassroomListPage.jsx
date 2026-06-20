@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { classroomApi } from "../../../api/classroomApi";
 import Button from "../../../components/common/Button";
 import EmptyState from "../../../components/common/EmptyState";
@@ -21,15 +21,16 @@ import {
 export default function ClassroomListPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { showToast } = useToast();
   const [classrooms, setClassrooms] = useState([]);
   const [loadErrorMessage, setLoadErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCreateFormVisible, setIsCreateFormVisible] = useState(false);
   const [adminSearchTerm, setAdminSearchTerm] = useState("");
   const [adminSortOption, setAdminSortOption] = useState("name-asc");
+  const isCreateFormVisible = searchParams.get("create") === "1";
   const pageCopy = getPageCopyByRole(user?.role);
   const summaryItems = buildSummaryItems(classrooms);
   const isAdminView = user?.role === "Admin";
@@ -61,6 +62,18 @@ export default function ClassroomListPage() {
       { replace: true, state: null },
     );
   }, [location.pathname, location.search, location.state, navigate, showToast]);
+
+  function toggleCreateForm() {
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (isCreateFormVisible) {
+      nextParams.delete("create");
+    } else {
+      nextParams.set("create", "1");
+    }
+
+    setSearchParams(nextParams);
+  }
 
   async function loadClassrooms() {
     setIsLoading(true);
@@ -113,7 +126,9 @@ export default function ClassroomListPage() {
     try {
       const response = await classroomApi.create(payload);
       await loadClassrooms();
-      setIsCreateFormVisible(false);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("create");
+      setSearchParams(nextParams);
       showToast({
         tone: "success",
         title: "Đã tạo lớp học",
@@ -200,10 +215,7 @@ export default function ClassroomListPage() {
             </div>
           </div>
 
-          <Button
-            onClick={() => setIsCreateFormVisible((prev) => !prev)}
-            variant={isCreateFormVisible ? "secondary" : "primary"}
-          >
+          <Button onClick={toggleCreateForm} variant={isCreateFormVisible ? "secondary" : "primary"}>
             {isCreateFormVisible ? "Ẩn form tạo lớp" : "Tạo lớp học"}
           </Button>
         </div>

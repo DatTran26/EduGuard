@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { antiCheatApi } from "../../../api/antiCheatApi";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { FiInfo } from "react-icons/fi";
 import { classroomApi } from "../../../api/classroomApi";
 import { examApi } from "../../../api/examApi";
 import { examAttemptApi } from "../../../api/examAttemptApi";
@@ -12,16 +13,14 @@ import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import {
-  buildClassroomDetailPathByRole,
   getExamListPathByRole,
-  getProfilePathByRole,
   buildStudentExamAttemptPath,
 } from "../../../routes/routeConfig";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import AttemptMonitorPanel from "../../anti-cheat/components/AttemptMonitorPanel";
 import ExamForm from "../components/ExamForm";
-import QuestionCard from "../components/QuestionCard";
-import QuestionForm from "../components/QuestionForm";
+import TeacherQuestionWorkspace from "../components/TeacherQuestionWorkspace";
+import { validateQuestionImportFile } from "../components/teacher-question-workspace-helpers";
 import {
   buildExamPublishIssueList,
   getExamStatusVariant,
@@ -60,28 +59,6 @@ function canRoleInspectQuestionBank(role) {
   return role === "Admin" || role === "Teacher";
 }
 
-// Hàm này dựng vài số liệu nhanh cho khu vực quản lý câu hỏi để teacher/admin nhìn tổng quan ngay.
-function buildQuestionSummaryItems(exam, questions) {
-  const singleChoiceCount = questions.filter((question) => question.questionType === "SingleChoice").length;
-  const multipleChoiceCount = questions.filter((question) => question.questionType === "MultipleChoice").length;
-  const trueFalseCount = questions.filter((question) => question.questionType === "TrueFalse").length;
-  const shortAnswerCount = questions.filter((question) => question.questionType === "ShortAnswer").length;
-  const totalQuestionScore = questions.reduce(
-    (totalValue, question) => totalValue + Number(question.score || 0),
-    0,
-  );
-
-  return [
-    { label: "Tổng câu hỏi", value: questions.length || exam.questionCount },
-    { label: "Tổng điểm", value: totalQuestionScore },
-    { label: "Một đáp án", value: singleChoiceCount },
-    { label: "Nhiều đáp án", value: multipleChoiceCount },
-    { label: "Đúng / Sai", value: trueFalseCount },
-    { label: "Tự luận ngắn", value: shortAnswerCount },
-  ];
-}
-
-
 // Hàm này tính điểm trung bình từ danh sách attempt đã có điểm để hiển thị đúng hơn ở exam detail.
 function calculateAverageScore(attempts = []) {
   const scoredAttempts = attempts
@@ -104,6 +81,13 @@ function getPublishStatusMeta(exam, publishIssueCount, serverIssueCount) {
     };
   }
 
+  if (!exam?.canEdit && !exam?.canViewQuestionBank) {
+    return {
+      label: "Bản nháp",
+      variant: "neutral",
+    };
+  }
+
   if (serverIssueCount > 0) {
     return {
       label: "Backend đang chặn",
@@ -122,6 +106,35 @@ function getPublishStatusMeta(exam, publishIssueCount, serverIssueCount) {
     label: "Chưa đủ điều kiện",
     variant: "caution",
   };
+}
+
+function buildAdditionalInfoItems(exam) {
+  return [
+    {
+      label: "Lớp học",
+      value: exam.classroomName || "Chưa gắn lớp học",
+    },
+    {
+      label: "Giảng viên",
+      value: exam.teacherName || "Chưa xác định",
+    },
+    {
+      label: "Mở đề (UTC+7)",
+      value: exam.startTime ? formatShortDateTime(exam.startTime) : "Chưa đặt lịch",
+    },
+    {
+      label: "Đóng đề (UTC+7)",
+      value: exam.endTime ? formatShortDateTime(exam.endTime) : "Chưa đặt lịch",
+    },
+    {
+      label: "Thời lượng",
+      value: `${exam.durationMinutes} phút`,
+    },
+    {
+      label: "Số lượt làm",
+      value: `${exam.attemptCount} lượt`,
+    },
+  ];
 }
 
 
@@ -149,6 +162,22 @@ export default function ExamDetailPage() {
   const [deletingQuestionId, setDeletingQuestionId] = useState(null);
   const [isStartingAttempt, setIsStartingAttempt] = useState(false);
   const [publishServerIssues, setPublishServerIssues] = useState([]);
+  const [questionWorkspaceMode, setQuestionWorkspaceMode] = useState("manual");
+  const [questionWorkspaceFilter, setQuestionWorkspaceFilter] = useState("All");
+  const [questionWorkspaceSort, setQuestionWorkspaceSort] = useState("OrderAsc");
+  const [expandedQuestionId, setExpandedQuestionId] = useState(null);
+  const [composerRevision, setComposerRevision] = useState(0);
+  const [isComposerDirty, setIsComposerDirty] = useState(false);
+  const [stagedImportFile, setStagedImportFile] = useState(null);
+  const [importReviewMessage, setImportReviewMessage] = useState("");
+  const [importResultErrors, setImportResultErrors] = useState([]);
+  const [isImportSubmitting, setIsImportSubmitting] = useState(false);
+  const [managementPanelState, setManagementPanelState] = useState({
+    examId: null,
+    isOpen: false,
+  });
+  const isManagementPanelOpen =
+    managementPanelState.examId === examId && managementPanelState.isOpen;
 
   // Hàm này gọi song song các endpoint cần thiết cho detail page để dữ liệu metadata và question bank đi cùng nhau.
   const fetchExamDetailData = useCallback(async () => {
@@ -199,19 +228,27 @@ export default function ExamDetailPage() {
     };
   }, [examId, user?.role]);
 
+  function applyExamDetailState(nextData) {
+    setExam(nextData.exam);
+    setClassrooms(nextData.classrooms);
+    setQuestions(nextData.questions);
+    setAntiCheatSummary(nextData.antiCheatSummary);
+    setAttempts(nextData.attempts);
+    setPublishServerIssues([]);
+    setLoadErrorMessage("");
+  }
+
   // Hàm này tải detail exam và question bank để các thao tác CRUD sau đó chỉ cần gọi reload lại một nơi.
-  async function loadExamDetail() {
-    setIsLoading(true);
+  async function loadExamDetail(options = {}) {
+    const { showPageLoader = true } = options;
+
+    if (showPageLoader) {
+      setIsLoading(true);
+    }
 
     try {
       const nextData = await fetchExamDetailData();
-      setExam(nextData.exam);
-      setClassrooms(nextData.classrooms);
-      setQuestions(nextData.questions);
-      setAntiCheatSummary(nextData.antiCheatSummary);
-      setAttempts(nextData.attempts);
-      setPublishServerIssues([]);
-      setLoadErrorMessage("");
+      applyExamDetailState(nextData);
     } catch (error) {
       setExam(null);
       setQuestions([]);
@@ -226,7 +263,9 @@ export default function ExamDetailPage() {
         message: nextMessage,
       });
     } finally {
-      setIsLoading(false);
+      if (showPageLoader) {
+        setIsLoading(false);
+      }
     }
   }
 
@@ -247,13 +286,7 @@ export default function ExamDetailPage() {
           return;
         }
 
-        setExam(nextData.exam);
-        setClassrooms(nextData.classrooms);
-        setQuestions(nextData.questions);
-        setAntiCheatSummary(nextData.antiCheatSummary);
-        setAttempts(nextData.attempts);
-      setPublishServerIssues([]);
-      setLoadErrorMessage("");
+        applyExamDetailState(nextData);
       } catch (error) {
         if (!isMounted) {
           return;
@@ -263,8 +296,8 @@ export default function ExamDetailPage() {
         setQuestions([]);
         setAntiCheatSummary(null);
         setAttempts([]);
-      setPublishServerIssues([]);
-      const nextMessage = error.message || "Không thể tải chi tiết bài kiểm tra.";
+        setPublishServerIssues([]);
+        const nextMessage = error.message || "Không thể tải chi tiết bài kiểm tra.";
         setLoadErrorMessage(nextMessage);
         showToast({
           tone: "danger",
@@ -286,13 +319,14 @@ export default function ExamDetailPage() {
     };
   }, [fetchExamDetailData, showToast]);
 
+
   // Hàm này lưu chỉnh sửa exam của teacher rồi tải lại detail để card thông tin luôn mới.
   async function handleUpdateExam(payload) {
     setIsSaving(true);
 
     try {
       const response = await examApi.update(examId, payload);
-      await loadExamDetail();
+      await loadExamDetail({ showPageLoader: false });
       showToast({
         tone: "success",
         title: "Đã cập nhật đề thi",
@@ -318,31 +352,81 @@ export default function ExamDetailPage() {
 
     try {
       const response = await examApi.createQuestion(examId, payload);
-      await loadExamDetail();
+      await loadExamDetail({ showPageLoader: false });
+      setExpandedQuestionId(response.data?.id ?? null);
+      setQuestionWorkspaceMode("manual");
+      setQuestionWorkspaceFilter("All");
+      setQuestionWorkspaceSort("OrderAsc");
       showToast({
         tone: "success",
         title: "Đã thêm câu hỏi",
         message: response.message,
       });
-      return true;
+      return { didSave: true, shouldReset: true };
     } catch (error) {
       showToast({
         tone: "danger",
         title: "Thêm câu hỏi thất bại",
         message: error.message || "Không thể thêm câu hỏi mới.",
       });
-      return false;
+      return { didSave: false, shouldReset: false };
     } finally {
       setIsQuestionSubmitting(false);
     }
   }
 
-  // Hàm này bật hoặc tắt chế độ chỉnh sửa inline cho đúng câu hỏi mà teacher vừa chọn.
-  function handleToggleEditQuestion(questionId) {
+  function confirmDiscardQuestionDraft() {
+    return (
+      !isComposerDirty ||
+      window.confirm("Bạn có thay đổi chưa lưu. Bạn muốn bỏ chúng để chuyển sang thao tác khác?")
+    );
+  }
+
+  function handleChangeQuestionWorkspaceMode(nextMode) {
+    if (nextMode === questionWorkspaceMode) {
+      return;
+    }
+
+    if (questionWorkspaceMode === "manual" && !confirmDiscardQuestionDraft()) {
+      return;
+    }
+
     setArmedDeleteQuestionId(null);
-    setEditingQuestionId((previousQuestionId) => {
-      return previousQuestionId === questionId ? null : questionId;
-    });
+    setEditingQuestionId(null);
+    setComposerRevision((previousValue) => previousValue + 1);
+    setQuestionWorkspaceMode(nextMode);
+  }
+
+  function handleToggleQuestionExpand(questionId) {
+    setExpandedQuestionId((previousQuestionId) =>
+      previousQuestionId === questionId ? null : questionId,
+    );
+  }
+
+  function handleStartEditingQuestion(questionId) {
+    if (editingQuestionId === questionId) {
+      setExpandedQuestionId(questionId);
+      return;
+    }
+
+    if (questionWorkspaceMode === "manual" && !confirmDiscardQuestionDraft()) {
+      return;
+    }
+
+    setQuestionWorkspaceMode("manual");
+    setArmedDeleteQuestionId(null);
+    setExpandedQuestionId(questionId);
+    setEditingQuestionId(questionId);
+    setComposerRevision((previousValue) => previousValue + 1);
+  }
+
+  function handleReturnToCreateQuestion() {
+    if (!confirmDiscardQuestionDraft()) {
+      return;
+    }
+
+    setEditingQuestionId(null);
+    setComposerRevision((previousValue) => previousValue + 1);
   }
 
   // Hàm này lưu thay đổi của một câu hỏi cùng toàn bộ đáp án của nó.
@@ -351,22 +435,23 @@ export default function ExamDetailPage() {
 
     try {
       const response = await examApi.updateQuestion(examId, questionId, payload);
-      await loadExamDetail();
-      setEditingQuestionId(null);
+      await loadExamDetail({ showPageLoader: false });
       setArmedDeleteQuestionId(null);
+      setExpandedQuestionId(questionId);
+      setComposerRevision((previousValue) => previousValue + 1);
       showToast({
         tone: "success",
         title: "Đã cập nhật câu hỏi",
         message: response.message,
       });
-      return false;
+      return { didSave: true, shouldReset: false };
     } catch (error) {
       showToast({
         tone: "danger",
         title: "Cập nhật câu hỏi thất bại",
         message: error.message || "Không thể cập nhật câu hỏi.",
       });
-      return false;
+      return { didSave: false, shouldReset: false };
     } finally {
       setIsQuestionSubmitting(false);
     }
@@ -375,6 +460,10 @@ export default function ExamDetailPage() {
   // Hàm này dùng xác nhận 2 bước để tránh teacher xóa nhầm câu hỏi khỏi đề thi.
   async function handleDeleteQuestion(questionId) {
     if (armedDeleteQuestionId !== questionId) {
+      if (editingQuestionId !== null && !confirmDiscardQuestionDraft()) {
+        return;
+      }
+
       setEditingQuestionId(null);
       setArmedDeleteQuestionId(questionId);
       return;
@@ -385,8 +474,15 @@ export default function ExamDetailPage() {
 
     try {
       const response = await examApi.deleteQuestion(examId, questionId);
-      await loadExamDetail();
+      await loadExamDetail({ showPageLoader: false });
       setArmedDeleteQuestionId(null);
+      if (editingQuestionId === questionId) {
+        setEditingQuestionId(null);
+        setComposerRevision((previousValue) => previousValue + 1);
+      }
+      if (expandedQuestionId === questionId) {
+        setExpandedQuestionId(null);
+      }
       showToast({
         tone: "success",
         title: "Đã xóa câu hỏi",
@@ -401,6 +497,66 @@ export default function ExamDetailPage() {
     } finally {
       setDeletingQuestionId(null);
       setIsQuestionSubmitting(false);
+    }
+  }
+
+  function handleStageImportFile(file) {
+    const nextValidationMessage = validateQuestionImportFile(file);
+
+    setImportResultErrors([]);
+    setImportReviewMessage(nextValidationMessage);
+
+    if (nextValidationMessage) {
+      setStagedImportFile(null);
+      return;
+    }
+
+    setQuestionWorkspaceMode("import");
+    setStagedImportFile(file);
+  }
+
+  function handleClearImportFile() {
+    setStagedImportFile(null);
+    setImportReviewMessage("");
+    setImportResultErrors([]);
+  }
+
+  async function handleCommitImportedQuestions() {
+    const nextValidationMessage = validateQuestionImportFile(stagedImportFile);
+
+    if (nextValidationMessage) {
+      setImportReviewMessage(nextValidationMessage);
+      return;
+    }
+
+    setIsImportSubmitting(true);
+    setImportReviewMessage("");
+    setImportResultErrors([]);
+
+    try {
+      const response = await examApi.importQuestionFile(examId, stagedImportFile);
+      await loadExamDetail({ showPageLoader: false });
+      setStagedImportFile(null);
+      setQuestionWorkspaceMode("manual");
+      setQuestionWorkspaceFilter("All");
+      setQuestionWorkspaceSort("OrderAsc");
+      setExpandedQuestionId(null);
+      setComposerRevision((previousValue) => previousValue + 1);
+      showToast({
+        tone: "success",
+        title: "Đã import câu hỏi",
+        message: response.message,
+      });
+    } catch (error) {
+      setImportReviewMessage(error.message || "Không thể import file câu hỏi.");
+      setImportResultErrors(Array.isArray(error.importResult?.errors) ? error.importResult.errors : []);
+      showToast({
+        tone: "danger",
+        title: "Import thất bại",
+        message: error.message || "Không thể import file câu hỏi.",
+      });
+    } finally {
+      setIsImportSubmitting(false);
     }
   }
 
@@ -452,7 +608,7 @@ export default function ExamDetailPage() {
 
     try {
       const response = await examApi.publish(examId);
-      await loadExamDetail();
+      await loadExamDetail({ showPageLoader: false });
       showToast({
         tone: "success",
         title: "Đã publish đề thi",
@@ -486,6 +642,17 @@ export default function ExamDetailPage() {
     } finally {
       setIsStartingAttempt(false);
     }
+  }
+
+  function handleToggleManagementPanel() {
+    if (isManagementPanelOpen && !confirmDiscardQuestionDraft()) {
+      return;
+    }
+
+    setManagementPanelState((previousValue) => ({
+      examId,
+      isOpen: previousValue.examId === examId ? !previousValue.isOpen : true,
+    }));
   }
 
   const handleRealtimeAntiCheatWarning = useCallback((warning) => {
@@ -540,7 +707,6 @@ export default function ExamDetailPage() {
     });
   }, []);
 
-  const questionSummaryItems = exam ? buildQuestionSummaryItems(exam, questions) : [];
   const averageScoreLabel = typeof exam?.averageScore === "number" ? exam.averageScore : "--";
   const totalQuestionScoreLabel =
     typeof exam?.totalQuestionScore === "number" ? exam.totalQuestionScore : "--";
@@ -620,6 +786,17 @@ export default function ExamDetailPage() {
     );
   }
 
+  const additionalInfoItems = buildAdditionalInfoItems(exam);
+  const canOpenManagementPanel = Boolean(exam.canEdit || exam.canViewQuestionBank);
+  const questionCountLabel = exam.questionCount > 0 ? exam.questionCount : questions.length;
+  const managementPanelToggleLabel = exam.canEdit
+    ? isManagementPanelOpen
+      ? "Ẩn chỉnh sửa bài kiểm tra"
+      : "Chỉnh sửa bài kiểm tra"
+    : isManagementPanelOpen
+      ? "Ẩn workspace câu hỏi"
+      : "Xem workspace câu hỏi";
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -637,44 +814,51 @@ export default function ExamDetailPage() {
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-6">
           <Card className="space-y-5">
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge variant={getExamStatusVariant(exam.statusLabel)}>{exam.statusLabel}</Badge>
-              <Badge variant={exam.isPublished ? "info" : "neutral"}>
-                {exam.isPublished ? "Đã publish" : "Chưa publish"}
-              </Badge>
-              <Badge variant={exam.enableAntiCheat ? "caution" : "neutral"}>
-                {exam.enableAntiCheat ? "Anti-cheat bật" : "Anti-cheat tắt"}
-              </Badge>
-            </div>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge variant={getExamStatusVariant(exam.statusLabel)}>{exam.statusLabel}</Badge>
+                  <Badge variant={exam.isPublished ? "info" : "neutral"}>
+                    {exam.isPublished ? "Đã publish" : "Chưa publish"}
+                  </Badge>
+                  <Badge variant={exam.enableAntiCheat ? "caution" : "neutral"}>
+                    {exam.enableAntiCheat ? "Anti-cheat bật" : "Anti-cheat tắt"}
+                  </Badge>
+                </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-[16px] border border-border bg-neutral p-4">
-                <p className="text-sm font-semibold text-primary">Lớp học</p>
-                <p className="mt-2 text-sm leading-6 text-secondary">{exam.classroomName}</p>
+                {exam.description ? (
+                  <p className="max-w-3xl text-sm leading-6 text-secondary">{exam.description}</p>
+                ) : (
+                  <p className="max-w-3xl text-sm leading-6 text-secondary">
+                    Bài kiểm tra này hiện chưa có mô tả bổ sung.
+                  </p>
+                )}
               </div>
-              <div className="rounded-[16px] border border-border bg-neutral p-4">
-                <p className="text-sm font-semibold text-primary">Giảng viên</p>
-                <p className="mt-2 text-sm leading-6 text-secondary">{exam.teacherName}</p>
-              </div>
-              <div className="rounded-[16px] border border-border bg-neutral p-4">
-                <p className="text-sm font-semibold text-primary">Mở đề (UTC+7)</p>
-                <p className="mt-2 text-sm leading-6 text-secondary">
-                  {exam.startTime ? formatShortDateTime(exam.startTime) : "Chưa đặt lịch"}
-                </p>
-              </div>
-              <div className="rounded-[16px] border border-border bg-neutral p-4">
-                <p className="text-sm font-semibold text-primary">Đóng đề (UTC+7)</p>
-                <p className="mt-2 text-sm leading-6 text-secondary">
-                  {exam.endTime ? formatShortDateTime(exam.endTime) : "Chưa đặt lịch"}
-                </p>
-              </div>
-              <div className="rounded-[16px] border border-border bg-neutral p-4">
-                <p className="text-sm font-semibold text-primary">Thời lượng</p>
-                <p className="mt-2 text-sm leading-6 text-secondary">{exam.durationMinutes} phút</p>
-              </div>
-              <div className="rounded-[16px] border border-border bg-neutral p-4">
-                <p className="text-sm font-semibold text-primary">Số lượt làm</p>
-                <p className="mt-2 text-sm leading-6 text-secondary">{exam.attemptCount} lượt</p>
+
+              <div className="group relative">
+                <button
+                  aria-label="Xem thông tin thêm của bài kiểm tra"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-neutral text-secondary transition hover:border-tertiary hover:text-primary focus:outline-none focus:ring-2 focus:ring-tertiary/30"
+                  type="button"
+                >
+                  <FiInfo className="h-4 w-4" />
+                </button>
+
+                <div className="invisible absolute right-0 top-full z-10 mt-3 w-[320px] rounded-[20px] border border-border bg-surface p-4 opacity-0 transition duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-primary">Thông tin thêm</p>
+                    <div className="space-y-3">
+                      {additionalInfoItems.map((item) => (
+                        <div key={item.label} className="rounded-[16px] border border-border bg-neutral p-3">
+                          <p className="text-xs font-medium uppercase tracking-[0.14em] text-secondary">
+                            {item.label}
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-primary">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -684,7 +868,19 @@ export default function ExamDetailPage() {
             </div>
           </Card>
 
-          {exam.canEdit ? (
+          <Card className="space-y-4">
+            <h3 className="text-lg font-semibold text-primary">Cấu hình bài kiểm tra</h3>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {buildSettingItems(exam).map((item) => (
+                <div key={item.label} className="rounded-[16px] border border-border bg-neutral p-4">
+                  <p className="text-sm font-semibold text-primary">{item.label}</p>
+                  <p className="mt-2 text-sm text-secondary">{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {isManagementPanelOpen && exam.canEdit ? (
             <ExamForm
               classroomOptions={classrooms}
               exam={exam}
@@ -697,81 +893,7 @@ export default function ExamDetailPage() {
             />
           ) : null}
 
-          {exam.canViewQuestionBank ? (
-            <Card className="space-y-5">
-              <h3 className="text-lg font-semibold text-primary">Ngân hàng câu hỏi</h3>
-
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-                {questionSummaryItems.map((item) => (
-                  <div key={item.label} className="rounded-[16px] border border-border bg-neutral p-4">
-                    <p className="text-xs font-medium uppercase tracking-[0.16em] text-secondary">
-                      {item.label}
-                    </p>
-                    <p className="mt-3 text-2xl font-semibold tracking-tight text-primary">
-                      {item.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          ) : null}
-
-          {exam.canEdit && exam.canViewQuestionBank ? (
-            <QuestionForm
-              defaultOrderIndex={questions.length + 1}
-              isSubmitting={isQuestionSubmitting}
-              key={`create-question-${exam.id}-${questions.length}`}
-              onSubmitQuestion={handleCreateQuestion}
-              showDescriptions={false}
-              submitLabel="Thêm câu hỏi"
-              title="Thêm câu hỏi mới"
-            />
-          ) : null}
-
-          {exam.canViewQuestionBank ? (
-            questions.length > 0 ? (
-              <div className="space-y-4">
-                {questions.map((question) => (
-                  <div key={question.id} className="space-y-4">
-                    <QuestionCard
-                      canManage={exam.canEdit}
-                      isDeleting={deletingQuestionId === question.id}
-                      isEditing={editingQuestionId === question.id}
-                      onDeleteQuestion={() => handleDeleteQuestion(question.id)}
-                      onEditQuestion={() => handleToggleEditQuestion(question.id)}
-                      question={question}
-                    />
-
-                    {armedDeleteQuestionId === question.id ? (
-                      <p className="rounded-[16px] border border-danger/15 bg-danger/5 px-4 py-3 text-sm text-danger">
-                        Bạn bấm thêm một lần nữa vào nút xóa của câu này để xác nhận thao tác.
-                      </p>
-                    ) : null}
-
-                    {editingQuestionId === question.id ? (
-                      <QuestionForm
-                        defaultOrderIndex={question.orderIndex}
-                        isSubmitting={isQuestionSubmitting}
-                        key={`edit-question-${question.id}-${question.updatedAt || question.createdAt}`}
-                        onCancel={() => setEditingQuestionId(null)}
-                        onSubmitQuestion={(payload) => handleUpdateQuestion(question.id, payload)}
-                        question={question}
-                        showDescriptions={false}
-                        submitLabel="Lưu câu hỏi"
-                        title={`Chỉnh sửa câu ${question.orderIndex}`}
-                      />
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                title="Đề thi này chưa có câu hỏi nào."
-              />
-            )
-          ) : null}
-
-          {exam.canDelete ? (
+          {isManagementPanelOpen && exam.canDelete ? (
             <Card className="space-y-4">
               <h3 className="text-lg font-semibold text-primary">Nguy hiểm</h3>
               {isDeleteArmed ? (
@@ -796,15 +918,27 @@ export default function ExamDetailPage() {
             </Card>
           ) : null}
         </div>
-        <div className="space-y-6">
-          {exam.canEdit ? (
-            <Card className="space-y-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <h3 className="text-lg font-semibold text-primary">Trạng thái publish</h3>
-                <Badge variant={publishStatusMeta.variant}>{publishStatusMeta.label}</Badge>
-              </div>
 
-              {exam.isPublished ? (
+        <div className="space-y-6">
+          {canOpenManagementPanel ? (
+            <div className="flex justify-end">
+              <Button
+                onClick={handleToggleManagementPanel}
+                variant={isManagementPanelOpen ? "secondary" : "primary"}
+              >
+                {managementPanelToggleLabel}
+              </Button>
+            </div>
+          ) : null}
+
+          <Card className="space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <h3 className="text-lg font-semibold text-primary">Trạng thái publish</h3>
+              <Badge variant={publishStatusMeta.variant}>{publishStatusMeta.label}</Badge>
+            </div>
+
+            {exam.canEdit || exam.canViewQuestionBank ? (
+              exam.isPublished ? (
                 <div className="rounded-[16px] border border-success/20 bg-success-muted p-4 text-sm leading-6 text-success">
                   Đề thi đã được publish. Sinh viên có thể vào làm bài khi đến đúng thời gian mở đề.
                 </div>
@@ -821,53 +955,49 @@ export default function ExamDetailPage() {
                     ))}
                   </ul>
                 </div>
-              )}
+              )
+            ) : exam.isPublished ? (
+              <div className="rounded-[16px] border border-success/20 bg-success-muted p-4 text-sm leading-6 text-success">
+                Đề thi đã được publish và đang hiển thị cho sinh viên theo lịch mở đề.
+              </div>
+            ) : (
+              <div className="rounded-[16px] border border-border bg-neutral p-4 text-sm leading-6 text-secondary">
+                Đề thi hiện vẫn ở trạng thái nháp. Chỉ giảng viên phụ trách mới có thể chỉnh sửa và publish đề này.
+              </div>
+            )}
 
-              {publishServerIssues.length > 0 ? (
-                <div className="rounded-[16px] border border-danger/20 bg-danger-muted p-4 text-sm leading-6 text-danger">
-                  <p className="font-semibold">Backend đang chặn publish vì các lỗi sau:</p>
-                  <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6">
-                    {publishServerIssues.map((issue) => (
-                      <li key={issue}>{issue}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
+            {publishServerIssues.length > 0 ? (
+              <div className="rounded-[16px] border border-danger/20 bg-danger-muted p-4 text-sm leading-6 text-danger">
+                <p className="font-semibold">Backend đang chặn publish vì các lỗi sau:</p>
+                <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6">
+                  {publishServerIssues.map((issue) => (
+                    <li key={issue}>{issue}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
-              {!exam.isPublished ? (
-                <Button
-                  className="w-full sm:w-auto"
-                  disabled={
-                    isPublishing ||
-                    isSaving ||
-                    isQuestionSubmitting ||
-                    publishIssueList.length > 0
-                  }
-                  onClick={handlePublishExam}
-                >
-                  {isPublishing ? "Đang publish..." : "Publish đề"}
-                </Button>
-              ) : null}
-            </Card>
-          ) : null}
-
-          <Card className="space-y-4">
-            <h3 className="text-lg font-semibold text-primary">Cấu hình đề thi</h3>
-            <div className="space-y-3">
-              {buildSettingItems(exam).map((item) => (
-                <div key={item.label} className="rounded-[16px] border border-border bg-neutral p-4">
-                  <p className="text-sm font-semibold text-primary">{item.label}</p>
-                  <p className="mt-2 text-sm text-secondary">{item.value}</p>
-                </div>
-              ))}
-            </div>
+            {!exam.isPublished && exam.canEdit ? (
+              <Button
+                className="w-full sm:w-auto"
+                disabled={
+                  isPublishing ||
+                  isSaving ||
+                  isQuestionSubmitting ||
+                  publishIssueList.length > 0
+                }
+                onClick={handlePublishExam}
+              >
+                {isPublishing ? "Đang publish..." : "Publish đề"}
+              </Button>
+            ) : null}
           </Card>
 
           <Card className="space-y-4">
             <h3 className="text-lg font-semibold text-primary">Tóm tắt đề thi</h3>
             <div className="space-y-3 text-sm text-secondary">
               <p>
-                <span className="font-semibold text-primary">Số câu hỏi:</span> {questions.length} câu
+                <span className="font-semibold text-primary">Số câu hỏi:</span> {questionCountLabel} câu
               </p>
               <p>
                 <span className="font-semibold text-primary">Tổng điểm:</span> {totalQuestionScoreLabel}
@@ -905,26 +1035,42 @@ export default function ExamDetailPage() {
               )}
             </Card>
           ) : null}
-
-          <Card className="space-y-3">
-            <h3 className="text-lg font-semibold text-primary">Liên kết nhanh</h3>
-            <div className="flex flex-wrap gap-3">
-              <Link className="eg-button eg-button-secondary" to={getExamListPathByRole(user?.role)}>
-                Danh sách đề thi
-              </Link>
-              <Link
-                className="eg-button eg-button-ghost"
-                to={buildClassroomDetailPathByRole(user?.role, exam.classroomId)}
-              >
-                Xem lớp học
-              </Link>
-              <Link className="eg-button eg-button-ghost" to={getProfilePathByRole(user?.role)}>
-                Hồ sơ cá nhân
-              </Link>
-            </div>
-          </Card>
         </div>
       </div>
+
+      {isManagementPanelOpen && exam.canViewQuestionBank ? (
+        <TeacherQuestionWorkspace
+          armedDeleteQuestionId={armedDeleteQuestionId}
+          canManage={exam.canEdit}
+          composerRevision={composerRevision}
+          deletingQuestionId={deletingQuestionId}
+          editingQuestionId={editingQuestionId}
+          exam={exam}
+          expandedQuestionId={expandedQuestionId}
+          importResultErrors={importResultErrors}
+          importReviewMessage={importReviewMessage}
+          isImportSubmitting={isImportSubmitting}
+          isQuestionSubmitting={isQuestionSubmitting}
+          onChangeMode={handleChangeQuestionWorkspaceMode}
+          onClearFile={handleClearImportFile}
+          onCommitImport={handleCommitImportedQuestions}
+          onDeleteQuestion={handleDeleteQuestion}
+          onEditQuestion={handleStartEditingQuestion}
+          onFileSelected={handleStageImportFile}
+          onFilterChange={setQuestionWorkspaceFilter}
+          onQuestionDirtyChange={setIsComposerDirty}
+          onRequestCreateNew={handleReturnToCreateQuestion}
+          onSortChange={setQuestionWorkspaceSort}
+          onSubmitCreateQuestion={handleCreateQuestion}
+          onSubmitUpdateQuestion={handleUpdateQuestion}
+          onToggleExpand={handleToggleQuestionExpand}
+          questionWorkspaceFilter={questionWorkspaceFilter}
+          questionWorkspaceMode={questionWorkspaceMode}
+          questionWorkspaceSort={questionWorkspaceSort}
+          questions={questions}
+          stagedImportFile={stagedImportFile}
+        />
+      ) : null}
 
       {exam.canEdit ? (
         <AttemptMonitorPanel

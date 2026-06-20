@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import FormErrorSummary from "../../../components/forms/FormErrorSummary";
@@ -33,19 +33,41 @@ export default function ExamForm({
   classroomOptions = [],
   defaultClassroomId = "",
   exam = null,
+  initialFormValues = null,
   isSubmitting = false,
+  onFormValuesChange = null,
   onSubmitExam,
   showDescriptions = true,
   submitLabel = "Lưu bài kiểm tra",
   title = "Thông tin bài kiểm tra",
 }) {
-  const [formValues, setFormValues] = useState(() => buildExamFormValues(exam, defaultClassroomId));
-  const [isEndTimeManuallyEdited, setIsEndTimeManuallyEdited] = useState(() =>
-    hasCustomEndTimeForExam(exam),
-  );
+  const initialValues = initialFormValues ?? buildExamFormValues(exam, defaultClassroomId);
+  const [formValues, setFormValues] = useState(() => initialValues);
+  const [isEndTimeManuallyEdited, setIsEndTimeManuallyEdited] = useState(() => {
+    if (exam) {
+      return hasCustomEndTimeForExam(exam);
+    }
+
+    if (!initialValues.endTime) {
+      return false;
+    }
+
+    return (
+      initialValues.endTime !==
+      calculateEndTimeInputValue(initialValues.startTime, initialValues.durationMinutes)
+    );
+  });
   const [validationErrors, setValidationErrors] = useState({});
   const isEditingExam = Boolean(exam);
   const expectedEndTimeValue = calculateEndTimeInputValue(formValues.startTime, formValues.durationMinutes);
+
+  useEffect(() => {
+    onFormValuesChange?.(formValues);
+  }, [formValues, onFormValuesChange]);
+
+  function updateFormValues(nextValues) {
+    setFormValues(nextValues);
+  }
 
   function handleFieldChange(fieldName, value) {
     const nextValues = {
@@ -53,7 +75,7 @@ export default function ExamForm({
       [fieldName]: value,
     };
 
-    setFormValues(nextValues);
+    updateFormValues(nextValues);
     setValidationErrors((previousErrors) => clearErrorField(previousErrors, fieldName));
   }
 
@@ -67,7 +89,7 @@ export default function ExamForm({
       nextValues.endTime = calculateEndTimeInputValue(nextValues.startTime, nextValues.durationMinutes);
     }
 
-    setFormValues(nextValues);
+    updateFormValues(nextValues);
     setValidationErrors((previousErrors) =>
       clearErrorField(previousErrors, "durationMinutes", "endTime"),
     );
@@ -83,7 +105,7 @@ export default function ExamForm({
       nextValues.endTime = calculateEndTimeInputValue(nextValues.startTime, nextValues.durationMinutes);
     }
 
-    setFormValues(nextValues);
+    updateFormValues(nextValues);
     setValidationErrors((previousErrors) => clearErrorField(previousErrors, "endTime"));
   }
 
@@ -95,7 +117,7 @@ export default function ExamForm({
       };
 
       setIsEndTimeManuallyEdited(false);
-      setFormValues(nextValues);
+      updateFormValues(nextValues);
       setValidationErrors((previousErrors) => clearErrorField(previousErrors, "endTime"));
       return;
     }
@@ -113,7 +135,7 @@ export default function ExamForm({
       },
     };
 
-    setFormValues(nextValues);
+    updateFormValues(nextValues);
     setValidationErrors((previousErrors) => {
       if (settingName === "maxAttempts") {
         return clearErrorField(previousErrors, "maxAttempts");
@@ -138,7 +160,7 @@ export default function ExamForm({
     if (shouldReset && !exam) {
       setIsEndTimeManuallyEdited(false);
       setValidationErrors({});
-      setFormValues(buildExamFormValues(null, defaultClassroomId));
+      updateFormValues(buildExamFormValues(null, defaultClassroomId));
     }
   }
 

@@ -8,11 +8,15 @@ import ClassroomDetailPage from "../features/classrooms/pages/ClassroomDetailPag
 import ClassroomListPage from "../features/classrooms/pages/ClassroomListPage";
 import JoinClassroomPage from "../features/classrooms/pages/JoinClassroomPage";
 import AdminMonitoringPage from "../features/admin/pages/AdminMonitoringPage";
+import TeacherMonitoringPage from "../features/anti-cheat/pages/TeacherMonitoringPage";
+import TeacherAssignmentListPage from "../features/assignments/pages/TeacherAssignmentListPage";
 import AdminDashboardPage from "../features/dashboard/pages/AdminDashboardPage";
 import TeacherDashboardPage from "../features/dashboard/pages/TeacherDashboardPage";
 import ExamAttemptPage from "../features/exam-attempts/pages/ExamAttemptPage";
 import ExamDetailPage from "../features/exams/pages/ExamDetailPage";
 import ExamListPage from "../features/exams/pages/ExamListPage";
+import TeacherNotificationsPage from "../features/notifications/pages/TeacherNotificationsPage";
+import TeacherResultsPage from "../features/results/pages/TeacherResultsPage";
 import ProfilePage from "../features/users/pages/ProfilePage";
 import UserManagementPage from "../features/users/pages/UserManagementPage";
 import { useAuth } from "../hooks/useAuth";
@@ -95,10 +99,26 @@ export default function AppRoutes() {
               element={<ClassroomDetailPage />}
               path={routeConfig.teacherClassroomDetail}
             />
+            <Route
+              element={<TeacherAssignmentListPage />}
+              path={routeConfig.teacherAssignments}
+            />
             <Route element={<ExamListPage />} path={routeConfig.teacherExams} />
             <Route
               element={<ExamDetailPage />}
               path={routeConfig.teacherExamDetail}
+            />
+            <Route
+              element={<TeacherMonitoringPage />}
+              path={routeConfig.teacherMonitoring}
+            />
+            <Route
+              element={<TeacherResultsPage />}
+              path={routeConfig.teacherResults}
+            />
+            <Route
+              element={<TeacherNotificationsPage />}
+              path={routeConfig.teacherNotifications}
             />
             <Route element={<ProfilePage />} path={routeConfig.teacherProfile} />
           </Route>

@@ -1,6 +1,7 @@
 import axiosClient from "./axiosClient";
 import {
   areUserIdsEqual,
+  buildClientError,
   buildExamStatusLabel,
   getCurrentSessionUser,
   normalizeUserId,
@@ -8,6 +9,7 @@ import {
   requestApi,
   roundToOneDecimal,
   toQuestionTypeCode,
+  unwrapApiResponse,
 } from "./apiHelpers";
 
 // INTEGRATION STATUS:
@@ -123,6 +125,9 @@ function buildExamWritePayload(payload) {
     endTime: payload.endTime || null,
     enableAntiCheat: Boolean(payload.enableAntiCheat),
     settings: normalizeExamSetting(payload.settings),
+    questions: Array.isArray(payload.questions)
+      ? payload.questions.map((question) => buildQuestionWritePayload(question))
+      : [],
   };
 }
 
@@ -314,6 +319,57 @@ export const examApi = {
       ...apiResponse,
       data: apiResponse.data ?? null,
     };
+  },
+
+  async previewQuestionImportFile(file) {
+    const formData = new FormData();
+    formData.append("File", file);
+
+    try {
+      const response = await axiosClient.post(`/questions/import/preview`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      const apiResponse = unwrapApiResponse(response);
+
+      return {
+        ...apiResponse,
+        data: {
+          ...(apiResponse.data ?? {}),
+          questions: Array.isArray(apiResponse.data?.questions)
+            ? apiResponse.data.questions.map((question) => normalizeQuestionDto(question)).sort(sortByOrderIndex)
+            : [],
+        },
+      };
+    } catch (error) {
+      const nextError = buildClientError(error);
+      nextError.importResult = error.response?.data?.data ?? null;
+      throw nextError;
+    }
+  },
+
+  async importQuestionFile(examId, file) {
+    const formData = new FormData();
+    formData.append("File", file);
+
+    try {
+      const response = await axiosClient.post(`/exams/${examId}/questions/import`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      const apiResponse = unwrapApiResponse(response);
+
+      return {
+        ...apiResponse,
+        data: apiResponse.data ?? null,
+      };
+    } catch (error) {
+      const nextError = buildClientError(error);
+      nextError.importResult = error.response?.data?.data ?? null;
+      throw nextError;
+    }
   },
 
   calculateTotalQuestionScore,

@@ -5,8 +5,7 @@ import {
 } from "../../../signalr/notificationConnection";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
-
-const NOTIFICATION_STORAGE_KEY = "eg.notifications.items.v1";
+import { appendNotification } from "../notificationStorage";
 
 function normalizeNotificationTone(tone) {
   if (tone === "success" || tone === "danger") {
@@ -14,24 +13,6 @@ function normalizeNotificationTone(tone) {
   }
 
   return "info";
-}
-
-function safeParseNotifications() {
-  try {
-    const raw = window.localStorage.getItem(NOTIFICATION_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function safeWriteNotifications(items) {
-  try {
-    window.localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(items));
-  } catch {
-    // ignore
-  }
 }
 
 export default function RealtimeNotificationListener() {
@@ -58,9 +39,7 @@ export default function RealtimeNotificationListener() {
         message: notification?.message || notification?.title || "Bạn có thông báo mới.",
       };
 
-      const existing = safeParseNotifications();
-      const nextItems = [nextItem, ...existing].slice(0, 30);
-      safeWriteNotifications(nextItems);
+      appendNotification(nextItem);
       window.dispatchEvent(new CustomEvent("eduguard:notification", { detail: nextItem }));
 
       showToast({
