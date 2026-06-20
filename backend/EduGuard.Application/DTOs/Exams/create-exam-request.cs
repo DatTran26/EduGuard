@@ -9,4 +9,5 @@ public class CreateExamRequest
     public DateTime? EndTime { get; set; }
     public bool EnableAntiCheat { get; set; }
     public ExamSettingDto Settings { get; set; } = new();
+    public List<CreateQuestionRequest> Questions { get; set; } = [];
 }

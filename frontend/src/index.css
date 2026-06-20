@@ -273,6 +273,101 @@ button {
   color: var(--color-on-primary);
 }
 
+.eg-question-filter-chip {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  padding: 8px 14px;
+  color: var(--color-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    border-color 180ms ease-out,
+    background-color 180ms ease-out,
+    color 180ms ease-out,
+    transform 180ms ease-out;
+}
+
+.eg-question-filter-chip:hover {
+  border-color: rgb(29 78 216 / 20%);
+  color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.eg-question-filter-chip-active {
+  border-color: rgb(29 78 216 / 18%);
+  background: rgb(29 78 216 / 8%);
+  color: var(--color-tertiary);
+}
+
+.eg-question-card {
+  padding: 20px;
+}
+
+.eg-question-card-active {
+  border-color: rgb(29 78 216 / 18%);
+  background: linear-gradient(180deg, rgb(255 255 255), rgb(248 250 252));
+}
+
+.eg-question-card-preview {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.eg-question-form-footer {
+  position: sticky;
+  bottom: 0;
+  margin-right: calc(var(--card-padding) * -1);
+  margin-left: calc(var(--card-padding) * -1);
+  margin-bottom: calc(var(--card-padding) * -1);
+  border-top: 1px solid var(--color-border);
+  background: rgb(255 255 255 / 96%);
+  padding: 16px var(--card-padding) 24px;
+  backdrop-filter: blur(14px);
+}
+
+.eg-question-import-dropzone {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 16px;
+  border: 1px dashed rgb(29 78 216 / 18%);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgb(248 250 252), rgb(255 255 255));
+  padding: 18px;
+  transition:
+    border-color 180ms ease-out,
+    background-color 180ms ease-out,
+    transform 180ms ease-out;
+}
+
+.eg-question-import-dropzone:hover:not(:disabled) {
+  border-color: rgb(29 78 216 / 30%);
+  transform: translateY(-1px);
+}
+
+.eg-question-import-dropzone:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.eg-question-import-dropzone-icon {
+  display: inline-flex;
+  height: 44px;
+  width: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: rgb(29 78 216 / 10%);
+  color: var(--color-tertiary);
+}
+
 .eg-exam-summary-card {
   --summary-card-accent: var(--color-tertiary);
   --summary-card-bg: rgb(29 78 216 / 8%);

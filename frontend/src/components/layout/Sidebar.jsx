@@ -3,7 +3,10 @@ import { cn } from "../../utils/cn";
 import { routeConfig } from "../../routes/routeConfig";
 import {
   FiBookOpen,
+  FiBell,
+  FiBarChart2,
   FiClipboard,
+  FiFileText,
   FiHome,
   FiShield,
   FiUsers,
@@ -31,7 +34,10 @@ function getNavigationIconByLabel(label) {
   if (label === "Lớp học" || label === "Lớp của tôi" || label === "Quản lí lớp học") {
     return FiUsers;
   }
-  if (label === "Bài kiểm tra" || label === "Quản lí bài kiểm tra") {
+  if (label === "Bài tập") {
+    return FiFileText;
+  }
+  if (label === "Bài kiểm tra" || label === "Đề thi" || label === "Quản lí bài kiểm tra") {
     return FiClipboard;
   }
   if (label === "Tham gia lớp") {
@@ -40,8 +46,14 @@ function getNavigationIconByLabel(label) {
   if (label === "Quản lí người dùng") {
     return FiUser;
   }
-  if (label === "Giám sát") {
+  if (label === "Giám sát" || label === "Giám sát thi") {
     return FiShield;
+  }
+  if (label === "Kết quả") {
+    return FiBarChart2;
+  }
+  if (label === "Thông báo") {
+    return FiBell;
   }
   if (label === "Hồ sơ" || label === "Hồ sơ cá nhân") {
     return FiUser;
@@ -72,6 +84,10 @@ function getNavigationItemIsActive(itemPath, pathname) {
     );
   }
 
+  if (itemPath === routeConfig.teacherAssignments) {
+    return pathname === routeConfig.teacherAssignments;
+  }
+
   if (itemPath === routeConfig.adminClassrooms) {
     return (
       pathname === routeConfig.adminClassrooms ||
@@ -89,6 +105,18 @@ function getNavigationItemIsActive(itemPath, pathname) {
 
   if (itemPath === routeConfig.teacherExams) {
     return pathname === routeConfig.teacherExams || Boolean(matchPath(routeConfig.teacherExamDetail, pathname));
+  }
+
+  if (itemPath === routeConfig.teacherMonitoring) {
+    return pathname === routeConfig.teacherMonitoring;
+  }
+
+  if (itemPath === routeConfig.teacherResults) {
+    return pathname === routeConfig.teacherResults;
+  }
+
+  if (itemPath === routeConfig.teacherNotifications) {
+    return pathname === routeConfig.teacherNotifications;
   }
 
   if (itemPath === routeConfig.adminExams) {

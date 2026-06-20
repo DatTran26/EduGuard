@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using EduGuard.Api.Contracts.Exams;
 using EduGuard.Application.DTOs.Common;
 using EduGuard.Application.DTOs.Exams;
 using EduGuard.Application.Services.Interfaces;
@@ -55,6 +56,7 @@ public class ExamsController : ControllerBase
         {
             return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<ExamDto>.CreateFailure(ex.Message));
         }
+        catch (InvalidOperationException ex) { return BadRequest(ApiResponse<ExamDto>.CreateFailure(ex.Message)); }
     }
 
     [HttpGet("api/exams/{id:int}")]
@@ -203,15 +205,58 @@ public class ExamsController : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(ApiResponse<QuestionDto>.CreateFailure(ex.Message)); }
     }
 
+    [HttpPost("api/questions/import/preview")]
+    [Authorize(Roles = "Teacher,Admin")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<ActionResult<ApiResponse<QuestionImportResultDto>>> PreviewQuestionsImport(
+        [FromForm] ImportQuestionsFormRequest request,
+        CancellationToken ct)
+    {
+        var file = request.File;
+
+        if (file is null)
+            return BadRequest(ApiResponse<QuestionImportResultDto>.CreateFailure("Vui long chon file import."));
+
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            var data = await _examService.PreviewQuestionImportAsync(
+                stream,
+                file.FileName,
+                file.ContentType,
+                file.Length,
+                ct);
+
+            if (data.Errors.Count > 0)
+            {
+                return BadRequest(new ApiResponse<QuestionImportResultDto>
+                {
+                    Success = false,
+                    Message = "File import co loi. Khong co cau hoi nao duoc dua vao ban nhap.",
+                    Data = data
+                });
+            }
+
+            return Ok(ApiResponse<QuestionImportResultDto>.CreateSuccess(data, "Review file import thanh cong."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<QuestionImportResultDto>.CreateFailure(ex.Message));
+        }
+    }
+
     [HttpPost("api/exams/{id:int}/questions/import")]
     [Authorize(Roles = "Teacher,Admin")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(5 * 1024 * 1024)]
     public async Task<ActionResult<ApiResponse<QuestionImportResultDto>>> ImportQuestions(
         int id,
-        [FromForm] IFormFile? file,
+        [FromForm] ImportQuestionsFormRequest request,
         CancellationToken ct)
     {
+        var file = request.File;
+
         var user = GetCurrentUser();
         if (user is null)
             return Unauthorized(ApiResponse<QuestionImportResultDto>.CreateFailure("Token khong hop le."));

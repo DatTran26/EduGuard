@@ -1,5 +1,262 @@
 # Project Changelog
 
+## Feature: Teacher shell and classroom workspace aligned with ui_tech spec
+
+Date: 2026-06-20
+
+Branch/source: `devH`
+
+Description:
+
+- Đồng bộ lại khu vực Teacher với `docs/ui_tech.md` ở các lệch lớn nhất của frontend: điều hướng thiếu mục, top bar chưa có search/quick-create, classroom detail chưa có tab nghiệp vụ, và chưa có các page teacher riêng cho bài tập, giám sát thi, kết quả, thông báo.
+- Giữ nguyên API contract hiện có, ưu tiên dựng lại luồng teacher từ dữ liệu thật đang có thay vì thêm mock mới.
+- Tận dụng notification/local realtime đã có sẵn để bell dropdown và trang `Thông báo` dùng chung một nguồn dữ liệu, tránh lệch giữa shell và detail page.
+
+Changed files:
+
+- `frontend/src/routes/routeConfig.js`
+- `frontend/src/routes/roleRoutes.js`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/components/layout/TeacherShellSearch.jsx`
+- `frontend/src/components/layout/TeacherQuickCreateButton.jsx`
+- `frontend/src/features/notifications/notificationStorage.js`
+- `frontend/src/features/notifications/components/RealtimeNotificationListener.jsx`
+- `frontend/src/features/notifications/pages/TeacherNotificationsPage.jsx`
+- `frontend/src/features/results/pages/TeacherResultsPage.jsx`
+- `frontend/src/features/anti-cheat/pages/TeacherMonitoringPage.jsx`
+- `frontend/src/features/assignments/components/AssignmentForm.jsx`
+- `frontend/src/features/assignments/pages/TeacherAssignmentListPage.jsx`
+- `frontend/src/features/classrooms/components/TeacherClassroomWorkspace.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Teacher sidebar nay khớp spec hơn với đầy đủ menu `Dashboard`, `Lớp học`, `Bài tập`, `Đề thi`, `Giám sát thi`, `Kết quả`, `Thông báo`, `Hồ sơ`, đồng thời bổ sung icon/active-state cho các route mới.
+- Top bar được nâng cấp thành shell làm việc thực sự cho Teacher: search thật trên classroom/exam/assignment/student, quick-create dropdown đi thẳng tới `Tạo lớp học`, `Tạo bài tập`, `Tạo đề thi`, và dropdown thông báo có lối mở sang trang danh sách thông báo.
+- Thêm các page teacher mới dùng dữ liệu thật hiện có: assignment center với grading workspace, monitor list/detail dựa trên `AttemptMonitorPanel`, result/report page tổng hợp attempt + anti-cheat, và notification page dùng chung local realtime store.
+- `ClassroomDetailPage` của Teacher nay có workspace tab `Tổng quan / Học sinh / Bài tập / Bài thi / Kết quả / Hoạt động`, giúp teacher xem theo đúng ngữ cảnh nghiệp vụ thay vì một trang detail kéo dài một mạch.
+- `AssignmentForm` được mở rộng nhẹ để hỗ trợ chọn lớp khi tạo bài tập từ assignment center, nhưng vẫn tương thích với flow cũ trong classroom detail.
+
+Validation:
+
+- `frontend\node_modules\.bin\eslint.cmd frontend\src\routes\routeConfig.js frontend\src\routes\roleRoutes.js frontend\src\routes\AppRoutes.jsx frontend\src\components\layout\Sidebar.jsx frontend\src\components\layout\TopBar.jsx frontend\src\components\layout\TeacherShellSearch.jsx frontend\src\components\layout\TeacherQuickCreateButton.jsx frontend\src\features\notifications\notificationStorage.js frontend\src\features\notifications\components\RealtimeNotificationListener.jsx frontend\src\features\notifications\pages\TeacherNotificationsPage.jsx frontend\src\features\results\pages\TeacherResultsPage.jsx frontend\src\features\anti-cheat\pages\TeacherMonitoringPage.jsx frontend\src\features\assignments\components\AssignmentForm.jsx frontend\src\features\assignments\pages\TeacherAssignmentListPage.jsx frontend\src\features\classrooms\components\TeacherClassroomWorkspace.jsx frontend\src\features\classrooms\pages\ClassroomDetailPage.jsx frontend\src\features\classrooms\pages\ClassroomListPage.jsx frontend\src\features\exams\pages\ExamListPage.jsx` — passed.
+- `npm.cmd --prefix frontend run build` — passed.
+
+Unresolved questions:
+
+- Notification list hiện vẫn dùng persistence ở frontend/local realtime store; khi backend notifications API xuất hiện, cần thay adapter này bằng nguồn server-side.
+- Assignment center và classroom workspace hiện vẫn reload lại page sau một số thao tác create/update/grade để giữ thay đổi đồng bộ nhanh với data layer hiện tại; có thể tinh chỉnh thành reload cục bộ sau nếu muốn mượt hơn.
+
+## Fix: Exam detail view/edit split and classroom assignment empty-state clarity
+
+Date: 2026-06-20
+
+Branch/source: `devH`
+
+Description:
+
+- Refined the exam detail experience so the default screen stays focused on `Cấu hình bài kiểm tra`, `Trạng thái publish`, `Tóm tắt đề thi`, and `Tóm tắt anti-cheat`, while the heavier edit tools only appear when the teacher explicitly opens them.
+- Moved classroom / teacher / schedule metadata out of the always-visible detail form into a compact `Thông tin thêm` hover/focus panel, reducing visual noise on the main exam page without removing useful context.
+- Improved the classroom assignment section when no backend records are available by adding a refresh action and a clearer empty-state message tied to the current classroom.
+
+Changed files:
+
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/features/assignments/components/AssignmentSection.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- `ExamDetailPage` now separates read mode from management mode: the page keeps status and summary cards visible by default, exposes teacher/admin metadata through an info icon tooltip, and toggles `ExamForm` plus `TeacherQuestionWorkspace` from a dedicated button above publish status.
+- The publish status card now remains visible in read mode for non-editors as well, while teacher-only actions such as publish, exam edit, and destructive controls stay behind the management toggle.
+- `AssignmentSection` now exposes a manual refresh action in both the header and empty state, and the empty-state copy explicitly references the current classroom so an actually empty backend is easier to distinguish from a rendering problem.
+
+Validation:
+
+- `frontend\node_modules\.bin\eslint.cmd frontend\src\features\exams\pages\ExamDetailPage.jsx frontend\src\features\assignments\components\AssignmentSection.jsx` — passed.
+- `npm.cmd --prefix frontend run build` — passed.
+- `sqlcmd -S "HOANGZIN72\MSSQLSERVER01" -d "EduGuardExam" -E -Q "SELECT TOP 20 c.Id AS ClassroomId, c.Name AS ClassroomName, COUNT(a.Id) AS AssignmentCount FROM Classrooms c LEFT JOIN Assignments a ON a.ClassroomId = c.Id GROUP BY c.Id, c.Name ORDER BY c.Id DESC; SELECT TOP 20 a.Id, a.ClassroomId, a.Title, a.CreatedAt FROM Assignments a ORDER BY a.CreatedAt DESC;"` — local backend database returned `0` assignment rows during verification.
+
+Unresolved questions:
+
+- In this local environment, the backend database currently has no assignment records, so the original “assignment exists but classroom detail shows none” report could not be reproduced as a data/API mismatch here.
+- If the missing assignments were created in another database or an older mock/local-only flow, that source still needs to be identified before a deeper backend fix can be confirmed.
+## Feature: Teacher one-shot exam save with local draft questions and import preview
+
+Date: 2026-06-20
+
+Branch/source: `devH`
+
+Description:
+
+- Reworked the teacher create-exam flow so exam metadata and questions can now be composed together locally on `ExamListPage`, then persisted with one final save instead of forcing an initial `Lưu đề thi` just to unlock question input.
+- Extended the backend create contract to accept the full draft question list in the first exam-create request, so the initial save now materializes the exam and its questions in one pass.
+- Added a teacher import-preview API plus frontend draft-import flow, allowing teachers to review a supported question file and merge it into the local draft before any `examId` exists.
+
+Changed files:
+
+- `backend/EduGuard.Api/Controllers/exams-controller.cs`
+- `backend/EduGuard.Application/DTOs/Exams/create-exam-request.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-exam-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-service.cs`
+- `frontend/src/api/examApi.js`
+- `frontend/src/features/exams/components/ExamForm.jsx`
+- `frontend/src/features/exams/components/QuestionCard.jsx`
+- `frontend/src/features/exams/components/QuestionForm.jsx`
+- `frontend/src/features/exams/components/QuestionImportPanel.jsx`
+- `frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx`
+- `frontend/src/features/exams/pages/exam-create-draft-helpers.js`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- `CreateExamRequest` now carries `Questions`, and `ExamService.CreateAsync()` validates, normalizes, resequences, and persists the full draft question set when the teacher performs the first real save.
+- Added `POST /api/questions/import/preview`, which runs the existing import parser/validation stack without touching an exam record, then returns normalized questions for the frontend draft workspace.
+- `ExamListPage` now keeps exam metadata in page-level draft state and keeps question drafts in local state, so the create form can be hidden/reopened without losing the already staged exam/question content.
+- The shared teacher workspace now supports a draft-authoring mode with different labels, local question add/update/delete, draft import preview messaging, and one-shot final save semantics, while the existing persisted exam edit flow still reuses the same workspace after the first save.
+- Removed the previous create-flow auto-publish behavior so teachers explicitly decide when to publish later, instead of publishing implicitly after the first successful question mutation.
+
+Validation:
+
+- `frontend\node_modules\.bin\eslint.cmd frontend/src/api/examApi.js frontend/src/features/exams/components/ExamForm.jsx frontend/src/features/exams/components/QuestionCard.jsx frontend/src/features/exams/components/QuestionForm.jsx frontend/src/features/exams/components/QuestionImportPanel.jsx frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx frontend/src/features/exams/pages/exam-create-draft-helpers.js frontend/src/features/exams/pages/ExamListPage.jsx` - passed.
+- `npm.cmd --prefix frontend run build` - passed.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -c Debug -o .\temp-build-exam-draft` - blocked in this sandbox by NuGet/network access (`NU1301` against `https://api.nuget.org/v3/index.json`), so backend compile verification could not be completed here.
+
+Unresolved questions:
+
+- The backend changes were reviewed and wired end-to-end in code, but a clean local `dotnet build` still needs to be rerun in an environment with NuGet access or existing package assets available.
+- The new import preview step confirms parsed questions before they enter the local draft, but the UI still shows a file-level review summary rather than a richer per-question preview table.
+
+## Feature: Student exam room UX, anti-cheat enforcement, and wider teacher question review
+
+Date: 2026-06-19
+
+Branch/source: `devH`
+
+Description:
+
+- Widened the teacher exam detail question-management area by moving the question workspace into its own full-width section, so `Danh sách câu hỏi` is no longer squeezed inside the metadata column.
+- Redesigned the student exam-taking page so the room now reflects teacher settings more clearly: fullscreen enforcement, random-order-friendly numbering, cleaner answer cards, stronger right-rail navigation, and clearer post-submit result handling.
+- Tightened the attempt save contract so clearing an answer from the UI now really clears the saved server state instead of silently leaving stale data behind.
+
+Changed files:
+
+- `backend/EduGuard.Application/Validators/save-student-answer-request-validator.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-attempt-service.cs`
+- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
+- `frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Moved `TeacherQuestionWorkspace` out of the left metadata column on `ExamDetailPage` and narrowed the composer rail inside the shared workspace component, giving the teacher question list a much wider reading area while keeping the manual/import tools compact.
+- Reordered the `ExamAttemptPage` callbacks so effects no longer reference `const` handlers before declaration, removing a likely runtime failure path that lint/build would not catch.
+- Rebuilt the student attempt UI around the actual attempt order returned by the backend, so shuffled questions now display with stable `1..n` numbering, cleaner progress/navigation, a fullscreen gate when required, and a result screen that preserves the student-facing attempt order after submit.
+- Wired `WINDOW_BLUR` logging, kept fullscreen exit / tab switch / clipboard / disconnect / reload logs flowing through `antiCheatApi.log()`, and retained the existing SignalR teacher monitoring path.
+- Updated backend save-answer behavior to allow empty payloads as intentional clears: the API now removes previous answers when a student clears a question, instead of forcing stale answers to remain saved.
+
+Validation:
+
+- `frontend\node_modules\.bin\eslint.cmd frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx frontend/src/features/exams/pages/ExamDetailPage.jsx` - passed.
+- `npm.cmd --prefix frontend run build` - passed.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -c Debug -o .\temp-backend-build-student-attempt-ui` - passed.
+
+Unresolved questions:
+
+- A normal `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -c Debug` currently fails in this workspace because Visual Studio is holding `EduGuard.Api` debug output DLLs open; building to a temp output folder verifies the code successfully.
+- Frontend build still emits the existing `@microsoft/signalr` PURE annotation warning and the large chunk-size warning; this change did not introduce new build failures.
+
+## Feature: Teacher question workspace, create-flow authoring and staged import review
+
+Date: 2026-06-19
+
+Branch/source: `devH`
+
+Description:
+
+- Redesigned the teacher question authoring area in exam detail into a calmer two-column workspace: a narrower composer on the left and a management list on the right.
+- Moved the teacher create-exam flow onto the exam list page so teachers can save exam metadata, then continue writing or importing questions immediately without detouring into the detail screen.
+- Added a staged import flow for teachers so file uploads are reviewed before commit, instead of pushing questions into the exam immediately when a file is selected.
+- Tightened the teacher UX around question save/update actions so the screen no longer flashes into full-page loading during every question mutation, and new exams now auto-publish after the first successful question is added in the create flow.
+
+Changed files:
+
+- `frontend/src/api/examApi.js`
+- `frontend/src/components/common/Input.jsx`
+- `frontend/src/components/forms/TextInput.jsx`
+- `frontend/src/features/exams/components/QuestionImportPanel.jsx`
+- `frontend/src/features/exams/components/QuestionCard.jsx`
+- `frontend/src/features/exams/components/QuestionForm.jsx`
+- `frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx`
+- `frontend/src/features/exams/components/question-form-answers-section.jsx`
+- `frontend/src/features/exams/components/teacher-question-workspace-helpers.js`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/index.css`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Extracted the teacher question workspace into a shared UI block used by both `ExamDetailPage` and `ExamListPage`, keeping the same manual/import modes, filter chips, sort control, and left-composer/right-list layout in both places.
+- Reworked the teacher create-exam flow on `ExamListPage` so saving exam metadata keeps the teacher on the same page, unlocks the question workspace immediately, and silently refreshes the list/detail state without a full screen reset.
+- Added create-flow auto-publish logic: if a teacher adds questions while creating a new exam, the frontend now calls `publish` automatically after the first successful create/import; if the teacher stops with no questions, the exam remains a draft.
+- Replaced the previous inline-per-card edit form with one dedicated composer, added dirty-state guarding when switching authoring context, and kept create/update refreshes silent so saves no longer trigger the page skeleton.
+- Added `QuestionImportPanel` plus `examApi.importQuestionFile()` so teachers can stage a supported file, review it before commit, and see backend import failures grouped by row and field directly in the UI.
+- Simplified copy in the teacher flow by removing extra descriptive text, simplifying import review panels, and removing the quick-links block from exam detail.
+
+Validation:
+
+- `frontend\node_modules\.bin\eslint.cmd frontend/src/api/examApi.js frontend/src/components/common/Input.jsx frontend/src/components/forms/TextInput.jsx frontend/src/features/exams/components/QuestionImportPanel.jsx frontend/src/features/exams/components/QuestionCard.jsx frontend/src/features/exams/components/QuestionForm.jsx frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx frontend/src/features/exams/components/question-form-answers-section.jsx frontend/src/features/exams/components/teacher-question-workspace-helpers.js frontend/src/features/exams/pages/ExamDetailPage.jsx frontend/src/features/exams/pages/ExamListPage.jsx` - passed.
+- `npm.cmd --prefix frontend run build` - passed.
+
+Unresolved questions:
+
+- The current import review step is staged and teacher-safe, but it still relies on backend validation at commit time; a richer parsed preview of imported questions before commit would need a dedicated preview contract later.
+- Downloadable teacher template files are still backlog work for the import flow.
+
+## Bug fix: Swagger 500 on exam import endpoint metadata
+
+Date: 2026-06-19
+
+Branch/source: `devH`
+
+Description:
+
+- Fixed backend Swagger generation failure where `/swagger/v1/swagger.json` returned HTTP 500 after the exam question import endpoint was added.
+- Kept the import API contract as `multipart/form-data` while switching the action signature to a Swagger-compatible request model.
+
+Changed files:
+
+- `backend/EduGuard.Api/Controllers/exams-controller.cs`
+- `backend/EduGuard.Api/Contracts/Exams/import-questions-form-request.cs`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Replaced the controller signature `([FromForm] IFormFile? file, CancellationToken ct)` with `([FromForm] ImportQuestionsFormRequest request, CancellationToken ct)` because Swashbuckle 6.6.2 fails operation generation for the direct `[FromForm] IFormFile` pattern used here.
+- Preserved the existing form field name and runtime behavior by reading `request.File` inside the action, so frontend upload code does not need a contract change.
+
+Validation:
+
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -c Debug -o .\temp-swagger-debug` - passed.
+- Ran the built API on `http://127.0.0.1:5061` and `/swagger/v1/swagger.json` returned HTTP 200 after the fix.
+
+Unresolved questions:
+
+- Local startup still logs existing Data Protection warnings related to old DPAPI keys under the current Windows profile; those warnings are separate from the Swagger 500 root cause.
+
 ## Bug fix: Local frontend/backend dev proxy 502
 
 Date: 2026-06-18
