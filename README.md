@@ -14,7 +14,7 @@ Learning Management System + Online Exam + Anti-cheat Monitoring + Realtime Noti
 
 **Vai trò:** Admin · Teacher · Student
 
-> Tiến độ triển khai từng giai đoạn: [`Todo List.md`](Todo%20List.md) · Lịch sử thay đổi: [`docs/project-changelog.md`](docs/project-changelog.md)
+> Tiến độ triển khai từng giai đoạn: [`Todo List.md`](Todo%20List.md) · Changelog chính: [`CHANGELOG.md`](CHANGELOG.md) · Lịch sử chi tiết theo feature: [`docs/project-changelog.md`](docs/project-changelog.md)
 
 ---
 
@@ -149,7 +149,7 @@ cd frontend
 npm run dev
 ```
 
-Ứng dụng chạy tại **http://localhost:5173**. Vite proxy `/api` và `/hubs` tới `https://127.0.0.1:7168` (cấu hình trong `frontend/vite.config.js`). Backend phải chạy HTTPS profile để proxy hoạt động đúng.
+Ứng dụng chạy tại **http://localhost:5173**. Vite proxy `/api` và `/hubs` mặc định tới `http://127.0.0.1:5157` (cấu hình trong `frontend/vite.config.js`). Có thể override bằng `VITE_DEV_API_TARGET` nếu cần chạy backend profile HTTPS.
 
 ### Chạy test
 
@@ -240,7 +240,8 @@ Không dùng: `chore:` · Không gắn tham chiếu AI/tool trong message.
 | [`docs/06_DEVELOPMENT_ROADMAP.md`](docs/06_DEVELOPMENT_ROADMAP.md) | Lộ trình MVP (thiết kế) |
 | [`docs/07_DEVELOPMENT_RULES.md`](docs/07_DEVELOPMENT_RULES.md) | Quy tắc Git & workflow |
 | [`Todo List.md`](Todo%20List.md) | **Trạng thái implementation** theo giai đoạn |
-| [`docs/project-changelog.md`](docs/project-changelog.md) | Changelog theo feature |
+| [`CHANGELOG.md`](CHANGELOG.md) | Changelog chính theo release và thay đổi user-facing |
+| [`docs/project-changelog.md`](docs/project-changelog.md) | Lịch sử chi tiết theo feature |
 
 ---
 
@@ -249,7 +250,7 @@ Không dùng: `chore:` · Không gắn tham chiếu AI/tool trong message.
 1. Fork repository và tạo nhánh từ `devD` (hoặc `devH` / `devB`).
 2. Đọc [`docs/07_DEVELOPMENT_RULES.md`](docs/07_DEVELOPMENT_RULES.md) trước khi commit.
 3. Cập nhật [`Todo List.md`](Todo%20List.md) khi hoàn thành task liên quan.
-4. Ghi changelog tại [`docs/project-changelog.md`](docs/project-changelog.md) nếu thay đổi có ý nghĩa.
+4. Ghi changelog tại [`CHANGELOG.md`](CHANGELOG.md) cho thay đổi chính và [`docs/project-changelog.md`](docs/project-changelog.md) cho chi tiết theo feature.
 5. Mở Pull Request vào `release` hoặc nhánh dev — không vào `main` trực tiếp.
 
 Báo lỗi hoặc đề xuất: [GitHub Issues](https://github.com/DatTran26/EduGuard/issues)

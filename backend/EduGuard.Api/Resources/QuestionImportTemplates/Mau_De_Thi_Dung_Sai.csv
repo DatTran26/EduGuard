@@ -1,0 +1,9 @@
+﻿question_text,question_type,option_a,option_b,option_c,option_d,correct_answer,score,subject,chapter,lesson,difficulty,explanation
+"Trong tiếng Việt, dấu chấm thường dùng để kết thúc câu kể.",true_false,Đúng,Sai,,,TRUE,1,Tiếng Việt,Dấu câu,Dấu chấm,Dễ,Dấu chấm thường được dùng ở cuối câu kể.
+Số 1 là số nguyên tố.,true_false,Đúng,Sai,,,FALSE,1,Toán,Số học,Số nguyên tố,Dễ,Số nguyên tố là số tự nhiên lớn hơn 1 chỉ có hai ước dương là 1 và chính nó.
+"Khi dùng Internet, không nên chia sẻ mật khẩu cá nhân cho người khác.",true_false,Đúng,Sai,,,TRUE,1,Tin học,An toàn thông tin,Bảo vệ tài khoản cá nhân,Dễ,Mật khẩu cá nhân cần được giữ bí mật để bảo vệ tài khoản.
+"Trên bản đồ, tỉ lệ bản đồ cho biết mức độ thu nhỏ của khoảng cách ngoài thực tế.",true_false,Đúng,Sai,,,TRUE,1,Địa lí,Bản đồ,Tỉ lệ bản đồ,Trung bình,Tỉ lệ bản đồ biểu thị quan hệ giữa khoảng cách trên bản đồ và ngoài thực tế.
+"Khi tham gia giao thông, học sinh có thể vượt đèn đỏ nếu đường vắng.",true_false,Đúng,Sai,,,FALSE,1,Giáo dục công dân,Pháp luật và kỷ luật,An toàn giao thông,Dễ,Người tham gia giao thông phải chấp hành tín hiệu đèn giao thông.
+Khởi động trước khi vận động giúp cơ thể chuẩn bị tốt hơn cho hoạt động thể chất.,true_false,Đúng,Sai,,,TRUE,1,Giáo dục thể chất,Rèn luyện sức khỏe,Khởi động trước vận động,Dễ,"Khởi động giúp cơ thể làm nóng, giảm nguy cơ chấn thương khi vận động."
+"Trong mỹ thuật, màu đỏ, vàng và lam thường được xem là ba màu cơ bản.",true_false,Đúng,Sai,,,TRUE,1,Mỹ thuật,Màu sắc,Màu cơ bản,Dễ,"Đỏ, vàng và lam thường được giới thiệu là ba màu cơ bản trong học mỹ thuật phổ thông."
+Làm việc nhóm hiệu quả không cần lắng nghe ý kiến của các thành viên khác.,true_false,Đúng,Sai,,,FALSE,1,"Hoạt động trải nghiệm, hướng nghiệp",Kỹ năng xã hội,Hợp tác trong nhóm,Dễ,Lắng nghe ý kiến của các thành viên là yếu tố quan trọng khi làm việc nhóm.

@@ -175,6 +175,10 @@
 
 ### Backend
 
+- [x] Swagger shows multipart question import endpoint without 500 at `/swagger/v1/swagger.json`
+- [x] Question import accepts XLSX files with title/instruction rows before the header and ignores trailing note rows
+- [x] Teacher import templates standardized with no-accent file names in backend downloads
+- [x] Question import parses all 20 teacher templates across CSV/XLSX/TXT/DOCX/PDF
 - [x] Entity `Exam`, `ExamSetting`, `Question`, `Answer`
 - [x] Migration `AddAssignmentsExamsAndAttempts`
 - [x] `ExamsController` + Service + Repository (11 API + question bank)
@@ -182,7 +186,8 @@
 - [x] API thêm / sửa / xóa câu hỏi & đáp án
 - [x] API upload/import file chuẩn tạo câu hỏi trắc nghiệm vào đề thi (`POST /api/exams/{id}/questions/import`) cho Teacher/Admin
 - [x] Validate file import backend: `.csv`, `.xlsx`, `.txt`, `.docx`, PDF text, MIME type, giới hạn 5MB, cột/template bắt buộc, `question_type`, `correct_answer`, `score`
-- [x] Import backend hỗ trợ `single_choice`, `multiple_choice`, `true_false`; tự luận ngắn/dài để phát triển sau
+- [x] Import backend hỗ trợ `single_choice`, `multiple_choice`, `true_false`, `short_answer`; `essay` / tự luận dài để phát triển sau
+- [x] API danh sách/tải file mẫu import câu hỏi (`GET /api/exams/question-import/templates`, `GET /api/exams/question-import/templates/{fileName}`) cho Teacher/Admin
 - [x] API publish đề thi *(cho phép công khai metadata trước; student chỉ start khi đề đã có câu hỏi)*
 
 ### Frontend
@@ -628,7 +633,7 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 
 ## Tài liệu — README giới thiệu hệ thống
 
-**Mục tiêu:** README là cổng vào repo — giới thiệu hệ thống làm gì, cấu trúc ra sao, cách chạy, điểm nổi bật. **Không** ghi tiến độ phase (để `Todo List.md`, `docs/project-changelog.md`, `docs/features.md`).
+**Mục tiêu:** README là cổng vào repo — giới thiệu hệ thống làm gì, cấu trúc ra sao, cách chạy, điểm nổi bật. **Không** ghi tiến độ phase (để `Todo List.md`, `CHANGELOG.md`, `docs/project-changelog.md`, `docs/features.md`).
 
 **Rà soát hiện trạng (2026-06-15):**
 

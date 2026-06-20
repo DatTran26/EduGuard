@@ -8,13 +8,13 @@ Phạm vi backend hiện tại:
 
 - Import câu hỏi vào một bài kiểm tra đã tồn tại.
 - Hỗ trợ file `.csv`, `.xlsx`, `.txt`, `.docx` và PDF có text thật (`.pdf`) nếu nội dung đúng template.
-- Hỗ trợ nhóm câu hỏi trắc nghiệm: `single_choice`, `multiple_choice`, `true_false`.
+- Hỗ trợ các loại câu hỏi: `single_choice`, `multiple_choice`, `true_false`, và `short_answer` tự chấm bằng đáp án mẫu.
 - Validate toàn bộ file trước khi lưu bất kỳ dữ liệu nào vào database.
 - Trả lỗi theo từng dòng/cột hoặc từng câu để giáo viên/admin sửa file.
 
 Phạm vi để phát triển sau:
 
-- Import `short_answer` và `essay`.
+- Import `essay` / câu tự luận dài cần chấm thủ công.
 - Import hình ảnh/media trong câu hỏi.
 - Import `.zip` chứa câu hỏi kèm media.
 - OCR cho PDF scan ảnh.
@@ -83,8 +83,8 @@ Cột bắt buộc:
 | Cột | Bắt buộc | Mô tả |
 |---|---:|---|
 | `question_text` | Có | Nội dung câu hỏi |
-| `question_type` | Có | `single_choice`, `multiple_choice`, hoặc `true_false` |
-| `correct_answer` | Có | Ký hiệu đáp án đúng |
+| `question_type` | Có | `single_choice`, `multiple_choice`, `true_false`, hoặc `short_answer` |
+| `correct_answer` | Có | Ký hiệu đáp án đúng với câu lựa chọn, hoặc đáp án mẫu với `short_answer` |
 
 Cột bắt buộc theo loại câu hỏi:
 
@@ -159,6 +159,22 @@ question_text,question_type,correct_answer,score
 JWT thường được dùng để xác thực trong Web API.,true_false,TRUE,1
 ```
 
+### short_answer
+
+Quy tắc:
+
+- `question_type` phải là `short_answer` trong file import.
+- Không cần cột `option_a` đến `option_d` / không cần các dòng đáp án `A.` đến `D.`.
+- `correct_answer` được lưu thành một đáp án mẫu để backend chấm tự động theo so khớp text không phân biệt hoa thường.
+- Nếu cần nhiều đáp án mẫu cho cùng một câu hỏi, thêm thủ công trong UI sau khi import.
+
+Ví dụ:
+
+```csv
+question_text,question_type,correct_answer,score
+Thu do cua Viet Nam la gi?,short_answer,Ha Noi,1
+```
+
 ## 6. Template TXT / DOCX / PDF Text
 
 Các file `.txt`, `.docx` và PDF có text thật phải dùng mẫu văn bản rõ ràng để backend tách câu hỏi chính xác.
@@ -169,7 +185,7 @@ Quy tắc chung:
 - Mỗi đáp án bắt đầu bằng `A.`, `B.`, `C.`, `D.`.
 - Dòng đáp án đúng dùng `Đáp án:` hoặc `Answer:`.
 - Có thể thêm `Score:` / `Điểm:` nếu muốn khác mặc định `1`.
-- Có thể thêm `question_type:` nếu muốn khai báo rõ; nếu không backend tự suy luận `true_false` theo đáp án đúng/sai, `multiple_choice` khi có nhiều đáp án đúng, còn lại là `single_choice`.
+- Có thể thêm `question_type:` nếu muốn khai báo rõ; nếu không backend tự suy luận `true_false` theo đáp án đúng/sai, `multiple_choice` khi có nhiều đáp án đúng, còn lại là `single_choice`. Với `short_answer`, bắt buộc khai báo `question_type: short_answer`.
 - Các dòng metadata như `Mức độ:`, `Chương:`, `Giải thích:` được đọc để bỏ qua an toàn nhưng chưa lưu vào database.
 
 Ví dụ một đáp án đúng:
@@ -216,6 +232,7 @@ Backend phải bắt các lỗi sau trước khi lưu:
 - Câu hỏi lựa chọn có ít hơn 2 đáp án.
 - `single_choice` không có đáp án đúng hoặc có nhiều hơn 1 đáp án đúng.
 - `multiple_choice` có ít hơn 2 đáp án đúng trong file import.
+- `short_answer` thiếu đáp án mẫu trong `correct_answer` / `Answer:`.
 - `score` không hợp lệ hoặc nhỏ hơn/bằng 0.
 - File rỗng hoặc không có dòng câu hỏi.
 
@@ -244,7 +261,7 @@ Các bước đề xuất sau backend import trắc nghiệm đa định dạng:
 1. Thêm UI upload ở frontend và hiển thị lỗi theo từng dòng/cột hoặc từng câu.
 2. Thêm file mẫu `.csv`, `.xlsx`, `.txt`, `.docx` để giáo viên tải về.
 3. Thêm luồng preview/xác nhận trước khi import thật.
-4. Hỗ trợ `short_answer` và `essay`.
+4. Hỗ trợ `essay` / câu tự luận dài cần chấm thủ công.
 5. Lưu lịch sử import batch và phát hiện câu hỏi trùng.
 6. Hỗ trợ import media nếu câu hỏi cần hình ảnh.
 7. Hỗ trợ OCR cho PDF scan nếu thật sự cần.
