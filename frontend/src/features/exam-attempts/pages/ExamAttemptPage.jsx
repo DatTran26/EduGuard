@@ -733,7 +733,7 @@ export default function ExamAttemptPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral px-4 py-6 md:px-6 lg:px-8">
+      <div className="min-h-screen bg-surface-sunken px-4 py-6 md:px-6 lg:px-8">
         <div className="eg-feedback-panel mx-auto max-w-[1280px]">Đang tải phòng làm bài...</div>
       </div>
     );
@@ -741,7 +741,7 @@ export default function ExamAttemptPage() {
 
   if (!attempt || !exam) {
     return (
-      <div className="min-h-screen bg-neutral px-4 py-6 md:px-6 lg:px-8">
+      <div className="min-h-screen bg-surface-sunken px-4 py-6 md:px-6 lg:px-8">
         <div className="mx-auto max-w-[1280px]">
           <EmptyState
             title="Không thể mở phòng làm bài."
@@ -783,23 +783,23 @@ export default function ExamAttemptPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-[18px] border border-border bg-neutral p-4">
+              <div className="rounded-[18px] border border-border bg-surface-sunken p-4">
                 <p className="text-[0.82rem] font-medium text-secondary">Điểm</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">
                   {typeof result?.attempt?.score === "number" ? result.attempt.score : "--"}
                 </p>
               </div>
-              <div className="rounded-[18px] border border-border bg-neutral p-4">
+              <div className="rounded-[18px] border border-border bg-surface-sunken p-4">
                 <p className="text-[0.82rem] font-medium text-secondary">Đã trả lời</p>
                 <p className="mt-3 text-lg font-semibold text-primary">
                   {answeredQuestionCount}/{questions.length} câu
                 </p>
               </div>
-              <div className="rounded-[18px] border border-border bg-neutral p-4">
+              <div className="rounded-[18px] border border-border bg-surface-sunken p-4">
                 <p className="text-[0.82rem] font-medium text-secondary">Điểm nghi ngờ</p>
                 <p className="mt-3 text-lg font-semibold text-primary">{attempt.suspicionScore}</p>
               </div>
-              <div className="rounded-[18px] border border-border bg-neutral p-4">
+              <div className="rounded-[18px] border border-border bg-surface-sunken p-4">
                 <p className="text-[0.82rem] font-medium text-secondary">Hiển thị kết quả</p>
                 <p className="mt-3 text-lg font-semibold text-primary">
                   {exam.settings.showResultAfterSubmit ? "Đang bật" : "Đang ẩn"}
@@ -826,7 +826,7 @@ export default function ExamAttemptPage() {
 
                   <p className="text-sm leading-7 text-primary">{questionResult.content}</p>
 
-                  <div className="rounded-[18px] border border-border bg-neutral p-4 text-sm leading-6 text-secondary">
+                  <div className="rounded-[18px] border border-border bg-surface-sunken p-4 text-sm leading-6 text-secondary">
                     {formatResultAnswerSummary(questionResult)}
                   </div>
                 </Card>
@@ -983,7 +983,7 @@ export default function ExamAttemptPage() {
                           className={`flex cursor-pointer items-start gap-4 rounded-[20px] border px-4 py-4 transition-colors duration-200 ${
                             isChecked
                               ? "border-tertiary bg-info-muted shadow-[0_18px_40px_-32px_rgba(15,23,42,0.45)]"
-                              : "border-border bg-neutral hover:bg-surface-sunken"
+                              : "border-border bg-surface hover:bg-surface-sunken"
                           }`}
                           htmlFor={`question-${currentQuestion.id}-answer-${answer.id}`}
                         >
@@ -1050,7 +1050,7 @@ export default function ExamAttemptPage() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
-                <div className="rounded-[18px] border border-border bg-neutral p-4">
+                <div className="rounded-[18px] border border-border bg-surface-sunken p-4">
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-secondary">
                     Đã trả lời
                   </p>
@@ -1058,7 +1058,7 @@ export default function ExamAttemptPage() {
                     {answeredQuestionCount}/{questions.length}
                   </p>
                 </div>
-                <div className="rounded-[18px] border border-border bg-neutral p-4">
+                <div className="rounded-[18px] border border-border bg-surface-sunken p-4">
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-secondary">
                     Còn lại
                   </p>
@@ -1068,7 +1068,7 @@ export default function ExamAttemptPage() {
                 </div>
               </div>
 
-              <div className="space-y-3 rounded-[18px] border border-border bg-neutral p-4 text-sm text-secondary">
+              <div className="space-y-3 rounded-[18px] border border-border bg-surface-sunken p-4 text-sm text-secondary">
                 <p>
                   <span className="font-semibold text-primary">Thời gian còn lại:</span>{" "}
                   {formatRemainingDuration(remainingTimeMs)}
@@ -1093,7 +1093,7 @@ export default function ExamAttemptPage() {
                 </h3>
                 <div className="grid gap-3">
                   {attemptSettingItems.map((item) => (
-                    <div key={item.label} className="rounded-[16px] border border-border bg-neutral p-4">
+                    <div key={item.label} className="rounded-[16px] border border-border bg-surface-sunken p-4">
                       <p className="text-xs font-medium uppercase tracking-[0.14em] text-secondary">
                         {item.label}
                       </p>
@@ -1122,7 +1122,7 @@ export default function ExamAttemptPage() {
                             ? "border-tertiary bg-info-muted text-link"
                             : isAnswered
                               ? "border-success bg-success-muted text-success"
-                              : "border-border bg-neutral text-secondary hover:bg-surface-sunken"
+                              : "border-border bg-surface text-secondary hover:bg-surface-sunken"
                         }`}
                         type="button"
                         onClick={() => setCurrentQuestionIndex(index)}
@@ -1193,7 +1193,7 @@ export default function ExamAttemptPage() {
                         ? "border-tertiary bg-info-muted text-link"
                         : isAnswered
                           ? "border-success bg-success-muted text-success"
-                          : "border-border bg-neutral text-secondary"
+                          : "border-border bg-surface text-secondary"
                     }`}
                     type="button"
                     onClick={() => {

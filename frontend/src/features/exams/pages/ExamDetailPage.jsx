@@ -21,12 +21,19 @@ import AttemptMonitorPanel from "../../anti-cheat/components/AttemptMonitorPanel
 import ExamForm from "../components/ExamForm";
 import TeacherQuestionWorkspace from "../components/TeacherQuestionWorkspace";
 import { validateQuestionImportFile } from "../components/teacher-question-workspace-helpers";
+import { buildDraftQuestion, resequenceDraftQuestions } from "./exam-create-draft-helpers";
 import {
   buildExamPublishIssueList,
   getExamStatusVariant,
   splitPublishErrorMessage,
 } from "../examHelpers";
 import Skeleton, { SkeletonText } from "../../../components/common/Skeleton";
+
+function buildEditableImportPreviewQuestions(questions = []) {
+  return resequenceDraftQuestions(
+    questions.map((question, index) => buildDraftQuestion(question, index + 1)),
+  );
+}
 
 // Hàm này dựng danh sách settings ngắn gọn để card thông tin chi tiết dễ render hơn.
 function buildSettingItems(exam) {
@@ -169,6 +176,8 @@ export default function ExamDetailPage() {
   const [composerRevision, setComposerRevision] = useState(0);
   const [isComposerDirty, setIsComposerDirty] = useState(false);
   const [stagedImportFile, setStagedImportFile] = useState(null);
+  const [importInfoMessage, setImportInfoMessage] = useState("");
+  const [importPreviewQuestions, setImportPreviewQuestions] = useState([]);
   const [importReviewMessage, setImportReviewMessage] = useState("");
   const [importResultErrors, setImportResultErrors] = useState([]);
   const [isImportSubmitting, setIsImportSubmitting] = useState(false);
@@ -500,9 +509,11 @@ export default function ExamDetailPage() {
     }
   }
 
-  function handleStageImportFile(file) {
+  async function handlePreviewImportedQuestions(file) {
     const nextValidationMessage = validateQuestionImportFile(file);
 
+    setImportInfoMessage("");
+    setImportPreviewQuestions([]);
     setImportResultErrors([]);
     setImportReviewMessage(nextValidationMessage);
 
@@ -511,21 +522,98 @@ export default function ExamDetailPage() {
       return;
     }
 
+    setIsImportSubmitting(true);
     setQuestionWorkspaceMode("import");
     setStagedImportFile(file);
+
+    try {
+      const response = await examApi.previewQuestionImportFile(file);
+      const previewQuestions = Array.isArray(response.data?.questions) ? response.data.questions : [];
+
+      setImportPreviewQuestions(buildEditableImportPreviewQuestions(previewQuestions));
+      setImportInfoMessage("");
+      showToast({
+        tone: "success",
+        title: "Đã review file import",
+        message: response.message,
+      });
+    } catch (error) {
+      setImportReviewMessage(error.message || "Không thể review file câu hỏi.");
+      setImportResultErrors(Array.isArray(error.importResult?.errors) ? error.importResult.errors : []);
+      showToast({
+        tone: "danger",
+        title: "Review import thất bại",
+        message: error.message || "Không thể review file câu hỏi.",
+      });
+    } finally {
+      setIsImportSubmitting(false);
+    }
   }
 
   function handleClearImportFile() {
     setStagedImportFile(null);
+    setImportInfoMessage("");
+    setImportPreviewQuestions([]);
     setImportReviewMessage("");
     setImportResultErrors([]);
   }
 
-  async function handleCommitImportedQuestions() {
-    const nextValidationMessage = validateQuestionImportFile(stagedImportFile);
+  async function handleUpdateImportPreviewQuestion(questionIndex, payload) {
+    let didUpdate = false;
 
-    if (nextValidationMessage) {
-      setImportReviewMessage(nextValidationMessage);
+    setImportPreviewQuestions((previousQuestions) => {
+      const currentQuestion = previousQuestions[questionIndex];
+
+      if (!currentQuestion) {
+        return previousQuestions;
+      }
+
+      didUpdate = true;
+
+      return buildEditableImportPreviewQuestions(
+        previousQuestions.map((question, index) =>
+          index === questionIndex
+            ? {
+                ...currentQuestion,
+                ...payload,
+                id: currentQuestion.id,
+              }
+            : question,
+        ),
+      );
+    });
+
+    if (!didUpdate) {
+      return { didSave: false, shouldReset: false };
+    }
+
+    showToast({
+      tone: "success",
+      title: "Đã cập nhật câu review",
+      message: "Câu hỏi import đã được cập nhật trong danh sách review.",
+    });
+
+    return { didSave: true, shouldReset: false };
+  }
+
+  async function persistImportPreviewQuestionsToExam(startOrderIndex = questions.length + 1) {
+    const previewQuestionsToPersist = buildEditableImportPreviewQuestions(importPreviewQuestions).map(
+      (question, index) => ({
+        ...question,
+        orderIndex: startOrderIndex + index,
+      }),
+    );
+
+    for (const question of previewQuestionsToPersist) {
+      await examApi.createQuestion(examId, question);
+    }
+
+    return previewQuestionsToPersist.length;
+  }
+
+  async function handleCommitImportedQuestions() {
+    if (importPreviewQuestions.length === 0) {
+      setImportReviewMessage("Chưa có câu hỏi hợp lệ để commit. Hãy upload file để backend review trước.");
       return;
     }
 
@@ -534,9 +622,11 @@ export default function ExamDetailPage() {
     setImportResultErrors([]);
 
     try {
-      const response = await examApi.importQuestionFile(examId, stagedImportFile);
+      await persistImportPreviewQuestionsToExam(questions.length + 1);
       await loadExamDetail({ showPageLoader: false });
       setStagedImportFile(null);
+      setImportInfoMessage("");
+      setImportPreviewQuestions([]);
       setQuestionWorkspaceMode("manual");
       setQuestionWorkspaceFilter("All");
       setQuestionWorkspaceSort("OrderAsc");
@@ -545,7 +635,7 @@ export default function ExamDetailPage() {
       showToast({
         tone: "success",
         title: "Đã import câu hỏi",
-        message: response.message,
+        message: "Các câu hỏi đã được thêm vào đề sau khi review.",
       });
     } catch (error) {
       setImportReviewMessage(error.message || "Không thể import file câu hỏi.");
@@ -838,7 +928,7 @@ export default function ExamDetailPage() {
               <div className="group relative">
                 <button
                   aria-label="Xem thông tin thêm của bài kiểm tra"
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-neutral text-secondary transition hover:border-tertiary hover:text-primary focus:outline-none focus:ring-2 focus:ring-tertiary/30"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-secondary transition hover:border-tertiary hover:text-primary focus:outline-none focus:ring-2 focus:ring-tertiary/30"
                   type="button"
                 >
                   <FiInfo className="h-4 w-4" />
@@ -849,7 +939,7 @@ export default function ExamDetailPage() {
                     <p className="text-sm font-semibold text-primary">Thông tin thêm</p>
                     <div className="space-y-3">
                       {additionalInfoItems.map((item) => (
-                        <div key={item.label} className="rounded-[16px] border border-border bg-neutral p-3">
+                        <div key={item.label} className="rounded-[16px] border border-border bg-surface-sunken p-3">
                           <p className="text-xs font-medium uppercase tracking-[0.14em] text-secondary">
                             {item.label}
                           </p>
@@ -862,7 +952,7 @@ export default function ExamDetailPage() {
               </div>
             </div>
 
-            <div className="rounded-[16px] border border-border bg-neutral p-4 text-sm text-secondary">
+            <div className="rounded-[16px] border border-border bg-surface-sunken p-4 text-sm text-secondary">
               Tạo lúc {formatShortDateTime(exam.createdAt)} • Cập nhật{" "}
               {formatShortDateTime(exam.updatedAt || exam.createdAt)}
             </div>
@@ -872,7 +962,7 @@ export default function ExamDetailPage() {
             <h3 className="text-lg font-semibold text-primary">Cấu hình bài kiểm tra</h3>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {buildSettingItems(exam).map((item) => (
-                <div key={item.label} className="rounded-[16px] border border-border bg-neutral p-4">
+                <div key={item.label} className="rounded-[16px] border border-border bg-surface-sunken p-4">
                   <p className="text-sm font-semibold text-primary">{item.label}</p>
                   <p className="mt-2 text-sm text-secondary">{item.value}</p>
                 </div>
@@ -961,7 +1051,7 @@ export default function ExamDetailPage() {
                 Đề thi đã được publish và đang hiển thị cho sinh viên theo lịch mở đề.
               </div>
             ) : (
-              <div className="rounded-[16px] border border-border bg-neutral p-4 text-sm leading-6 text-secondary">
+              <div className="rounded-[16px] border border-border bg-surface-sunken p-4 text-sm leading-6 text-secondary">
                 Đề thi hiện vẫn ở trạng thái nháp. Chỉ giảng viên phụ trách mới có thể chỉnh sửa và publish đề này.
               </div>
             )}
@@ -1047,21 +1137,25 @@ export default function ExamDetailPage() {
           editingQuestionId={editingQuestionId}
           exam={exam}
           expandedQuestionId={expandedQuestionId}
+          importInfoMessage={importInfoMessage}
+          importPreviewQuestions={importPreviewQuestions}
           importResultErrors={importResultErrors}
           importReviewMessage={importReviewMessage}
           isImportSubmitting={isImportSubmitting}
+          isImportCommitDisabled={importPreviewQuestions.length === 0}
           isQuestionSubmitting={isQuestionSubmitting}
           onChangeMode={handleChangeQuestionWorkspaceMode}
           onClearFile={handleClearImportFile}
           onCommitImport={handleCommitImportedQuestions}
           onDeleteQuestion={handleDeleteQuestion}
           onEditQuestion={handleStartEditingQuestion}
-          onFileSelected={handleStageImportFile}
+          onFileSelected={handlePreviewImportedQuestions}
           onFilterChange={setQuestionWorkspaceFilter}
           onQuestionDirtyChange={setIsComposerDirty}
           onRequestCreateNew={handleReturnToCreateQuestion}
           onSortChange={setQuestionWorkspaceSort}
           onSubmitCreateQuestion={handleCreateQuestion}
+          onSubmitUpdateImportQuestion={handleUpdateImportPreviewQuestion}
           onSubmitUpdateQuestion={handleUpdateQuestion}
           onToggleExpand={handleToggleQuestionExpand}
           questionWorkspaceFilter={questionWorkspaceFilter}

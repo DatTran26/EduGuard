@@ -6,7 +6,6 @@ import { useAuth } from "../../../hooks/useAuth";
 import { buildClassroomDetailPathByRole } from "../../../routes/routeConfig";
 import { formatShortDate } from "../../../utils/formatDate";
 
-// Hàm này trả nhãn phụ cho classroom card để nhìn nhanh là biết lớp thuộc mình hay đang tham gia.
 function getCardBadgeLabel(classroom, role) {
   if (role === "Teacher" && classroom.canEdit) {
     return "Lớp bạn quản lý";
@@ -19,8 +18,7 @@ function getCardBadgeLabel(classroom, role) {
   return "Có thể xem";
 }
 
-// Component này là card tóm tắt một classroom với hành động chính là xem chi tiết hoặc copy mã lớp.
-export default function ClassroomCard({ classroom, onCopyCode }) {
+export default function ClassroomCard({ classroom, layout = "default", onCopyCode }) {
   const { user } = useAuth();
   const detailPath = buildClassroomDetailPathByRole(user?.role, classroom.id);
   const isTeacherView = user?.role === "Teacher";
@@ -29,13 +27,54 @@ export default function ClassroomCard({ classroom, onCopyCode }) {
   const memberCountLabel =
     typeof classroom.memberCount === "number" ? `${classroom.memberCount} người` : "Chưa có số liệu";
 
-  // Hàm này bắn callback lên page cha khi người dùng muốn sao chép mã lớp hiện tại.
   function handleCopyCodeClick() {
     if (!canCopyCode) {
       return;
     }
 
     onCopyCode(classroom.joinCode);
+  }
+
+  if (layout === "tile") {
+    return (
+      <Card className="h-full overflow-hidden p-0">
+        <Link
+          className="flex h-full min-h-[220px] flex-col justify-between gap-5 rounded-[20px] p-5 transition-all duration-200 hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-tertiary/18"
+          to={detailPath}
+        >
+          <div className="space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <Badge variant={classroom.canEdit ? "success" : "info"}>
+                {getCardBadgeLabel(classroom, user?.role)}
+              </Badge>
+              <span className="rounded-full border border-border bg-neutral px-3 py-1 text-xs font-semibold text-secondary">
+                {memberCountLabel}
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold leading-7 text-primary">{classroom.name}</h3>
+              <div className="space-y-2 text-sm text-secondary">
+                <p>
+                  Giảng viên: <span className="font-medium text-primary">{classroom.teacherName}</span>
+                </p>
+                <p>
+                  Mã lớp: <span className="font-mono text-primary">{classroom.joinCode || "--"}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-4 text-sm text-secondary">
+            <p>
+              {isStudentView ? "Tham gia" : "Tạo ngày"}:{" "}
+              {formatShortDate(isStudentView ? classroom.joinedAt || classroom.createdAt : classroom.createdAt)}
+            </p>
+            <span className="font-semibold text-link">Mở lớp</span>
+          </div>
+        </Link>
+      </Card>
+    );
   }
 
   return (
@@ -91,7 +130,9 @@ export default function ClassroomCard({ classroom, onCopyCode }) {
             </p>
             <p className="mt-2 text-sm font-semibold text-primary">
               {formatShortDate(
-                isStudentView ? classroom.joinedAt || classroom.createdAt : classroom.updatedAt || classroom.createdAt,
+                isStudentView
+                  ? classroom.joinedAt || classroom.createdAt
+                  : classroom.updatedAt || classroom.createdAt,
               )}
             </p>
           </div>

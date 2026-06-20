@@ -14,6 +14,7 @@ import {
   validateEmailAddress,
   validateRequiredText,
 } from "../../../utils/formValidation";
+// import GoogleAuthButton from "../components/GoogleAuthButton";
 
 const INVALID_CREDENTIALS_MESSAGE = "Bạn đã nhập sai tài khoản hoặc mật khẩu";
 
@@ -69,7 +70,10 @@ export default function LoginPage() {
   function validateFormValues() {
     return {
       email: validateEmailAddress(formValues.email),
-      password: validateRequiredText(formValues.password, "Mật khẩu không được để trống."),
+      password: validateRequiredText(
+        formValues.password,
+        "Mật khẩu không được để trống.",
+      ),
     };
   }
 
@@ -78,7 +82,8 @@ export default function LoginPage() {
     showToast({
       tone: "info",
       title: "Quên mật khẩu",
-      message: "Tính năng khôi phục mật khẩu đang được hoàn thiện trong EduGuard.",
+      message:
+        "Tính năng khôi phục mật khẩu đang được hoàn thiện trong EduGuard.",
     });
   }
 
@@ -120,76 +125,91 @@ export default function LoginPage() {
     }
   }
 
-  const formErrorMessage = loginErrorMessage || getFirstValidationError(validationErrors);
+  const formErrorMessage =
+    loginErrorMessage || getFirstValidationError(validationErrors);
 
   return (
     <AuthLayout
-      title="Đăng nhập EduGuard"
-      description="Tiếp tục với lớp học, kỳ thi và khu vực quản trị của bạn."
+      title="Chào mừng trở lại"
       footerText="Chưa có tài khoản?"
       footerLinkLabel="Đăng ký ngay"
       footerLinkTo={routeConfig.register}
     >
-      <form className="space-y-5" noValidate onSubmit={handleSubmit}>
-        {loginErrorMessage ? null : <FormErrorSummary message={formErrorMessage} />}
+      <div className="space-y-5">
+        {/* Google sign-in */}
+        {/* <GoogleAuthButton /> */}
 
-        {loginErrorMessage ? (
-          <div className="eg-auth-inline-alert" role="alert">
-            {loginErrorMessage}
+        {/* Divider */}
+        {/* <div className="eg-auth-divider" aria-hidden="true">
+          hoặc đăng nhập bằng email
+        </div> */}
+
+        {/* Email + Password form */}
+        <form className="space-y-4" noValidate onSubmit={handleSubmit}>
+          {loginErrorMessage ? null : (
+            <FormErrorSummary message={formErrorMessage} />
+          )}
+
+          {loginErrorMessage ? (
+            <div className="eg-auth-inline-alert" role="alert">
+              {loginErrorMessage}
+            </div>
+          ) : null}
+
+          <TextInput
+            autoComplete="email"
+            className="eg-auth-input"
+            error={validationErrors.email}
+            id="login-email"
+            label="Email"
+            onChange={(event) => handleFieldChange("email", event.target.value)}
+            placeholder="student@gmail.com"
+            required
+            type="email"
+            value={formValues.email}
+          />
+          <TextInput
+            autoComplete="current-password"
+            className="eg-auth-input"
+            error={validationErrors.password}
+            id="login-password"
+            label="Mật khẩu"
+            onChange={(event) =>
+              handleFieldChange("password", event.target.value)
+            }
+            placeholder="Nhập mật khẩu"
+            required
+            type="password"
+            value={formValues.password}
+          />
+
+          <div className="eg-auth-checkbox-row">
+            <label className="eg-auth-checkbox">
+              <input
+                className="eg-auth-checkbox-input"
+                name="remember-session"
+                type="checkbox"
+              />
+              Ghi nhớ đăng nhập
+            </label>
+            <button
+              className="eg-auth-inline-link text-sm"
+              type="button"
+              onClick={handleForgotPasswordClick}
+            >
+              Quên mật khẩu?
+            </button>
           </div>
-        ) : null}
 
-        <TextInput
-          autoComplete="email"
-          className="eg-auth-input"
-          error={validationErrors.email}
-          id="login-email"
-          label="Email"
-          onChange={(event) => handleFieldChange("email", event.target.value)}
-          placeholder="student@gmail.com"
-          required
-          type="email"
-          value={formValues.email}
-        />
-        <TextInput
-          autoComplete="current-password"
-          className="eg-auth-input"
-          error={validationErrors.password}
-          id="login-password"
-          label="Mật khẩu"
-          onChange={(event) => handleFieldChange("password", event.target.value)}
-          placeholder="Nhập mật khẩu"
-          required
-          type="password"
-          value={formValues.password}
-        />
-
-        <div className="eg-auth-checkbox-row">
-          <label className="eg-auth-checkbox">
-            <input
-              className="eg-auth-checkbox-input"
-              name="remember-session"
-              type="checkbox"
-            />
-            Ghi nhớ đăng nhập
-          </label>
-          <button
-            className="eg-auth-inline-link text-sm"
-            type="button"
-            onClick={handleForgotPasswordClick}
+          <Button
+            className="eg-auth-primary-button"
+            disabled={isSubmitting}
+            type="submit"
           >
-            Quên mật khẩu?
-          </button>
-        </div>
-
-        <Button
-          className="eg-auth-primary-button"
-          disabled={isSubmitting}
-          type="submit"
-        >
-          {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
-        </Button>
-      </form>
+            {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
+          </Button>
+        </form>
+      </div>
     </AuthLayout>
   );
 }

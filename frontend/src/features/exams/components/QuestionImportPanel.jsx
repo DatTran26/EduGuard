@@ -27,6 +27,7 @@ export default function QuestionImportPanel({
   onClearFile,
   onCommitImport,
   onFileSelected,
+  showCommitButton = true,
   statusLabel = "Review trước khi commit",
   stagedFile = null,
   submittingLabel = "Đang commit...",
@@ -110,9 +111,11 @@ export default function QuestionImportPanel({
           </div>
 
           <div className="mt-4 flex flex-wrap gap-3">
-            <Button disabled={isDisabled || isSubmitting || isCommitDisabled} onClick={onCommitImport}>
-              {isSubmitting ? submittingLabel : commitLabel}
-            </Button>
+            {showCommitButton ? (
+              <Button disabled={isDisabled || isSubmitting || isCommitDisabled} onClick={onCommitImport}>
+                {isSubmitting ? submittingLabel : commitLabel}
+              </Button>
+            ) : null}
             <Button disabled={isDisabled || isSubmitting} onClick={onClearFile} variant="secondary">
               Bỏ file này
             </Button>

@@ -535,6 +535,7 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  border: 1px solid transparent;
   border-radius: 999px;
   padding: 6px 10px;
   font-size: 12px;
@@ -544,26 +545,31 @@ button {
 
 .eg-badge-neutral {
   background: var(--color-surface-sunken);
+  border-color: rgb(148 163 184 / 24%);
   color: var(--color-secondary);
 }
 
 .eg-badge-success {
   background: var(--color-success-muted);
+  border-color: rgb(4 120 87 / 18%);
   color: var(--color-success);
 }
 
 .eg-badge-caution {
   background: var(--color-caution-muted);
+  border-color: rgb(180 83 9 / 18%);
   color: var(--color-caution);
 }
 
 .eg-badge-danger {
   background: var(--color-danger-muted);
+  border-color: rgb(220 38 38 / 18%);
   color: var(--color-danger);
 }
 
 .eg-badge-info {
   background: var(--color-info-muted);
+  border-color: rgb(3 105 161 / 18%);
   color: var(--color-info);
 }
 
@@ -1040,6 +1046,151 @@ button {
   }
 }
 
+/* ── Dashboard Phase 3 ─────────────────────────────────────────── */
+
+.eg-feedback-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 32px;
+}
+
+.eg-summary-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition:
+    border-color 180ms ease-out,
+    box-shadow 180ms ease-out;
+}
+
+.eg-summary-card:hover {
+  box-shadow: 0 4px 16px rgb(15 23 42 / 6%);
+}
+
+/* Hero banner at the top of dashboard pages */
+.eg-page-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  padding: 28px 32px;
+}
+
+/* Realtime live indicator badge */
+.eg-realtime-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-secondary);
+  white-space: nowrap;
+}
+
+/* Pulsing green dot for live realtime badge */
+.eg-realtime-dot {
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+  border-radius: 999px;
+  background: var(--color-success);
+  animation: realtime-pulse 2s ease-in-out infinite;
+}
+
+@keyframes realtime-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.55; transform: scale(0.82); }
+}
+
+/* Section header row (title + optional badge/action) */
+.eg-section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eg-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.01em;
+}
+
+.eg-section-subtitle {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--color-secondary);
+}
+
+/* High-risk attempt card inside HighRiskAttemptList */
+.eg-risk-card {
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--color-neutral);
+  padding: 14px 16px;
+  transition: border-color 180ms ease-out;
+}
+
+.eg-risk-card:hover {
+  border-color: var(--color-danger);
+}
+
+/* System health service row */
+.eg-system-health-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+  padding: 12px 16px;
+}
+
+/* Status dot for system health */
+.eg-system-health-dot {
+  display: inline-block;
+  height: 9px;
+  width: 9px;
+  border-radius: 999px;
+}
+
+.eg-system-health-dot-ok {
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px rgb(4 120 87 / 16%);
+}
+
+.eg-system-health-dot-warn {
+  background: var(--color-caution);
+  box-shadow: 0 0 0 3px rgb(180 83 9 / 16%);
+}
+
+.eg-system-health-dot-err {
+  background: var(--color-danger);
+  box-shadow: 0 0 0 3px rgb(220 38 38 / 16%);
+}
+
+/* ── End Dashboard Phase 3 ─────────────────────────────────────── */
+
 @keyframes toast-slide-in {
   from {
     opacity: 0;
@@ -1064,4 +1215,496 @@ button {
   100% {
     transform: translateY(0) scale(1);
   }
+}
+
+/* ============================================================
+   EduGuard UX/UI Redesign — New Design System Classes
+   ============================================================ */
+
+/* --- Auth: Feature highlights (left column) --- */
+.eg-auth-feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.eg-auth-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgb(226 232 240 / 85%);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.eg-auth-feature-icon {
+  display: inline-flex;
+  height: 36px;
+  width: 36px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 10%);
+  border: 1px solid rgb(255 255 255 / 12%);
+}
+
+/* --- Auth: Divider --- */
+.eg-auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.eg-auth-divider::before,
+.eg-auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+/* --- Auth: Step Indicator --- */
+.eg-auth-step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.eg-auth-step-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  width: 32px;
+  border-radius: 999px;
+  border: 2px solid #e2e8f0;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+  transition: all 240ms ease-out;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.eg-auth-step-dot-active {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgb(37 99 235 / 14%);
+}
+
+.eg-auth-step-dot-done {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.eg-auth-step-line {
+  flex: 1;
+  height: 2px;
+  background: #e2e8f0;
+  transition: background 240ms ease-out;
+  margin: 0 -1px;
+}
+
+.eg-auth-step-line-done {
+  background: #16a34a;
+}
+
+/* --- Auth: Role Selection Cards --- */
+.eg-auth-role-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 24px 20px;
+  cursor: pointer;
+  transition: all 200ms ease-out;
+  text-align: center;
+}
+
+.eg-auth-role-card:hover {
+  border-color: rgb(37 99 235 / 40%);
+  background: rgb(37 99 235 / 3%);
+  transform: translateY(-2px);
+}
+
+.eg-auth-role-card-active {
+  border-color: #2563eb;
+  background: rgb(37 99 235 / 6%);
+  box-shadow: 0 0 0 4px rgb(37 99 235 / 10%);
+}
+
+.eg-auth-role-icon {
+  display: inline-flex;
+  height: 52px;
+  width: 52px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: rgb(37 99 235 / 10%);
+  color: #2563eb;
+  font-size: 22px;
+}
+
+/* --- Auth: OTP Input Grid --- */
+.eg-auth-otp-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.eg-auth-otp-input {
+  height: 56px;
+  width: 100%;
+  border: 2px solid #d8dee9;
+  border-radius: 12px;
+  background: #ffffff;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #102746;
+  transition: border-color 180ms ease-out, box-shadow 180ms ease-out;
+}
+
+.eg-auth-otp-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 12%);
+}
+
+/* --- Auth: Animations --- */
+@keyframes auth-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes auth-step-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes auth-step-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.eg-auth-card-enter {
+  animation: auth-card-enter 350ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.eg-auth-step-enter-right {
+  animation: auth-step-slide-right 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.eg-auth-step-enter-left {
+  animation: auth-step-slide-left 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* --- Dashboard: Stat Card Upgrade --- */
+.eg-summary-card {
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-surface);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 180ms ease-out, box-shadow 180ms ease-out;
+}
+
+.eg-summary-card:hover {
+  box-shadow: 0 4px 20px rgb(15 23 42 / 6%);
+}
+
+.eg-stat-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eg-stat-card-icon {
+  display: inline-flex;
+  height: 40px;
+  width: 40px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.eg-stat-card-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.eg-stat-card-trend-up {
+  background: rgb(4 120 87 / 10%);
+  color: #047857;
+}
+
+.eg-stat-card-trend-down {
+  background: rgb(220 38 38 / 10%);
+  color: #dc2626;
+}
+
+/* --- Dashboard: System Health --- */
+.eg-system-health-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.eg-system-health-dot {
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.eg-system-health-dot-ok {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgb(34 197 94 / 20%);
+}
+
+.eg-system-health-dot-warn {
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgb(245 158 11 / 20%);
+}
+
+.eg-system-health-dot-err {
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgb(239 68 68 / 20%);
+}
+
+/* --- Dashboard: Realtime Pulse --- */
+@keyframes eg-pulse-ring {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.eg-realtime-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  background: rgb(34 197 94 / 12%);
+  border: 1px solid rgb(34 197 94 / 24%);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #16a34a;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.eg-realtime-dot {
+  position: relative;
+  display: inline-block;
+  height: 7px;
+  width: 7px;
+  border-radius: 999px;
+  background: #22c55e;
+}
+
+.eg-realtime-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: #22c55e;
+  animation: eg-pulse-ring 1.8s ease-out infinite;
+}
+
+/* --- Dashboard: Section Header --- */
+.eg-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 2px;
+}
+
+.eg-section-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1.3;
+  margin: 0;
+}
+
+.eg-section-subtitle {
+  font-size: 13px;
+  color: var(--color-secondary);
+  margin: 4px 0 0;
+}
+
+/* --- Timeline Item Upgrade --- */
+.eg-timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  transition: background-color 180ms ease-out, border-color 180ms ease-out, transform 180ms ease-out;
+}
+
+.eg-timeline-item:hover {
+  background: var(--color-surface-sunken);
+  transform: translateX(2px);
+}
+
+.eg-timeline-dot {
+  display: inline-flex;
+  height: 8px;
+  width: 8px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--color-tertiary);
+  margin-top: 6px;
+}
+
+/* --- Metric Bar Upgrade --- */
+.eg-metric-bar-track {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-surface-sunken);
+  overflow: hidden;
+}
+
+.eg-metric-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --- Page Hero Header --- */
+.eg-page-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  border: 1px solid var(--color-border);
+  padding: clamp(24px, 4vw, 40px);
+  background-image:
+    radial-gradient(circle at top left, rgb(59 130 246 / 14%), transparent 32%),
+    linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-sunken) 100%);
+}
+
+/* --- Risk Card --- */
+.eg-risk-card {
+  border-radius: 18px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 16px;
+  transition: border-color 180ms ease-out, box-shadow 180ms ease-out, transform 180ms ease-out;
+}
+
+.eg-risk-card:hover {
+  border-color: rgb(29 78 216 / 18%);
+  box-shadow: 0 4px 16px rgb(15 23 42 / 6%);
+  transform: translateY(-1px);
+}
+
+/* --- Notification Item --- */
+.eg-notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 14px 16px;
+  transition: background-color 180ms ease-out, border-color 180ms ease-out;
+}
+
+.eg-notification-item-unread {
+  border-color: rgb(37 99 235 / 18%);
+  background: rgb(37 99 235 / 3%);
+}
+
+.eg-notification-dot {
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #2563eb;
+  margin-top: 6px;
+}
+
+/* Dark mode overrides for new classes */
+[data-theme="dark"] .eg-auth-divider::before,
+[data-theme="dark"] .eg-auth-divider::after {
+  background: var(--color-border);
+}
+
+[data-theme="dark"] .eg-auth-step-dot {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-secondary);
+}
+
+[data-theme="dark"] .eg-auth-role-card {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .eg-auth-role-card-active {
+  border-color: var(--color-tertiary);
+  background: rgb(96 165 250 / 8%);
+}
+
+[data-theme="dark"] .eg-auth-otp-input {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-primary);
+}
+
+[data-theme="dark"] .eg-system-health-row {
+  background: var(--color-surface-sunken);
+  border-color: var(--color-border-subtle);
 }

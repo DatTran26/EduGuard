@@ -28,19 +28,19 @@ const HERO_BACKGROUND_STYLE = {
 
 const SUMMARY_CARD_STYLES = {
   info: {
-    wrapper: "eg-exam-summary-card-info",
+    wrapper: "eg-summary-card eg-exam-summary-card-info",
     icon: <FiBookOpen className="h-5 w-5 text-info" />,
   },
   neutral: {
-    wrapper: "eg-exam-summary-card-neutral",
+    wrapper: "eg-summary-card eg-exam-summary-card-neutral",
     icon: <FiUsers className="h-5 w-5 text-secondary" />,
   },
   success: {
-    wrapper: "eg-exam-summary-card-success",
+    wrapper: "eg-summary-card eg-exam-summary-card-success",
     icon: <FiActivity className="h-5 w-5 text-success" />,
   },
   caution: {
-    wrapper: "eg-exam-summary-card-caution",
+    wrapper: "eg-summary-card eg-exam-summary-card-caution",
     icon: <FiClipboard className="h-5 w-5 text-caution" />,
   },
 };
@@ -93,7 +93,7 @@ function getRiskBadgeVariant(totalSuspicion) {
 function DashboardHeaderSkeleton() {
   return (
     <div
-      className="relative overflow-hidden rounded-[28px] border border-border p-6 sm:p-8"
+      className="eg-page-hero p-6 sm:p-8"
       style={HERO_BACKGROUND_STYLE}
     >
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr] xl:items-end">
@@ -245,7 +245,7 @@ export default function TeacherDashboardPage() {
   return (
     <div className="mx-auto max-w-[1280px] space-y-6">
       <div
-        className="relative overflow-hidden rounded-[28px] border border-border p-6 sm:p-8"
+        className="eg-page-hero p-6 sm:p-8"
         style={HERO_BACKGROUND_STYLE}
       >
         <div className="absolute -right-12 top-0 h-36 w-36 rounded-full bg-white/50 blur-3xl" />
@@ -293,8 +293,7 @@ export default function TeacherDashboardPage() {
           const styleConfig = SUMMARY_CARD_STYLES[item.tone] ?? SUMMARY_CARD_STYLES.info;
 
           return (
-            <div key={item.label} className={`eg-exam-summary-card ${styleConfig.wrapper} min-h-[132px]`}>
-              <span aria-hidden="true" className="eg-exam-summary-card-bar" />
+            <div key={item.label} className={`${styleConfig.wrapper} min-h-[132px]`}>
               <div className="flex flex-1 items-start justify-between gap-4">
                 <div className="space-y-4">
                   <p className="text-[0.82rem] font-medium text-secondary">{item.label}</p>

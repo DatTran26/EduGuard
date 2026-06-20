@@ -165,6 +165,10 @@ function buildExamWritePayload(payload) {
 }
 
 function buildQuestionWritePayload(payload) {
+  function normalizeAnswerId(answerId) {
+    return typeof answerId === "number" && answerId > 0 ? answerId : null;
+  }
+
   return {
     content: payload.content?.trim() ?? "",
     questionType: toQuestionTypeCode(payload.questionType),
@@ -172,7 +176,7 @@ function buildQuestionWritePayload(payload) {
     orderIndex: Number(payload.orderIndex) || 1,
     answers: Array.isArray(payload.answers)
       ? payload.answers.map((answer, index) => ({
-          id: answer.id ?? null,
+          id: normalizeAnswerId(answer.id),
           content: answer.content?.trim() ?? "",
           isCorrect: Boolean(answer.isCorrect),
           orderIndex: index + 1,

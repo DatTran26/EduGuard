@@ -1,0 +1,38 @@
+
+/* --- Page Header Styles --- */
+.eg-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+@media (min-width: 1024px) {
+  .eg-page-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.eg-page-eyebrow {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.eg-page-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.eg-page-description {
+  font-size: 15px;
+  color: var(--color-secondary);
+  margin: 0;
+}
