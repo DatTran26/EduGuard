@@ -16,11 +16,11 @@ function normalizeNotificationTone(tone) {
 }
 
 export default function RealtimeNotificationListener() {
-  const { isAuthenticated } = useAuth();
+  const { accessToken, isAuthenticated } = useAuth();
   const { showToast } = useToast();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !accessToken) {
       return undefined;
     }
 
@@ -56,7 +56,7 @@ export default function RealtimeNotificationListener() {
       connection.off(NOTIFICATION_EVENTS.receiveNotification, handleNotification);
       connection.stop().catch(() => {});
     };
-  }, [isAuthenticated, showToast]);
+  }, [accessToken, isAuthenticated, showToast]);
 
   return null;
 }

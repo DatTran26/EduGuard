@@ -13,6 +13,7 @@ import {
   setStoredTokens,
   setStoredUser,
 } from "../utils/tokenStorage";
+import { AUTH_SESSION_REFRESHED_EVENT } from "../api/auth-token-refresh-service";
 
 // INTEGRATION STATUS:
 // - login / register / me / logout đang gọi backend auth thật qua authApi.
@@ -124,6 +125,28 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
+
+  useEffect(() => {
+    function handleSessionRefreshed(event) {
+      const nextSession = event.detail;
+
+      if (!nextSession?.accessToken) {
+        return;
+      }
+
+      setSession((previousSession) => ({
+        accessToken: nextSession.accessToken,
+        refreshToken: nextSession.refreshToken ?? previousSession.refreshToken,
+        user: nextSession.user ?? previousSession.user,
+      }));
+    }
+
+    window.addEventListener(AUTH_SESSION_REFRESHED_EVENT, handleSessionRefreshed);
+
+    return () => {
+      window.removeEventListener(AUTH_SESSION_REFRESHED_EVENT, handleSessionRefreshed);
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
