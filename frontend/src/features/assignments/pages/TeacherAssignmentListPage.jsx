@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { FiActivity, FiClock, FiFileText, FiGrid } from "react-icons/fi";
 import { assignmentApi } from "../../../api/assignmentApi";
 import { classroomApi } from "../../../api/classroomApi";
 import Button from "../../../components/common/Button";
@@ -7,6 +8,7 @@ import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
 import Select from "../../../components/forms/Select";
 import TextInput from "../../../components/forms/TextInput";
+import StatCard from "../../../components/dashboard/StatCard";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useToast } from "../../../hooks/useToast";
 import { formatShortDateTime } from "../../../utils/formatDate";
@@ -276,24 +278,55 @@ export default function TeacherAssignmentListPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="Bài tập"
-        title="Quản lý bài tập"
-        description="Lọc theo lớp, theo hạn nộp và mở nhanh khu vực chấm điểm từ một màn hình thống nhất."
-        actions={
-          <Button onClick={toggleCreateForm} variant={isCreateFormVisible ? "secondary" : "primary"}>
-            {isCreateFormVisible ? "Ẩn form tạo bài tập" : "Tạo bài tập"}
-          </Button>
-        }
-      />
+      <div className="eg-page-hero">
+        <div
+          className="absolute -right-8 -top-8 h-40 w-40 rounded-full blur-3xl"
+          style={{ background: "rgb(59 130 246 / 8%)" }}
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-2">
+            <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-info">
+              Bài tập về nhà
+            </p>
+            <PageHeader
+              title="Quản lý Bài tập"
+              description="Tạo mới bài tập, theo dõi thời hạn và tiến hành chấm điểm bài làm của sinh viên."
+            />
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={toggleCreateForm} variant={isCreateFormVisible ? "secondary" : "primary"}>
+              {isCreateFormVisible ? "Ẩn form tạo bài tập" : "Tạo bài tập"}
+            </Button>
+          </div>
+        </div>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {summaryItems.map((item) => (
-          <div key={item.label} className="rounded-[20px] border border-border bg-surface p-5">
-            <p className="text-sm font-medium text-secondary">{item.label}</p>
-            <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{item.value}</p>
-          </div>
-        ))}
+        <StatCard
+          label="Tổng bài tập"
+          tone="neutral"
+          value={summaryItems[0].value}
+          icon={<FiFileText size={18} />}
+        />
+        <StatCard
+          label="Cần chấm"
+          tone="caution"
+          value={summaryItems[1].value}
+          icon={<FiClock size={18} />}
+        />
+        <StatCard
+          label="Sắp đến hạn"
+          tone="danger"
+          value={summaryItems[2].value}
+          icon={<FiClock size={18} />}
+        />
+        <StatCard
+          label="Lớp có bài tập"
+          tone="info"
+          value={summaryItems[3].value}
+          icon={<FiGrid size={18} />}
+        />
       </div>
 
       <Card className="space-y-4">
@@ -356,19 +389,19 @@ export default function TeacherAssignmentListPage() {
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-2">
-                    <div className="rounded-[16px] border border-border bg-neutral p-4">
+                    <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                       <p className="text-[0.82rem] font-medium text-secondary">Deadline</p>
                       <p className="mt-2 text-sm font-semibold text-primary">{formatShortDateTime(assignment.deadline)}</p>
                     </div>
-                    <div className="rounded-[16px] border border-border bg-neutral p-4">
+                    <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                       <p className="text-[0.82rem] font-medium text-secondary">Đã nộp / tổng học sinh</p>
                       <p className="mt-2 text-sm font-semibold text-primary">{assignment.submissionCount} / {assignment.classroomMemberCount}</p>
                     </div>
-                    <div className="rounded-[16px] border border-border bg-neutral p-4">
+                    <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                       <p className="text-[0.82rem] font-medium text-secondary">Chưa chấm</p>
                       <p className="mt-2 text-sm font-semibold text-primary">{assignment.ungradedCount}</p>
                     </div>
-                    <div className="rounded-[16px] border border-border bg-neutral p-4">
+                    <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                       <p className="text-[0.82rem] font-medium text-secondary">Điểm trung bình</p>
                       <p className="mt-2 text-sm font-semibold text-primary">{typeof assignment.averageScore === "number" ? assignment.averageScore : "--"}</p>
                     </div>
@@ -417,7 +450,7 @@ export default function TeacherAssignmentListPage() {
                           key={submission.id}
                           type="button"
                           onClick={() => setSelectedSubmissionId(String(submission.id))}
-                          className={`w-full rounded-[18px] border px-4 py-4 text-left transition-all duration-200 ${String(selectedSubmission?.id) === String(submission.id) ? "border-tertiary bg-info-muted" : "border-border bg-neutral hover:bg-surface-sunken"}`}
+                          className={`w-full rounded-[18px] border px-4 py-4 text-left transition-all duration-200 ${String(selectedSubmission?.id) === String(submission.id) ? "border-tertiary bg-info-muted" : "border-border bg-surface hover:bg-surface-sunken"}`}
                         >
                           <p className="text-sm font-semibold text-primary">{submission.studentName || submission.studentEmail}</p>
                           <p className="mt-1 text-xs text-secondary">{submission.studentEmail}</p>
@@ -428,7 +461,7 @@ export default function TeacherAssignmentListPage() {
 
                     {selectedSubmission ? (
                       <div className="space-y-4">
-                        <div className="rounded-[18px] border border-border bg-neutral p-4 text-sm leading-6 text-primary">
+                        <div className="rounded-[18px] border border-border bg-surface-sunken p-4 text-sm leading-6 text-primary">
                           {selectedSubmission.content}
                         </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { FiActivity, FiAward, FiAlertTriangle } from "react-icons/fi";
 import { antiCheatApi } from "../../../api/antiCheatApi";
 import { classroomApi } from "../../../api/classroomApi";
 import { examApi } from "../../../api/examApi";
@@ -8,6 +9,7 @@ import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
 import Select from "../../../components/forms/Select";
 import TextInput from "../../../components/forms/TextInput";
+import StatCard from "../../../components/dashboard/StatCard";
 import PageHeader from "../../../components/layout/PageHeader";
 import { buildExamDetailPathByRole } from "../../../routes/routeConfig";
 import { formatShortDateTime } from "../../../utils/formatDate";
@@ -211,19 +213,50 @@ export default function TeacherResultsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="Kết quả"
-        title="Kết quả và rủi ro bài thi"
-        description="Theo dõi điểm số, trạng thái nộp bài và tín hiệu anti-cheat theo từng lượt làm."
-      />
+      <div className="eg-page-hero">
+        <div
+          className="absolute -right-8 -top-8 h-40 w-40 rounded-full blur-3xl"
+          style={{ background: "rgb(59 130 246 / 8%)" }}
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-2">
+            <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-info">
+              Kết quả học tập
+            </p>
+            <PageHeader
+              title="Kết quả & Rủi ro bài thi"
+              description="Theo dõi điểm số, trạng thái nộp bài và tín hiệu anti-cheat theo từng lượt làm bài."
+            />
+          </div>
+        </div>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {summaryItems.map((item) => (
-          <div key={item.label} className="rounded-[20px] border border-border bg-surface p-5">
-            <p className="text-sm font-medium text-secondary">{item.label}</p>
-            <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{item.value}</p>
-          </div>
-        ))}
+        <StatCard
+          label="Điểm trung bình"
+          tone="neutral"
+          value={summaryItems[0].value}
+          icon={<FiActivity size={18} />}
+        />
+        <StatCard
+          label="Điểm cao nhất"
+          tone="success"
+          value={summaryItems[1].value}
+          icon={<FiAward size={18} />}
+        />
+        <StatCard
+          label="Điểm thấp nhất"
+          tone="info"
+          value={summaryItems[2].value}
+          icon={<FiActivity size={18} />}
+        />
+        <StatCard
+          label="Rủi ro cao"
+          tone="danger"
+          value={summaryItems[3].value}
+          icon={<FiAlertTriangle size={18} />}
+        />
       </div>
 
       <Card className="space-y-4">
@@ -268,29 +301,29 @@ export default function TeacherResultsPage() {
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-[16px] border border-border bg-neutral p-4">
+                  <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                     <p className="text-[0.82rem] font-medium text-secondary">Đề thi</p>
                     <p className="mt-2 text-sm font-semibold text-primary">{row.examTitle}</p>
                   </div>
-                  <div className="rounded-[16px] border border-border bg-neutral p-4">
+                  <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                     <p className="text-[0.82rem] font-medium text-secondary">Lớp</p>
                     <p className="mt-2 text-sm font-semibold text-primary">{row.classroomName}</p>
                   </div>
-                  <div className="rounded-[16px] border border-border bg-neutral p-4">
+                  <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                     <p className="text-[0.82rem] font-medium text-secondary">Điểm</p>
                     <p className="mt-2 text-sm font-semibold text-primary">{typeof row.score === "number" ? row.score : "--"}</p>
                   </div>
-                  <div className="rounded-[16px] border border-border bg-neutral p-4">
+                  <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                     <p className="text-[0.82rem] font-medium text-secondary">Cảnh báo</p>
                     <p className="mt-2 text-sm font-semibold text-primary">{row.warningCount} log</p>
                   </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-[16px] border border-border bg-neutral p-4 text-sm text-secondary">
+                  <div className="rounded-[16px] border border-border bg-surface-sunken p-4 text-sm text-secondary">
                     Bắt đầu: <span className="font-semibold text-primary">{formatShortDateTime(row.startedAt)}</span>
                   </div>
-                  <div className="rounded-[16px] border border-border bg-neutral p-4 text-sm text-secondary">
+                  <div className="rounded-[16px] border border-border bg-surface-sunken p-4 text-sm text-secondary">
                     Nộp bài: <span className="font-semibold text-primary">{row.submittedAt ? formatShortDateTime(row.submittedAt) : "Chưa nộp"}</span>
                   </div>
                 </div>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { assignmentApi } from "../../api/assignmentApi";
 import { classroomApi } from "../../api/classroomApi";
 import { examApi } from "../../api/examApi";
+import { cn } from "../../utils/cn";
 import {
   buildClassroomDetailPathByRole,
   buildExamDetailPathByRole,
@@ -76,14 +77,14 @@ function buildSearchItems(role, searchSource) {
     type: "student",
     title: student.fullName,
     description: `${student.classroomName} • ${student.email}`,
-    href: `${buildClassroomDetailPathByRole(role, student.classroomId)}?tab=students&studentId=${student.studentId}`,
+    href: `${buildClassroomDetailPathByRole(role, student.classroomId)}?tab=members&studentId=${student.studentId}`,
     keywords: [student.fullName, student.email, student.classroomName],
   }));
 
   return [...classroomItems, ...assignmentItems, ...examItems, ...studentItems];
 }
 
-export default function TeacherShellSearch({ user }) {
+export default function TeacherShellSearch({ className, user }) {
   const navigate = useNavigate();
   const panelRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -225,7 +226,7 @@ export default function TeacherShellSearch({ user }) {
   }
 
   return (
-    <div className="relative w-full max-w-[560px]" ref={panelRef}>
+    <div className={cn("relative w-full max-w-[560px]", className)} ref={panelRef}>
       <form onSubmit={handleSubmit}>
         <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-secondary">
           <FiSearch className="h-4 w-4" />

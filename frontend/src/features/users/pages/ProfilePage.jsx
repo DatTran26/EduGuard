@@ -404,7 +404,7 @@ export default function ProfilePage() {
               </span>
             </div>
 
-            <div className="rounded-[24px] border border-border bg-neutral p-5">
+            <div className="rounded-[24px] border border-border bg-surface-sunken p-5">
               <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
                 <div className="rounded-[28px] border border-white/70 bg-white p-2 shadow-[0_18px_40px_rgb(15_23_42/10%)]">
                   <Avatar
@@ -505,23 +505,23 @@ export default function ProfilePage() {
             <h2 className="text-xl font-semibold tracking-tight text-primary">Trạng thái</h2>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[20px] border border-border bg-neutral px-4 py-4">
+              <div className="rounded-[20px] border border-border bg-surface-sunken px-4 py-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary">Vai trò</p>
                 <p className="mt-2 text-sm font-semibold text-primary">{roleLabel}</p>
               </div>
-              <div className="rounded-[20px] border border-border bg-neutral px-4 py-4">
+              <div className="rounded-[20px] border border-border bg-surface-sunken px-4 py-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary">Tài khoản</p>
                 <p className="mt-2 text-sm font-semibold text-primary">
                   {effectiveProfile?.isActive ? "Đang hoạt động" : "Đã khóa"}
                 </p>
               </div>
-              <div className="rounded-[20px] border border-border bg-neutral px-4 py-4">
+              <div className="rounded-[20px] border border-border bg-surface-sunken px-4 py-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary">Tạo lúc</p>
                 <p className="mt-2 text-sm font-semibold text-primary">
                   {formatShortDateTime(effectiveProfile?.createdAt)}
                 </p>
               </div>
-              <div className="rounded-[20px] border border-border bg-neutral px-4 py-4">
+              <div className="rounded-[20px] border border-border bg-surface-sunken px-4 py-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary">Cập nhật</p>
                 <p className="mt-2 text-sm font-semibold text-primary">
                   {formatShortDateTime(effectiveProfile?.updatedAt || effectiveProfile?.createdAt)}

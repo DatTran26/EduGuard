@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { matchPath, useLocation, useNavigate } from "react-router-dom";
 import Avatar from "../common/Avatar";
 import Button from "../common/Button";
 import { cn } from "../../utils/cn";
+import { classroomApi } from "../../api/classroomApi";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
 import { useToast } from "../../hooks/useToast";
@@ -61,7 +62,21 @@ function labelForBreadcrumbSegment(segment) {
   return breadcrumbLabelBySegment[segment] || segment;
 }
 
-function buildBreadcrumbTrail(pathname) {
+const classroomBreadcrumbRoutePatterns = [
+  routeConfig.adminClassroomDetail,
+  routeConfig.teacherClassroomDetail,
+  routeConfig.studentClassroomDetail,
+];
+
+function getClassroomBreadcrumbMatch(pathname) {
+  return (
+    classroomBreadcrumbRoutePatterns
+      .map((path) => matchPath({ path, end: true }, pathname || "/"))
+      .find(Boolean) ?? null
+  );
+}
+
+function buildBreadcrumbTrail(pathname, labelOverrides = {}) {
   const segments = (pathname || "/").split("/").filter(Boolean);
   const rolePrefix = segments[0] || "";
   const tail = segments.slice(1);
@@ -77,7 +92,7 @@ function buildBreadcrumbTrail(pathname) {
   for (const segment of tail) {
     acc += `/${segment}`;
     items.push({
-      label: labelForBreadcrumbSegment(segment),
+      label: labelOverrides[acc] || labelForBreadcrumbSegment(segment),
       href: acc,
     });
   }
@@ -94,7 +109,7 @@ function buildBreadcrumbTrail(pathname) {
 }
 
 const breadcrumbTextClass =
-  "block max-w-[5.5rem] truncate sm:max-w-[7rem] xl:max-w-[9rem] 2xl:max-w-[11rem]";
+  "block max-w-[7rem] truncate sm:max-w-[10rem] xl:max-w-[16rem] 2xl:max-w-[20rem]";
 
 function buildUserMenuItems(isDarkMode) {
   return [
@@ -173,8 +188,15 @@ export default function TopBar({
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notificationItems, setNotificationItems] = useState(() => readNotifications());
   const [lastSeenAt, setLastSeenAt] = useState(() => readNotificationLastSeenAt());
+  const [classroomBreadcrumbState, setClassroomBreadcrumbState] = useState({
+    classroomId: "",
+    label: "",
+  });
   const userMenuItems = buildUserMenuItems(isDarkMode);
   const isTeacherView = user?.role === "Teacher";
+  const classroomBreadcrumbMatch = getClassroomBreadcrumbMatch(location?.pathname);
+  const classroomBreadcrumbPath = classroomBreadcrumbMatch?.pathname || "";
+  const classroomBreadcrumbId = classroomBreadcrumbMatch?.params?.classroomId || "";
 
   useEffect(() => {
     if (!isUserMenuOpen && !isNotificationOpen) {
@@ -221,6 +243,44 @@ export default function TopBar({
     window.addEventListener("eduguard:notification", handleIncomingNotification);
     return () => window.removeEventListener("eduguard:notification", handleIncomingNotification);
   }, []);
+
+  useEffect(() => {
+    if (!classroomBreadcrumbId || !classroomBreadcrumbPath) {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadClassroomBreadcrumbLabel() {
+      try {
+        const response = await classroomApi.getById(classroomBreadcrumbId);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setClassroomBreadcrumbState({
+          classroomId: classroomBreadcrumbId,
+          label: response.data?.name || `Lớp ${classroomBreadcrumbId}`,
+        });
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setClassroomBreadcrumbState({
+          classroomId: classroomBreadcrumbId,
+          label: `Lớp ${classroomBreadcrumbId}`,
+        });
+      }
+    }
+
+    loadClassroomBreadcrumbLabel();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [classroomBreadcrumbId, classroomBreadcrumbPath]);
 
   // Hàm này đóng dropdown menu người dùng để các thao tác điều hướng phía sau gọn hơn.
   function closeUserMenu() {
@@ -322,12 +382,29 @@ export default function TopBar({
 
   const unreadCount = notificationItems.filter((item) => item?.createdAt && item.createdAt > lastSeenAt).length;
   const roleLabel = getRoleLabel(user?.role);
-
-  const breadcrumbItems = buildBreadcrumbTrail(location?.pathname);
+  const classroomBreadcrumbLabel = classroomBreadcrumbId
+    ? classroomBreadcrumbState.classroomId === classroomBreadcrumbId
+      ? classroomBreadcrumbState.label
+      : "Đang tải lớp..."
+    : "";
+  const breadcrumbItems = buildBreadcrumbTrail(
+    location?.pathname,
+    classroomBreadcrumbPath && classroomBreadcrumbLabel
+      ? { [classroomBreadcrumbPath]: classroomBreadcrumbLabel }
+      : {},
+  );
+  const shouldCondenseSearch = classroomBreadcrumbLabel.length > 18;
 
   return (
     <header className="z-10 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 py-3 md:gap-4 md:px-6">
-      <div className="flex min-w-0 items-center gap-3 lg:max-w-[min(38%,20rem)] xl:max-w-[min(42%,26rem)]">
+      <div
+        className={cn(
+          "flex min-w-0 items-center gap-3 lg:flex-1",
+          shouldCondenseSearch
+            ? "xl:max-w-[min(56%,42rem)] 2xl:max-w-[min(62%,50rem)]"
+            : "xl:max-w-[min(46%,32rem)] 2xl:max-w-[min(52%,38rem)]",
+        )}
+      >
         {/* Nút menu trên mobile */}
         <button
           type="button"
@@ -394,7 +471,10 @@ export default function TopBar({
       </div>
 
       <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex">
-        <TeacherShellSearch user={user} />
+        <TeacherShellSearch
+          className={shouldCondenseSearch ? "max-w-[460px] xl:max-w-[500px]" : "max-w-[560px]"}
+          user={user}
+        />
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-4">

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { FiActivity, FiAlertTriangle, FiAlertCircle, FiTerminal, FiSearch, FiSliders } from "react-icons/fi";
 import { dashboardApi } from "../../../api/dashboardApi";
 import Badge from "../../../components/common/Badge";
 import Card from "../../../components/common/Card";
@@ -28,7 +29,7 @@ function ExamRiskList({ items }) {
   return (
     <div className="space-y-3">
       {items.map((item) => (
-        <div key={item.id} className="rounded-[18px] border border-border bg-neutral p-4">
+        <div key={item.id} className="eg-risk-card">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-primary">{item.title}</p>
@@ -38,13 +39,13 @@ function ExamRiskList({ items }) {
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-secondary">
-            <span className="rounded-full border border-border bg-surface px-3 py-1">
+            <span className="rounded-full border border-border bg-surface-sunken px-3 py-1">
               {item.totalSuspicion} điểm
             </span>
-            <span className="rounded-full border border-border bg-surface px-3 py-1">
+            <span className="rounded-full border border-border bg-surface-sunken px-3 py-1">
               {item.flaggedAttempts} lượt cảnh báo
             </span>
-            <span className="rounded-full border border-border bg-surface px-3 py-1">
+            <span className="rounded-full border border-border bg-surface-sunken px-3 py-1">
               {item.totalLogs} log
             </span>
           </div>
@@ -62,7 +63,7 @@ function StudentRiskList({ items }) {
   return (
     <div className="space-y-3">
       {items.map((item) => (
-        <div key={item.id} className="rounded-[18px] border border-border bg-neutral p-4">
+        <div key={item.id} className="eg-risk-card">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-primary">{item.studentName}</p>
@@ -72,13 +73,13 @@ function StudentRiskList({ items }) {
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-secondary">
-            <span className="rounded-full border border-border bg-surface px-3 py-1">
+            <span className="rounded-full border border-border bg-surface-sunken px-3 py-1">
               {item.totalSuspicion} điểm
             </span>
-            <span className="rounded-full border border-border bg-surface px-3 py-1">
+            <span className="rounded-full border border-border bg-surface-sunken px-3 py-1">
               {item.logCount} log
             </span>
-            <span className="rounded-full border border-border bg-surface px-3 py-1">
+            <span className="rounded-full border border-border bg-surface-sunken px-3 py-1">
               {item.attemptCount} lượt làm
             </span>
           </div>
@@ -96,7 +97,7 @@ function IncidentList({ items }) {
   return (
     <div className="space-y-3">
       {items.map((item) => (
-        <div key={item.id} className="rounded-[18px] border border-border bg-neutral p-4">
+        <div key={item.id} className="eg-risk-card">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-primary">{item.type}</p>
@@ -106,9 +107,9 @@ function IncidentList({ items }) {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-secondary">
-            <span className="rounded-full border border-border bg-surface px-3 py-1">{item.examTitle}</span>
-            <span className="rounded-full border border-border bg-surface px-3 py-1">{item.classroomName}</span>
-            <span className="rounded-full border border-border bg-surface px-3 py-1">
+            <span className="rounded-full border border-border bg-surface-sunken px-3 py-1">{item.examTitle}</span>
+            <span className="rounded-full border border-border bg-surface-sunken px-3 py-1">{item.classroomName}</span>
+            <span className="rounded-full border border-border bg-surface-sunken px-3 py-1">
               {formatShortDateTime(item.occurredAt)}
             </span>
           </div>
@@ -210,17 +211,57 @@ export default function AdminMonitoringPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Giám sát" />
+      <div className="eg-page-hero">
+        <div
+          className="absolute -right-8 -top-8 h-40 w-40 rounded-full blur-3xl"
+          style={{ background: "rgb(239 68 68 / 8%)" }}
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-2">
+            <p className="inline-flex rounded-full border border-danger/20 bg-danger-muted px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-danger">
+              Giám sát hệ thống
+            </p>
+            <PageHeader
+              title="Trung tâm Giám sát"
+              description="Theo dõi trực quan các hành vi nghi vấn, rủi ro thi cử và sự kiện chống gian lận trên toàn hệ thống."
+            />
+          </div>
+        </div>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Tổng log" tone="neutral" value={monitoringData.summary.totalLogs} />
-        <StatCard label="Lượt cảnh báo" tone="caution" value={monitoringData.summary.flaggedAttempts} />
-        <StatCard label="Nguy cơ cao" tone="info" value={monitoringData.summary.highRiskAttempts} />
-        <StatCard label="Điểm nghi ngờ" tone="success" value={monitoringData.summary.totalSuspicionPoints} />
+        <StatCard
+          label="Tổng log"
+          tone="neutral"
+          value={monitoringData.summary.totalLogs}
+          icon={<FiTerminal size={18} />}
+        />
+        <StatCard
+          label="Lượt cảnh báo"
+          tone="caution"
+          value={monitoringData.summary.flaggedAttempts}
+          icon={<FiAlertTriangle size={18} />}
+        />
+        <StatCard
+          label="Nguy cơ cao"
+          tone="danger"
+          value={monitoringData.summary.highRiskAttempts}
+          icon={<FiAlertCircle size={18} />}
+        />
+        <StatCard
+          label="Điểm nghi ngờ"
+          tone="info"
+          value={monitoringData.summary.totalSuspicionPoints}
+          icon={<FiActivity size={18} />}
+        />
       </div>
 
       <Card className="space-y-4">
-        <h3 className="text-lg font-semibold text-primary">Bộ lọc</h3>
+        <div className="flex items-center gap-2">
+          <FiSliders className="text-secondary" />
+          <h3 className="text-lg font-semibold text-primary">Bộ lọc</h3>
+        </div>
 
         <div className="grid gap-4 lg:grid-cols-4">
           <TextInput

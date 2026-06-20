@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { FiUsers, FiActivity, FiSliders } from "react-icons/fi";
 import { classroomApi } from "../../../api/classroomApi";
 import { userApi } from "../../../api/userApi";
 import Badge from "../../../components/common/Badge";
@@ -7,6 +8,7 @@ import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
 import Select from "../../../components/forms/Select";
 import TextInput from "../../../components/forms/TextInput";
+import StatCard from "../../../components/dashboard/StatCard";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
@@ -28,10 +30,10 @@ const STATUS_FILTER_OPTIONS = [
 
 function buildAdminSummary(users, filteredUsers) {
   return [
-    { label: "Người dùng", value: users.length },
-    { label: "Giảng viên", value: users.filter((user) => user.role === "Teacher").length },
-    { label: "Sinh viên", value: users.filter((user) => user.role === "Student").length },
-    { label: "Hiển thị", value: filteredUsers.length },
+    { label: "Người dùng", value: users.length, tone: "neutral" },
+    { label: "Giảng viên", value: users.filter((user) => user.role === "Teacher").length, tone: "info" },
+    { label: "Sinh viên", value: users.filter((user) => user.role === "Student").length, tone: "success" },
+    { label: "Hiển thị", value: filteredUsers.length, tone: "caution" },
   ];
 }
 
@@ -173,7 +175,7 @@ export default function UserManagementPage() {
     ? String(selectedUserId)
     : String(filteredUsers[0]?.id ?? "");
   const selectedUser = filteredUsers.find((user) => String(user.id) === effectiveSelectedUserId) ?? null;
-  const summaryItems = buildAdminSummary(users, filteredUsers);
+  const summaryItems = useMemo(() => buildAdminSummary(users, filteredUsers), [users, filteredUsers]);
   const managedClassrooms = getManagedClassrooms(classrooms, selectedUser);
   const isSelfSelected = selectedUser ? String(selectedUser.id) === String(currentUser?.id ?? "") : false;
   const isFormVisible = activeFormMode === "create" || activeFormMode === "edit";
@@ -273,26 +275,66 @@ export default function UserManagementPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Người dùng"
-        actions={
-          <Button disabled={isSubmitting} onClick={handleToggleCreateForm} variant={activeFormMode === "create" ? "secondary" : "primary"}>
-            {activeFormMode === "create" ? "Đóng" : "Thêm người dùng"}
-          </Button>
-        }
-      />
+      <div className="eg-page-hero">
+        <div
+          className="absolute -right-8 -top-8 h-40 w-40 rounded-full blur-3xl"
+          style={{ background: "rgb(59 130 246 / 8%)" }}
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-2">
+            <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-info">
+              Hệ thống người dùng
+            </p>
+            <PageHeader
+              title="Quản lý Người dùng"
+              description="Xem, tìm kiếm, sửa đổi quyền hạn và quản lý trạng thái tài khoản của giảng viên và sinh viên."
+            />
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              disabled={isSubmitting}
+              onClick={handleToggleCreateForm}
+              variant={activeFormMode === "create" ? "secondary" : "primary"}
+            >
+              {activeFormMode === "create" ? "Đóng" : "Thêm người dùng"}
+            </Button>
+          </div>
+        </div>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {summaryItems.map((item) => (
-          <div key={item.label} className="eg-summary-card">
-            <p className="text-[0.82rem] font-medium text-secondary">{item.label}</p>
-            <p className="text-3xl font-semibold tracking-tight text-primary">{item.value}</p>
-          </div>
-        ))}
+        <StatCard
+          label="Người dùng"
+          tone="neutral"
+          value={summaryItems[0].value}
+          icon={<FiUsers size={18} />}
+        />
+        <StatCard
+          label="Giảng viên"
+          tone="info"
+          value={summaryItems[1].value}
+          icon={<FiUsers size={18} />}
+        />
+        <StatCard
+          label="Sinh viên"
+          tone="success"
+          value={summaryItems[2].value}
+          icon={<FiUsers size={18} />}
+        />
+        <StatCard
+          label="Hiển thị"
+          tone="caution"
+          value={summaryItems[3].value}
+          icon={<FiActivity size={18} />}
+        />
       </div>
 
       <Card className="space-y-4">
-        <h3 className="text-lg font-semibold text-primary">Bộ lọc</h3>
+        <div className="flex items-center gap-2">
+          <FiSliders className="text-secondary" />
+          <h3 className="text-lg font-semibold text-primary">Bộ lọc</h3>
+        </div>
 
         <div className="grid gap-4 lg:grid-cols-4">
           <TextInput
@@ -342,8 +384,8 @@ export default function UserManagementPage() {
                       type="button"
                       className={`w-full rounded-[18px] border p-4 text-left transition-all duration-200 ${
                         isSelected
-                          ? "border-info bg-info-muted shadow-[0_18px_40px_rgb(14_165_233/10%)]"
-                          : "border-border bg-neutral hover:border-info/40"
+                          ? "border-info bg-info-muted shadow-[0_12px_24px_rgba(37,99,235,0.06)]"
+                          : "border-border bg-surface hover:border-info/40 hover:shadow-xs"
                       }`}
                       onClick={() => setSelectedUserId(String(user.id))}
                     >
@@ -411,31 +453,31 @@ export default function UserManagementPage() {
 
                 {selectedUser ? (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[18px] border border-border bg-neutral p-4">
+                    <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary">Họ tên</p>
                       <p className="mt-2 text-sm font-semibold text-primary">{selectedUser.fullName}</p>
                     </div>
-                    <div className="rounded-[18px] border border-border bg-neutral p-4">
+                    <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary">Email</p>
                       <p className="mt-2 text-sm font-semibold text-primary">{selectedUser.email}</p>
                     </div>
-                    <div className="rounded-[18px] border border-border bg-neutral p-4">
+                    <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary">Vai trò</p>
                       <p className="mt-2 text-sm font-semibold text-primary">{selectedUser.role}</p>
                     </div>
-                    <div className="rounded-[18px] border border-border bg-neutral p-4">
+                    <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary">Trạng thái</p>
                       <p className="mt-2 text-sm font-semibold text-primary">
                         {selectedUser.isActive ? "Đang hoạt động" : "Đã khóa"}
                       </p>
                     </div>
-                    <div className="rounded-[18px] border border-border bg-neutral p-4">
+                    <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary">Tạo lúc</p>
                       <p className="mt-2 text-sm font-semibold text-primary">
                         {formatShortDateTime(selectedUser.createdAt)}
                       </p>
                     </div>
-                    <div className="rounded-[18px] border border-border bg-neutral p-4">
+                    <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary">Cập nhật</p>
                       <p className="mt-2 text-sm font-semibold text-primary">
                         {formatShortDateTime(selectedUser.updatedAt || selectedUser.createdAt)}
@@ -456,7 +498,7 @@ export default function UserManagementPage() {
                   managedClassrooms.length > 0 ? (
                     <div className="space-y-3">
                       {managedClassrooms.map((classroom) => (
-                        <div key={classroom.id} className="rounded-[18px] border border-border bg-neutral p-4">
+                        <div key={classroom.id} className="rounded-[18px] border border-border bg-surface-sunken p-4">
                           <p className="text-sm font-semibold text-primary">{classroom.name}</p>
                           <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-secondary">
                             <span className="rounded-full border border-border bg-surface px-3 py-1">
