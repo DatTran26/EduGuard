@@ -1,0 +1,83 @@
+Mẫu Câu trả lời ngắn
+Dành cho giảng viên import đề vào EduGuard
+File mẫu cho giảng viên import đề thuộc bất kỳ môn học hoặc hoạt động giáo dục nào trong chương trình giáo dục phổ thông Việt Nam từ lớp 1 đến lớp 12 vào EduGuard.
+
+Câu 1: Trong câu "Bạn Lan đang học bài", ai là người thực hiện hoạt động học bài?
+question_type: short_answer
+Đáp án: Bạn Lan
+Điểm: 1
+Môn: Tiếng Việt
+Chương: Câu
+Bài: Chủ ngữ trong câu
+Mức độ: Dễ
+Giải thích: Bạn Lan là chủ ngữ, là người thực hiện hoạt động học bài.
+
+Câu 2: Tính 25 + 25.
+question_type: short_answer
+Đáp án: 50
+Điểm: 1
+Môn: Toán
+Chương: Số học
+Bài: Phép cộng
+Mức độ: Dễ
+Giải thích: 25 + 25 = 50.
+
+Câu 3: Từ tiếng Anh "hello" thường dùng để nói gì trong tiếng Việt?
+question_type: short_answer
+Đáp án: xin chào
+Điểm: 1
+Môn: Tiếng Anh
+Chương: Communication
+Bài: Greetings
+Mức độ: Dễ
+Giải thích: "Hello" thường được dùng để chào hỏi, tương đương "xin chào".
+
+Câu 4: Tên thủ đô của Việt Nam là gì?
+question_type: short_answer
+Đáp án: Hà Nội
+Điểm: 1
+Môn: Lịch sử và Địa lí
+Chương: Địa lí Việt Nam
+Bài: Thủ đô Việt Nam
+Mức độ: Dễ
+Giải thích: Hà Nội là thủ đô của Việt Nam.
+
+Câu 5: Thiết bị nào dùng để nhập chữ và số vào máy tính?
+question_type: short_answer
+Đáp án: bàn phím
+Điểm: 1
+Môn: Tin học
+Chương: Thiết bị số
+Bài: Thiết bị nhập dữ liệu
+Mức độ: Dễ
+Giải thích: Bàn phím dùng để nhập chữ, số và ký hiệu vào máy tính.
+
+Câu 6: Trong âm nhạc, nốt đầu tiên của dãy Đô - Rê - Mi - Fa - Sol - La - Si là nốt gì?
+question_type: short_answer
+Đáp án: Đô
+Điểm: 1
+Môn: Âm nhạc
+Chương: Cao độ
+Bài: Tên nốt nhạc
+Mức độ: Dễ
+Giải thích: Dãy nốt bắt đầu bằng nốt Đô.
+
+Câu 7: Khi bóng đèn bị hỏng, trước khi thay bóng cần ngắt nguồn gì?
+question_type: short_answer
+Đáp án: nguồn điện
+Điểm: 1
+Môn: Công nghệ
+Chương: An toàn điện
+Bài: Thay thiết bị điện an toàn
+Mức độ: Trung bình
+Giải thích: Cần ngắt nguồn điện trước khi thay bóng đèn để đảm bảo an toàn.
+
+Câu 8: Kỹ năng quan trọng giúp các thành viên phối hợp tốt trong nhóm là kỹ năng gì?
+question_type: short_answer
+Đáp án: hợp tác
+Điểm: 1
+Môn: Hoạt động trải nghiệm, hướng nghiệp
+Chương: Kỹ năng xã hội
+Bài: Kỹ năng hợp tác
+Mức độ: Dễ
+Giải thích: Hợp tác giúp các thành viên phối hợp và hoàn thành nhiệm vụ chung.

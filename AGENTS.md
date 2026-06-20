@@ -44,6 +44,7 @@ Required description fields:
 
 ## Feature Changelog Requirement
 
+- Update root `CHANGELOG.md` for user-facing or release-impacting changes; separate Backend and Frontend notes when both sides change.
 - Update `docs/project-changelog.md` for every feature-level change.
 - Changelog entries must be grouped by feature, not only by date.
 - Each feature changelog entry must include date, branch/source, description, changed files, validation, and unresolved questions if any.

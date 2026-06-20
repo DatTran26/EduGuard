@@ -147,6 +147,7 @@ Chi tiết thực thi: `.agents/skills/ship-code/SKILL.md`, `.agents/skills/gith
 | Loại thay đổi | File cập nhật |
 |----------------|---------------|
 | Tiến độ / task | `Todo List.md` |
+| Thay đổi user-facing / release-impacting | `CHANGELOG.md` |
 | Feature hoàn chỉnh | `docs/project-changelog.md` |
 | Release | `CHANGELOG.md` + tag GitHub |
 
@@ -157,9 +158,10 @@ Chi tiết thực thi: `.agents/skills/ship-code/SKILL.md`, `.agents/skills/gith
 | File | Mục đích |
 |------|----------|
 | `Todo List.md` | Checklist theo giai đoạn (chỉ task, không quy tắc) |
+| `CHANGELOG.md` | Changelog chính theo release và thay đổi user-facing |
 | `docs/swagger-api-testing-guide.md` | Hướng dẫn test API trên Swagger (JWT, luồng E2E) |
 | `AGENTS.md` | Chính sách Git, Husky, changelog — entry point cho agent |
-| `docs/project-changelog.md` | Lịch sử thay đổi theo feature |
+| `docs/project-changelog.md` | Lịch sử chi tiết theo feature |
 | `.agents/skills/push-code/SKILL.md` | Thực thi push lưu repo |
 | `.agents/skills/merge-release/SKILL.md` | Merge dev → release, sync release về dev |
 | `.agents/skills/ship-code/SKILL.md` | Thực thi ship / release |

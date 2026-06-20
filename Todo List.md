@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD` / `devH` / `devB` (nhánh dev theo feature)
-**Cập nhật:** 2026-06-18 (devH: hoàn thiện cụm màn hình Admin theo sitemap MVP gồm `Dashboard`, `Người dùng`, `Lớp học`, `Bài kiểm tra`, `Giám sát`, `Hồ sơ`; đã thêm route/menu `Giám sát`, nâng `Dashboard` admin với trạng thái đề thi và lượt làm cần chú ý, làm lại `Người dùng` theo bố cục filter + danh sách + chi tiết, rồi nối `Người dùng` sang backend thật với API admin CRUD thêm/sửa/xóa user và dữ liệu thật thay cho mock; cùng ngày đã gỡ Student Dashboard khỏi điều hướng/route công khai, chuyển điểm vào mặc định của Student về `Lớp của tôi`, sửa breadcrumb `Trang chủ` cho Student và làm mới toàn bộ trang `Hồ sơ` theo layout nổi bật hơn với hero rõ ngữ cảnh, card title-only, khu avatar riêng, trạng thái đồng bộ/chưa lưu và hành động hoàn tác; đồng thời đã sửa lỗi active state sidebar của Student để trang `Tham gia lớp` không còn làm sáng nhầm `Lớp của tôi`, rồi đồng bộ `Dashboard`, `Lớp học` và `Bài kiểm tra` của Admin sang dữ liệu backend thật bằng cách mở quyền đọc classroom/member/attempt/anti-cheat cho admin và chuyển dashboard admin sang tổng hợp từ API thật.)
+**Cập nhật:** 2026-06-18 (devH: hoàn thiện cụm màn hình Admin theo sitemap MVP gồm `Dashboard`, `Người dùng`, `Lớp học`, `Bài kiểm tra`, `Giám sát`, `Hồ sơ`; đã thêm route/menu `Giám sát`, nâng `Dashboard` admin với trạng thái đề thi và lượt làm cần chú ý, làm lại `Người dùng` theo bố cục filter + danh sách + chi tiết, rồi nối `Người dùng` sang backend thật với API admin CRUD thêm/sửa/xóa user và dữ liệu thật thay cho mock; cùng ngày đã gỡ Student Dashboard khỏi điều hướng/route công khai, chuyển điểm vào mặc định của Student về `Lớp của tôi`, sửa breadcrumb `Trang chủ` cho Student và làm mới toàn bộ trang `Hồ sơ` theo layout nổi bật hơn với hero rõ ngữ cảnh, card title-only, khu avatar riêng, trạng thái đồng bộ/chưa lưu và hành động hoàn tác; đồng thời đã sửa lỗi active state sidebar của Student để trang `Tham gia lớp` không còn làm sáng nhầm `Lớp của tôi`, rồi đồng bộ `Dashboard`, `Lớp học` và `Bài kiểm tra` của Admin sang dữ liệu backend thật bằng cách mở quyền đọc classroom/member/attempt/anti-cheat cho admin và chuyển dashboard admin sang tổng hợp từ API thật.) 2026-06-19 devB: backend import file câu hỏi đã hỗ trợ `short_answer` bằng `correct_answer` làm đáp án mẫu; `essay` và UI upload vẫn là follow-up. Cùng ngày đã tích hợp 20 file mẫu import vào backend và thêm API list/download template chỉ cho Teacher/Admin.
 **Ghi chú devB:** 2026-06-15 (backend cấu hình bài kiểm tra UTC, validation publish trắc nghiệm MVP; Phase 8 SignalR xong; Phase 9 Redis — kế hoạch chi tiết)
 **Ghi chú devH:** 2026-06-17 (đã xử lý conflict khi pull từ `release` theo hướng giữ bản release; hoàn thiện FE cho cấu hình lịch thi UTC+7, chia nhóm form, bỏ checkbox publish, thêm checklist điều kiện publish và nút `Publish đề` gọi backend thật, đồng thời bổ sung hướng dẫn theo loại câu hỏi và thống kê đầy đủ các dạng câu ở trang chi tiết đề thi; khóa exact version dependency frontend, thêm `.npmrc` `save-exact` và chuẩn hóa `package-lock.json` để giảm conflict merge với `release`; làm mới UI đăng nhập theo layout 2 cột cân giữa màn hình với panel thương hiệu và login card riêng)
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
@@ -175,6 +175,10 @@
 
 ### Backend
 
+- [x] Swagger shows multipart question import endpoint without 500 at `/swagger/v1/swagger.json`
+- [x] Question import accepts XLSX files with title/instruction rows before the header and ignores trailing note rows
+- [x] Teacher import templates standardized with no-accent file names in backend downloads
+- [x] Question import parses all 20 teacher templates across CSV/XLSX/TXT/DOCX/PDF
 - [x] Entity `Exam`, `ExamSetting`, `Question`, `Answer`
 - [x] Migration `AddAssignmentsExamsAndAttempts`
 - [x] `ExamsController` + Service + Repository (11 API + question bank)
@@ -182,7 +186,8 @@
 - [x] API thêm / sửa / xóa câu hỏi & đáp án
 - [x] API upload/import file chuẩn tạo câu hỏi trắc nghiệm vào đề thi (`POST /api/exams/{id}/questions/import`) cho Teacher/Admin
 - [x] Validate file import backend: `.csv`, `.xlsx`, `.txt`, `.docx`, PDF text, MIME type, giới hạn 5MB, cột/template bắt buộc, `question_type`, `correct_answer`, `score`
-- [x] Import backend hỗ trợ `single_choice`, `multiple_choice`, `true_false`; tự luận ngắn/dài để phát triển sau
+- [x] Import backend hỗ trợ `single_choice`, `multiple_choice`, `true_false`, `short_answer`; `essay` / tự luận dài để phát triển sau
+- [x] API danh sách/tải file mẫu import câu hỏi (`GET /api/exams/question-import/templates`, `GET /api/exams/question-import/templates/{fileName}`) cho Teacher/Admin
 - [x] API publish đề thi *(cho phép công khai metadata trước; student chỉ start khi đề đã có câu hỏi)*
 
 ### Frontend
@@ -193,9 +198,9 @@
 - [x] UI cập nhật / xóa đề thi *(Teacher, có xác nhận xóa 2 bước và publish qua endpoint riêng)*
 - [x] UI cấu hình đề thi *(thời gian mở-đóng, anti-cheat, fullscreen, random, max attempts, show result; classroom không còn đổi được sau khi tạo vì backend chưa hỗ trợ)*
 - [x] UI quản lý câu hỏi & đáp án *(Teacher thêm/sửa/xóa câu hỏi qua backend thật; Admin xem được question bank; Student không thấy đáp án ở trang detail)*
-- [ ] UI upload file chuẩn tạo câu hỏi trắc nghiệm bài kiểm tra
+- [ ] UI upload file chuẩn tạo câu hỏi bài kiểm tra
 - [ ] Hiển thị lỗi import theo từng dòng/cột từ backend
-- [ ] Tải file mẫu `.csv`, `.xlsx`, `.txt`, `.docx` theo định chuẩn import ngân hàng câu hỏi
+- [ ] Tải file mẫu `.csv`, `.xlsx`, `.txt`, `.docx` từ API template backend
 - [ ] UI tự luận/essay import để phát triển sau khi hoàn thiện trắc nghiệm
 
 ### Backend — Cấu hình bài kiểm tra & trắc nghiệm MVP cần bổ sung
@@ -626,7 +631,7 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 
 ## Tài liệu — README giới thiệu hệ thống
 
-**Mục tiêu:** README là cổng vào repo — giới thiệu hệ thống làm gì, cấu trúc ra sao, cách chạy, điểm nổi bật. **Không** ghi tiến độ phase (để `Todo List.md`, `docs/project-changelog.md`, `docs/features.md`).
+**Mục tiêu:** README là cổng vào repo — giới thiệu hệ thống làm gì, cấu trúc ra sao, cách chạy, điểm nổi bật. **Không** ghi tiến độ phase (để `Todo List.md`, `CHANGELOG.md`, `docs/project-changelog.md`, `docs/features.md`).
 
 **Rà soát hiện trạng (2026-06-15):**
 

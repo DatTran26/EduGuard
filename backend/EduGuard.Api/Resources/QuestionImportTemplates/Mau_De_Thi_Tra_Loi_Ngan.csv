@@ -1,0 +1,9 @@
+﻿question_text,question_type,option_a,option_b,option_c,option_d,correct_answer,score,subject,chapter,lesson,difficulty,explanation
+"Trong câu ""Bạn Lan đang học bài"", ai là người thực hiện hoạt động học bài?",short_answer,,,,,Bạn Lan,1,Tiếng Việt,Câu,Chủ ngữ trong câu,Dễ,"Bạn Lan là chủ ngữ, là người thực hiện hoạt động học bài."
+Tính 25 + 25.,short_answer,,,,,50,1,Toán,Số học,Phép cộng,Dễ,25 + 25 = 50.
+"Từ tiếng Anh ""hello"" thường dùng để nói gì trong tiếng Việt?",short_answer,,,,,xin chào,1,Tiếng Anh,Communication,Greetings,Dễ,"""Hello"" thường được dùng để chào hỏi, tương đương ""xin chào""."
+Tên thủ đô của Việt Nam là gì?,short_answer,,,,,Hà Nội,1,Lịch sử và Địa lí,Địa lí Việt Nam,Thủ đô Việt Nam,Dễ,Hà Nội là thủ đô của Việt Nam.
+Thiết bị nào dùng để nhập chữ và số vào máy tính?,short_answer,,,,,bàn phím,1,Tin học,Thiết bị số,Thiết bị nhập dữ liệu,Dễ,"Bàn phím dùng để nhập chữ, số và ký hiệu vào máy tính."
+"Trong âm nhạc, nốt đầu tiên của dãy Đô - Rê - Mi - Fa - Sol - La - Si là nốt gì?",short_answer,,,,,Đô,1,Âm nhạc,Cao độ,Tên nốt nhạc,Dễ,Dãy nốt bắt đầu bằng nốt Đô.
+"Khi bóng đèn bị hỏng, trước khi thay bóng cần ngắt nguồn gì?",short_answer,,,,,nguồn điện,1,Công nghệ,An toàn điện,Thay thiết bị điện an toàn,Trung bình,Cần ngắt nguồn điện trước khi thay bóng đèn để đảm bảo an toàn.
+Kỹ năng quan trọng giúp các thành viên phối hợp tốt trong nhóm là kỹ năng gì?,short_answer,,,,,hợp tác,1,"Hoạt động trải nghiệm, hướng nghiệp",Kỹ năng xã hội,Kỹ năng hợp tác,Dễ,Hợp tác giúp các thành viên phối hợp và hoàn thành nhiệm vụ chung.

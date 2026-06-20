@@ -314,9 +314,11 @@ internal static class QuestionImportDocxParser
             foreach (var paragraph in document.Descendants(WordNs + "p"))
             {
                 ct.ThrowIfCancellationRequested();
-                var text = string.Concat(paragraph.Descendants(WordNs + "t").Select(x => x.Value)).Trim();
-                if (!string.IsNullOrWhiteSpace(text))
-                    lines.Add(text);
+                foreach (var line in ExtractParagraphLines(paragraph))
+                {
+                    if (!string.IsNullOrWhiteSpace(line))
+                        lines.Add(line);
+                }
             }
 
             return Task.FromResult(QuestionImportStructuredTextParser.Parse(
@@ -328,6 +330,27 @@ internal static class QuestionImportDocxParser
             QuestionImportErrors.Add(result.Errors, 1, "file", "DOCX file is invalid or corrupted.");
             return Task.FromResult(result);
         }
+    }
+
+    private static IEnumerable<string> ExtractParagraphLines(XElement paragraph)
+    {
+        var builder = new StringBuilder();
+        foreach (var element in paragraph.Descendants())
+        {
+            if (element.Name == WordNs + "t")
+            {
+                builder.Append(element.Value);
+            }
+            else if (element.Name == WordNs + "br" || element.Name == WordNs + "cr")
+            {
+                yield return builder.ToString().Trim();
+                builder.Clear();
+            }
+        }
+
+        var lastLine = builder.ToString().Trim();
+        if (!string.IsNullOrWhiteSpace(lastLine))
+            yield return lastLine;
     }
 }
 
@@ -371,13 +394,17 @@ internal static class QuestionImportTabularParser
             return result;
         }
 
-        var headerRow = nonEmptyRows[0];
-        var headers = headerRow.Values.Select(QuestionImportQuestionBuilder.NormalizeToken).ToList();
-        var headerIndexes = headers
-            .Select((name, index) => new { name, index })
-            .Where(x => !string.IsNullOrWhiteSpace(x.name))
-            .GroupBy(x => x.name, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(x => x.Key, x => x.First().index, StringComparer.OrdinalIgnoreCase);
+        var headerMatch = nonEmptyRows
+            .Select((row, index) => new
+            {
+                row,
+                index,
+                headerIndexes = BuildHeaderIndexes(row.Values)
+            })
+            .FirstOrDefault(x => RequiredHeaders.All(requiredHeader => x.headerIndexes.ContainsKey(requiredHeader)));
+
+        var headerRow = headerMatch?.row ?? nonEmptyRows[0];
+        var headerIndexes = headerMatch?.headerIndexes ?? BuildHeaderIndexes(headerRow.Values);
 
         foreach (var requiredHeader in RequiredHeaders)
         {
@@ -388,8 +415,22 @@ internal static class QuestionImportTabularParser
         if (result.Errors.Count > 0)
             return result;
 
-        foreach (var row in nonEmptyRows.Skip(1))
+        var dataRows = headerMatch is null
+            ? nonEmptyRows.Skip(1)
+            : nonEmptyRows.Skip(headerMatch.index + 1);
+
+        var reachedFooter = false;
+        foreach (var row in dataRows)
         {
+            if (IsFooterMarkerRow(row.Values))
+            {
+                reachedFooter = true;
+                continue;
+            }
+
+            if (reachedFooter && IsSingleCellNoteRow(row.Values))
+                continue;
+
             result.TotalRows++;
             var question = QuestionImportQuestionBuilder.ParseTabularRow(headerIndexes, row.Values, row.RowNumber, result.Errors);
             if (question is not null)
@@ -401,6 +442,26 @@ internal static class QuestionImportTabularParser
 
         return result;
     }
+
+    private static Dictionary<string, int> BuildHeaderIndexes(IReadOnlyList<string> values) =>
+        values
+            .Select(QuestionImportQuestionBuilder.NormalizeToken)
+            .Select((name, index) => new { name, index })
+            .Where(x => !string.IsNullOrWhiteSpace(x.name))
+            .GroupBy(x => x.name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.First().index, StringComparer.OrdinalIgnoreCase);
+
+    private static bool IsFooterMarkerRow(IReadOnlyList<string> values)
+    {
+        var firstCell = values.FirstOrDefault() ?? string.Empty;
+        var normalized = QuestionImportQuestionBuilder.NormalizeToken(firstCell).Replace(' ', '_').Replace('-', '_');
+        return normalized is "ghi_chu" or "note" or "notes" or "luu_y" or "huong_dan" or "instruction" or "instructions";
+    }
+
+    private static bool IsSingleCellNoteRow(IReadOnlyList<string> values) =>
+        values.Count > 0
+        && !string.IsNullOrWhiteSpace(values[0])
+        && values.Skip(1).All(string.IsNullOrWhiteSpace);
 }
 
 internal static class QuestionImportStructuredTextParser
@@ -654,6 +715,7 @@ internal static class QuestionImportQuestionBuilder
             QuestionType.SingleChoice => ParseChoiceAnswers(options, correctAnswer, rowNumber, errors, requireSingleCorrect: true),
             QuestionType.MultipleChoice => ParseChoiceAnswers(options, correctAnswer, rowNumber, errors, requireSingleCorrect: false),
             QuestionType.TrueFalse => ParseTrueFalseAnswers(options, correctAnswer, rowNumber, errors),
+            QuestionType.ShortAnswer => ParseShortAnswerAnswers(correctAnswer, rowNumber, errors),
             _ => []
         };
 
@@ -702,11 +764,17 @@ internal static class QuestionImportQuestionBuilder
                 questionType = QuestionType.TrueFalse;
                 return true;
             case "short_answer":
+            case "shortanswer":
+            case "short":
+            case "text_answer":
+            case "textanswer":
+                questionType = QuestionType.ShortAnswer;
+                return true;
             case "essay":
-                error = "Only single_choice, multiple_choice, and true_false are supported for exam-question imports.";
+                error = "essay imports are not supported yet. Use short_answer for auto-graded short text answers.";
                 return false;
             default:
-                error = "question_type must be single_choice, multiple_choice, or true_false.";
+                error = "question_type must be single_choice, multiple_choice, true_false, or short_answer.";
                 return false;
         }
     }
@@ -795,6 +863,29 @@ internal static class QuestionImportQuestionBuilder
         ];
     }
 
+    private static List<AnswerInputDto> ParseShortAnswerAnswers(
+        string correctAnswer,
+        int rowNumber,
+        List<QuestionImportErrorDto> errors)
+    {
+        var acceptedAnswer = correctAnswer.Trim();
+        if (string.IsNullOrWhiteSpace(acceptedAnswer))
+        {
+            QuestionImportErrors.Add(errors, rowNumber, "correct_answer", "short_answer requires a non-empty sample answer.");
+            return [];
+        }
+
+        return
+        [
+            new AnswerInputDto
+            {
+                Content = acceptedAnswer,
+                IsCorrect = true,
+                OrderIndex = 1
+            }
+        ];
+    }
+
     private static bool? ParseBooleanCorrectAnswer(string correctAnswer, IReadOnlyList<QuestionImportOption> options)
     {
         var normalized = NormalizeToken(correctAnswer);
@@ -851,6 +942,30 @@ internal static class QuestionImportQuestionBuilder
 
 internal static class QuestionImportPdfTextExtractor
 {
+    private static readonly Regex IndirectObjectRegex = new(
+        @"(?s)(?<number>\d+)\s+0\s+obj(?<body>.*?)endobj",
+        RegexOptions.CultureInvariant);
+
+    private static readonly Regex FontResourceRegex = new(
+        @"/(?<name>F\d+)\s+(?<object>\d+)\s+0\s+R",
+        RegexOptions.CultureInvariant);
+
+    private static readonly Regex ToUnicodeRegex = new(
+        @"/ToUnicode\s+(?<object>\d+)\s+0\s+R",
+        RegexOptions.CultureInvariant);
+
+    private static readonly Regex FontSelectRegex = new(
+        @"/(?<font>F\d+)\s+(?:\d+(?:\.\d+)?)\s+Tf",
+        RegexOptions.CultureInvariant);
+
+    private static readonly Regex HexStringRegex = new(
+        @"<(?<hex>[0-9A-Fa-f]+)>",
+        RegexOptions.CultureInvariant);
+
+    private static readonly Regex CMapPairRegex = new(
+        @"<(?<source>[0-9A-Fa-f]+)>\s+<(?<target>[0-9A-Fa-f]+)>",
+        RegexOptions.CultureInvariant);
+
     private static readonly Regex TextOperatorRegex = new(
         @"\((?:\\.|[^\\)])*\)\s*(?:Tj|'|"")|\[(?:.|\n)*?\]\s*TJ",
         RegexOptions.CultureInvariant | RegexOptions.Singleline);
@@ -862,14 +977,194 @@ internal static class QuestionImportPdfTextExtractor
     public static string ExtractText(byte[] bytes)
     {
         var builder = new StringBuilder();
+        var fontMaps = BuildFontMaps(bytes);
         foreach (var stream in EnumerateStreams(bytes))
         {
             var text = Encoding.Latin1.GetString(stream);
+            AppendMappedHexTextOperators(text, fontMaps, builder);
             AppendTextOperators(text, builder);
         }
 
         if (builder.Length == 0)
+        {
+            var text = Encoding.Latin1.GetString(bytes);
+            AppendMappedHexTextOperators(text, fontMaps, builder);
             AppendTextOperators(Encoding.Latin1.GetString(bytes), builder);
+        }
+
+        return builder.ToString();
+    }
+
+    private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> BuildFontMaps(byte[] bytes)
+    {
+        var objects = ParseObjects(bytes);
+        if (objects.Count == 0)
+            return new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+
+        var source = Encoding.Latin1.GetString(bytes);
+        var fontObjects = FontResourceRegex
+            .Matches(source)
+            .Cast<Match>()
+            .GroupBy(match => match.Groups["name"].Value, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => int.Parse(group.First().Groups["object"].Value, CultureInfo.InvariantCulture),
+                StringComparer.OrdinalIgnoreCase);
+
+        var fontMaps = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (fontName, fontObjectNumber) in fontObjects)
+        {
+            if (!objects.TryGetValue(fontObjectNumber, out var fontObject))
+                continue;
+
+            var toUnicodeMatch = ToUnicodeRegex.Match(fontObject.Text);
+            if (!toUnicodeMatch.Success)
+                continue;
+
+            var cmapObjectNumber = int.Parse(toUnicodeMatch.Groups["object"].Value, CultureInfo.InvariantCulture);
+            if (!objects.TryGetValue(cmapObjectNumber, out var cmapObject) || cmapObject.DecodedStream is null)
+                continue;
+
+            var map = ParseCMap(Encoding.Latin1.GetString(cmapObject.DecodedStream));
+            if (map.Count > 0)
+                fontMaps[fontName] = map;
+        }
+
+        return fontMaps;
+    }
+
+    private static Dictionary<int, PdfObject> ParseObjects(byte[] bytes)
+    {
+        var source = Encoding.Latin1.GetString(bytes);
+        var objects = new Dictionary<int, PdfObject>();
+        foreach (Match match in IndirectObjectRegex.Matches(source))
+        {
+            var number = int.Parse(match.Groups["number"].Value, CultureInfo.InvariantCulture);
+            var bodyStart = match.Groups["body"].Index;
+            var bodyLength = match.Groups["body"].Length;
+            var objectBytes = bytes[bodyStart..(bodyStart + bodyLength)];
+            var bodyText = match.Groups["body"].Value;
+            objects[number] = new PdfObject(bodyText, ExtractObjectStream(objectBytes, bodyText));
+        }
+
+        return objects;
+    }
+
+    private static byte[]? ExtractObjectStream(byte[] objectBytes, string objectText)
+    {
+        var streamToken = IndexOf(objectBytes, "stream"u8.ToArray(), 0);
+        if (streamToken < 0)
+            return null;
+
+        var dataStart = streamToken + "stream".Length;
+        if (dataStart < objectBytes.Length && objectBytes[dataStart] == '\r')
+            dataStart++;
+        if (dataStart < objectBytes.Length && objectBytes[dataStart] == '\n')
+            dataStart++;
+
+        var endToken = IndexOf(objectBytes, "endstream"u8.ToArray(), dataStart);
+        if (endToken < 0)
+            return null;
+
+        var dataEnd = endToken;
+        while (dataEnd > dataStart && (objectBytes[dataEnd - 1] == '\r' || objectBytes[dataEnd - 1] == '\n'))
+            dataEnd--;
+
+        var data = objectBytes[dataStart..dataEnd];
+        return objectText.Contains("/FlateDecode", StringComparison.OrdinalIgnoreCase) ? TryInflate(data) : data;
+    }
+
+    private static Dictionary<string, string> ParseCMap(string cmapText)
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (Match match in CMapPairRegex.Matches(cmapText))
+        {
+            var source = match.Groups["source"].Value.ToUpperInvariant();
+            var target = DecodeUtf16BeHex(match.Groups["target"].Value);
+            if (!string.IsNullOrEmpty(source) && !string.IsNullOrEmpty(target))
+                map[source] = target;
+        }
+
+        return map;
+    }
+
+    private static string DecodeUtf16BeHex(string hex)
+    {
+        if (hex.Length % 4 != 0)
+            return string.Empty;
+
+        var builder = new StringBuilder(hex.Length / 4);
+        for (var index = 0; index < hex.Length; index += 4)
+        {
+            var codeUnit = Convert.ToInt32(hex.Substring(index, 4), 16);
+            builder.Append((char)codeUnit);
+        }
+
+        return builder.ToString();
+    }
+
+    private static void AppendMappedHexTextOperators(
+        string content,
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> fontMaps,
+        StringBuilder builder)
+    {
+        if (fontMaps.Count == 0)
+            return;
+
+        string? currentFont = null;
+        foreach (var line in content.Split('\n'))
+        {
+            var fontMatch = FontSelectRegex.Match(line);
+            if (fontMatch.Success)
+                currentFont = fontMatch.Groups["font"].Value;
+
+            if (currentFont is null || !fontMaps.TryGetValue(currentFont, out var map))
+                continue;
+
+            if (!line.Contains("Tj", StringComparison.Ordinal) && !line.Contains("TJ", StringComparison.Ordinal))
+                continue;
+
+            var decoded = new StringBuilder();
+            foreach (Match hexMatch in HexStringRegex.Matches(line))
+                decoded.Append(DecodeMappedHexString(hexMatch.Groups["hex"].Value, map));
+
+            var text = decoded.ToString().Trim();
+            if (!string.IsNullOrWhiteSpace(text))
+                builder.AppendLine(text);
+        }
+    }
+
+    private static string DecodeMappedHexString(string hex, IReadOnlyDictionary<string, string> map)
+    {
+        if (hex.Length == 0)
+            return string.Empty;
+
+        var keyLengths = map.Keys.Select(key => key.Length).Distinct().OrderByDescending(length => length).ToList();
+        if (keyLengths.Count == 0)
+            return string.Empty;
+
+        var builder = new StringBuilder();
+        for (var index = 0; index < hex.Length;)
+        {
+            var matched = false;
+            foreach (var keyLength in keyLengths)
+            {
+                if (index + keyLength > hex.Length)
+                    continue;
+
+                var key = hex.Substring(index, keyLength).ToUpperInvariant();
+                if (!map.TryGetValue(key, out var value))
+                    continue;
+
+                builder.Append(value);
+                index += keyLength;
+                matched = true;
+                break;
+            }
+
+            if (!matched)
+                index += 2;
+        }
 
         return builder.ToString();
     }
@@ -1029,6 +1324,8 @@ internal static class QuestionImportPdfTextExtractor
 
         return -1;
     }
+
+    private sealed record PdfObject(string Text, byte[]? DecodedStream);
 }
 
 internal static class QuestionImportErrors

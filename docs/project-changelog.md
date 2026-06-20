@@ -1,5 +1,143 @@
 # Project Changelog
 
+## Feature: Teacher import template standardization
+
+Date: 2026-06-20
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Teacher import template standardization.
+- Purpose and user/business impact: Teachers/Admins download clearer import templates with descriptive no-accent file names, while all five supported upload formats remain parseable by the backend.
+- Files or modules changed: backend template resources, exam controller template metadata, question import parser, template documentation, Todo List, main changelog, and project changelog.
+
+Changed files:
+
+- `backend/EduGuard.Api/Controllers/exams-controller.cs`
+- `backend/EduGuard.Api/Resources/QuestionImportTemplates/`
+- `backend/EduGuard.Infrastructure/Exams/question-import-parser.cs`
+- `docs/10_QUESTION_BANK_IMPORT_TEMPLATES.md`
+- `docs/11_QUESTION_IMPORT_TEMPLATE_USAGE.md`
+- `docs/Huong_Dan_Su_Dung_File_Mau_Import_De.docx`
+- `docs/Huong_Dan_Su_Dung_File_Mau_Import_De.pdf`
+- `docs/README.md`
+- `Todo List.md`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Replaced the previous 20 backend template files with the teacher-focused template set from `Bo_File_Mau_Import_De_Cho_Giang_Vien`, renamed to no-accent ASCII names such as `Mau_De_Thi_Trac_Nghiem_Mot_Dap_An.xlsx`.
+- Updated the template whitelist metadata so `GET /api/exams/question-import/templates` and template downloads expose only the new no-accent file names.
+- Added the teacher usage guide as `docs/11_QUESTION_IMPORT_TEMPLATE_USAGE.md`, plus the provided DOCX/PDF guide files with no-accent names, and refreshed `docs/10_QUESTION_BANK_IMPORT_TEMPLATES.md` to match the new standard.
+- Fixed DOCX parsing for templates where each question is in a Word table cell with `<w:br/>` line breaks.
+- Extended PDF text extraction to decode `/ToUnicode` CMap hex text operators, so the new text-based PDF templates are importable instead of being rejected as unreadable PDFs.
+
+Validation:
+
+- `dotnet restore backend\EduGuard.Api\EduGuard.Api.csproj --ignore-failed-sources` passed using local package cache after NuGet signature checks attempted network access.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore -o temp\backend-template-standard-build` passed with 0 warnings and 0 errors.
+- Smoke-tested all 20 backend template files through `QuestionImportParser`: every CSV/XLSX/TXT/DOCX/PDF template returned `questions=8` and `errors=0`.
+
+Known risks / rollback / follow-up:
+
+- The PDF extractor now supports the template generator's `/ToUnicode` CMap pattern; scanned image PDFs still require OCR and remain unsupported.
+- Main frontend template browsing remains a separate UI task; the temporary upload test page/server was removed after manual verification.
+- Rollback: restore the previous resource files and revert the controller metadata plus parser changes in this feature entry.
+
+## Feature: Backend question import template downloads
+
+Date: 2026-06-19
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Backend question import template downloads.
+- Purpose and user/business impact: Teachers/Admins can list and download official import templates directly from the backend, so template files used by the import workflow stay versioned with the application instead of living only in local Downloads.
+- Files or modules changed: backend API controller, API project resources, import template DTO, imported template documentation, API/feature tracking, Todo List, and project changelog.
+
+Changed files:
+
+- `backend/EduGuard.Api/Controllers/exams-controller.cs`
+- `backend/EduGuard.Api/EduGuard.Api.csproj`
+- `backend/EduGuard.Api/Resources/QuestionImportTemplates/`
+- `backend/EduGuard.Application/DTOs/Exams/question-import-template-dto.cs`
+- `backend/EduGuard.Infrastructure/Exams/question-import-parser.cs`
+- `docs/10_QUESTION_BANK_IMPORT_TEMPLATES.md`
+- `docs/README.md`
+- `docs/apiList.md`
+- `docs/features.md`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Added 20 import template files under API resources: 4 question types by 5 supported formats (`.csv`, `.xlsx`, `.txt`, `.docx`, `.pdf`).
+- Added `QuestionImportTemplateDto` and two Teacher/Admin-only endpoints: `GET /api/exams/question-import/templates` for metadata and `GET /api/exams/question-import/templates/{fileName}` for download.
+- Bug fix: changed the question import upload action from direct `[FromForm] IFormFile` binding to a multipart form model so Swashbuckle can generate `swagger/v1/swagger.json` without a 500 error.
+- Bug fix: updated tabular import parsing to find the real header row in XLSX/CSV files with title/instruction rows before the columns, and to ignore trailing template note rows such as `Ghi chu`.
+- Implemented download via a fixed whitelist generated from known question types/formats, plus file-name validation and full-path containment checks to avoid arbitrary file access.
+- Updated the API project file so template resources are copied to build and publish output with `PreserveNewest`.
+- Copied `EduGuard_Import_Templates_4x5_Index.md` into `docs/10_QUESTION_BANK_IMPORT_TEMPLATES.md` as the canonical template guide.
+
+Validation:
+
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore -o temp\backend-template-download-build` passed with 0 warnings and 0 errors.
+- Verified `temp\backend-template-download-build\Resources\QuestionImportTemplates` contains 20 template files after build.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore -o temp\backend-swagger-fix-build` passed with 0 warnings and 0 errors.
+- Verified `http://localhost:5157/swagger/v1/swagger.json`, `http://localhost:5157/swagger/index.html`, and `http://localhost:5157/api/test` return 200 after restarting the backend.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore -o temp\backend-import-header-build` passed with 0 warnings and 0 errors.
+- Smoke-tested `EduGuard_XLSX_Mau_01_single_choice_Toan_Ly_Hoa_Sinh_Full.xlsx`: parser result was `TOTAL_ROWS=8`, `QUESTIONS=8`, `ERRORS=0`.
+
+Known risks / rollback / follow-up:
+
+- The new endpoints are backend-only; frontend buttons for browsing/downloading templates remain a separate pending task.
+- Template downloads require Teacher/Admin JWT, matching the import endpoint authorization.
+- Rollback is straightforward: remove the two endpoints, DTO, project resource copy rule, and the `Resources/QuestionImportTemplates` folder.
+
+
+## Feature: Backend short-answer question import
+
+Date: 2026-06-19
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Backend short-answer question import.
+- Purpose and user/business impact: Teachers/Admins can import auto-graded short-answer questions through the existing standard question import endpoint instead of adding those questions manually after import.
+- Files or modules changed: exam question import parser, question import standard docs, API/feature tracking, Todo List, and project changelog.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/Exams/question-import-parser.cs`
+- `docs/09_QUESTION_BANK_FILE_IMPORT_STANDARD.md`
+- `docs/features.md`
+- `docs/apiList.md`
+- `Todo List.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Extended `QuestionImportQuestionBuilder` so `short_answer`, `shortanswer`, `short`, `text_answer`, and `textanswer` map to `QuestionType.ShortAnswer`.
+- Added short-answer import answer construction: `correct_answer` becomes one accepted sample answer with `IsCorrect = true`, then existing backend normalization/validation handles persistence and grading rules.
+- Kept `essay` rejected because the domain model currently has `ShortAnswer` only, not a separate long-form manually graded essay type.
+- Updated import documentation/tracking to distinguish supported `short_answer` from deferred `essay` and frontend upload UI work.
+
+Validation:
+
+- `dotnet build backend\EduGuard.slnx --no-restore` failed because the running `EduGuard.Api` process PID 19800 locked Debug output DLLs; Domain/Application/Infrastructure compiled before the copy step failed.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore -o temp\backend-short-answer-import-build` passed with 0 warnings and 0 errors.
+
+Known risks / rollback / follow-up:
+
+- Import supports one sample answer per `short_answer` row from `correct_answer`; additional accepted answers still need manual editing after import.
+- Structured TXT/DOCX/PDF text imports require explicit `question_type: short_answer`; rows without that marker still follow the existing objective-question inference rules.
+- Frontend upload/import UI remains out of scope for this change and is still tracked separately.
+
+
 ## Bug fix: Local frontend/backend dev proxy 502
 
 Date: 2026-06-18
