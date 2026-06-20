@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { classroomApi } from "../../../api/classroomApi";
 import { examApi } from "../../../api/examApi";
+import { assignmentApi } from "../../../api/assignmentApi";
+import Badge from "../../../components/common/Badge";
+import TextInput from "../../../components/forms/TextInput";
+import { formatShortDateTime } from "../../../utils/formatDate";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
@@ -18,6 +22,12 @@ import TeacherQuestionWorkspace from "../components/TeacherQuestionWorkspace";
 import { buildExamFormValues } from "../components/exam-form-helpers";
 import { validateQuestionImportFile } from "../components/teacher-question-workspace-helpers";
 import { buildDraftQuestion, resequenceDraftQuestions } from "./exam-create-draft-helpers";
+import {
+  getAssignmentDeadlineMeta,
+  getAssignmentStatusMeta,
+  resolveAssignmentSubmission,
+  sortAssignmentsByDeadline,
+} from "../../assignments/assignmentHelpers";
 
 // Hàm này tính vài con số nhanh cho đầu trang danh sách đề thi để màn hình bớt khô hơn.
 function buildSummaryItems(exams, role) {
@@ -89,6 +99,16 @@ function buildEditableImportPreviewQuestions(questions = []) {
   );
 }
 
+function buildStudentAssignmentCard(assignment, classroomName, userId) {
+  const submission = resolveAssignmentSubmission(assignment, userId);
+
+  return {
+    ...assignment,
+    classroomName,
+    mySubmission: submission,
+  };
+}
+
 // Trang này là trung tâm CRUD đề thi cho Teacher và là trang xem danh sách cho Admin/Student.
 export default function ExamListPage() {
   const { user } = useAuth();
@@ -99,6 +119,11 @@ export default function ExamListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [classrooms, setClassrooms] = useState([]);
   const [exams, setExams] = useState([]);
+  const [studentSubTab, setStudentSubTab] = useState("exams");
+  const [assignments, setAssignments] = useState([]);
+  const [isAssignmentsLoading, setIsAssignmentsLoading] = useState(false);
+  const [assignmentSearchQuery, setAssignmentSearchQuery] = useState("");
+  const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingExamId, setDeletingExamId] = useState(null);
@@ -129,6 +154,9 @@ export default function ExamListPage() {
   const pageCopy = getPageCopyByRole(user?.role);
   const isTeacherView = user?.role === "Teacher";
   const isStudentView = user?.role === "Student";
+  const pageTitle = isStudentView
+    ? (studentSubTab === "assignments" ? "Bài tập của bạn" : "Bài thi của bạn")
+    : pageCopy.title;
   const canCreateExam = isTeacherView && classrooms.length > 0;
   const isCreateFlowDraftMode = isCreateFormVisible && !activeCreateExam;
   const visibleExams = isStudentView
@@ -185,6 +213,22 @@ export default function ExamListPage() {
 
       setClassrooms(classroomResponse.data);
       setExams(examResponse.data);
+
+      if (user?.role === "Student") {
+        setIsAssignmentsLoading(true);
+        const classroomsList = classroomResponse.data;
+        const assignmentPromises = classroomsList.map((classroom) =>
+          assignmentApi.getByClassroom(classroom.id)
+            .then((res) =>
+              res.data.map((assign) => ({
+                ...buildStudentAssignmentCard(assign, classroom.name, user?.id),
+              }))
+            )
+            .catch(() => [])
+        );
+        const allAssignmentsNested = await Promise.all(assignmentPromises);
+        setAssignments(allAssignmentsNested.flat());
+      }
     } catch (error) {
       const nextMessage = error.message || "Không thể tải danh sách bài kiểm tra.";
       showToast({
@@ -196,6 +240,7 @@ export default function ExamListPage() {
       if (showPageLoader) {
         setIsLoading(false);
       }
+      setIsAssignmentsLoading(false);
     }
   }
 
@@ -217,6 +262,25 @@ export default function ExamListPage() {
 
         setClassrooms(classroomResponse.data);
         setExams(examResponse.data);
+
+        if (user?.role === "Student") {
+          setIsAssignmentsLoading(true);
+          const classroomsList = classroomResponse.data;
+          const assignmentPromises = classroomsList.map((classroom) =>
+            assignmentApi.getByClassroom(classroom.id)
+              .then((res) =>
+                res.data.map((assign) => ({
+                  ...buildStudentAssignmentCard(assign, classroom.name, user?.id),
+                }))
+              )
+              .catch(() => [])
+          );
+          const allAssignmentsNested = await Promise.all(assignmentPromises);
+          if (!isMounted) {
+            return;
+          }
+          setAssignments(allAssignmentsNested.flat());
+        }
       } catch (error) {
         if (!isMounted) {
           return;
@@ -231,6 +295,7 @@ export default function ExamListPage() {
       } finally {
         if (isMounted) {
           setIsLoading(false);
+          setIsAssignmentsLoading(false);
         }
       }
     }
@@ -240,7 +305,7 @@ export default function ExamListPage() {
     return () => {
       isMounted = false;
     };
-  }, [selectedClassroomId, showToast]);
+  }, [selectedClassroomId, showToast, user?.id, user?.role]);
 
   function resetCreateFlowQuestionUi() {
     setEditingQuestionId(null);
@@ -976,7 +1041,7 @@ export default function ExamListPage() {
               {getRoleLabel(user?.role)}
             </p>
             <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-[2.2rem]">
-              {pageCopy.title}
+              {pageTitle}
             </h1>
           </div>
         </div>
@@ -995,6 +1060,41 @@ export default function ExamListPage() {
           title={pageCopy.title}
         />
       )}
+
+      {isStudentView ? (
+        <div className="flex justify-center">
+          <div className="rounded-[24px] border border-border bg-surface p-1.5 inline-flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setStudentSubTab("exams");
+                setExpandedAssignmentId(null);
+              }}
+              className={`rounded-full px-6 py-2 text-sm font-semibold transition-all duration-200 ${
+                studentSubTab === "exams"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-secondary hover:bg-surface-sunken hover:text-primary"
+              }`}
+            >
+              Bài thi
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStudentSubTab("assignments");
+                setExpandedAssignmentId(null);
+              }}
+              className={`rounded-full px-6 py-2 text-sm font-semibold transition-all duration-200 ${
+                studentSubTab === "assignments"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-secondary hover:bg-surface-sunken hover:text-primary"
+              }`}
+            >
+              Bài tập
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {!isStudentView ? (
         <div
@@ -1023,13 +1123,23 @@ export default function ExamListPage() {
             value={selectedClassroomId}
           />
           {isStudentView ? (
-            <Select
-              id="exam-list-schedule-status-filter"
-              label="Trạng thái lịch thi"
-              onChange={(event) => handleScheduleStatusFilterChange(event.target.value)}
-              options={scheduleFilterOptions}
-              value={selectedScheduleStatus}
-            />
+            studentSubTab === "exams" ? (
+              <Select
+                id="exam-list-schedule-status-filter"
+                label="Trạng thái lịch thi"
+                onChange={(event) => handleScheduleStatusFilterChange(event.target.value)}
+                options={scheduleFilterOptions}
+                value={selectedScheduleStatus}
+              />
+            ) : (
+              <TextInput
+                id="student-assignment-search"
+                label="Tìm kiếm bài tập"
+                value={assignmentSearchQuery}
+                onChange={(event) => setAssignmentSearchQuery(event.target.value)}
+                placeholder="Tên bài tập hoặc mô tả..."
+              />
+            )
           ) : null}
         </div>
       </Card>
@@ -1129,7 +1239,175 @@ export default function ExamListPage() {
         )
       ) : null}
 
-      {isLoading ? (
+      {isStudentView && studentSubTab === "assignments" ? (
+        isAssignmentsLoading ? (
+          <div className="grid gap-6">
+            <SkeletonExamCard />
+            <SkeletonExamCard />
+            <SkeletonExamCard />
+          </div>
+        ) : (() => {
+          const normalizedSearchQuery = assignmentSearchQuery.trim().toLowerCase();
+          const filteredAssignments = sortAssignmentsByDeadline(
+            (selectedClassroomId
+              ? assignments.filter((a) => String(a.classroomId) === String(selectedClassroomId))
+              : assignments
+            ).filter((a) =>
+              [a.title, a.description, a.classroomName].some((value) =>
+                String(value || "").toLowerCase().includes(normalizedSearchQuery),
+              )
+            ),
+          );
+
+          if (filteredAssignments.length > 0) {
+            return (
+              <div className="grid gap-6">
+                {filteredAssignments.map((assignment) => {
+                  const isExpanded = expandedAssignmentId === assignment.id;
+                  const submission = resolveAssignmentSubmission(assignment, user?.id);
+                  const statusMeta = getAssignmentStatusMeta(assignment, submission);
+                  const deadlineMeta = getAssignmentDeadlineMeta(assignment);
+                  return (
+                    <Card
+                      key={assignment.id}
+                      className="space-y-4 transition-all duration-200 hover:shadow-md"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+                          <Badge variant={deadlineMeta.variant}>{deadlineMeta.label}</Badge>
+                          <span className="text-xs text-secondary font-medium">
+                            Hạn nộp: {assignment.deadline ? formatShortDateTime(assignment.deadline) : "Không có"}
+                          </span>
+                        </div>
+                        <span className="text-sm font-semibold text-secondary">
+                          {assignment.classroomName}
+                        </span>
+                      </div>
+
+                      <div
+                        className="cursor-pointer group space-y-2"
+                        onClick={() => setExpandedAssignmentId(isExpanded ? null : assignment.id)}
+                      >
+                        <h3 className="text-xl font-bold text-primary group-hover:text-blue-600 transition-colors">
+                          {assignment.title}
+                        </h3>
+                        {!isExpanded && assignment.description ? (
+                          <p className="text-sm text-secondary line-clamp-2 leading-relaxed">
+                            {assignment.description}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      {isExpanded ? (
+                        <div className="mt-4 pt-4 border-t border-border space-y-4">
+                          {assignment.description ? (
+                            <div className="space-y-1">
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-secondary">
+                                Mô tả chi tiết
+                              </h4>
+                              <p className="text-sm text-primary whitespace-pre-wrap leading-relaxed">
+                                {assignment.description}
+                              </p>
+                            </div>
+                          ) : null}
+
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-secondary mb-1">
+                                Thang điểm tối đa
+                              </h4>
+                              <p className="text-lg font-bold text-primary">
+                                {assignment.maxScore} điểm
+                              </p>
+                            </div>
+
+                            <div className="rounded-[16px] border border-border bg-surface-sunken p-4 space-y-2">
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-secondary">
+                                Trạng thái & Kết quả chấm
+                              </h4>
+                              {submission ? (
+                                <div className="space-y-2">
+                                  <p className="text-sm font-semibold text-success">
+                                    Đã nộp lúc: {submission.submittedAt ? formatShortDateTime(submission.submittedAt) : "Đã ghi nhận trong phiên này"}
+                                  </p>
+                                  {submission.score !== null && typeof submission.score === "number" ? (
+                                    <div className="space-y-2">
+                                      <p className="text-base font-bold text-primary">
+                                        Điểm đạt:{" "}
+                                        <span className="text-success text-lg">
+                                          {submission.score}
+                                        </span>{" "}
+                                        / {assignment.maxScore}
+                                      </p>
+                                      {submission.feedback ? (
+                                        <div className="rounded-[12px] bg-surface border border-border p-3">
+                                          <p className="text-xs font-semibold text-secondary">
+                                            Nhận xét của giảng viên:
+                                          </p>
+                                          <p className="text-sm text-primary italic mt-1 leading-relaxed">
+                                            "{submission.feedback}"
+                                          </p>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-secondary italic">
+                                      Bài nộp đang chờ giảng viên chấm điểm.
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-sm font-semibold text-danger">Chưa nộp bài</p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedAssignmentId(null)}
+                              className="text-xs font-semibold text-secondary hover:text-primary transition-colors"
+                            >
+                              Thu gọn
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </Card>
+                  );
+                })}
+              </div>
+            );
+          }
+
+          return (
+            <EmptyState
+              title={
+                assignments.length > 0
+                  ? "Không tìm thấy bài tập phù hợp với bộ lọc."
+                  : "Chưa có bài tập nào."
+              }
+              action={
+                assignments.length > 0 ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setAssignmentSearchQuery("");
+                      if (selectedClassroomId) {
+                        setIsLoading(true);
+                      }
+                      updateExamListSearchParams("", "");
+                    }}
+                  >
+                    Xóa bộ lọc
+                  </Button>
+                ) : null
+              }
+            />
+          );
+        })()
+      ) : isLoading ? (
         <div className="grid gap-6">
           <SkeletonExamCard />
           <SkeletonExamCard />

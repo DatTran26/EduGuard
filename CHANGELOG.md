@@ -17,7 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Frontend
 
+- Added a centered sub-navigation bar (tab switcher) to the Student "Bài kiểm tra" page, allowing students to switch between "Bài thi" (Exams) and "Bài tập" (Assignments) with custom page title updates.
+- Integrated classroom assignment data for students by fetching and mapping them in memory, supporting search filtering by name/description alongside classroom filters.
+- Created an expandable assignment details card visualizer that displays grading score, teacher feedback, maximum points, and submission/grading dates.
 - Redesigned the entire UX/UI across Admin, Student, and Teacher modules to use a premium, consistent design system (Outfit/Inter typography, radial gradients, glowing heroes, standardized `StatCard`, `MetricBarList`, `TimelineList` components, and support for light/dark themes).
+- Refactored the role-based dashboard system (Admin, Teacher, Student) to connect to live backend APIs, replacing mock statistics with real aggregated data from `userApi`, `classroomApi`, `examApi`, `examAttemptApi`, `antiCheatApi`, and `assignmentApi` endpoints.
 - Upgraded the Authentication flow with a 2-column branding layout and a new 4-step register wizard mockup.
 - Revamped Admin pages including Admin Dashboard (with real-time system health widgets), Admin Monitoring (risk cards, severity filters), and User Management.
 - Updated Student Dashboard with standardized Page Heroes and info blocks.
@@ -37,6 +41,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed syntax errors and leftover mock logic in `dashboardApi.js`, cleanly implementing `buildStudentDashboardDataFromRealApis()` and `getStudentDashboard()`.
+- Fixed layout compliance by replacing mock-like hardcoded CSS in dashboard cards with standard theme variables (`bg-surface-sunken`/`bg-surface`).
+- Implemented a dynamic SignalR connection state indicator for the health system check in the Admin Dashboard, which monitors the real connection status of the notification hub.
+- Implemented deficiency disclosures on the Student Dashboard to transparently mark unsupported student endpoints (submission tracking, global attempt history, global notifications) with clear badges (`Thiếu API` / `Yêu cầu API Backend`).
+- Added animated loading skeletons and error alert states with retry actions across all dashboard pages.
 - Fixed the frontend auth `401` interceptor so invalid login attempts no longer hard-refresh `/login`; inline error messages now stay visible and the form state is preserved.
 - Fixed the Teacher exam create-flow save action so the first save now auto-publishes when the final question set is non-empty, keeps draft status when there are no questions, and includes backend-previewed import questions in the initial saved exam.
 - Fixed the Teacher exam create payload so draft/preview answer IDs are no longer sent as non-numeric temporary strings, preventing `POST /api/classrooms/{id}/exams` from failing with `400` during the first save; also trimmed the final create CTA UI and removed the extra in-page import success explanation.
@@ -48,6 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed DOCX import parsing so Word line breaks in table cells are preserved.
 - Fixed text-based PDF template parsing by decoding `/ToUnicode` CMap hex text operators.
 - Synced local frontend dependencies after merging release changes so the merged `tw-animate-css` import builds correctly again.
+- Updated `normalizeAssignmentDto` in `assignmentApi.js` to map `mySubmission` so that student submission results are correctly propagated to the React state.
+- Fixed `AssignmentSection.jsx` to use a stable `classroomId` load flow, keep the student submission map in sync after submit, and cache the latest submission locally so classroom cards no longer fall into an error or stale state.
+- Fixed submission-state resolution across `AssignmentSection.jsx` and `ExamListPage.jsx` by preferring backend `mySubmission` and using the local cache only as a fallback, so students now consistently see `Đã nộp` in `Bài kiểm tra -> Bài tập` after submitting from the classroom page.
+- Fixed display logic in `AssignmentSection.jsx` to render the student's submission status, graded score, and teacher feedback when the card is expanded on the Classroom page, resolving the issue where graded scores did not appear for students.
+- Implemented automatic redirection in `ExamAttemptPage.jsx` so that students are returned to the "Bài kiểm tra" page immediately after exam submission if the exam's settings have `showResultAfterSubmit` set to `false`.
 
 ### Known risks
 
@@ -94,23 +108,3 @@ Stable release promoted from `v1.1.0-rc.1` after RC validation (auth + classroom
 - Backend scaffold: `EduGuard.Api`, `Domain`, `Application`, and `Infrastructure` projects (.NET 8)
 - Frontend folder structure for auth, exams, classrooms, assignments, anti-cheat, and notifications
 - Project documentation suite (`docs/01`–`08`), design tokens (`design.md`), and UI guidelines
-- Deploy workflow guide with staging-to-production flow diagram
-- Git governance: Husky hooks, branch policy, push/ship agent skills, and `Todo List.md`
-- Sample `GET /WeatherForecast` API endpoint and Swagger in Development
-
-### Changed
-
-- Expanded root `README.md` with project overview and status table
-
-### Security
-
-- Pin `System.Text.Json` to address transitive advisory GHSA-8g4q-xg66-9fp4
-- Remove authorization middleware until authentication is implemented (Phase 2)
-
-### Known limitations (scaffold baseline)
-
-- No automated test projects yet; Husky `npm test` runs an empty test solution
-- No database, auth, SignalR, or runnable frontend app in this release
-- Infrastructure packages (EF Core, Redis, Serilog) referenced but not wired in `Program.cs`
-
-[1.0.0]: https://github.com/DatTran26/EduGuard/compare/84d0699...v1.0.0

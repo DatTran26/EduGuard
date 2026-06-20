@@ -73,7 +73,21 @@ public class AssignmentService : IAssignmentService
         await ClassroomAccessHelper.EnsureCanAccessClassroomAsync(_classroomRepository, classroom, userId, roles, ct);
 
         var assignments = await _assignmentRepository.GetByClassroomIdAsync(classroomId, ct);
-        return assignments.Select(MapAssignment).ToList();
+        var dtos = assignments.Select(MapAssignment).ToList();
+
+        if (roles.Contains("Student"))
+        {
+            foreach (var dto in dtos)
+            {
+                var submission = await _assignmentRepository.GetSubmissionAsync(dto.Id, userId, ct);
+                if (submission != null)
+                {
+                    dto.MySubmission = MapSubmission(submission);
+                }
+            }
+        }
+
+        return dtos;
     }
 
     public async Task<AssignmentDto> GetByIdAsync(
@@ -85,7 +99,17 @@ public class AssignmentService : IAssignmentService
         var assignment = await RequireAssignmentAsync(assignmentId, ct);
         var classroom = await ClassroomAccessHelper.RequireClassroomAsync(_classroomRepository, assignment.ClassroomId, ct);
         await ClassroomAccessHelper.EnsureCanAccessClassroomAsync(_classroomRepository, classroom, userId, roles, ct);
-        return MapAssignment(assignment);
+        
+        var dto = MapAssignment(assignment);
+        if (roles.Contains("Student"))
+        {
+            var submission = await _assignmentRepository.GetSubmissionAsync(dto.Id, userId, ct);
+            if (submission != null)
+            {
+                dto.MySubmission = MapSubmission(submission);
+            }
+        }
+        return dto;
     }
 
     public async Task<AssignmentDto> UpdateAsync(
@@ -170,8 +194,22 @@ public class AssignmentService : IAssignmentService
             throw new InvalidOperationException("Đã quá hạn nộp bài.");
 
         var existing = await _assignmentRepository.GetSubmissionAsync(assignmentId, studentId, ct);
+        
         if (existing is not null)
-            throw new InvalidOperationException("Bạn đã nộp bài tập này.");
+        {
+            // Re-submission: update existing submission and reset grading info
+            existing.Content = request.Content.Trim();
+            existing.SubmittedAt = DateTime.UtcNow;
+            existing.Score = null;
+            existing.Feedback = null;
+            existing.GradedAt = null;
+
+            _assignmentRepository.UpdateSubmission(existing);
+            await _assignmentRepository.SaveChangesAsync(ct);
+
+            var saved = await _assignmentRepository.GetSubmissionByIdAsync(existing.Id, ct) ?? existing;
+            return MapSubmission(saved);
+        }
 
         var submission = new Submission
         {

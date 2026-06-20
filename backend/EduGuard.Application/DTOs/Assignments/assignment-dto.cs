@@ -11,4 +11,5 @@ public class AssignmentDto
     public decimal MaxScore { get; set; }
     public DateTime CreatedAt { get; set; }
     public int SubmissionCount { get; set; }
+    public SubmissionDto? MySubmission { get; set; }
 }

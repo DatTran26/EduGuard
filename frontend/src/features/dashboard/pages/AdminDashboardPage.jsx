@@ -8,6 +8,7 @@ import {
   FiServer,
   FiUsers,
   FiWifi,
+  FiRefreshCw,
 } from "react-icons/fi";
 import { dashboardApi } from "../../../api/dashboardApi";
 import Badge from "../../../components/common/Badge";
@@ -19,20 +20,15 @@ import TimelineList from "../../../components/dashboard/TimelineList";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useToast } from "../../../hooks/useToast";
 import { formatShortDateTime } from "../../../utils/formatDate";
+import { createNotificationConnection } from "../../../signalr/notificationConnection";
+import Button from "../../../components/common/Button";
 
-// Mock data cho các section UI mới (không thay đổi backend)
-const MOCK_REALTIME = {
-  onlineUsers: 47,
-  activeExams: 3,
-  activeSessions: 124,
+const HEALTH_ICONS = {
+  "API Server": FiServer,
+  "Redis Cache": FiDatabase,
+  "SignalR Hub": FiWifi,
+  "Database": FiLayers,
 };
-
-const MOCK_SYSTEM_HEALTH = [
-  { label: "API Server", status: "ok", Icon: FiServer },
-  { label: "Redis Cache", status: "ok", Icon: FiDatabase },
-  { label: "SignalR Hub", status: "ok", Icon: FiWifi },
-  { label: "Database", status: "ok", Icon: FiLayers },
-];
 
 function buildActivityTimelineItems(activities) {
   return activities.map((activity) => ({
@@ -43,6 +39,7 @@ function buildActivityTimelineItems(activities) {
 }
 
 function buildClassroomOverviewBars(classroomOverview) {
+  if (classroomOverview.length === 0) return [];
   const maxMemberCount = Math.max(1, ...classroomOverview.map((item) => item.memberCount));
 
   return classroomOverview.map((item) => ({
@@ -53,6 +50,7 @@ function buildClassroomOverviewBars(classroomOverview) {
 }
 
 function buildExamStatusBars(examStatusBreakdown) {
+  if (examStatusBreakdown.length === 0) return [];
   const maxCount = Math.max(1, ...examStatusBreakdown.map((item) => item.value));
 
   return examStatusBreakdown.map((item) => ({
@@ -104,53 +102,122 @@ function HighRiskAttemptList({ items }) {
   );
 }
 
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      {/* Hero Header Skeleton */}
+      <div className="h-40 rounded-3xl bg-surface-sunken border border-border p-6 flex flex-col justify-between">
+        <div className="space-y-3">
+          <div className="h-4 w-24 bg-border rounded-full" />
+          <div className="h-8 w-64 bg-border rounded-full" />
+          <div className="h-4 w-96 bg-border rounded-full" />
+        </div>
+      </div>
+
+      {/* Stats Cards Skeleton */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="h-[120px] rounded-2xl bg-surface border border-border p-5 flex flex-col justify-between">
+            <div className="flex justify-between items-center">
+              <div className="h-4 w-20 bg-border rounded-full" />
+              <div className="h-8 w-8 bg-border rounded-lg" />
+            </div>
+            <div className="h-8 w-16 bg-border rounded-lg" />
+          </div>
+        ))}
+      </div>
+
+      {/* Realtime Panel Skeleton */}
+      <div className="h-[180px] rounded-2xl bg-surface border border-border p-6 space-y-4">
+        <div className="flex justify-between items-center">
+          <div className="space-y-2">
+            <div className="h-5 w-48 bg-border rounded-full" />
+            <div className="h-3 w-72 bg-border rounded-full" />
+          </div>
+          <div className="h-6 w-16 bg-border rounded-full" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="h-20 bg-surface-sunken border border-border rounded-xl" />
+          <div className="h-20 bg-surface-sunken border border-border rounded-xl" />
+          <div className="h-20 bg-surface-sunken border border-border rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboardPage() {
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [signalrStatus, setSignalrStatus] = useState("ok");
   const { showToast } = useToast();
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadDashboard() {
-      try {
-        const response = await dashboardApi.getAdminDashboard();
-
-        if (!isMounted) {
-          return;
-        }
-
-        setDashboardData(response.data);
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        showToast({
-          tone: "danger",
-          title: "Tải dashboard admin thất bại",
-          message: error.message || "Không thể tải dashboard admin.",
-        });
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
+  async function loadDashboard() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await dashboardApi.getAdminDashboard();
+      setDashboardData(response.data);
+    } catch (err) {
+      setError(err.message || "Không thể tải dữ liệu dashboard.");
+      showToast({
+        tone: "danger",
+        title: "Tải dashboard admin thất bại",
+        message: err.message || "Không thể tải dashboard admin.",
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    loadDashboard();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [showToast]);
-
-  if (isLoading) {
-    return <div className="eg-feedback-panel">Đang tải dashboard admin...</div>;
   }
 
-  if (!dashboardData) {
-    return <EmptyState title="Chưa tải được dashboard admin." />;
+  useEffect(() => {
+    loadDashboard();
+  }, [showToast]);
+
+  useEffect(() => {
+    const connection = createNotificationConnection();
+    
+    connection.start()
+      .then(() => {
+        setSignalrStatus("ok");
+      })
+      .catch(() => {
+        setSignalrStatus("err");
+      });
+    
+    connection.onreconnecting(() => {
+      setSignalrStatus("warn");
+    });
+    connection.onreconnected(() => {
+      setSignalrStatus("ok");
+    });
+    connection.onclose(() => {
+      setSignalrStatus("err");
+    });
+
+    return () => {
+      connection.stop().catch(() => {});
+    };
+  }, []);
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  if (error || !dashboardData) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 border border-border bg-surface rounded-2xl space-y-4">
+        <FiAlertTriangle size={48} className="text-danger animate-bounce" />
+        <h3 className="text-lg font-bold text-primary">Tải dữ liệu thất bại</h3>
+        <p className="text-sm text-secondary max-w-md text-center">
+          {error || "Đã xảy ra lỗi không xác định khi tải dữ liệu từ máy chủ."}
+        </p>
+        <Button onClick={loadDashboard} className="flex items-center gap-2">
+          <FiRefreshCw /> Thử lại
+        </Button>
+      </div>
+    );
   }
 
   const {
@@ -161,7 +228,16 @@ export default function AdminDashboardPage() {
     highRiskAttempts,
     recentActivities,
     cheatingTypes,
+    realtime,
+    systemHealth,
   } = dashboardData;
+
+  const healthList = (systemHealth || []).map(item => {
+    if (item.label === "SignalR Hub") {
+      return { ...item, status: signalrStatus };
+    }
+    return item;
+  });
 
   return (
     <div className="space-y-6">
@@ -243,15 +319,15 @@ export default function AdminDashboardPage() {
         </div>
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
           <div className="rounded-[16px] border border-info/20 bg-info-muted p-4 text-center">
-            <p className="text-3xl font-bold text-info">{MOCK_REALTIME.onlineUsers}</p>
+            <p className="text-3xl font-bold text-info">{realtime?.onlineUsers ?? 0}</p>
             <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-secondary">Người online</p>
           </div>
           <div className="rounded-[16px] border border-success/20 bg-success-muted p-4 text-center">
-            <p className="text-3xl font-bold text-success">{MOCK_REALTIME.activeExams}</p>
+            <p className="text-3xl font-bold text-success">{realtime?.activeExams ?? 0}</p>
             <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-secondary">Kỳ thi đang diễn ra</p>
           </div>
           <div className="rounded-[16px] border border-caution/20 bg-caution-muted p-4 text-center">
-            <p className="text-3xl font-bold text-caution">{MOCK_REALTIME.activeSessions}</p>
+            <p className="text-3xl font-bold text-caution">{realtime?.activeSessions ?? 0}</p>
             <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-secondary">Phiên hoạt động</p>
           </div>
         </div>
@@ -300,32 +376,38 @@ export default function AdminDashboardPage() {
           </div>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {MOCK_SYSTEM_HEALTH.map((service) => (
-            <div key={service.label} className="eg-system-health-row">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-surface text-secondary">
-                  <service.Icon className="h-4 w-4" />
-                </span>
-                <span className="text-sm font-semibold text-primary">{service.label}</span>
+          {healthList.map((service) => {
+            const IconComponent = HEALTH_ICONS[service.label] || FiServer;
+            return (
+              <div key={service.label} className="eg-system-health-row">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-surface text-secondary">
+                    <IconComponent className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm font-semibold text-primary">{service.label}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={[
+                      "eg-system-health-dot",
+                      service.status === "ok"
+                        ? "eg-system-health-dot-ok"
+                        : service.status === "warn"
+                        ? "eg-system-health-dot-warn"
+                        : "eg-system-health-dot-err",
+                    ].join(" ")}
+                    aria-hidden="true"
+                  />
+                  <span className={[
+                    "text-xs font-semibold",
+                    service.status === "ok" ? "text-success" : service.status === "warn" ? "text-caution" : "text-danger"
+                  ].join(" ")}>
+                    {service.status === "ok" ? "Hoạt động" : service.status === "warn" ? "Cảnh báo" : "Lỗi"}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={[
-                    "eg-system-health-dot",
-                    service.status === "ok"
-                      ? "eg-system-health-dot-ok"
-                      : service.status === "warn"
-                      ? "eg-system-health-dot-warn"
-                      : "eg-system-health-dot-err",
-                  ].join(" ")}
-                  aria-hidden="true"
-                />
-                <span className="text-xs font-semibold text-success">
-                  {service.status === "ok" ? "Hoạt động" : service.status === "warn" ? "Cảnh báo" : "Lỗi"}
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
     </div>

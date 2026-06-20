@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { antiCheatApi } from "../../../api/antiCheatApi";
 import { examApi } from "../../../api/examApi";
 import { examAttemptApi } from "../../../api/examAttemptApi";
@@ -54,7 +54,9 @@ function buildQuestionAnswerState(question, answerState) {
   }
 
   return {
-    answerIds: Array.isArray(answerState?.answerIds) ? answerState.answerIds : [],
+    answerIds: Array.isArray(answerState?.answerIds)
+      ? answerState.answerIds
+      : [],
     textAnswer: "",
   };
 }
@@ -72,7 +74,10 @@ function buildKeepAliveLogUrl() {
   return `${baseUrl.replace(/\/$/, "")}/anti-cheat/logs`;
 }
 
-function buildUnansweredQuestionIndexes(questions = [], answersByQuestionId = {}) {
+function buildUnansweredQuestionIndexes(
+  questions = [],
+  answersByQuestionId = {},
+) {
   return questions.reduce((result, question, index) => {
     if (!isQuestionAnswered(question, answersByQuestionId[question.id])) {
       result.push(index + 1);
@@ -82,34 +87,34 @@ function buildUnansweredQuestionIndexes(questions = [], answersByQuestionId = {}
   }, []);
 }
 
-function buildAttemptSettingItems(exam) {
-  if (!exam?.settings) {
-    return [];
-  }
+// function buildAttemptSettingItems(exam) {
+//   if (!exam?.settings) {
+//     return [];
+//   }
 
-  return [
-    {
-      label: "Random câu hỏi",
-      value: exam.settings.shuffleQuestions ? "Bật" : "Tắt",
-    },
-    {
-      label: "Random đáp án",
-      value: exam.settings.shuffleAnswers ? "Bật" : "Tắt",
-    },
-    {
-      label: "Hiện kết quả",
-      value: exam.settings.showResultAfterSubmit ? "Có" : "Ẩn",
-    },
-    {
-      label: "Toàn màn hình",
-      value: exam.settings.requireFullscreen ? "Bắt buộc" : "Không bắt buộc",
-    },
-    {
-      label: "Anti-cheat",
-      value: exam.enableAntiCheat ? "Bật" : "Tắt",
-    },
-  ];
-}
+//   return [
+//     {
+//       label: "Random câu hỏi",
+//       value: exam.settings.shuffleQuestions ? "Bật" : "Tắt",
+//     },
+//     {
+//       label: "Random đáp án",
+//       value: exam.settings.shuffleAnswers ? "Bật" : "Tắt",
+//     },
+//     {
+//       label: "Hiện kết quả",
+//       value: exam.settings.showResultAfterSubmit ? "Có" : "Ẩn",
+//     },
+//     {
+//       label: "Toàn màn hình",
+//       value: exam.settings.requireFullscreen ? "Bắt buộc" : "Không bắt buộc",
+//     },
+//     {
+//       label: "Anti-cheat",
+//       value: exam.enableAntiCheat ? "Bật" : "Tắt",
+//     },
+//   ];
+// }
 
 function getQuestionSelectionHint(questionType) {
   if (questionType === "MultipleChoice") {
@@ -141,6 +146,7 @@ function formatResultAnswerSummary(questionResult) {
 
 export default function ExamAttemptPage() {
   const { attemptId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
   const [attempt, setAttempt] = useState(null);
@@ -158,7 +164,9 @@ export default function ExamAttemptPage() {
     typeof window === "undefined" ? true : window.navigator.onLine,
   );
   const [isFullscreen, setIsFullscreen] = useState(
-    typeof document === "undefined" ? false : Boolean(document.fullscreenElement),
+    typeof document === "undefined"
+      ? false
+      : Boolean(document.fullscreenElement),
   );
   const [lastWarning, setLastWarning] = useState(null);
   const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false);
@@ -175,7 +183,9 @@ export default function ExamAttemptPage() {
   const isSubmittingRef = useRef(false);
   const fullscreenRequestAttemptedRef = useRef(false);
   const previousFullscreenStateRef = useRef(
-    typeof document === "undefined" ? false : Boolean(document.fullscreenElement),
+    typeof document === "undefined"
+      ? false
+      : Boolean(document.fullscreenElement),
   );
 
   const answeredQuestionCount = useMemo(
@@ -183,8 +193,13 @@ export default function ExamAttemptPage() {
     [answersByQuestionId, questions],
   );
   const currentQuestion = questions[currentQuestionIndex] ?? null;
-  const attemptEndTime = calculateAttemptEndTime(attempt, exam?.durationMinutes);
-  const remainingTimeMs = attemptEndTime ? Math.max(attemptEndTime - clockTickMs, 0) : 0;
+  const attemptEndTime = calculateAttemptEndTime(
+    attempt,
+    exam?.durationMinutes,
+  );
+  const remainingTimeMs = attemptEndTime
+    ? Math.max(attemptEndTime - clockTickMs, 0)
+    : 0;
   const unansweredQuestionIndexes = useMemo(
     () => buildUnansweredQuestionIndexes(questions, answersByQuestionId),
     [answersByQuestionId, questions],
@@ -192,17 +207,21 @@ export default function ExamAttemptPage() {
   const timeBadgeVariant = getRemainingTimeVariant(remainingTimeMs);
   const suspicionMeta = getSuspicionScoreMeta(attempt?.suspicionScore ?? 0);
   const latestWarningMeta = getAntiCheatEventMeta(lastWarning?.type);
-  const attemptSettingItems = useMemo(() => buildAttemptSettingItems(exam), [exam]);
+  //const attemptSettingItems = useMemo(() => buildAttemptSettingItems(exam), [exam]);
   const orderedResultQuestions = useMemo(() => {
     if (!Array.isArray(result?.questions) || result.questions.length === 0) {
       return [];
     }
 
-    const orderMap = new Map(questions.map((question, index) => [question.id, index]));
+    const orderMap = new Map(
+      questions.map((question, index) => [question.id, index]),
+    );
 
     return [...result.questions].sort((firstQuestion, secondQuestion) => {
-      const firstOrder = orderMap.get(firstQuestion.questionId) ?? Number.MAX_SAFE_INTEGER;
-      const secondOrder = orderMap.get(secondQuestion.questionId) ?? Number.MAX_SAFE_INTEGER;
+      const firstOrder =
+        orderMap.get(firstQuestion.questionId) ?? Number.MAX_SAFE_INTEGER;
+      const secondOrder =
+        orderMap.get(secondQuestion.questionId) ?? Number.MAX_SAFE_INTEGER;
       return firstOrder - secondOrder;
     });
   }, [questions, result?.questions]);
@@ -220,7 +239,9 @@ export default function ExamAttemptPage() {
 
   const saveQuestion = useCallback(async (questionId) => {
     const nextAttempt = attemptRef.current;
-    const question = questionsRef.current.find((item) => item.id === questionId);
+    const question = questionsRef.current.find(
+      (item) => item.id === questionId,
+    );
 
     questionSaveTimersRef.current.delete(questionId);
 
@@ -229,7 +250,10 @@ export default function ExamAttemptPage() {
       return;
     }
 
-    const payload = getAttemptAnswerPayload(question, answersRef.current[questionId]);
+    const payload = getAttemptAnswerPayload(
+      question,
+      answersRef.current[questionId],
+    );
 
     setSaveState((previousValue) => ({
       ...previousValue,
@@ -266,53 +290,62 @@ export default function ExamAttemptPage() {
       return;
     }
 
-    await Promise.all(dirtyQuestionIds.map((questionId) => saveQuestion(questionId)));
+    await Promise.all(
+      dirtyQuestionIds.map((questionId) => saveQuestion(questionId)),
+    );
   }, [saveQuestion]);
 
-  const logAntiCheatEvent = useCallback(async ({ type, description, metadata = "" }) => {
-    const nextAttempt = attemptRef.current;
-    const nextExam = examRef.current;
+  const logAntiCheatEvent = useCallback(
+    async ({ type, description, metadata = "" }) => {
+      const nextAttempt = attemptRef.current;
+      const nextExam = examRef.current;
 
-    if (!nextAttempt || nextAttempt.status !== "InProgress" || !nextExam?.enableAntiCheat) {
-      return;
-    }
+      if (
+        !nextAttempt ||
+        nextAttempt.status !== "InProgress" ||
+        !nextExam?.enableAntiCheat
+      ) {
+        return;
+      }
 
-    const lastLoggedAt = antiCheatThrottleRef.current.get(type) ?? 0;
-    const now = Date.now();
+      const lastLoggedAt = antiCheatThrottleRef.current.get(type) ?? 0;
+      const now = Date.now();
 
-    if (now - lastLoggedAt < ANTI_CHEAT_THROTTLE_MS) {
-      return;
-    }
+      if (now - lastLoggedAt < ANTI_CHEAT_THROTTLE_MS) {
+        return;
+      }
 
-    antiCheatThrottleRef.current.set(type, now);
-    setLastWarning({
-      type,
-      description,
-      occurredAt: new Date().toISOString(),
-    });
-
-    try {
-      const response = await antiCheatApi.log({
-        examAttemptId: nextAttempt.id,
+      antiCheatThrottleRef.current.set(type, now);
+      setLastWarning({
         type,
         description,
-        metadata,
+        occurredAt: new Date().toISOString(),
       });
 
-      setAttempt((previousAttempt) =>
-        previousAttempt
-          ? {
-              ...previousAttempt,
-              suspicionScore:
-                Number(previousAttempt.suspicionScore || 0) +
-                Number(response.data?.suspicionPoint || 0),
-            }
-          : previousAttempt,
-      );
-    } catch {
-      // Khong chan luong lam bai neu anti-cheat log gap loi tam thoi.
-    }
-  }, []);
+      try {
+        const response = await antiCheatApi.log({
+          examAttemptId: nextAttempt.id,
+          type,
+          description,
+          metadata,
+        });
+
+        setAttempt((previousAttempt) =>
+          previousAttempt
+            ? {
+                ...previousAttempt,
+                suspicionScore:
+                  Number(previousAttempt.suspicionScore || 0) +
+                  Number(response.data?.suspicionPoint || 0),
+              }
+            : previousAttempt,
+        );
+      } catch {
+        // Khong chan luong lam bai neu anti-cheat log gap loi tam thoi.
+      }
+    },
+    [],
+  );
 
   const postKeepAliveLog = useCallback((payload) => {
     const accessToken = getStoredAccessToken();
@@ -357,7 +390,8 @@ export default function ExamAttemptPage() {
           showToast({
             tone: "danger",
             title: "Không thể bật toàn màn hình",
-            message: "Trình duyệt đã chặn chế độ toàn màn hình cho phiên làm bài này.",
+            message:
+              "Trình duyệt đã chặn chế độ toàn màn hình cho phiên làm bài này.",
           });
         }
       }
@@ -431,14 +465,22 @@ export default function ExamAttemptPage() {
   }
 
   function handleToggleMultipleAnswer(questionId, answerId) {
-    const question = questionsRef.current.find((item) => item.id === questionId);
+    const question = questionsRef.current.find(
+      (item) => item.id === questionId,
+    );
 
     if (!question) {
       return;
     }
 
-    const currentAnswerState = buildQuestionAnswerState(question, answersRef.current[questionId]);
-    const nextAnswerIds = toggleAnswerSelection(currentAnswerState.answerIds, answerId);
+    const currentAnswerState = buildQuestionAnswerState(
+      question,
+      answersRef.current[questionId],
+    );
+    const nextAnswerIds = toggleAnswerSelection(
+      currentAnswerState.answerIds,
+      answerId,
+    );
 
     setAnswerState(questionId, {
       answerIds: nextAnswerIds,
@@ -454,6 +496,16 @@ export default function ExamAttemptPage() {
     });
     scheduleQuestionSave(questionId);
   }
+
+  useEffect(() => {
+    if (
+      attempt?.status === "Submitted" &&
+      exam &&
+      !exam.settings?.showResultAfterSubmit
+    ) {
+      navigate(getExamListPathByRole(user?.role), { replace: true });
+    }
+  }, [attempt?.status, exam, navigate, user?.role]);
 
   useEffect(() => {
     attemptRef.current = attempt;
@@ -500,7 +552,9 @@ export default function ExamAttemptPage() {
           return;
         }
 
-        const initialAnswers = buildAttemptAnswerState(attemptData.savedAnswers);
+        const initialAnswers = buildAttemptAnswerState(
+          attemptData.savedAnswers,
+        );
         let nextResult = null;
 
         if (attemptData.status === "Submitted") {
@@ -510,7 +564,9 @@ export default function ExamAttemptPage() {
 
         hasAutoSubmittedRef.current = false;
         fullscreenRequestAttemptedRef.current = false;
-        previousFullscreenStateRef.current = Boolean(document.fullscreenElement);
+        previousFullscreenStateRef.current = Boolean(
+          document.fullscreenElement,
+        );
         setAttempt(attemptData);
         setExam(examResponse.data);
         setQuestions(attemptData.questions);
@@ -564,7 +620,11 @@ export default function ExamAttemptPage() {
   }, [attempt?.status]);
 
   useEffect(() => {
-    if (attempt?.status !== "InProgress" || !attemptEndTime || remainingTimeMs > 0) {
+    if (
+      attempt?.status !== "InProgress" ||
+      !attemptEndTime ||
+      remainingTimeMs > 0
+    ) {
       return;
     }
 
@@ -612,7 +672,9 @@ export default function ExamAttemptPage() {
           metadata:
             disconnectedDurationMs > 0
               ? JSON.stringify({
-                  disconnectedDurationSeconds: Math.round(disconnectedDurationMs / 1000),
+                  disconnectedDurationSeconds: Math.round(
+                    disconnectedDurationMs / 1000,
+                  ),
                 })
               : "",
         });
@@ -639,7 +701,11 @@ export default function ExamAttemptPage() {
       previousFullscreenStateRef.current = nextIsFullscreen;
       setIsFullscreen(nextIsFullscreen);
 
-      if (previousIsFullscreen && !nextIsFullscreen && examRef.current?.enableAntiCheat) {
+      if (
+        previousIsFullscreen &&
+        !nextIsFullscreen &&
+        examRef.current?.enableAntiCheat
+      ) {
         logAntiCheatEvent({
           type: ANTI_CHEAT_EVENT_TYPES.exitFullscreen,
           description: "Hệ thống ghi nhận bạn đã thoát chế độ toàn màn hình.",
@@ -673,7 +739,12 @@ export default function ExamAttemptPage() {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [attempt?.status, exam?.settings.requireFullscreen, handleStartFullscreen, isFullscreen]);
+  }, [
+    attempt?.status,
+    exam?.settings.requireFullscreen,
+    handleStartFullscreen,
+    isFullscreen,
+  ]);
 
   useEffect(() => {
     if (attempt?.status !== "InProgress" || !exam?.enableAntiCheat) {
@@ -701,7 +772,8 @@ export default function ExamAttemptPage() {
     function handleClipboardEvent(event) {
       logAntiCheatEvent({
         type: ANTI_CHEAT_EVENT_TYPES.copyPaste,
-        description: "Hệ thống ghi nhận thao tác copy / cut / paste trong lúc làm bài.",
+        description:
+          "Hệ thống ghi nhận thao tác copy / cut / paste trong lúc làm bài.",
         metadata: JSON.stringify({ eventType: event.type }),
       });
     }
@@ -710,7 +782,8 @@ export default function ExamAttemptPage() {
       postKeepAliveLog({
         examAttemptId: Number(attemptRef.current?.id) || 0,
         type: ANTI_CHEAT_EVENT_TYPES.pageReload,
-        description: "Hệ thống ghi nhận trang làm bài bị tải lại hoặc đóng đột ngột.",
+        description:
+          "Hệ thống ghi nhận trang làm bài bị tải lại hoặc đóng đột ngột.",
       });
     }
 
@@ -729,12 +802,19 @@ export default function ExamAttemptPage() {
       document.removeEventListener("paste", handleClipboardEvent);
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [attempt?.status, exam?.enableAntiCheat, logAntiCheatEvent, postKeepAliveLog]);
+  }, [
+    attempt?.status,
+    exam?.enableAntiCheat,
+    logAntiCheatEvent,
+    postKeepAliveLog,
+  ]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-surface-sunken px-4 py-6 md:px-6 lg:px-8">
-        <div className="eg-feedback-panel mx-auto max-w-[1280px]">Đang tải phòng làm bài...</div>
+        <div className="eg-feedback-panel mx-auto max-w-[1280px]">
+          Đang tải phòng làm bài...
+        </div>
       </div>
     );
   }
@@ -747,7 +827,10 @@ export default function ExamAttemptPage() {
             title="Không thể mở phòng làm bài."
             description={loadErrorMessage}
             action={
-              <Link className="eg-button eg-button-primary" to={getExamListPathByRole(user?.role)}>
+              <Link
+                className="eg-button eg-button-primary"
+                to={getExamListPathByRole(user?.role)}
+              >
                 Quay lại danh sách đề thi
               </Link>
             }
@@ -772,35 +855,52 @@ export default function ExamAttemptPage() {
                 </h1>
                 <p className="text-sm text-secondary">
                   Bài làm đã được ghi nhận lúc{" "}
-                  {attempt.submittedAt ? formatShortDateTime(attempt.submittedAt) : "--"}.
+                  {attempt.submittedAt
+                    ? formatShortDateTime(attempt.submittedAt)
+                    : "--"}
+                  .
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="success">Đã nộp bài</Badge>
-                <Badge variant={suspicionMeta.variant}>{suspicionMeta.label}</Badge>
+                <Badge variant={suspicionMeta.variant}>
+                  {suspicionMeta.label}
+                </Badge>
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-[18px] border border-border bg-surface-sunken p-4">
-                <p className="text-[0.82rem] font-medium text-secondary">Điểm</p>
+                <p className="text-[0.82rem] font-medium text-secondary">
+                  Điểm
+                </p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">
-                  {typeof result?.attempt?.score === "number" ? result.attempt.score : "--"}
+                  {typeof result?.attempt?.score === "number"
+                    ? result.attempt.score
+                    : "--"}
                 </p>
               </div>
               <div className="rounded-[18px] border border-border bg-surface-sunken p-4">
-                <p className="text-[0.82rem] font-medium text-secondary">Đã trả lời</p>
+                <p className="text-[0.82rem] font-medium text-secondary">
+                  Đã trả lời
+                </p>
                 <p className="mt-3 text-lg font-semibold text-primary">
                   {answeredQuestionCount}/{questions.length} câu
                 </p>
               </div>
               <div className="rounded-[18px] border border-border bg-surface-sunken p-4">
-                <p className="text-[0.82rem] font-medium text-secondary">Điểm nghi ngờ</p>
-                <p className="mt-3 text-lg font-semibold text-primary">{attempt.suspicionScore}</p>
+                <p className="text-[0.82rem] font-medium text-secondary">
+                  Điểm nghi ngờ
+                </p>
+                <p className="mt-3 text-lg font-semibold text-primary">
+                  {attempt.suspicionScore}
+                </p>
               </div>
               <div className="rounded-[18px] border border-border bg-surface-sunken p-4">
-                <p className="text-[0.82rem] font-medium text-secondary">Hiển thị kết quả</p>
+                <p className="text-[0.82rem] font-medium text-secondary">
+                  Hiển thị kết quả
+                </p>
                 <p className="mt-3 text-lg font-semibold text-primary">
                   {exam.settings.showResultAfterSubmit ? "Đang bật" : "Đang ẩn"}
                 </p>
@@ -814,17 +914,28 @@ export default function ExamAttemptPage() {
                 <Card key={questionResult.questionId} className="space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={questionResult.isCorrect ? "success" : "caution"}>
-                        {questionResult.isCorrect ? "Đạt điểm tối đa" : "Cần xem lại"}
+                      <Badge
+                        variant={
+                          questionResult.isCorrect ? "success" : "caution"
+                        }
+                      >
+                        {questionResult.isCorrect
+                          ? "Đạt điểm tối đa"
+                          : "Cần xem lại"}
                       </Badge>
                       <Badge variant="neutral">
-                        Câu {index + 1} • {questionResult.earnedScore}/{questionResult.score} điểm
+                        Câu {index + 1} • {questionResult.earnedScore}/
+                        {questionResult.score} điểm
                       </Badge>
                     </div>
-                    <p className="text-sm text-secondary">{formatResultAnswerSummary(questionResult)}</p>
+                    <p className="text-sm text-secondary">
+                      {formatResultAnswerSummary(questionResult)}
+                    </p>
                   </div>
 
-                  <p className="text-sm leading-7 text-primary">{questionResult.content}</p>
+                  <p className="text-sm leading-7 text-primary">
+                    {questionResult.content}
+                  </p>
 
                   <div className="rounded-[18px] border border-border bg-surface-sunken p-4 text-sm leading-6 text-secondary">
                     {formatResultAnswerSummary(questionResult)}
@@ -834,8 +945,14 @@ export default function ExamAttemptPage() {
             </div>
           ) : (
             <Card className="space-y-3 text-sm leading-6 text-secondary">
-              <Badge variant={exam.settings.showResultAfterSubmit ? "info" : "neutral"}>
-                {exam.settings.showResultAfterSubmit ? "Đã ghi nhận điểm" : "Chi tiết đáp án đang ẩn"}
+              <Badge
+                variant={
+                  exam.settings.showResultAfterSubmit ? "info" : "neutral"
+                }
+              >
+                {exam.settings.showResultAfterSubmit
+                  ? "Đã ghi nhận điểm"
+                  : "Chi tiết đáp án đang ẩn"}
               </Badge>
               <p>
                 {exam.settings.showResultAfterSubmit
@@ -846,7 +963,10 @@ export default function ExamAttemptPage() {
           )}
 
           <div className="flex flex-wrap gap-3">
-            <Link className="eg-button eg-button-primary" to={getExamListPathByRole(user?.role)}>
+            <Link
+              className="eg-button eg-button-primary"
+              to={getExamListPathByRole(user?.role)}
+            >
               Danh sách đề thi
             </Link>
             <Link
@@ -867,7 +987,9 @@ export default function ExamAttemptPage() {
         <div className="mx-auto flex max-w-[1360px] flex-wrap items-center justify-between gap-4 px-4 py-4 md:px-6 lg:px-8">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={timeBadgeVariant}>{formatRemainingDuration(remainingTimeMs)}</Badge>
+              <Badge variant={timeBadgeVariant}>
+                {formatRemainingDuration(remainingTimeMs)}
+              </Badge>
               <Badge variant={isOnline ? "success" : "danger"}>
                 {isOnline ? "Đang kết nối" : "Đang mất kết nối"}
               </Badge>
@@ -875,7 +997,9 @@ export default function ExamAttemptPage() {
                 {formatSaveBanner(saveState)}
               </Badge>
               {exam.enableAntiCheat ? (
-                <Badge variant={suspicionMeta.variant}>{suspicionMeta.label}</Badge>
+                <Badge variant={suspicionMeta.variant}>
+                  {suspicionMeta.label}
+                </Badge>
               ) : null}
             </div>
 
@@ -884,19 +1008,26 @@ export default function ExamAttemptPage() {
                 {exam.title}
               </h1>
               <p className="text-sm text-secondary">
-                Câu {currentQuestionIndex + 1}/{questions.length} • Đã trả lời {answeredQuestionCount}/
-                {questions.length} câu • Bắt đầu {formatShortDateTime(attempt.startedAt)}
+                Câu {currentQuestionIndex + 1}/{questions.length} • Đã trả lời{" "}
+                {answeredQuestionCount}/{questions.length} câu • Bắt đầu{" "}
+                {formatShortDateTime(attempt.startedAt)}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {exam.settings.requireFullscreen ? (
-              <Button onClick={() => handleStartFullscreen()} variant="secondary">
+              <Button
+                onClick={() => handleStartFullscreen()}
+                variant="secondary"
+              >
                 {isFullscreen ? "Đang toàn màn hình" : "Bật toàn màn hình"}
               </Button>
             ) : null}
-            <Button disabled={isSubmitting} onClick={() => setIsConfirmingSubmit(true)}>
+            <Button
+              disabled={isSubmitting}
+              onClick={() => setIsConfirmingSubmit(true)}
+            >
               {isSubmitting ? "Đang nộp..." : "Nộp bài"}
             </Button>
           </div>
@@ -909,12 +1040,16 @@ export default function ExamAttemptPage() {
             {lastWarning ? (
               <Card className="space-y-3 border-caution/28 bg-caution-muted">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={latestWarningMeta.variant}>{latestWarningMeta.label}</Badge>
+                  <Badge variant={latestWarningMeta.variant}>
+                    {latestWarningMeta.label}
+                  </Badge>
                   <span className="text-sm text-secondary">
                     {formatShortDateTime(lastWarning.occurredAt)}
                   </span>
                 </div>
-                <p className="text-sm leading-6 text-secondary">{lastWarning.description}</p>
+                <p className="text-sm leading-6 text-secondary">
+                  {lastWarning.description}
+                </p>
               </Card>
             ) : null}
 
@@ -923,11 +1058,15 @@ export default function ExamAttemptPage() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="info">Câu {currentQuestionIndex + 1}</Badge>
+                      <Badge variant="info">
+                        Câu {currentQuestionIndex + 1}
+                      </Badge>
                       <Badge variant="neutral">
                         {getQuestionTypeLabel(currentQuestion.questionType)}
                       </Badge>
-                      <Badge variant="neutral">{currentQuestion.score} điểm</Badge>
+                      <Badge variant="neutral">
+                        {currentQuestion.score} điểm
+                      </Badge>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-secondary">
@@ -961,9 +1100,15 @@ export default function ExamAttemptPage() {
                       className="min-h-44"
                       id={`question-${currentQuestion.id}-text`}
                       placeholder="Nhập câu trả lời của bạn"
-                      value={answersByQuestionId[currentQuestion.id]?.textAnswer ?? ""}
+                      value={
+                        answersByQuestionId[currentQuestion.id]?.textAnswer ??
+                        ""
+                      }
                       onChange={(event) =>
-                        handleShortAnswerChange(currentQuestion.id, event.target.value)
+                        handleShortAnswerChange(
+                          currentQuestion.id,
+                          event.target.value,
+                        )
                       }
                     />
                   </div>
@@ -971,8 +1116,9 @@ export default function ExamAttemptPage() {
                   <div className="space-y-3">
                     {currentQuestion.answers.map((answer, index) => {
                       const isChecked =
-                        answersByQuestionId[currentQuestion.id]?.answerIds?.includes(answer.id) ??
-                        false;
+                        answersByQuestionId[
+                          currentQuestion.id
+                        ]?.answerIds?.includes(answer.id) ?? false;
                       const isSingleSelect =
                         currentQuestion.questionType === "SingleChoice" ||
                         currentQuestion.questionType === "TrueFalse";
@@ -995,8 +1141,14 @@ export default function ExamAttemptPage() {
                             type={isSingleSelect ? "radio" : "checkbox"}
                             onChange={() =>
                               isSingleSelect
-                                ? handleSelectSingleAnswer(currentQuestion.id, answer.id)
-                                : handleToggleMultipleAnswer(currentQuestion.id, answer.id)
+                                ? handleSelectSingleAnswer(
+                                    currentQuestion.id,
+                                    answer.id,
+                                  )
+                                : handleToggleMultipleAnswer(
+                                    currentQuestion.id,
+                                    answer.id,
+                                  )
                             }
                           />
 
@@ -1004,7 +1156,9 @@ export default function ExamAttemptPage() {
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-white text-sm font-semibold text-primary">
                               {getAnswerChoiceLabel(index)}
                             </span>
-                            <p className="text-sm leading-7 text-primary">{answer.content}</p>
+                            <p className="text-sm leading-7 text-primary">
+                              {answer.content}
+                            </p>
                           </div>
                         </label>
                       );
@@ -1015,7 +1169,11 @@ export default function ExamAttemptPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
                   <Button
                     disabled={currentQuestionIndex === 0}
-                    onClick={() => setCurrentQuestionIndex((previousValue) => previousValue - 1)}
+                    onClick={() =>
+                      setCurrentQuestionIndex(
+                        (previousValue) => previousValue - 1,
+                      )
+                    }
                     variant="secondary"
                   >
                     Câu trước
@@ -1031,7 +1189,11 @@ export default function ExamAttemptPage() {
                     </Button>
                     <Button
                       disabled={currentQuestionIndex === questions.length - 1}
-                      onClick={() => setCurrentQuestionIndex((previousValue) => previousValue + 1)}
+                      onClick={() =>
+                        setCurrentQuestionIndex(
+                          (previousValue) => previousValue + 1,
+                        )
+                      }
                       variant="secondary"
                     >
                       Câu tiếp
@@ -1045,8 +1207,12 @@ export default function ExamAttemptPage() {
           <aside className="hidden xl:block">
             <Card className="sticky top-24 space-y-5 border-white/70 bg-white/92 shadow-[0_24px_64px_-40px_rgba(15,23,42,0.45)]">
               <div className="space-y-2">
-                <h2 className="text-lg font-semibold text-primary">Tổng quan phiên làm bài</h2>
-                <p className="text-sm text-secondary">Theo đúng cấu hình mà giảng viên đã đặt.</p>
+                <h2 className="text-lg font-semibold text-primary">
+                  Tổng quan phiên làm bài
+                </h2>
+                <p className="text-sm text-secondary">
+                  Theo đúng cấu hình mà giảng viên đã đặt.
+                </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
@@ -1070,24 +1236,28 @@ export default function ExamAttemptPage() {
 
               <div className="space-y-3 rounded-[18px] border border-border bg-surface-sunken p-4 text-sm text-secondary">
                 <p>
-                  <span className="font-semibold text-primary">Thời gian còn lại:</span>{" "}
+                  <span className="font-semibold text-primary">
+                    Thời gian còn lại:
+                  </span>{" "}
                   {formatRemainingDuration(remainingTimeMs)}
                 </p>
                 <p>
-                  <span className="font-semibold text-primary">Chưa trả lời:</span>{" "}
+                  <span className="font-semibold text-primary">
+                    Chưa trả lời:
+                  </span>{" "}
                   {unansweredQuestionIndexes.length > 0
                     ? unansweredQuestionIndexes.join(", ")
                     : "Không có"}
                 </p>
-                {exam.enableAntiCheat ? (
+                {/* {exam.enableAntiCheat ? (
                   <p>
                     <span className="font-semibold text-primary">Mức nghi ngờ:</span>{" "}
                     {attempt.suspicionScore}
                   </p>
-                ) : null}
+                ) : null} */}
               </div>
 
-              <div className="space-y-3">
+              {/* <div className="space-y-3">
                 <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-secondary">
                   Cấu hình đang áp dụng
                 </h3>
@@ -1101,17 +1271,24 @@ export default function ExamAttemptPage() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </div> */}
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-lg font-semibold text-primary">Danh sách câu hỏi</h3>
-                  <span className="text-sm text-secondary">{questions.length} câu</span>
+                  <h3 className="text-lg font-semibold text-primary">
+                    Danh sách câu hỏi
+                  </h3>
+                  <span className="text-sm text-secondary">
+                    {questions.length} câu
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-5 gap-3">
                   {questions.map((question, index) => {
-                    const isAnswered = isQuestionAnswered(question, answersByQuestionId[question.id]);
+                    const isAnswered = isQuestionAnswered(
+                      question,
+                      answersByQuestionId[question.id],
+                    );
                     const isCurrent = index === currentQuestionIndex;
 
                     return (
@@ -1134,7 +1311,11 @@ export default function ExamAttemptPage() {
                 </div>
               </div>
 
-              <Button className="w-full" disabled={isSubmitting} onClick={() => setIsConfirmingSubmit(true)}>
+              <Button
+                className="w-full"
+                disabled={isSubmitting}
+                onClick={() => setIsConfirmingSubmit(true)}
+              >
                 {isSubmitting ? "Đang nộp..." : "Nộp bài ngay"}
               </Button>
             </Card>
@@ -1151,39 +1332,53 @@ export default function ExamAttemptPage() {
                 Bật toàn màn hình để tiếp tục làm bài
               </h2>
               <p className="text-sm leading-6 text-secondary">
-                Đề thi này được giảng viên cấu hình bắt buộc toàn màn hình. Nếu thoát khỏi chế độ
-                này trong lúc làm bài, hệ thống có thể ghi nhận sự kiện anti-cheat.
+                Đề thi này được giảng viên cấu hình bắt buộc toàn màn hình. Nếu
+                thoát khỏi chế độ này trong lúc làm bài, hệ thống có thể ghi
+                nhận sự kiện anti-cheat.
               </p>
             </div>
 
             <div className="mt-6 flex flex-wrap justify-end gap-3">
-              <Button onClick={() => handleStartFullscreen()}>Bật toàn màn hình</Button>
+              <Button onClick={() => handleStartFullscreen()}>
+                Bật toàn màn hình
+              </Button>
             </div>
           </div>
         </div>
       ) : null}
 
       {isQuestionSheetOpen ? (
-        <div className="fixed inset-0 z-40 bg-black/35 xl:hidden" onClick={() => setIsQuestionSheetOpen(false)}>
+        <div
+          className="fixed inset-0 z-40 bg-black/35 xl:hidden"
+          onClick={() => setIsQuestionSheetOpen(false)}
+        >
           <div
             className="absolute bottom-0 left-0 right-0 rounded-t-[28px] border border-border bg-surface p-5"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold text-primary">Điều hướng câu hỏi</h2>
+                <h2 className="text-lg font-semibold text-primary">
+                  Điều hướng câu hỏi
+                </h2>
                 <p className="text-sm text-secondary">
                   Đã trả lời {answeredQuestionCount}/{questions.length} câu
                 </p>
               </div>
-              <Button onClick={() => setIsQuestionSheetOpen(false)} variant="ghost">
+              <Button
+                onClick={() => setIsQuestionSheetOpen(false)}
+                variant="ghost"
+              >
                 Đóng
               </Button>
             </div>
 
             <div className="mt-4 grid grid-cols-5 gap-3">
               {questions.map((question, index) => {
-                const isAnswered = isQuestionAnswered(question, answersByQuestionId[question.id]);
+                const isAnswered = isQuestionAnswered(
+                  question,
+                  answersByQuestionId[question.id],
+                );
 
                 return (
                   <button
@@ -1220,7 +1415,9 @@ export default function ExamAttemptPage() {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="space-y-4">
-              <h2 className="text-2xl font-semibold tracking-tight text-primary">Xác nhận nộp bài</h2>
+              <h2 className="text-2xl font-semibold tracking-tight text-primary">
+                Xác nhận nộp bài
+              </h2>
               <div className="space-y-2 text-sm leading-6 text-secondary">
                 <p>
                   Đã trả lời {answeredQuestionCount}/{questions.length} câu.
@@ -1242,7 +1439,10 @@ export default function ExamAttemptPage() {
               >
                 Quay lại bài làm
               </Button>
-              <Button disabled={isSubmitting} onClick={() => handleSubmitAttempt()}>
+              <Button
+                disabled={isSubmitting}
+                onClick={() => handleSubmitAttempt()}
+              >
                 {isSubmitting ? "Đang nộp..." : "Xác nhận nộp bài"}
               </Button>
             </div>

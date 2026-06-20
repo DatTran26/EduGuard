@@ -6,6 +6,7 @@ import {
   FiCalendar,
   FiClipboard,
   FiUsers,
+  FiRefreshCw,
 } from "react-icons/fi";
 import { dashboardApi } from "../../../api/dashboardApi";
 import Card from "../../../components/common/Card";
@@ -20,10 +21,11 @@ import {
 } from "../components/teacher-dashboard-charts";
 import Skeleton, { SkeletonStatCard } from "../../../components/common/Skeleton";
 import { getRoleLabel } from "../../../routes/roleRoutes";
+import Button from "../../../components/common/Button";
 
 const HERO_BACKGROUND_STYLE = {
   backgroundImage:
-    "radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 30%), linear-gradient(135deg, #ffffff 0%, #f8fbff 46%, #eef6ff 100%)",
+    "radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 30%), linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-sunken) 46%, var(--color-border-subtle) 100%)",
 };
 
 const SUMMARY_CARD_STYLES = {
@@ -93,7 +95,7 @@ function getRiskBadgeVariant(totalSuspicion) {
 function DashboardHeaderSkeleton() {
   return (
     <div
-      className="eg-page-hero p-6 sm:p-8"
+      className="eg-page-hero p-6 sm:p-8 animate-pulse"
       style={HERO_BACKGROUND_STYLE}
     >
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr] xl:items-end">
@@ -118,44 +120,27 @@ export default function TeacherDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadDashboard() {
-      try {
-        const response = await dashboardApi.getTeacherDashboard();
-
-        if (!isMounted) {
-          return;
-        }
-
-        setDashboardData(response.data);
-        setLoadErrorMessage("");
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        const nextMessage = error.message || "Không thể tải dữ liệu dashboard giảng viên.";
-
-        setLoadErrorMessage(nextMessage);
-        showToast({
-          tone: "danger",
-          title: "Tải dashboard thất bại",
-          message: nextMessage,
-        });
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
+  async function loadDashboard() {
+    setIsLoading(true);
+    setLoadErrorMessage("");
+    try {
+      const response = await dashboardApi.getTeacherDashboard();
+      setDashboardData(response.data);
+    } catch (error) {
+      const nextMessage = error.message || "Không thể tải dữ liệu dashboard giảng viên.";
+      setLoadErrorMessage(nextMessage);
+      showToast({
+        tone: "danger",
+        title: "Tải dashboard thất bại",
+        message: nextMessage,
+      });
+    } finally {
+      setIsLoading(false);
     }
+  }
 
+  useEffect(() => {
     loadDashboard();
-
-    return () => {
-      isMounted = false;
-    };
   }, [showToast]);
 
   if (isLoading) {
@@ -210,12 +195,18 @@ export default function TeacherDashboardPage() {
     );
   }
 
-  if (!dashboardData) {
+  if (loadErrorMessage || !dashboardData) {
     return (
-      <EmptyState
-        title="Chưa tải được dashboard giảng viên"
-        description={loadErrorMessage}
-      />
+      <div className="flex flex-col items-center justify-center p-12 border border-border bg-surface rounded-2xl space-y-4 max-w-[1280px] mx-auto">
+        <FiAlertTriangle size={48} className="text-danger animate-bounce" />
+        <h3 className="text-lg font-bold text-primary">Tải dữ liệu thất bại</h3>
+        <p className="text-sm text-secondary max-w-md text-center">
+          {loadErrorMessage || "Đã xảy ra lỗi không xác định khi tải dữ liệu từ máy chủ."}
+        </p>
+        <Button onClick={loadDashboard} className="flex items-center gap-2">
+          <FiRefreshCw /> Thử lại
+        </Button>
+      </div>
     );
   }
 
@@ -271,7 +262,7 @@ export default function TeacherDashboardPage() {
             {headerPills.map((item) => (
               <div
                 key={item.label}
-                className="rounded-[20px] border border-white/75 bg-white/80 p-4 backdrop-blur"
+                className="rounded-[20px] border border-border bg-surface p-4"
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-[0.78rem] font-semibold uppercase tracking-[0.18em] text-secondary">
@@ -300,7 +291,7 @@ export default function TeacherDashboardPage() {
                   <p className="text-4xl font-semibold tracking-tight text-primary">{item.value}</p>
                 </div>
 
-                <span className="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[16px] border border-white/70 bg-white/70">
+                <span className="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[16px] border border-border bg-surface">
                   {styleConfig.icon}
                 </span>
               </div>
@@ -357,7 +348,7 @@ export default function TeacherDashboardPage() {
               return (
                 <div
                   key={item.id}
-                  className="rounded-[18px] border border-border bg-neutral px-4 py-3.5"
+                  className="rounded-[18px] border border-border bg-surface-sunken px-4 py-3.5 animate-fadeIn"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 space-y-1.5">
@@ -389,7 +380,7 @@ export default function TeacherDashboardPage() {
               {upcomingExams.map((exam) => (
                 <div
                   key={exam.id}
-                  className="rounded-[18px] border border-border bg-neutral px-4 py-3.5"
+                  className="rounded-[18px] border border-border bg-surface-sunken px-4 py-3.5 animate-fadeIn"
                 >
                   <div className="space-y-1.5">
                     <p className="text-sm font-semibold text-primary">{exam.title}</p>
@@ -420,7 +411,7 @@ export default function TeacherDashboardPage() {
               {highRiskStudents.map((student) => (
                 <div
                   key={student.id}
-                  className="rounded-[18px] border border-border bg-neutral px-4 py-3.5"
+                  className="rounded-[18px] border border-border bg-surface-sunken px-4 py-3.5 animate-fadeIn"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 space-y-1.5">

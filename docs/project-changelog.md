@@ -1,5 +1,118 @@
 # Project Changelog
 
+## Feature: Student assignment submission state consistency across views
+
+Date: 2026-06-21
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Student assignment submission state consistency across classroom detail and the `Bài kiểm tra -> Bài tập` view.
+- Purpose and user/business impact: Prevent students from seeing `Chưa nộp` after they have already submitted an assignment that the teacher can see and grade. This keeps the assignment journey trustworthy across both student entry points.
+- Files or modules changed: Assignment submission resolver helper (`assignmentHelpers.js`), classroom assignment view (`AssignmentSection.jsx`), student exam/assignment switcher page (`ExamListPage.jsx`), main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `frontend/src/features/assignments/assignmentHelpers.js`
+- `frontend/src/features/assignments/components/AssignmentSection.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Added `resolveAssignmentSubmission()` to centralize assignment submission resolution, with backend `mySubmission` taking precedence and local cached submissions used only as a fallback when student lists refresh on another screen before the next classroom reload.
+- Fixed `AssignmentSection.jsx` to restore a valid `classroomId`-based loader, update the local student submission map during async loads instead of inside a synchronous effect, and write successful submissions back into both the cache and current assignment card state.
+- Updated the student assignment tab inside `ExamListPage.jsx` to reuse the same submission resolver and shared assignment status/deadline badges, eliminating the mismatch where teachers could already see the submission but students still saw `Chưa nộp`.
+
+Validation:
+
+- Ran `npm run build` inside `frontend/` - passed.
+- Ran `npx eslint src/features/assignments/assignmentHelpers.js src/features/assignments/components/AssignmentSection.jsx src/features/exams/pages/ExamListPage.jsx` inside `frontend/` - passed.
+
+Known risks / rollback / follow-up:
+
+- The local cache is now intentionally a fallback only. Backend `mySubmission` remains the primary source of truth, so any future submission payload changes must keep that DTO populated consistently.
+
+## Feature: Student assignment sub-navigation tab and details visualizer
+
+Date: 2026-06-21
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Student assignment sub-navigation tab and details visualizer.
+- Purpose and user/business impact: Allows students under the "Bài kiểm tra" (Exams) navigation tab to switch to an "Assignments" (Bài tập) list. This contains a dedicated search filter and classroom filter, letting students quickly search for their classroom tasks, expand details, and view their graded scores and feedback from teachers.
+- Files or modules changed: Student exam page (`ExamListPage.jsx`), classroom assignment details view (`AssignmentSection.jsx`), assignment API model (`assignmentApi.js`), project changelog, and main changelog.
+
+Changed files:
+
+- `frontend/src/api/assignmentApi.js`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/features/assignments/components/AssignmentSection.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Updated `normalizeAssignmentDto` in `assignmentApi.js` to normalize the `mySubmission` object (if present), mapping score and feedback fields so that React can query the student's submission state.
+- Added states for `studentSubTab` (exams vs assignments), classroom assignment records, searching text, loading indicators, and active expanded assignment card to `ExamListPage.jsx`.
+- Aggregated classroom assignments for the active student in parallel under the initial data load and filter refresh logic of the page.
+- Implemented a centered pill-shaped sub-navigation bar below the page hero header for students to toggle between assignments and exams.
+- Added a conditional grid cell layout in the filter card: shows the exam schedule status dropdown when on "exams", and displays the text search query input when on "assignments".
+- Formatted deadlines using `formatShortDateTime` and conditional status badges (Chưa nộp, Đã nộp (Chờ chấm), Đã chấm: X/Y điểm) depending on the presence of student submission and graded score.
+- Provided an inline expandable card layout detailing the assignment's description, maximum score, submitted date, achieved points, and teacher's written comments.
+- Updated `AssignmentSection.jsx` expanded student view block to show the real graded score, teacher feedback comments, and status badge when the student views their submission.
+
+Validation:
+
+- Verified that all edited files compile and conform to the ESLint configuration of the frontend workspace.
+- Backend database maps the student's authenticated submission DTO to `MySubmission` on assignments queries.
+
+Known risks / rollback / follow-up:
+
+- None. The feature leverages the authenticated student session to query student-scoped assignment lists and submission properties cleanly.
+
+## Feature: Full Role-Based Dashboard Redesign and Real-Data API Integration
+
+Date: 2026-06-20
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Full Role-Based Dashboard Redesign and Real-Data API Integration.
+- Purpose and user/business impact: Replace all remaining mocked dashboard and monitoring data with real-time statistics aggregated from live backend APIs for Admin, Teacher, and Student roles. Modernize the dashboard visual interfaces to feel premium, responsive, and provide transparency on backend capabilities with loaders, skeletons, and retry actions.
+- Files or modules changed: API aggregation layer (`dashboardApi.js`), Admin control center page (`AdminDashboardPage.jsx`), Admin monitoring page (`AdminMonitoringPage.jsx`), Teacher workspace page (`TeacherDashboardPage.jsx`), and Student learning progress page (`StudentDashboardPage.jsx`).
+
+Changed files:
+
+- `frontend/src/api/dashboardApi.js`
+- `frontend/src/features/dashboard/pages/AdminDashboardPage.jsx`
+- `frontend/src/features/admin/pages/AdminMonitoringPage.jsx`
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/features/dashboard/pages/StudentDashboardPage.jsx`
+
+Technical summary:
+
+- Restructured the front-end API layer in `dashboardApi.js` to dynamically fetch and aggregate data from live backend REST endpoints (`userApi`, `classroomApi`, `examApi`, `examAttemptApi`, `antiCheatApi`, `assignmentApi`) for all roles, removing syntax errors and mock leftovers.
+- Redesigned `AdminDashboardPage.jsx` and `AdminMonitoringPage.jsx` to show live statistics, system health statuses, recent activities, and high-risk logs. Added a live SignalR hub health check hook that dynamically updates the indicator based on active hub connections.
+- Cleaned up the Teacher dashboard `bg-neutral` styles, replacing them with standard theme-compliant variables (`bg-surface-sunken`/`bg-surface`).
+- Redesigned `StudentDashboardPage.jsx` to load joined classrooms and upcoming exams from live APIs. For unsupported backend statistics (attempt history, global submissions, warning counts), added clear disclosure alerts and badges (`Thiếu API` / `Yêu cầu API Backend`) explaining the missing backend capabilities.
+- Added animated loading skeletons and error alert states with retry actions across all dashboard pages to provide a fluid, robust user experience.
+
+Validation:
+
+- Ran production build check `npm run build` inside `frontend/` - completed successfully with zero errors.
+- Ran backend and pre-commit tests `npm test` - completed successfully.
+
+Known risks / rollback / follow-up:
+
+- Student notifications and attempts are marked as pending backend API availability. Once the backend introduces these APIs, the frontend adapters should be updated to query them directly.
+
 ## Feature: System-wide UX/UI Redesign and Design System Standardization
 
 Date: 2026-06-20
