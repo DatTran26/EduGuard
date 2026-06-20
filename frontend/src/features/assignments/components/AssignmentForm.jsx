@@ -2,6 +2,7 @@ import { useState } from "react";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import FormErrorSummary from "../../../components/forms/FormErrorSummary";
+import Select from "../../../components/forms/Select";
 import TextInput from "../../../components/forms/TextInput";
 import { toAssignmentDateTimeInputValue } from "../assignmentHelpers";
 import {
@@ -11,8 +12,9 @@ import {
   validateRequiredText,
 } from "../../../utils/formValidation";
 
-function buildAssignmentFormValues(assignment = null) {
+function buildAssignmentFormValues(assignment = null, defaultClassroomId = "") {
   return {
+    classroomId: assignment?.classroomId ? String(assignment.classroomId) : String(defaultClassroomId || ""),
     title: assignment?.title ?? "",
     description: assignment?.description ?? "",
     deadline: toAssignmentDateTimeInputValue(assignment?.deadline),
@@ -22,13 +24,15 @@ function buildAssignmentFormValues(assignment = null) {
 
 export default function AssignmentForm({
   assignment = null,
+  classroomOptions = [],
+  defaultClassroomId = "",
   isSubmitting = false,
   onCancel = null,
   onSubmitAssignment,
   submitLabel = "Lưu bài tập",
   title = "Thông tin bài tập",
 }) {
-  const [formValues, setFormValues] = useState(() => buildAssignmentFormValues(assignment));
+  const [formValues, setFormValues] = useState(() => buildAssignmentFormValues(assignment, defaultClassroomId));
   const [validationErrors, setValidationErrors] = useState({});
 
   function handleFieldChange(fieldName, value) {
@@ -44,6 +48,10 @@ export default function AssignmentForm({
 
   function validateFormValues() {
     return {
+      classroomId:
+        classroomOptions.length > 0 && !assignment
+          ? validateRequiredText(formValues.classroomId, "Lớp áp dụng không được để trống.")
+          : "",
       title: validateRequiredText(formValues.title, "Tiêu đề bài tập không được để trống."),
       deadline: validateRequiredText(formValues.deadline, "Hạn nộp không được để trống."),
       maxScore: validateNumberField(formValues.maxScore, {
@@ -57,6 +65,7 @@ export default function AssignmentForm({
 
   function buildSubmitPayload() {
     return {
+      classroomId: formValues.classroomId ? Number(formValues.classroomId) : null,
       title: formValues.title.trim(),
       description: formValues.description.trim(),
       deadline: formValues.deadline ? new Date(formValues.deadline).toISOString() : null,
@@ -78,7 +87,7 @@ export default function AssignmentForm({
 
     if (shouldReset && !assignment) {
       setValidationErrors({});
-      setFormValues(buildAssignmentFormValues(null));
+      setFormValues(buildAssignmentFormValues(null, defaultClassroomId));
     }
   }
 
@@ -88,6 +97,17 @@ export default function AssignmentForm({
 
       <form className="space-y-4" noValidate onSubmit={handleSubmit}>
         <FormErrorSummary message={getFirstValidationError(validationErrors)} />
+
+        {classroomOptions.length > 0 && !assignment ? (
+          <Select
+            id="assignment-classroom-create"
+            label="Lớp áp dụng"
+            options={classroomOptions}
+            value={formValues.classroomId}
+            onChange={(event) => handleFieldChange("classroomId", event.target.value)}
+            error={validationErrors.classroomId}
+          />
+        ) : null}
 
         <TextInput
           error={validationErrors.title}

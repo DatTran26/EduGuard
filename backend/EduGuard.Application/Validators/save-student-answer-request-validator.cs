@@ -8,8 +8,5 @@ public class SaveStudentAnswerRequestValidator : AbstractValidator<SaveStudentAn
     public SaveStudentAnswerRequestValidator()
     {
         RuleFor(x => x.QuestionId).GreaterThan(0);
-        RuleFor(x => x)
-            .Must(x => x.AnswerIds.Count > 0 || !string.IsNullOrWhiteSpace(x.TextAnswer))
-            .WithMessage("Cần chọn đáp án hoặc nhập câu trả lời.");
     }
 }

@@ -11,6 +11,12 @@ public interface IExamService
     Task<ExamDto> PatchAsync(int examId, PatchExamRequest request, string teacherId, CancellationToken ct = default);
     Task DeleteAsync(int examId, string teacherId, CancellationToken ct = default);
     Task<ExamDto> PublishAsync(int examId, string teacherId, CancellationToken ct = default);
+    Task<QuestionImportResultDto> PreviewQuestionImportAsync(
+        Stream fileStream,
+        string fileName,
+        string contentType,
+        long fileLength,
+        CancellationToken ct = default);
     Task<QuestionImportResultDto> ImportQuestionsAsync(
         int examId,
         Stream fileStream,

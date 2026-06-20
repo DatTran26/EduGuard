@@ -9,6 +9,14 @@ import { useToast } from "../../hooks/useToast";
 import { getProfileRouteByRole, getRoleLabel } from "../../routes/roleRoutes";
 import { routeConfig } from "../../routes/routeConfig";
 import {
+  readNotificationLastSeenAt,
+  readNotifications,
+  writeNotificationLastSeenAt,
+  writeNotifications,
+} from "../../features/notifications/notificationStorage";
+import TeacherQuickCreateButton from "./TeacherQuickCreateButton";
+import TeacherShellSearch from "./TeacherShellSearch";
+import {
   FiBell,
   FiChevronRight,
   FiChevronDown,
@@ -28,19 +36,19 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "../ui/flexnative-breadcrumb";
-
-const NOTIFICATION_STORAGE_KEY = "eg.notifications.items.v1";
-const NOTIFICATION_LAST_SEEN_KEY = "eg.notifications.lastSeenAt.v1";
 const BREADCRUMB_MAX_VISIBLE = 4;
 
 const breadcrumbLabelBySegment = {
+  assignments: "Bài tập",
   classrooms: "Lớp học",
-  exams: "Bài kiểm tra",
+  exams: "Đề thi",
   dashboard: "Dashboard",
   profile: "Hồ sơ",
+  results: "Kết quả",
   users: "Người dùng",
   join: "Tham gia lớp",
-  monitoring: "Giám sát",
+  monitoring: "Giám sát thi",
+  notifications: "Thông báo",
 };
 
 const homeHrefByRoleSegment = {
@@ -150,40 +158,6 @@ function RoleEmailBadge({ role }) {
   );
 }
 
-function safeParseNotifications() {
-  try {
-    const raw = window.localStorage.getItem(NOTIFICATION_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function safeWriteNotifications(items) {
-  try {
-    window.localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(items));
-  } catch {
-    // ignore
-  }
-}
-
-function safeGetLastSeenAt() {
-  try {
-    return window.localStorage.getItem(NOTIFICATION_LAST_SEEN_KEY) || "";
-  } catch {
-    return "";
-  }
-}
-
-function safeSetLastSeenAt(value) {
-  try {
-    window.localStorage.setItem(NOTIFICATION_LAST_SEEN_KEY, value);
-  } catch {
-    // ignore
-  }
-}
-
 // Component này là header chính của khu đã đăng nhập, gom logo, user menu và hành động đăng xuất.
 export default function TopBar({
   onOpenSidebar,
@@ -197,9 +171,10 @@ export default function TopBar({
   const { showToast } = useToast();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [notificationItems, setNotificationItems] = useState(() => safeParseNotifications());
-  const [lastSeenAt, setLastSeenAt] = useState(() => safeGetLastSeenAt());
+  const [notificationItems, setNotificationItems] = useState(() => readNotifications());
+  const [lastSeenAt, setLastSeenAt] = useState(() => readNotificationLastSeenAt());
   const userMenuItems = buildUserMenuItems(isDarkMode);
+  const isTeacherView = user?.role === "Teacher";
 
   useEffect(() => {
     if (!isUserMenuOpen && !isNotificationOpen) {
@@ -264,7 +239,7 @@ export default function TopBar({
       const nextValue = !previousValue;
       if (nextValue) {
         const nowIso = new Date().toISOString();
-        safeSetLastSeenAt(nowIso);
+        writeNotificationLastSeenAt(nowIso);
         setLastSeenAt(nowIso);
       }
       return nextValue;
@@ -274,9 +249,9 @@ export default function TopBar({
   function clearNotifications() {
     const nextItems = [];
     setNotificationItems(nextItems);
-    safeWriteNotifications(nextItems);
+    writeNotifications(nextItems);
     const nowIso = new Date().toISOString();
-    safeSetLastSeenAt(nowIso);
+    writeNotificationLastSeenAt(nowIso);
     setLastSeenAt(nowIso);
     showToast({
       tone: "success",
@@ -335,6 +310,14 @@ export default function TopBar({
       message: "Phiên làm việc đã được đóng an toàn.",
     });
     navigate(routeConfig.login);
+  }
+
+  function handleOpenNotificationsPage() {
+    setIsNotificationOpen(false);
+
+    if (isTeacherView) {
+      navigate(routeConfig.teacherNotifications);
+    }
   }
 
   const unreadCount = notificationItems.filter((item) => item?.createdAt && item.createdAt > lastSeenAt).length;
@@ -410,23 +393,12 @@ export default function TopBar({
         </Breadcrumb>
       </div>
 
-      {/* Thanh tìm kiếm căn giữa header (md+) */}
       <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex">
-        <div className="relative w-full max-w-[520px]">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-secondary">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </span>
-          <input
-            type="text"
-            placeholder="Tìm kiếm lớp học, sinh viên, bài thi..."
-            className="w-full bg-surface-sunken border border-border rounded-full py-1.5 pl-9 pr-4 text-xs text-primary placeholder:text-secondary transition-all duration-200 focus:outline-none focus:border-tertiary focus:ring-3 focus:ring-tertiary/16"
-          />
-        </div>
+        <TeacherShellSearch user={user} />
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-4">
+        {isTeacherView ? <TeacherQuickCreateButton /> : null}
         <div className="relative" ref={notificationRef}>
           <button
             type="button"
@@ -456,14 +428,25 @@ export default function TopBar({
                     {notificationItems.length > 0 ? "Cập nhật theo thời gian thực" : "Chưa có thông báo nào"}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className="rounded-[12px] border border-border px-3 py-1.5 text-[11px] font-semibold text-secondary hover:bg-surface-sunken hover:text-primary transition-all duration-200"
-                  onClick={clearNotifications}
-                  disabled={notificationItems.length === 0}
-                >
-                  Dọn
-                </button>
+                <div className="flex items-center gap-2">
+                  {isTeacherView ? (
+                    <button
+                      type="button"
+                      className="rounded-[12px] border border-border px-3 py-1.5 text-[11px] font-semibold text-secondary hover:bg-surface-sunken hover:text-primary transition-all duration-200"
+                      onClick={handleOpenNotificationsPage}
+                    >
+                      Xem tất cả
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="rounded-[12px] border border-border px-3 py-1.5 text-[11px] font-semibold text-secondary hover:bg-surface-sunken hover:text-primary transition-all duration-200"
+                    onClick={clearNotifications}
+                    disabled={notificationItems.length === 0}
+                  >
+                    Dọn
+                  </button>
+                </div>
               </div>
 
               <div className="max-h-[360px] overflow-y-auto p-1">
