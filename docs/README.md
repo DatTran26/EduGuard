@@ -23,7 +23,8 @@ Hệ thống theo kiến trúc **Client – Server**:
 | **Checklist tiến độ** | [`../Todo List.md`](../Todo%20List.md) | Trạng thái implementation theo giai đoạn |
 | **Checklist API / feature** | `apiList.md`, `features.md` | Tick endpoint và chức năng khi hoàn thành |
 | **Thiết kế & kiến trúc** | `01`–`05`, `03`, `04` | Spec mục tiêu, có thể đi trước code |
-| **Lịch sử** | `project-changelog.md` | Thay đổi theo feature đã ship |
+| **Changelog chính** | `../CHANGELOG.md` | Changelog release và thay đổi user-facing |
+| **Lịch sử chi tiết** | `project-changelog.md` | Thay đổi theo feature đã ship |
 
 ---
 
@@ -55,8 +56,11 @@ Hệ thống theo kiến trúc **Client – Server**:
 | `07_DEVELOPMENT_RULES.md` | **Bắt buộc đọc** — quy tắc Git, push/ship workflow, cập nhật Todo List |
 | `08_DEPLOY_WORKFLOW.md` | Flow overview deploy (ASCII + SVG), Local → Staging → Prod |
 | `09_QUESTION_BANK_FILE_IMPORT_STANDARD.md` | Định chuẩn import file ngân hàng câu hỏi / tạo câu hỏi bài kiểm tra |
+| `10_QUESTION_BANK_IMPORT_TEMPLATES.md` | Bộ file mẫu import theo 4 loại câu hỏi và 5 định dạng backend hỗ trợ |
+| `11_QUESTION_IMPORT_TEMPLATE_USAGE.md` | Hướng dẫn giáo viên chọn, sửa và test file mẫu import đề |
 | `design-guidelines.md` | **Bắt buộc cho UI** — design system Apple-inspired, tokens, component, checklist merge |
-| `project-changelog.md` | Lịch sử thay đổi theo feature |
+| `../CHANGELOG.md` | Changelog chính theo release và thay đổi user-facing |
+| `project-changelog.md` | Lịch sử chi tiết theo feature |
 
 ## Bắt buộc đọc (agent & developer)
 
@@ -92,11 +96,14 @@ EduGuard/
 │   ├── 07_DEVELOPMENT_RULES.md
 │   ├── 08_DEPLOY_WORKFLOW.md
 │   ├── 09_QUESTION_BANK_FILE_IMPORT_STANDARD.md
+│   ├── 10_QUESTION_BANK_IMPORT_TEMPLATES.md
+│   ├── 11_QUESTION_IMPORT_TEMPLATE_USAGE.md
 │   ├── design-guidelines.md
 │   ├── assets/deploy-flow-overview.png
 │   ├── assets/deploy-flow-overview.svg
 │   ├── project-changelog.md
 ├── Todo List.md
+├── CHANGELOG.md
 ├── AGENTS.md
 ├── docker-compose.yml
 └── README.md
@@ -124,6 +131,6 @@ EduGuard/
 1. [`../Todo List.md`](../Todo%20List.md) — phase đang làm
 2. [`apiList.md`](apiList.md) / [`features.md`](features.md) — tick API & chức năng
 3. [`06_DEVELOPMENT_ROADMAP.md`](06_DEVELOPMENT_ROADMAP.md) — lộ trình MVP (thiết kế)
-4. [`project-changelog.md`](project-changelog.md) — đã thay đổi gì
-
+4. [`../CHANGELOG.md`](../CHANGELOG.md) — changelog chính
+5. [`project-changelog.md`](project-changelog.md) — thay đổi chi tiết theo feature
 

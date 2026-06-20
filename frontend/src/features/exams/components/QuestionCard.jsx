@@ -34,14 +34,20 @@ export default function QuestionCard({
   canManage = false,
   isDeleting = false,
   isEditing = false,
+  isExpanded = false,
   onDeleteQuestion,
   onEditQuestion,
+  onToggleExpand,
   question,
 }) {
   return (
-    <Card className="space-y-4">
+    <Card className={isEditing ? "eg-question-card eg-question-card-active" : "eg-question-card"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-3">
+        <button
+          className="flex min-w-0 flex-1 flex-col items-start gap-3 text-left"
+          onClick={onToggleExpand}
+          type="button"
+        >
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="info">Câu {question.orderIndex}</Badge>
             <Badge variant={getQuestionTypeBadgeVariant(question.questionType)}>
@@ -49,41 +55,49 @@ export default function QuestionCard({
             </Badge>
             <Badge variant="neutral">{question.score} điểm</Badge>
           </div>
-          <p className="text-sm leading-6 text-primary">{question.content}</p>
-        </div>
-
-        <div className="space-y-2 text-right">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-secondary">
-            {getCorrectAnswerSummary(question)}
+          <p className="eg-question-card-preview text-sm leading-6 text-primary">{question.content}</p>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-secondary">
+            {question.answerCount} đáp án • {getCorrectAnswerSummary(question)}
           </p>
+        </button>
+
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           {canManage ? (
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button onClick={onEditQuestion} variant={isEditing ? "primary" : "secondary"}>
-                {isEditing ? "Đang chỉnh sửa" : "Sửa câu hỏi"}
-              </Button>
-              <Button disabled={isDeleting} onClick={onDeleteQuestion} variant="ghost">
-                {isDeleting ? "Đang xóa..." : "Xóa câu hỏi"}
-              </Button>
-            </div>
+            <Button onClick={onEditQuestion} variant={isEditing ? "primary" : "secondary"}>
+              {isEditing ? "Đang chỉnh sửa" : "Sửa"}
+            </Button>
           ) : null}
+          {canManage ? (
+            <Button disabled={isDeleting} onClick={onDeleteQuestion} variant="ghost">
+              {isDeleting ? "Đang xóa..." : "Xóa"}
+            </Button>
+          ) : null}
+          <Button onClick={onToggleExpand} variant="ghost">
+            {isExpanded ? "Thu gọn" : "Xem đáp án"}
+          </Button>
         </div>
       </div>
 
-      <div className="space-y-3">
-        {question.answers.map((answer, index) => (
-          <div
-            key={answer.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-border bg-neutral px-4 py-3"
-          >
-            <p className="text-sm leading-6 text-secondary">
-              {question.questionType === "ShortAnswer" ? `Mẫu ${index + 1}` : `Đáp án ${index + 1}`}: {answer.content}
-            </p>
-            <Badge variant={answer.isCorrect ? "success" : "neutral"}>
-              {answer.isCorrect ? "Đúng" : "Sai"}
-            </Badge>
-          </div>
-        ))}
-      </div>
+      {isExpanded ? (
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
+          {question.answers.map((answer, index) => (
+            <div
+              key={answer.id ?? `${question.id}-answer-${index + 1}`}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-border bg-neutral px-4 py-3"
+            >
+              <p className="text-sm leading-6 text-secondary">
+                {question.questionType === "ShortAnswer"
+                  ? `Mẫu ${index + 1}`
+                  : String.fromCharCode(65 + index)}
+                . {answer.content}
+              </p>
+              <Badge variant={answer.isCorrect ? "success" : "neutral"}>
+                {answer.isCorrect ? "Đúng" : "Sai"}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </Card>
   );
 }

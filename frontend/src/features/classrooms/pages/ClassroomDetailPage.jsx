@@ -13,11 +13,13 @@ import {
   getExamListPathByRole,
   getClassroomListPathByRole,
   getProfilePathByRole,
+  routeConfig,
 } from "../../../routes/routeConfig";
 import { formatShortDate, formatShortDateTime } from "../../../utils/formatDate";
 import AssignmentSection from "../../assignments/components/AssignmentSection";
 import CreateClassroomForm from "../components/CreateClassroomForm";
 import Skeleton, { SkeletonText } from "../../../components/common/Skeleton";
+import TeacherClassroomWorkspace from "../components/TeacherClassroomWorkspace";
 
 // Hàm này tạo nhóm thông tin ngắn để card overview của classroom detail gọn hơn.
 function buildQuickInfoItems(classroom) {
@@ -121,6 +123,7 @@ export default function ClassroomDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const visibleMembers = classroom ? buildVisibleMembers(classroom, members, user) : [];
+  const shouldShowTeacherWorkspace = user?.role === "Teacher" && Boolean(classroom?.canEdit);
 
   // Hàm này tải classroom detail và member list theo đúng quyền backend hiện đang mở cho role hiện tại.
   async function loadClassroomDetail() {
@@ -335,7 +338,19 @@ export default function ClassroomDetailPage() {
         eyebrow="Chi tiết lớp học"
         title={classroom.name}
         actions={
-          user?.role !== "Student" ? (
+          user?.role === "Teacher" && classroom.canEdit ? (
+            <div className="flex flex-wrap gap-3">
+              <Link className="eg-button eg-button-primary" to={`${routeConfig.teacherAssignments}?create=1&classroomId=${classroom.id}`}>
+                Tạo bài tập
+              </Link>
+              <Link className="eg-button eg-button-secondary" to={`${routeConfig.teacherExams}?create=1&classroomId=${classroom.id}`}>
+                Tạo đề thi
+              </Link>
+              <Button onClick={handleCopyJoinCode} variant="ghost">
+                Sao chép mã lớp
+              </Button>
+            </div>
+          ) : user?.role !== "Student" ? (
             <Button onClick={handleCopyJoinCode} variant="secondary">
               Sao chép mã lớp
             </Button>
@@ -440,7 +455,11 @@ export default function ClassroomDetailPage() {
         </div>
       </div>
 
-      <AssignmentSection classroom={classroom} showToast={showToast} user={user} />
+      {shouldShowTeacherWorkspace ? (
+        <TeacherClassroomWorkspace classroom={classroom} members={members} showToast={showToast} user={user} />
+      ) : (
+        <AssignmentSection classroom={classroom} showToast={showToast} user={user} />
+      )}
     </div>
   );
 }

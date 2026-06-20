@@ -1,0 +1,115 @@
+Mẫu Trắc nghiệm một đáp án
+Dành cho giảng viên import đề vào EduGuard
+File mẫu cho giảng viên import đề thuộc bất kỳ môn học hoặc hoạt động giáo dục nào trong chương trình giáo dục phổ thông Việt Nam từ lớp 1 đến lớp 12 vào EduGuard.
+
+Câu 1: Trong câu "Em đọc sách", từ nào là động từ?
+question_type: single_choice
+A. Em
+B. đọc
+C. sách
+D. câu
+Đáp án: B
+Điểm: 1
+Môn: Tiếng Việt
+Chương: Từ loại
+Bài: Động từ trong câu
+Mức độ: Dễ
+Giải thích: Từ "đọc" chỉ hoạt động nên là động từ.
+
+Câu 2: Giá trị của biểu thức 3 x 4 + 2 là bao nhiêu?
+question_type: single_choice
+A. 12
+B. 14
+C. 16
+D. 18
+Đáp án: B
+Điểm: 1
+Môn: Toán
+Chương: Số học
+Bài: Thứ tự thực hiện phép tính
+Mức độ: Dễ
+Giải thích: Thực hiện phép nhân trước: 3 x 4 = 12, sau đó 12 + 2 = 14.
+
+Câu 3: Từ "book" trong tiếng Anh có nghĩa là gì?
+question_type: single_choice
+A. cây bút
+B. quyển sách
+C. cái bàn
+D. trường học
+Đáp án: B
+Điểm: 1
+Môn: Tiếng Anh
+Chương: Vocabulary
+Bài: School things
+Mức độ: Dễ
+Giải thích: "Book" có nghĩa là quyển sách.
+
+Câu 4: Thủ đô của Việt Nam hiện nay là thành phố nào?
+question_type: single_choice
+A. Hà Nội
+B. Huế
+C. Đà Nẵng
+D. Thành phố Hồ Chí Minh
+Đáp án: A
+Điểm: 1
+Môn: Lịch sử và Địa lí
+Chương: Địa lí Việt Nam
+Bài: Các thành phố lớn
+Mức độ: Dễ
+Giải thích: Hà Nội là thủ đô của Việt Nam.
+
+Câu 5: Thiết bị nào thường dùng để nhập chữ vào máy tính?
+question_type: single_choice
+A. Màn hình
+B. Bàn phím
+C. Loa
+D. Máy in
+Đáp án: B
+Điểm: 1
+Môn: Tin học
+Chương: Máy tính và thiết bị số
+Bài: Thiết bị vào - ra
+Mức độ: Dễ
+Giải thích: Bàn phím là thiết bị nhập dữ liệu dạng chữ và số vào máy tính.
+
+Câu 6: Khi sử dụng điện trong gia đình, hành động nào an toàn nhất?
+question_type: single_choice
+A. Chạm tay ướt vào ổ điện
+B. Rút phích cắm bằng cách kéo dây
+C. Tắt nguồn trước khi sửa thiết bị
+D. Cắm quá nhiều thiết bị vào một ổ
+Đáp án: C
+Điểm: 1
+Môn: Công nghệ
+Chương: An toàn điện
+Bài: Sử dụng điện an toàn
+Mức độ: Trung bình
+Giải thích: Cần tắt nguồn điện trước khi kiểm tra hoặc sửa thiết bị để tránh nguy hiểm.
+
+Câu 7: Trong âm nhạc, ký hiệu nốt tròn thường biểu thị điều gì?
+question_type: single_choice
+A. Cao độ rất cao
+B. Trường độ dài
+C. Âm lượng nhỏ
+D. Dấu lặng ngắn
+Đáp án: B
+Điểm: 1
+Môn: Âm nhạc
+Chương: Kí hiệu âm nhạc
+Bài: Trường độ nốt nhạc
+Mức độ: Trung bình
+Giải thích: Nốt tròn là một kí hiệu thể hiện trường độ dài trong âm nhạc.
+
+Câu 8: Hành vi nào thể hiện tôn trọng nội quy lớp học?
+question_type: single_choice
+A. Nói chuyện riêng khi giáo viên giảng bài
+B. Đi học đúng giờ
+C. Tự ý ra khỏi lớp
+D. Không làm bài tập
+Đáp án: B
+Điểm: 1
+Môn: Giáo dục công dân
+Chương: Kỷ luật và trách nhiệm
+Bài: Tôn trọng nội quy
+Mức độ: Dễ
+Giải thích: Đi học đúng giờ là biểu hiện của việc tôn trọng nội quy lớp học.

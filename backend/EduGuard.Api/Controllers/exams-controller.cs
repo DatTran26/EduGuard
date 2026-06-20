@@ -1,9 +1,11 @@
 using System.Security.Claims;
+using EduGuard.Api.Contracts.Exams;
 using EduGuard.Application.DTOs.Common;
 using EduGuard.Application.DTOs.Exams;
 using EduGuard.Application.Services.Interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduGuard.Api.Controllers;
@@ -12,9 +14,37 @@ namespace EduGuard.Api.Controllers;
 [Authorize]
 public class ExamsController : ControllerBase
 {
-    private readonly IExamService _examService;
+    private static readonly IReadOnlyList<QuestionImportTemplateKind> QuestionImportTemplateKinds =
+    [
+        new("01", "single_choice", "Trac nghiem mot dap an", "Trac_Nghiem_Mot_Dap_An"),
+        new("02", "multiple_choice", "Trac nghiem nhieu dap an", "Trac_Nghiem_Nhieu_Dap_An"),
+        new("03", "true_false", "Dung/Sai", "Dung_Sai"),
+        new("04", "short_answer", "Tra loi ngan", "Tra_Loi_Ngan")
+    ];
 
-    public ExamsController(IExamService examService) => _examService = examService;
+    private static readonly IReadOnlyList<QuestionImportTemplateFormat> QuestionImportTemplateFormats =
+    [
+        new("CSV", "csv", "text/csv"),
+        new("XLSX", "xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        new("TXT", "txt", "text/plain"),
+        new("DOCX", "docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        new("PDF", "pdf", "application/pdf")
+    ];
+
+    private static readonly IReadOnlyList<QuestionImportTemplateMetadata> QuestionImportTemplateDefinitions =
+        BuildQuestionImportTemplateDefinitions();
+
+    private static readonly IReadOnlyDictionary<string, QuestionImportTemplateMetadata> QuestionImportTemplateLookup =
+        QuestionImportTemplateDefinitions.ToDictionary(x => x.FileName, StringComparer.OrdinalIgnoreCase);
+
+    private readonly IExamService _examService;
+    private readonly IWebHostEnvironment _environment;
+
+    public ExamsController(IExamService examService, IWebHostEnvironment environment)
+    {
+        _examService = examService;
+        _environment = environment;
+    }
 
     [HttpGet("api/classrooms/{classroomId:int}/exams")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ExamDto>>>> GetByClassroom(int classroomId, CancellationToken ct)
@@ -55,6 +85,7 @@ public class ExamsController : ControllerBase
         {
             return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<ExamDto>.CreateFailure(ex.Message));
         }
+        catch (InvalidOperationException ex) { return BadRequest(ApiResponse<ExamDto>.CreateFailure(ex.Message)); }
     }
 
     [HttpGet("api/exams/{id:int}")]
@@ -203,19 +234,61 @@ public class ExamsController : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(ApiResponse<QuestionDto>.CreateFailure(ex.Message)); }
     }
 
+    [HttpPost("api/questions/import/preview")]
+    [Authorize(Roles = "Teacher,Admin")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<ActionResult<ApiResponse<QuestionImportResultDto>>> PreviewQuestionsImport(
+        [FromForm] ImportQuestionsFormRequest request,
+        CancellationToken ct)
+    {
+        var file = request.File;
+
+        if (file is null)
+            return BadRequest(ApiResponse<QuestionImportResultDto>.CreateFailure("Vui long chon file import."));
+
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            var data = await _examService.PreviewQuestionImportAsync(
+                stream,
+                file.FileName,
+                file.ContentType,
+                file.Length,
+                ct);
+
+            if (data.Errors.Count > 0)
+            {
+                return BadRequest(new ApiResponse<QuestionImportResultDto>
+                {
+                    Success = false,
+                    Message = "File import co loi. Khong co cau hoi nao duoc dua vao ban nhap.",
+                    Data = data
+                });
+            }
+
+            return Ok(ApiResponse<QuestionImportResultDto>.CreateSuccess(data, "Review file import thanh cong."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<QuestionImportResultDto>.CreateFailure(ex.Message));
+        }
+    }
+
     [HttpPost("api/exams/{id:int}/questions/import")]
     [Authorize(Roles = "Teacher,Admin")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(5 * 1024 * 1024)]
     public async Task<ActionResult<ApiResponse<QuestionImportResultDto>>> ImportQuestions(
         int id,
+        [FromForm] ImportQuestionsFormRequest request,
         CancellationToken ct)
     {
         var user = GetCurrentUser();
         if (user is null)
             return Unauthorized(ApiResponse<QuestionImportResultDto>.CreateFailure("Token khong hop le."));
 
-        var file = Request.Form.Files.GetFile("file");
+        var file = request.File;
         if (file is null)
             return BadRequest(ApiResponse<QuestionImportResultDto>.CreateFailure("Vui long chon file import."));
 
@@ -382,6 +455,66 @@ public class ExamsController : ControllerBase
         {
             return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<AnswerDto>.CreateFailure(ex.Message));
         }
+    }
+
+    private static IReadOnlyList<QuestionImportTemplateMetadata> BuildQuestionImportTemplateDefinitions() =>
+        QuestionImportTemplateFormats
+            .SelectMany(format => QuestionImportTemplateKinds.Select(kind => new QuestionImportTemplateMetadata(
+                FileName: $"Mau_De_Thi_{kind.FileNameSegment}.{format.Extension}",
+                QuestionType: kind.QuestionType,
+                Format: format.Extension,
+                DisplayName: $"Mau de thi {kind.Code} - {kind.DisplayName} ({format.Extension.ToUpperInvariant()})",
+                ContentType: format.ContentType)))
+            .ToList();
+
+    private IReadOnlyList<QuestionImportTemplateDto> BuildQuestionImportTemplateDtos()
+    {
+        var templateDirectory = GetQuestionImportTemplateDirectory();
+        var data = new List<QuestionImportTemplateDto>();
+
+        foreach (var metadata in QuestionImportTemplateDefinitions)
+        {
+            var filePath = Path.Combine(templateDirectory, metadata.FileName);
+            if (!System.IO.File.Exists(filePath))
+                continue;
+
+            var fileInfo = new FileInfo(filePath);
+            data.Add(new QuestionImportTemplateDto
+            {
+                FileName = metadata.FileName,
+                QuestionType = metadata.QuestionType,
+                Format = metadata.Format,
+                DisplayName = metadata.DisplayName,
+                ContentType = metadata.ContentType,
+                DownloadUrl = $"/api/exams/question-import/templates/{Uri.EscapeDataString(metadata.FileName)}",
+                FileSizeBytes = fileInfo.Length
+            });
+        }
+
+        return data;
+    }
+
+    private string GetQuestionImportTemplateDirectory() =>
+        Path.Combine(_environment.ContentRootPath, "Resources", "QuestionImportTemplates");
+
+    private sealed record QuestionImportTemplateKind(
+        string Code,
+        string QuestionType,
+        string DisplayName,
+        string FileNameSegment);
+
+    private sealed record QuestionImportTemplateFormat(string Prefix, string Extension, string ContentType);
+
+    private sealed record QuestionImportTemplateMetadata(
+        string FileName,
+        string QuestionType,
+        string Format,
+        string DisplayName,
+        string ContentType);
+
+    public sealed class QuestionImportUploadForm
+    {
+        public IFormFile? File { get; set; }
     }
 
     private string? GetCurrentUserId()

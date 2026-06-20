@@ -94,6 +94,9 @@ export default function AssignmentSection({ classroom, user, showToast }) {
     () => buildAssignmentSummaryItems(assignments),
     [assignments],
   );
+  const emptyAssignmentMessage = loadErrorMessage
+    ? loadErrorMessage
+    : `Hệ thống hiện chưa ghi nhận bài tập nào cho lớp ${classroom?.name || "này"}.`;
 
   async function loadAssignments() {
     setIsLoading(true);
@@ -406,14 +409,19 @@ export default function AssignmentSection({ classroom, user, showToast }) {
       <Card className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-2xl font-semibold tracking-tight text-primary">Bài tập</h2>
-          {isTeacherOwner ? (
-            <Button
-              onClick={() => setIsCreateFormVisible((previousValue) => !previousValue)}
-              variant={isCreateFormVisible ? "secondary" : "primary"}
-            >
-              {isCreateFormVisible ? "Ẩn form tạo bài tập" : "Tạo bài tập"}
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={isLoading || isSavingAssignment} onClick={loadAssignments} variant="ghost">
+              Làm mới danh sách
             </Button>
-          ) : null}
+            {isTeacherOwner ? (
+              <Button
+                onClick={() => setIsCreateFormVisible((previousValue) => !previousValue)}
+                variant={isCreateFormVisible ? "secondary" : "primary"}
+              >
+                {isCreateFormVisible ? "Ẩn form tạo bài tập" : "Tạo bài tập"}
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -437,12 +445,15 @@ export default function AssignmentSection({ classroom, user, showToast }) {
 
       {sortedAssignments.length === 0 ? (
         <EmptyState
-          title={loadErrorMessage ? "Không thể tải bài tập." : "Chưa có bài tập nào."}
-          description={loadErrorMessage || ""}
+          title={loadErrorMessage ? "Không thể tải bài tập." : "Chưa có bài tập nào cho lớp này."}
+          description={emptyAssignmentMessage}
           action={
-            isTeacherOwner ? (
-              <Button onClick={() => setIsCreateFormVisible(true)}>Tạo bài tập</Button>
-            ) : null
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button onClick={loadAssignments} variant="secondary">Làm mới danh sách</Button>
+              {isTeacherOwner ? (
+                <Button onClick={() => setIsCreateFormVisible(true)}>Tạo bài tập</Button>
+              ) : null}
+            </div>
           }
         />
       ) : (

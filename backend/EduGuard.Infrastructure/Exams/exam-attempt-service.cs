@@ -105,7 +105,8 @@ public class ExamAttemptService : IExamAttemptService
         _examRepository.RemoveStudentAnswers(existing);
 
         var newAnswers = BuildStudentAnswerRows(attempt.Id, question, request);
-        await _examRepository.AddStudentAnswersAsync(newAnswers, ct);
+        if (newAnswers.Count > 0)
+            await _examRepository.AddStudentAnswersAsync(newAnswers, ct);
         await _examRepository.SaveChangesAsync(ct);
     }
 
@@ -221,13 +222,11 @@ public class ExamAttemptService : IExamAttemptService
     {
         if (question.QuestionType == QuestionType.ShortAnswer)
         {
-            if (string.IsNullOrWhiteSpace(request.TextAnswer))
-                throw new InvalidOperationException("Cần nhập câu trả lời.");
             return;
         }
 
         if (request.AnswerIds.Count == 0)
-            throw new InvalidOperationException("Cần chọn ít nhất một đáp án.");
+            return;
 
         var validIds = question.Answers.Select(x => x.Id).ToHashSet();
         if (request.AnswerIds.Any(id => !validIds.Contains(id)))
@@ -242,6 +241,9 @@ public class ExamAttemptService : IExamAttemptService
     {
         if (question.QuestionType == QuestionType.ShortAnswer)
         {
+            if (string.IsNullOrWhiteSpace(request.TextAnswer))
+                return [];
+
             return
             [
                 new StudentAnswer
@@ -252,6 +254,9 @@ public class ExamAttemptService : IExamAttemptService
                 }
             ];
         }
+
+        if (request.AnswerIds.Count == 0)
+            return [];
 
         return request.AnswerIds
             .Distinct()

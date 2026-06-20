@@ -110,6 +110,14 @@ public class ExamService : IExamService
         var classroom = await ClassroomAccessHelper.RequireClassroomAsync(_classroomRepository, classroomId, ct);
         ClassroomAccessHelper.EnsureTeacherOwnsClassroom(classroom, teacherId);
 
+        var questions = request.Questions ?? [];
+        var preparedQuestions = new List<Question>();
+
+        for (var index = 0; index < questions.Count; index++)
+            preparedQuestions.Add(await BuildQuestionEntityFromRequestAsync(questions[index], index, "Câu hỏi nháp", ct));
+
+        ExamQuestionOrderHelper.Renumber(preparedQuestions);
+
         var exam = new Exam
         {
             ClassroomId = classroomId,
@@ -121,7 +129,8 @@ public class ExamService : IExamService
             EndTime = ExamDateTimeHelper.NormalizeNullableUtc(request.EndTime),
             EnableAntiCheat = request.EnableAntiCheat,
             CreatedAt = DateTime.UtcNow,
-            Setting = BuildSetting(request.Settings)
+            Setting = BuildSetting(request.Settings),
+            Questions = preparedQuestions
         };
 
         await _examRepository.AddAsync(exam, ct);
@@ -223,6 +232,14 @@ public class ExamService : IExamService
         return ExamMapper.MapExam(exam);
     }
 
+    public async Task<QuestionImportResultDto> PreviewQuestionImportAsync(
+        Stream fileStream,
+        string fileName,
+        string contentType,
+        long fileLength,
+        CancellationToken ct = default) =>
+        await ReviewQuestionImportAsync(fileStream, fileName, contentType, fileLength, ct);
+
     public async Task<QuestionImportResultDto> ImportQuestionsAsync(
         int examId,
         Stream fileStream,
@@ -233,73 +250,36 @@ public class ExamService : IExamService
         IReadOnlyList<string> roles,
         CancellationToken ct = default)
     {
-        var result = new QuestionImportResultDto
-        {
-            FileName = Path.GetFileName(fileName)
-        };
-
         var exam = await RequireQuestionImportExamAsync(examId, userId, roles, ct);
-        AddQuestionImportFileErrors(result, fileName, contentType, fileLength);
+        var result = await ReviewQuestionImportAsync(fileStream, fileName, contentType, fileLength, ct);
         if (result.Errors.Count > 0)
-        {
-            result.FailedCount = CountFailedRows(result.Errors);
             return result;
-        }
-
-        if (fileStream.CanSeek)
-            fileStream.Position = 0;
-
-        var parsed = await QuestionImportParser.ParseAsync(fileStream, fileName, ct);
-        result.TotalRows = parsed.TotalRows;
-
-        if (parsed.Errors.Count > 0)
-        {
-            result.Errors.AddRange(parsed.Errors);
-            result.FailedCount = CountFailedRows(result.Errors);
-            return result;
-        }
-
-        if (parsed.Questions.Count == 0)
-        {
-            result.Errors.Add(new QuestionImportErrorDto
-            {
-                RowNumber = 1,
-                FieldName = "file",
-                ErrorMessage = "Import file does not contain valid questions."
-            });
-            result.FailedCount = CountFailedRows(result.Errors);
-            return result;
-        }
 
         var nextOrderIndex = exam.Questions.Count == 0
             ? 1
             : exam.Questions.Max(x => x.OrderIndex) + 1;
-        var importedQuestions = new List<Question>();
-
-        foreach (var request in parsed.Questions)
-        {
-            var normalizedAnswers = ExamQuestionValidator.NormalizeAnswers(request.QuestionType, request.Answers);
-            ExamQuestionValidator.ValidateQuestionInput(request.QuestionType, normalizedAnswers);
-
-            var question = new Question
+        var importedQuestions = result.Questions
+            .OrderBy(x => x.OrderIndex)
+            .ThenBy(x => x.Id)
+            .Select(questionDto => new Question
             {
                 ExamId = exam.Id,
-                Content = request.Content.Trim(),
-                QuestionType = request.QuestionType,
-                Score = request.Score,
+                Content = questionDto.Content.Trim(),
+                QuestionType = questionDto.QuestionType,
+                Score = questionDto.Score,
                 OrderIndex = nextOrderIndex++,
                 CreatedAt = DateTime.UtcNow,
-                Answers = normalizedAnswers.Select((answer, index) => new Answer
+                Answers = questionDto.Answers.Select((answer, index) => new Answer
                 {
                     Content = answer.Content,
                     IsCorrect = answer.IsCorrect,
                     OrderIndex = index + 1
                 }).ToList()
-            };
+            })
+            .ToList();
 
-            importedQuestions.Add(question);
+        foreach (var question in importedQuestions)
             await _examRepository.AddQuestionAsync(question, ct);
-        }
 
         exam.UpdatedAt = DateTime.UtcNow;
         _examRepository.Update(exam);
@@ -523,6 +503,99 @@ public class ExamService : IExamService
         await _examRepository.SaveChangesAsync(ct);
         await _cacheInvalidator.InvalidateExamQuestionsAsync(answer.Question.ExamId, ct);
         return ExamMapper.MapAnswer(answer);
+    }
+
+    private async Task<QuestionImportResultDto> ReviewQuestionImportAsync(
+        Stream fileStream,
+        string fileName,
+        string contentType,
+        long fileLength,
+        CancellationToken ct)
+    {
+        var result = new QuestionImportResultDto
+        {
+            FileName = Path.GetFileName(fileName)
+        };
+
+        AddQuestionImportFileErrors(result, fileName, contentType, fileLength);
+        if (result.Errors.Count > 0)
+        {
+            result.FailedCount = CountFailedRows(result.Errors);
+            return result;
+        }
+
+        if (fileStream.CanSeek)
+            fileStream.Position = 0;
+
+        var parsed = await QuestionImportParser.ParseAsync(fileStream, fileName, ct);
+        result.TotalRows = parsed.TotalRows;
+
+        if (parsed.Errors.Count > 0)
+        {
+            result.Errors.AddRange(parsed.Errors);
+            result.FailedCount = CountFailedRows(result.Errors);
+            return result;
+        }
+
+        if (parsed.Questions.Count == 0)
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 1,
+                FieldName = "file",
+                ErrorMessage = "Import file does not contain valid questions."
+            });
+            result.FailedCount = CountFailedRows(result.Errors);
+            return result;
+        }
+
+        var previewQuestions = new List<Question>();
+
+        for (var index = 0; index < parsed.Questions.Count; index++)
+            previewQuestions.Add(await BuildQuestionEntityFromRequestAsync(parsed.Questions[index], index, "Câu import", ct));
+
+        ExamQuestionOrderHelper.Renumber(previewQuestions);
+        result.Questions = previewQuestions.Select(x => ExamMapper.MapQuestion(x)).ToList();
+        result.ImportedCount = result.Questions.Count;
+        result.FailedCount = 0;
+        return result;
+    }
+
+    private async Task<Question> BuildQuestionEntityFromRequestAsync(
+        CreateQuestionRequest request,
+        int requestIndex,
+        string sourceLabel,
+        CancellationToken ct)
+    {
+        var validationResult = await _createQuestionValidator.ValidateAsync(request, ct);
+        if (!validationResult.IsValid)
+            throw new InvalidOperationException($"{sourceLabel} {requestIndex + 1} chưa hợp lệ: {validationResult.Errors.First().ErrorMessage}");
+
+        var normalizedAnswers = ExamQuestionValidator.NormalizeAnswers(request.QuestionType, request.Answers);
+
+        try
+        {
+            ExamQuestionValidator.ValidateQuestionInput(request.QuestionType, normalizedAnswers);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new InvalidOperationException($"{sourceLabel} {requestIndex + 1} chưa hợp lệ: {ex.Message}");
+        }
+
+        return new Question
+        {
+            Content = request.Content.Trim(),
+            QuestionType = request.QuestionType,
+            Score = request.Score,
+            OrderIndex = request.OrderIndex,
+            CreatedAt = DateTime.UtcNow,
+            Answers = normalizedAnswers.Select((answer, answerIndex) => new Answer
+            {
+                Content = answer.Content,
+                IsCorrect = answer.IsCorrect,
+                OrderIndex = answerIndex + 1
+            }).ToList()
+        };
     }
 
     private static void AddQuestionImportFileErrors(

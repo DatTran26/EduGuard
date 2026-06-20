@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { cn } from "../../utils/cn";
 
 // Hàm này chọn class phù hợp cho input hoặc textarea để mình không phải lặp style ở nhiều nơi.
@@ -10,8 +11,10 @@ function getInputClassName(as, className) {
 }
 
 // Component này là input dùng chung cho form, có hỗ trợ cả textarea khi cần nhập mô tả dài.
-export default function Input({ as = "input", className, ...props }) {
+const Input = forwardRef(function Input({ as = "input", className, ...props }, ref) {
   const ComponentTag = as === "textarea" ? "textarea" : "input";
 
-  return <ComponentTag className={getInputClassName(as, className)} {...props} />;
-}
+  return <ComponentTag ref={ref} className={getInputClassName(as, className)} {...props} />;
+});
+
+export default Input;

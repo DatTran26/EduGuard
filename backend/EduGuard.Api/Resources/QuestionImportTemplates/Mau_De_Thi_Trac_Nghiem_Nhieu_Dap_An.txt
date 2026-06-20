@@ -1,0 +1,115 @@
+Mẫu Trắc nghiệm nhiều đáp án
+Dành cho giảng viên import đề vào EduGuard
+File mẫu cho giảng viên import đề thuộc bất kỳ môn học hoặc hoạt động giáo dục nào trong chương trình giáo dục phổ thông Việt Nam từ lớp 1 đến lớp 12 vào EduGuard.
+
+Câu 1: Những từ nào sau đây là danh từ?
+question_type: multiple_choice
+A. bông hoa
+B. học sinh
+C. chạy
+D. ngôi trường
+Đáp án: A,B,D
+Điểm: 1
+Môn: Tiếng Việt
+Chương: Từ loại
+Bài: Danh từ
+Mức độ: Dễ
+Giải thích: Bông hoa, học sinh và ngôi trường là danh từ; "chạy" là động từ.
+
+Câu 2: Những số nào sau đây chia hết cho 3?
+question_type: multiple_choice
+A. 9
+B. 12
+C. 14
+D. 21
+Đáp án: A,B,D
+Điểm: 1
+Môn: Toán
+Chương: Số học
+Bài: Dấu hiệu chia hết
+Mức độ: Dễ
+Giải thích: 9, 12 và 21 chia hết cho 3; 14 không chia hết cho 3.
+
+Câu 3: Những thiết bị nào là thiết bị nhập dữ liệu?
+question_type: multiple_choice
+A. Bàn phím
+B. Chuột
+C. Máy quét
+D. Máy chiếu
+Đáp án: A,B,C
+Điểm: 1
+Môn: Tin học
+Chương: Máy tính và thiết bị số
+Bài: Thiết bị vào
+Mức độ: Dễ
+Giải thích: Bàn phím, chuột và máy quét là thiết bị nhập; máy chiếu là thiết bị xuất.
+
+Câu 4: Những việc nào giúp bảo vệ môi trường ở trường học?
+question_type: multiple_choice
+A. Bỏ rác đúng nơi quy định
+B. Tắt điện khi ra khỏi phòng
+C. Trồng và chăm sóc cây xanh
+D. Vứt rác xuống sân trường
+Đáp án: A,B,C
+Điểm: 1
+Môn: Hoạt động trải nghiệm
+Chương: Trách nhiệm với cộng đồng
+Bài: Bảo vệ môi trường học đường
+Mức độ: Dễ
+Giải thích: Bỏ rác đúng nơi, tiết kiệm điện và chăm sóc cây xanh đều góp phần bảo vệ môi trường.
+
+Câu 5: Những yếu tố nào thường xuất hiện trên bản đồ?
+question_type: multiple_choice
+A. Tên bản đồ
+B. Tỉ lệ bản đồ
+C. Kí hiệu bản đồ
+D. Mật khẩu cá nhân
+Đáp án: A,B,C
+Điểm: 1
+Môn: Địa lí
+Chương: Bản đồ
+Bài: Các yếu tố của bản đồ
+Mức độ: Dễ
+Giải thích: Tên bản đồ, tỉ lệ và kí hiệu là những yếu tố thường có trên bản đồ.
+
+Câu 6: Những hành động nào thể hiện làm việc nhóm tích cực?
+question_type: multiple_choice
+A. Lắng nghe ý kiến của bạn
+B. Chia sẻ nhiệm vụ rõ ràng
+C. Tôn trọng sự khác biệt
+D. Áp đặt ý kiến cá nhân
+Đáp án: A,B,C
+Điểm: 1
+Môn: Hoạt động trải nghiệm, hướng nghiệp
+Chương: Kỹ năng hợp tác
+Bài: Làm việc nhóm
+Mức độ: Trung bình
+Giải thích: Lắng nghe, phân công nhiệm vụ và tôn trọng sự khác biệt giúp nhóm làm việc hiệu quả.
+
+Câu 7: Những môn/hoạt động nào thường rèn luyện thể chất cho học sinh?
+question_type: multiple_choice
+A. Chạy bền
+B. Bóng chuyền
+C. Khởi động trước vận động
+D. Ngồi yên suốt buổi học
+Đáp án: A,B,C
+Điểm: 1
+Môn: Giáo dục thể chất
+Chương: Rèn luyện sức khỏe
+Bài: Vận động cơ bản
+Mức độ: Dễ
+Giải thích: Chạy bền, bóng chuyền và khởi động đều liên quan đến rèn luyện thể chất.
+
+Câu 8: Những việc nào thể hiện sử dụng mạng xã hội an toàn?
+question_type: multiple_choice
+A. Không chia sẻ mật khẩu
+B. Kiểm tra thông tin trước khi chia sẻ
+C. Không cung cấp dữ liệu cá nhân cho người lạ
+D. Bấm vào mọi liên kết lạ
+Đáp án: A,B,C
+Điểm: 1
+Môn: Giáo dục công dân
+Chương: Công dân số
+Bài: An toàn trên môi trường mạng
+Mức độ: Trung bình
+Giải thích: Bảo mật mật khẩu, kiểm tra thông tin và không chia sẻ dữ liệu cá nhân là cách sử dụng mạng an toàn.
