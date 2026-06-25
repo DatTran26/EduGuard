@@ -1,5 +1,79 @@
 # Project Changelog
 
+## Feature: Question bank and exam matrix workspace
+
+Date: 2026-06-25
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Question bank and exam matrix workspace.
+- Purpose and user/business impact: Lets teachers maintain reusable approved question banks, import questions into banks, generate exams from a matrix, and keep existing exam snapshots stable after bank questions are edited.
+- Files or modules changed: backend domain entities/enums, EF Core configurations/migration, repositories, services, validators, controllers, frontend API adapter, Teacher question bank page, route config, sidebar navigation, API registry, changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Domain/Entities/QuestionBank.cs`
+- `backend/EduGuard.Domain/Entities/BankQuestion.cs`
+- `backend/EduGuard.Domain/Entities/BankAnswer.cs`
+- `backend/EduGuard.Domain/Entities/ExamMatrix.cs`
+- `backend/EduGuard.Domain/Entities/ExamMatrixItem.cs`
+- `backend/EduGuard.Domain/Entities/Question.cs`
+- `backend/EduGuard.Domain/Enums/DifficultyLevel.cs`
+- `backend/EduGuard.Domain/Enums/QuestionStatus.cs`
+- `backend/EduGuard.Application/DTOs/QuestionBanks/*`
+- `backend/EduGuard.Application/DTOs/ExamMatrices/*`
+- `backend/EduGuard.Application/Repositories/Interfaces/i-question-bank-repository.cs`
+- `backend/EduGuard.Application/Repositories/Interfaces/i-exam-matrix-repository.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-question-bank-service.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-exam-matrix-service.cs`
+- `backend/EduGuard.Application/Validators/*question-bank*`, `*bank-question*`, and `*exam-matrix*`
+- `backend/EduGuard.Infrastructure/QuestionBanks/*`
+- `backend/EduGuard.Infrastructure/ExamMatrices/*`
+- `backend/EduGuard.Infrastructure/Repositories/question-bank-repository.cs`
+- `backend/EduGuard.Infrastructure/Repositories/exam-matrix-repository.cs`
+- `backend/EduGuard.Infrastructure/Data/Configurations/*bank*` and `*matrix*`
+- `backend/EduGuard.Infrastructure/Data/Migrations/20260625075714_AddQuestionBanksAndExamMatrices.cs`
+- `backend/EduGuard.Api/Controllers/question-banks-controller.cs`
+- `backend/EduGuard.Api/Controllers/exam-matrices-controller.cs`
+- `frontend/src/api/questionBankApi.js`
+- `frontend/src/features/question-banks/*`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/routes/routeConfig.js`
+- `frontend/src/routes/roleRoutes.js`
+- `docs/apiList.md`
+- `Todo List.md`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Added teacher-owned question bank tables and APIs for bank CRUD, bank question CRUD, file import, archive, and snapshotting approved bank questions into existing exams.
+- Added question snapshot metadata to existing exam questions so exam history remains stable even when a bank question is revised later.
+- Added exam matrix tables and APIs for matrix CRUD, availability validation against approved bank questions, preview generation ordered by lower `TimesUsed`, and draft exam creation.
+- Added Admin read access for exam matrix list/detail, while Teacher-only ownership still protects matrix create/update/delete/preview/create-exam flows.
+- Wrapped matrix create-exam in a database transaction that creates the `Exam`, default `ExamSetting`, question/answer snapshots, and bank usage updates together.
+- Added matrix exam creation logic that increments `TimesUsed` for selected bank questions to improve future balancing.
+- Added `QuestionBank` and `ExamMatrix` Swagger operation tags and documented the new `API-QBK-*` / `API-MTX-*` endpoints in `docs/apiList.md` without introducing proctoring route or hub conflicts.
+- Added a Teacher frontend workspace under `/teacher/question-banks` with bank management, bank question metadata, import, matrix authoring, validation/preview, and draft exam creation controls.
+
+Validation:
+
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore` passed with 0 warnings and 0 errors.
+- `dotnet ef migrations add AddQuestionBanksAndExamMatrices --project backend\EduGuard.Infrastructure\EduGuard.Infrastructure.csproj --startup-project backend\EduGuard.Api\EduGuard.Api.csproj --context AppDbContext --output-dir Data\Migrations` succeeded.
+- `dotnet ef database update --project backend\EduGuard.Infrastructure\EduGuard.Infrastructure.csproj --startup-project backend\EduGuard.Api\EduGuard.Api.csproj --context AppDbContext` succeeded and applied migration `20260625075714_AddQuestionBanksAndExamMatrices` to the local SQL Server database.
+- `npm.cmd --prefix frontend run build` passed; Vite/Rolldown still reports existing third-party pure-annotation warnings from `@microsoft/signalr` and the existing large bundle warning.
+- Backend runtime check: `GET http://127.0.0.1:5157/swagger/index.html` returned HTTP 200; `swagger/v1/swagger.json` contains `/api/question-banks`, `/api/exam-matrices`, and operation tags `QuestionBank` / `ExamMatrix`.
+- Frontend runtime check: Vite dev server returned HTTP 200 for `http://127.0.0.1:5173` and `http://127.0.0.1:5173/teacher/question-banks`.
+- `git diff --check` still reports only the pre-existing trailing whitespace in `backend/EduGuard.Infrastructure/Exams/question-import-parser.cs:947`.
+
+Known risks / rollback / follow-up:
+
+- The new workspace is intentionally separate from the existing exam create/detail workspace. A direct in-exam bank picker can be added later if teachers need to pull bank questions while editing a specific exam.
+- Matrix-generated exams are draft exams; teachers still publish them through the existing exam detail publish workflow.
+- Rollback: remove the new bank/matrix entities, DTOs, validators, repositories, services, controllers, frontend question-bank feature files, route/sidebar entries, and revert migration `20260625075714_AddQuestionBanksAndExamMatrices`.
+
 ## Feature: Teacher/Admin import standard guide and copyable prompt
 
 Date: 2026-06-20

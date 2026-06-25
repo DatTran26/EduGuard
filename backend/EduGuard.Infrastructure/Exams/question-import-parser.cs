@@ -944,7 +944,7 @@ internal static class QuestionImportPdfTextExtractor
 {
     private static readonly Regex IndirectObjectRegex = new(
         @"(?s)(?<number>\d+)\s+0\s+obj(?<body>.*?)endobj",
-        RegexOptions.CultureInvariant);
+        RegexOptions.CultureInvariant); 
 
     private static readonly Regex FontResourceRegex = new(
         @"/(?<name>F\d+)\s+(?<object>\d+)\s+0\s+R",

@@ -22,6 +22,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ExamSetting> ExamSettings => Set<ExamSetting>();
     public DbSet<Question> Questions => Set<Question>();
     public DbSet<Answer> Answers => Set<Answer>();
+    public DbSet<QuestionBank> QuestionBanks => Set<QuestionBank>();
+    public DbSet<BankQuestion> BankQuestions => Set<BankQuestion>();
+    public DbSet<BankAnswer> BankAnswers => Set<BankAnswer>();
+    public DbSet<ExamMatrix> ExamMatrices => Set<ExamMatrix>();
+    public DbSet<ExamMatrixItem> ExamMatrixItems => Set<ExamMatrixItem>();
     public DbSet<ExamAttempt> ExamAttempts => Set<ExamAttempt>();
     public DbSet<StudentAnswer> StudentAnswers => Set<StudentAnswer>();
     public DbSet<CheatingLog> CheatingLogs => Set<CheatingLog>();

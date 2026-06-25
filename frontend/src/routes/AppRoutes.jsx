@@ -15,6 +15,7 @@ import TeacherDashboardPage from "../features/dashboard/pages/TeacherDashboardPa
 import ExamAttemptPage from "../features/exam-attempts/pages/ExamAttemptPage";
 import ExamDetailPage from "../features/exams/pages/ExamDetailPage";
 import ExamListPage from "../features/exams/pages/ExamListPage";
+import QuestionBankPage from "../features/question-banks/pages/QuestionBankPage";
 import TeacherNotificationsPage from "../features/notifications/pages/TeacherNotificationsPage";
 import TeacherResultsPage from "../features/results/pages/TeacherResultsPage";
 import ProfilePage from "../features/users/pages/ProfilePage";
@@ -104,6 +105,10 @@ export default function AppRoutes() {
               path={routeConfig.teacherAssignments}
             />
             <Route element={<ExamListPage />} path={routeConfig.teacherExams} />
+            <Route
+              element={<QuestionBankPage />}
+              path={routeConfig.teacherQuestionBanks}
+            />
             <Route
               element={<ExamDetailPage />}
               path={routeConfig.teacherExamDetail}

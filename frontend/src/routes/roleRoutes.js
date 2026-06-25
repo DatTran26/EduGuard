@@ -18,6 +18,7 @@ const ROLE_NAVIGATION_ITEMS = {
     { label: "Lớp học", path: routeConfig.teacherClassrooms },
     { label: "Bài tập", path: routeConfig.teacherAssignments },
     { label: "Đề thi", path: routeConfig.teacherExams },
+    { label: "Ngân hàng câu hỏi", path: routeConfig.teacherQuestionBanks },
     { label: "Giám sát thi", path: routeConfig.teacherMonitoring },
     { label: "Kết quả", path: routeConfig.teacherResults },
     { label: "Thông báo", path: routeConfig.teacherNotifications },

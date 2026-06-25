@@ -16,6 +16,7 @@ export const routeConfig = {
   teacherClassroomDetail: "/teacher/classrooms/:classroomId",
   teacherAssignments: "/teacher/assignments",
   teacherExams: "/teacher/exams",
+  teacherQuestionBanks: "/teacher/question-banks",
   teacherExamDetail: "/teacher/exams/:examId",
   teacherMonitoring: "/teacher/monitoring",
   teacherResults: "/teacher/results",
