@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { areUserIdsEqual } from "../../../api/apiHelpers";
 import { classroomApi } from "../../../api/classroomApi";
+import { assignmentApi } from "../../../api/assignmentApi";
+import { examApi } from "../../../api/examApi";
+import { examAttemptApi } from "../../../api/examAttemptApi";
+import { antiCheatApi } from "../../../api/antiCheatApi";
+import { notificationApi } from "../../../api/notificationApi";
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
@@ -9,12 +14,15 @@ import EmptyState from "../../../components/common/EmptyState";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
-import { getClassroomListPathByRole } from "../../../routes/routeConfig";
+import { getClassroomListPathByRole, routeConfig } from "../../../routes/routeConfig";
 import { formatShortDate, formatShortDateTime } from "../../../utils/formatDate";
 import AssignmentSection from "../../assignments/components/AssignmentSection";
 import CreateClassroomForm from "../components/CreateClassroomForm";
-import Skeleton, { SkeletonText } from "../../../components/common/Skeleton";
+import Skeleton from "../../../components/common/Skeleton";
 import TeacherClassroomWorkspace from "../components/TeacherClassroomWorkspace";
+import ClassDetailHeader from "../components/ClassDetailHeader";
+import ClassQuickStats from "../components/ClassQuickStats";
+import ClassOverviewPanel from "../components/ClassOverviewPanel";
 import {
   TEACHER_CLASSROOM_TABS,
   normalizeTeacherClassroomTab,
@@ -114,29 +122,140 @@ export default function ClassroomDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { showToast } = useToast();
+  
+  // Base states
   const [classroom, setClassroom] = useState(null);
   const [members, setMembers] = useState([]);
   const [loadErrorMessage, setLoadErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditClassroomFormVisible, setIsEditClassroomFormVisible] = useState(false);
+
+  // Lifted statistics states
+  const [assignments, setAssignments] = useState([]);
+  const [submissionsByAssignmentId, setSubmissionsByAssignmentId] = useState({});
+  const [exams, setExams] = useState([]);
+  const [attempts, setAttempts] = useState([]);
+  const [warningCountByExamId, setWarningCountByExamId] = useState({});
+  const [notifications, setNotifications] = useState([]);
+  const [isLoadingWorkspace, setIsLoadingWorkspace] = useState(false);
+
   const visibleMembers = classroom ? buildVisibleMembers(classroom, members, user) : [];
   const shouldShowTeacherWorkspace = user?.role === "Teacher" && Boolean(classroom?.canEdit);
   const activeTeacherTab = normalizeTeacherClassroomTab(searchParams.get("tab"));
   const highlightedStudentId = searchParams.get("studentId") || "";
 
+  // Data reloads on callbacks
+  async function reloadNotifications() {
+    try {
+      const response = await notificationApi.getClassroomNotifications(classroomId);
+      setNotifications(response.data || []);
+    } catch (e) {
+      console.error("Failed to reload notifications", e);
+    }
+  }
+
+  async function reloadAssignments() {
+    try {
+      const response = await assignmentApi.getByClassroom(classroomId);
+      const nextAssignments = Array.isArray(response.data) ? response.data : [];
+      setAssignments(nextAssignments);
+
+      // fetch submissions in parallel
+      const submissionEntries = await Promise.all(
+        nextAssignments.map(async (assignment) => {
+          try {
+            const response = await assignmentApi.getSubmissions(assignment.id);
+            return [assignment.id, Array.isArray(response.data) ? response.data : []];
+          } catch {
+            return [assignment.id, []];
+          }
+        })
+      );
+      setSubmissionsByAssignmentId(Object.fromEntries(submissionEntries));
+    } catch (e) {
+      console.error("Failed to reload assignments", e);
+    }
+  }
+
   async function loadClassroomDetail() {
     setIsLoading(true);
-
     try {
       const [classroomResponse, memberResponse] = await Promise.all([
         classroomApi.getById(classroomId),
         classroomApi.getMembers(classroomId),
       ]);
 
-      setClassroom(classroomResponse.data);
+      const classroomData = classroomResponse.data;
+      setClassroom(classroomData);
       setMembers(memberResponse?.data ?? []);
       setLoadErrorMessage("");
+
+      const isTeacher = user?.role === "Teacher" && classroomData.canEdit;
+      if (isTeacher) {
+        setIsLoadingWorkspace(true);
+        try {
+          const [assignmentResponse, examResponse, notificationResponse] = await Promise.all([
+            assignmentApi.getByClassroom(classroomId),
+            examApi.getAll({ classroomId }),
+            notificationApi.getClassroomNotifications(classroomId),
+          ]);
+
+          const nextAssignments = Array.isArray(assignmentResponse.data) ? assignmentResponse.data : [];
+          const nextExams = Array.isArray(examResponse.data) ? examResponse.data : [];
+          
+          setAssignments(nextAssignments);
+          setExams(nextExams);
+          setNotifications(notificationResponse.data || []);
+
+          const [submissionEntries, attemptEntries, antiCheatEntries] = await Promise.all([
+            Promise.all(
+              nextAssignments.map(async (assignment) => {
+                try {
+                  const response = await assignmentApi.getSubmissions(assignment.id);
+                  return [assignment.id, Array.isArray(response.data) ? response.data : []];
+                } catch {
+                  return [assignment.id, []];
+                }
+              })
+            ),
+            Promise.all(
+              nextExams.map(async (exam) => {
+                try {
+                  const response = await examAttemptApi.getByExam(exam.id);
+                  return [exam.id, Array.isArray(response.data) ? response.data : []];
+                } catch {
+                  return [exam.id, []];
+                }
+              })
+            ),
+            Promise.all(
+              nextExams.map(async (exam) => {
+                if (!exam.enableAntiCheat) return [exam.id, 0];
+                try {
+                  const response = await antiCheatApi.getExamSummary(exam.id);
+                  return [exam.id, Number(response.data?.totalLogs) || 0];
+                } catch {
+                  return [exam.id, 0];
+                }
+              })
+            ),
+          ]);
+
+          setSubmissionsByAssignmentId(Object.fromEntries(submissionEntries));
+          setAttempts(attemptEntries.flatMap(([, examAttempts]) => examAttempts));
+          setWarningCountByExamId(Object.fromEntries(antiCheatEntries));
+        } catch (workspaceError) {
+          console.error("Workspace loading error:", workspaceError);
+          showToast({
+            tone: "danger",
+            title: "Tải dữ liệu thống kê thất bại",
+            message: workspaceError.message || "Không thể tải dữ liệu thống kê lớp học.",
+          });
+        } finally {
+          setIsLoadingWorkspace(false);
+        }
+      }
     } catch (error) {
       setClassroom(null);
       setMembers([]);
@@ -156,24 +275,86 @@ export default function ClassroomDetailPage() {
     let isMounted = true;
 
     async function loadInitialDetail() {
+      setIsLoading(true);
       try {
         const [classroomResponse, memberResponse] = await Promise.all([
           classroomApi.getById(classroomId),
           classroomApi.getMembers(classroomId),
         ]);
 
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
-        setClassroom(classroomResponse.data);
+        const classroomData = classroomResponse.data;
+        setClassroom(classroomData);
         setMembers(memberResponse?.data ?? []);
         setLoadErrorMessage("");
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
 
+        const isTeacher = user?.role === "Teacher" && classroomData.canEdit;
+        if (isTeacher) {
+          setIsLoadingWorkspace(true);
+          try {
+            const [assignmentResponse, examResponse, notificationResponse] = await Promise.all([
+              assignmentApi.getByClassroom(classroomId),
+              examApi.getAll({ classroomId }),
+              notificationApi.getClassroomNotifications(classroomId),
+            ]);
+
+            if (!isMounted) return;
+
+            const nextAssignments = Array.isArray(assignmentResponse.data) ? assignmentResponse.data : [];
+            const nextExams = Array.isArray(examResponse.data) ? examResponse.data : [];
+
+            setAssignments(nextAssignments);
+            setExams(nextExams);
+            setNotifications(notificationResponse.data || []);
+
+            const [submissionEntries, attemptEntries, antiCheatEntries] = await Promise.all([
+              Promise.all(
+                nextAssignments.map(async (assignment) => {
+                  try {
+                    const response = await assignmentApi.getSubmissions(assignment.id);
+                    return [assignment.id, Array.isArray(response.data) ? response.data : []];
+                  } catch {
+                    return [assignment.id, []];
+                  }
+                })
+              ),
+              Promise.all(
+                nextExams.map(async (exam) => {
+                  try {
+                    const response = await examAttemptApi.getByExam(exam.id);
+                    return [exam.id, Array.isArray(response.data) ? response.data : []];
+                  } catch {
+                    return [exam.id, []];
+                  }
+                })
+              ),
+              Promise.all(
+                nextExams.map(async (exam) => {
+                  if (!exam.enableAntiCheat) return [exam.id, 0];
+                  try {
+                    const response = await antiCheatApi.getExamSummary(exam.id);
+                    return [exam.id, Number(response.data?.totalLogs) || 0];
+                  } catch {
+                    return [exam.id, 0];
+                  }
+                })
+              ),
+            ]);
+
+            if (!isMounted) return;
+
+            setSubmissionsByAssignmentId(Object.fromEntries(submissionEntries));
+            setAttempts(attemptEntries.flatMap(([, examAttempts]) => examAttempts));
+            setWarningCountByExamId(Object.fromEntries(antiCheatEntries));
+          } catch (workspaceError) {
+            console.error("Workspace loading error:", workspaceError);
+          } finally {
+            if (isMounted) setIsLoadingWorkspace(false);
+          }
+        }
+      } catch (error) {
+        if (!isMounted) return;
         setClassroom(null);
         setMembers([]);
         const nextMessage = error.message || "Không thể tải chi tiết lớp học.";
@@ -184,9 +365,7 @@ export default function ClassroomDetailPage() {
           message: nextMessage,
         });
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
     }
 
@@ -198,31 +377,24 @@ export default function ClassroomDetailPage() {
   }, [classroomId, showToast, user?.role]);
 
   useEffect(() => {
-    if (!shouldShowTeacherWorkspace) {
-      return;
-    }
+    if (!shouldShowTeacherWorkspace) return;
 
     const requestedTab = searchParams.get("tab");
     const normalizedTab = normalizeTeacherClassroomTab(requestedTab);
 
-    if (!requestedTab || requestedTab === normalizedTab) {
-      return;
-    }
+    if (!requestedTab || requestedTab === normalizedTab) return;
 
     const nextParams = new URLSearchParams(searchParams);
-
     if (normalizedTab === "overview") {
       nextParams.delete("tab");
     } else {
       nextParams.set("tab", normalizedTab);
     }
-
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams, shouldShowTeacherWorkspace]);
 
   async function handleUpdateClassroom(payload) {
     setIsSaving(true);
-
     try {
       const response = await classroomApi.update(classroomId, payload);
       await loadClassroomDetail();
@@ -247,13 +419,9 @@ export default function ClassroomDetailPage() {
 
   async function handleDeleteClassroom() {
     const hasConfirmed = window.confirm("Bạn có chắc muốn xóa lớp học này không?");
-
-    if (!hasConfirmed) {
-      return;
-    }
+    if (!hasConfirmed) return;
 
     setIsSaving(true);
-
     try {
       const response = await classroomApi.delete(classroomId);
       navigate(getClassroomListPathByRole(user?.role), {
@@ -272,10 +440,7 @@ export default function ClassroomDetailPage() {
   }
 
   async function handleCopyJoinCode() {
-    if (!classroom) {
-      return;
-    }
-
+    if (!classroom) return;
     try {
       await window.navigator.clipboard.writeText(classroom.joinCode);
       showToast({
@@ -294,19 +459,58 @@ export default function ClassroomDetailPage() {
 
   function handleTeacherTabChange(tabId) {
     const nextParams = new URLSearchParams(searchParams);
-
     if (tabId === "overview") {
       nextParams.delete("tab");
     } else {
       nextParams.set("tab", tabId);
     }
-
     if (tabId !== "members") {
       nextParams.delete("studentId");
     }
-
+    // Clear sub actions
+    nextParams.delete("create");
+    nextParams.delete("assignmentId");
     setSearchParams(nextParams);
   }
+
+  function handleHeaderAction(actionType, targetId = null) {
+    if (actionType === "create-assignment") {
+      setSearchParams({ tab: "assignments", create: "1" });
+    } else if (actionType === "create-exam") {
+      navigate(`${routeConfig.teacherExams}?create=1&classroomId=${classroom.id}`);
+    } else if (actionType === "send-notification") {
+      setSearchParams({ tab: "notifications", create: "1" });
+    } else if (actionType === "view-notifications") {
+      setSearchParams({ tab: "notifications" });
+    } else if (actionType === "view-members") {
+      setSearchParams({ tab: "members" });
+    } else if (actionType === "view-assignments") {
+      setSearchParams({ tab: "assignments" });
+    } else if (actionType === "grade-assignment") {
+      setSearchParams({ tab: "assignments", assignmentId: targetId });
+    } else if (actionType === "view-exam") {
+      setSearchParams({ tab: "exams" });
+    } else if (actionType === "monitor-exam") {
+      navigate(`${routeConfig.teacherMonitoring}?examId=${targetId}`);
+    }
+  }
+
+  // Calculate statistics object
+  const studentCount = members.filter((m) => m.role === "Sinh viên").length;
+  const totalSubmissions = Object.values(submissionsByAssignmentId).flat().length;
+  const submissionRate =
+    assignments.length > 0 && studentCount > 0
+      ? Math.round((totalSubmissions / (assignments.length * studentCount)) * 100)
+      : 0;
+  const warningsCount = Object.values(warningCountByExamId).reduce((a, b) => a + b, 0);
+
+  const quickStats = {
+    membersCount: studentCount,
+    assignmentsCount: assignments.length,
+    examsCount: exams.length,
+    submissionRate,
+    warningsCount,
+  };
 
   function renderQuickInfoCard(item) {
     if (item.label === "Mã lớp") {
@@ -403,42 +607,40 @@ export default function ClassroomDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <PageHeader eyebrow="Lớp học" title="Đang tải thông tin..." />
-
-        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-6">
-            <div className="eg-card space-y-5">
-              <Skeleton className="h-6 w-1/4 rounded-full" />
-              <div className="grid gap-4 md:grid-cols-2">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </div>
-              <Skeleton className="h-10 w-full" />
-            </div>
-
-            <div className="eg-card space-y-4">
-              <Skeleton className="h-6 w-1/3" />
-              <SkeletonText lines={4} />
+        {/* Page Header Skeleton */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-border/60 pb-5">
+          <div className="space-y-3 w-1/3">
+            <Skeleton className="h-8 w-full rounded-lg" />
+            <div className="flex gap-2">
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-5 w-24 rounded-full" />
             </div>
           </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-24 rounded-xl" />
+            <Skeleton className="h-10 w-24 rounded-xl" />
+            <Skeleton className="h-10 w-28 rounded-xl" />
+          </div>
+        </div>
 
+        {/* KPI Skeleton */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-2xl animate-pulse" />
+          ))}
+        </div>
+
+        {/* Tabs Skeleton */}
+        <Skeleton className="h-12 w-full rounded-full animate-pulse" />
+
+        {/* Content Skeleton */}
+        <div className="grid gap-6 lg:grid-cols-[1.8fr_1.2fr]">
           <div className="space-y-6">
-            <div className="eg-card space-y-4">
-              <Skeleton className="h-6 w-1/3" />
-              <div className="space-y-3">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-              </div>
-            </div>
-            <div className="eg-card space-y-3">
-              <Skeleton className="h-6 w-1/3" />
-              <div className="flex gap-3">
-                <Skeleton className="h-10 w-24" />
-                <Skeleton className="h-10 w-24" />
-              </div>
-            </div>
+            <Skeleton className="h-44 w-full rounded-2xl animate-pulse" />
+            <Skeleton className="h-44 w-full rounded-2xl animate-pulse" />
+          </div>
+          <div className="space-y-6">
+            <Skeleton className="h-44 w-full rounded-2xl animate-pulse" />
           </div>
         </div>
       </div>
@@ -461,93 +663,84 @@ export default function ClassroomDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="eg-page-hero">
-        <div className="space-y-3">
-          <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-[2.4rem] lg:text-[2.8rem]">
-            {classroom.name}
-          </h1>
+      {shouldShowTeacherWorkspace ? (
+        <ClassDetailHeader 
+          classroom={classroom} 
+          onAction={handleHeaderAction} 
+        />
+      ) : (
+        <div className="eg-page-hero">
+          <div className="space-y-3">
+            <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-[2.4rem] lg:text-[2.8rem]">
+              {classroom.name}
+            </h1>
+          </div>
         </div>
-      </div>
+      )}
 
       {shouldShowTeacherWorkspace ? (
-        <div className="rounded-[24px] border border-border bg-surface p-3">
-          <div className="flex flex-wrap gap-2">
-            {TEACHER_CLASSROOM_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => handleTeacherTabChange(tab.id)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${
-                  activeTeacherTab === tab.id
-                    ? "bg-primary text-white"
-                    : "text-secondary hover:bg-surface-sunken hover:text-primary"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+        <ClassQuickStats stats={quickStats} />
+      ) : null}
+
+      {shouldShowTeacherWorkspace ? (
+        <div className="sticky top-[64px] z-10 -mx-4 px-4 py-3 bg-[#F8FAFC]/80 backdrop-blur-md border-b border-border/50 transition-all duration-150">
+          <div className="rounded-full border border-border bg-surface p-1 shadow-sm max-w-fit overflow-x-auto scrollbar-none">
+            <div className="flex gap-1">
+              {TEACHER_CLASSROOM_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTeacherTabChange(tab.id)}
+                  className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all duration-150 whitespace-nowrap ${
+                    activeTeacherTab === tab.id
+                      ? "bg-brand text-white shadow-sm"
+                      : "text-secondary hover:bg-surface-sunken hover:text-primary"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       ) : null}
 
-      {shouldShowTeacherWorkspace && activeTeacherTab === "overview" ? (
+      {shouldShowTeacherWorkspace && activeTeacherTab === "overview" && (
         <div className="space-y-6">
-          <Card className="space-y-5">
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge variant={classroom.canEdit ? "success" : "info"}>
-                {getAccessBadgeLabel(classroom, user?.role)}
-              </Badge>
-              <Badge variant="neutral">Mã lớp {classroom.joinCode}</Badge>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              {buildQuickInfoItems(classroom).map(renderQuickInfoCard)}
-            </div>
-
-            {classroom.description ? (
-              <div className="rounded-[18px] border border-border bg-surface-sunken px-4 py-4">
-                <p className="text-sm font-semibold text-primary">Mô tả lớp</p>
-                <p className="mt-2 text-sm leading-6 text-secondary">{classroom.description}</p>
-              </div>
-            ) : null}
-          </Card>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Button
-              className="w-full"
-              onClick={() => setIsEditClassroomFormVisible(true)}
-              variant="secondary"
-            >
-              Chỉnh sửa lớp học
-            </Button>
-            <Button
-              className="w-full"
-              disabled={isSaving}
-              onClick={handleDeleteClassroom}
-              variant="danger"
-            >
-              {isSaving ? "Đang xử lý..." : "Xoá lớp học"}
-            </Button>
-          </div>
-
           {isEditClassroomFormVisible ? (
             <CreateClassroomForm
               key={`${classroom.id}-${classroom.updatedAt || classroom.createdAt}`}
               classroom={classroom}
               isSubmitting={isSaving}
               onSubmitClassroom={handleUpdateClassroom}
+              onCancel={() => setIsEditClassroomFormVisible(false)}
               submitLabel="Lưu thay đổi"
               title="Chỉnh sửa lớp học"
             />
-          ) : null}
+          ) : (
+            <ClassOverviewPanel
+              classroom={classroom}
+              members={members}
+              assignments={assignments}
+              submissionsByAssignmentId={submissionsByAssignmentId}
+              exams={exams}
+              attempts={attempts}
+              warningCountByExamId={warningCountByExamId}
+              notifications={notifications}
+              onAction={handleHeaderAction}
+              onEdit={() => setIsEditClassroomFormVisible(true)}
+              onDelete={handleDeleteClassroom}
+              isSaving={isSaving}
+            />
+          )}
         </div>
-      ) : null}
+      )}
 
       {shouldShowTeacherWorkspace && activeTeacherTab === "members" ? (
         <div className="space-y-6">{renderMemberListCard({ condensed: false })}</div>
       ) : null}
 
-      {shouldShowTeacherWorkspace && activeTeacherTab === "overview" ? (
+      {shouldShowTeacherWorkspace && activeTeacherTab !== "overview" && activeTeacherTab !== "members" ? (
         <TeacherClassroomWorkspace
           activeTab={activeTeacherTab}
           classroom={classroom}
@@ -555,17 +748,16 @@ export default function ClassroomDetailPage() {
           members={members}
           showToast={showToast}
           user={user}
-        />
-      ) : null}
-
-      {shouldShowTeacherWorkspace && !["overview", "members"].includes(activeTeacherTab) ? (
-        <TeacherClassroomWorkspace
-          activeTab={activeTeacherTab}
-          classroom={classroom}
-          highlightedStudentId={highlightedStudentId}
-          members={members}
-          showToast={showToast}
-          user={user}
+          // Pre-fetched props
+          assignments={assignments}
+          submissionsByAssignmentId={submissionsByAssignmentId}
+          exams={exams}
+          attempts={attempts}
+          warningCountByExamId={warningCountByExamId}
+          notifications={notifications}
+          isLoading={isLoadingWorkspace}
+          onNotificationCreated={reloadNotifications}
+          onAssignmentCreated={reloadAssignments}
         />
       ) : null}
 

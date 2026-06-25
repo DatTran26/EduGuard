@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FiActivity, FiAlertTriangle, FiAlertCircle, FiTerminal, FiSearch, FiSliders } from "react-icons/fi";
+import { FiActivity, FiAlertTriangle, FiAlertCircle, FiTerminal, FiSearch, FiSliders, FiRefreshCw } from "react-icons/fi";
 import { dashboardApi } from "../../../api/dashboardApi";
 import Badge from "../../../components/common/Badge";
 import Card from "../../../components/common/Card";
@@ -11,6 +11,7 @@ import StatCard from "../../../components/dashboard/StatCard";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useToast } from "../../../hooks/useToast";
 import { formatShortDateTime } from "../../../utils/formatDate";
+import Button from "../../../components/common/Button";
 import {
   ADMIN_MONITORING_SEVERITY_OPTIONS,
   buildIncidentTypeOptions,
@@ -119,48 +120,74 @@ function IncidentList({ items }) {
   );
 }
 
+function MonitoringSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      {/* Hero Header Skeleton */}
+      <div className="h-40 rounded-3xl bg-surface-sunken border border-border p-6 flex flex-col justify-between">
+        <div className="space-y-3">
+          <div className="h-4 w-24 bg-border rounded-full" />
+          <div className="h-8 w-64 bg-border rounded-full" />
+          <div className="h-4 w-96 bg-border rounded-full" />
+        </div>
+      </div>
+
+      {/* Stats Cards Skeleton */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-[100px] rounded-2xl bg-surface border border-border p-4 flex flex-col justify-between">
+            <div className="flex justify-between items-center">
+              <div className="h-4 w-20 bg-border rounded-full" />
+              <div className="h-6 w-6 bg-border rounded-lg" />
+            </div>
+            <div className="h-6 w-16 bg-border rounded-lg" />
+          </div>
+        ))}
+      </div>
+
+      {/* Filter Card Skeleton */}
+      <div className="h-[120px] rounded-2xl bg-surface border border-border p-6 space-y-4">
+        <div className="h-5 w-24 bg-border rounded-full" />
+        <div className="grid gap-4 lg:grid-cols-4">
+          <div className="h-10 bg-surface-sunken rounded-xl" />
+          <div className="h-10 bg-surface-sunken rounded-xl" />
+          <div className="h-10 bg-surface-sunken rounded-xl" />
+          <div className="h-10 bg-surface-sunken rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminMonitoringPage() {
   const [monitoringData, setMonitoringData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [severityFilter, setSeverityFilter] = useState("");
   const [incidentTypeFilter, setIncidentTypeFilter] = useState("");
   const { showToast } = useToast();
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadMonitoringData() {
-      try {
-        const response = await dashboardApi.getAdminMonitoringDashboard();
-
-        if (!isMounted) {
-          return;
-        }
-
-        setMonitoringData(response.data);
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        showToast({
-          tone: "danger",
-          title: "Tải giám sát thất bại",
-          message: error.message || "Không thể tải dữ liệu giám sát.",
-        });
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
+  async function loadMonitoringData() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await dashboardApi.getAdminMonitoringDashboard();
+      setMonitoringData(response.data);
+    } catch (err) {
+      setError(err.message || "Không thể tải dữ liệu giám sát.");
+      showToast({
+        tone: "danger",
+        title: "Tải giám sát thất bại",
+        message: err.message || "Không thể tải dữ liệu giám sát.",
+      });
+    } finally {
+      setIsLoading(false);
     }
+  }
 
+  useEffect(() => {
     loadMonitoringData();
-
-    return () => {
-      isMounted = false;
-    };
   }, [showToast]);
 
   const incidentTypeOptions = useMemo(
@@ -202,11 +229,22 @@ export default function AdminMonitoringPage() {
   }
 
   if (isLoading) {
-    return <div className="eg-feedback-panel">Đang tải giám sát...</div>;
+    return <MonitoringSkeleton />;
   }
 
-  if (!monitoringData) {
-    return <EmptyState title="Chưa tải được giám sát." />;
+  if (error || !monitoringData) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 border border-border bg-surface rounded-2xl space-y-4">
+        <FiAlertTriangle size={48} className="text-danger animate-bounce" />
+        <h3 className="text-lg font-bold text-primary">Tải dữ liệu thất bại</h3>
+        <p className="text-sm text-secondary max-w-md text-center">
+          {error || "Đã xảy ra lỗi không xác định khi tải dữ liệu từ máy chủ."}
+        </p>
+        <Button onClick={loadMonitoringData} className="flex items-center gap-2">
+          <FiRefreshCw /> Thử lại
+        </Button>
+      </div>
+    );
   }
 
   return (

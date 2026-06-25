@@ -16,6 +16,7 @@ function normalizeAssignmentDto(assignment) {
     maxScore: Number(assignment?.maxScore) || 0,
     createdAt: assignment?.createdAt ?? null,
     submissionCount: Number(assignment?.submissionCount) || 0,
+    mySubmission: assignment?.mySubmission ? normalizeSubmissionDto(assignment.mySubmission) : null,
   };
 }
 

@@ -5,6 +5,7 @@ export const TEACHER_CLASSROOM_TABS = [
   { id: "exams", label: "Bài thi" },
   { id: "results", label: "Kết quả" },
   { id: "activity", label: "Hoạt động" },
+  { id: "notifications", label: "Thông báo" },
 ];
 
 export function normalizeTeacherClassroomTab(tabId) {
