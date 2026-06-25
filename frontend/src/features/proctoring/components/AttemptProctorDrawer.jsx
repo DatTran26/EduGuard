@@ -8,12 +8,16 @@ export default function AttemptProctorDrawer({
   liveVideoRef,
   remoteStatus,
   isAudioEnabled,
+  isClipRecording,
+  clipElapsedSeconds,
   onClose,
   onPause,
   onResume,
   onWarn,
   onTerminate,
   onSnapshot,
+  onStartClip,
+  onStopClip,
   onToggleAudio,
 }) {
   if (!student) {
@@ -55,6 +59,15 @@ export default function AttemptProctorDrawer({
             <Button disabled={remoteStatus !== "connected"} onClick={onSnapshot} variant="secondary">
               Chụp ảnh
             </Button>
+            {isClipRecording ? (
+              <Button onClick={onStopClip} variant="danger">
+                Dừng ghi ({clipElapsedSeconds}s)
+              </Button>
+            ) : (
+              <Button disabled={remoteStatus !== "connected"} onClick={onStartClip} variant="secondary">
+                Ghi clip
+              </Button>
+            )}
             <Button onClick={onToggleAudio} variant="secondary">
               {isAudioEnabled ? "Tắt mic" : "Bật mic"}
             </Button>

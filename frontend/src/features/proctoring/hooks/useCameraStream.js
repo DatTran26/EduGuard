@@ -60,11 +60,18 @@ export function useCameraStream({ enabled = true, audio = false } = {}) {
 
   useEffect(() => {
     if (!enabled) {
-      stopStream();
-      setStatus("idle");
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
       return undefined;
     }
 
+    // getUserMedia must run after mount when enabled flips on.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     startStream();
     return () => stopStream();
   }, [enabled, startStream, stopStream]);
@@ -88,9 +95,9 @@ export function useCameraStream({ enabled = true, audio = false } = {}) {
   return {
     videoRef,
     streamRef,
-    status,
+    status: enabled ? status : "idle",
     errorMessage,
-    isReady: status === "ready",
+    isReady: enabled && status === "ready",
     startStream,
     stopStream,
   };

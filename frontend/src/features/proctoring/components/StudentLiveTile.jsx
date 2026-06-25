@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import Badge from "../../../components/common/Badge";
 import RiskBadge from "./RiskBadge";
 
@@ -8,8 +9,30 @@ const TILE_BORDER = {
   Critical: "border-danger ring-2 ring-danger/30",
 };
 
-export default function StudentLiveTile({ student, isActive, onSelect, onRequestWatch }) {
+export default function StudentLiveTile({
+  student,
+  isActive,
+  remoteStream,
+  remoteStatus,
+  onSelect,
+  onRequestWatch,
+}) {
+  const videoRef = useRef(null);
   const riskLevel = student.riskLevel ?? "Normal";
+  const showLiveVideo = isActive && remoteStream && remoteStatus === "connected";
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+    if (showLiveVideo) {
+      video.srcObject = remoteStream;
+      video.play().catch(() => {});
+      return;
+    }
+    video.srcObject = null;
+  }, [remoteStream, showLiveVideo]);
 
   return (
     <button
@@ -20,9 +43,17 @@ export default function StudentLiveTile({ student, isActive, onSelect, onRequest
       type="button"
     >
       <div className="relative aspect-video bg-surface-sunken">
-        {isActive ? (
-          <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-success">
-            Live
+        {showLiveVideo ? (
+          <video
+            ref={videoRef}
+            autoPlay
+            className="absolute inset-0 h-full w-full object-cover"
+            muted
+            playsInline
+          />
+        ) : isActive ? (
+          <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-secondary">
+            {remoteStatus === "connecting" ? "Đang kết nối live…" : "Chưa có live stream"}
           </div>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-xs text-secondary">
@@ -31,8 +62,13 @@ export default function StudentLiveTile({ student, isActive, onSelect, onRequest
               : "Bấm để xem live"}
           </div>
         )}
-        {riskLevel === "Critical" ? (
+        {showLiveVideo ? (
           <div className="absolute left-2 top-2 rounded-full bg-danger px-2 py-1 text-[10px] font-semibold text-white">
+            LIVE
+          </div>
+        ) : null}
+        {riskLevel === "Critical" ? (
+          <div className="absolute right-2 top-2 rounded-full bg-danger px-2 py-1 text-[10px] font-semibold text-white">
             Cần xem xét
           </div>
         ) : null}

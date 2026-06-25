@@ -10,27 +10,31 @@ Description:
 
 - Feature or fix name: EduGuard Live Proctoring Control Room v1.
 - Purpose and user/business impact: Teachers monitor live student cameras during exams with risk-prioritized grid, manual controls (pause/warn/snapshot/terminate), co-proctor support, and optional YOLO-assisted detection via backend proxy.
-- Files or modules changed: Proctoring domain entities/migration, `ProctoringController`, `ExamMonitoringHub` WebRTC signaling, Redis watch lock, teacher/student proctoring pages, evidence storage, policy engine, AI stub service, admin AI settings page, integration doc for devB.
+- Files or modules changed: Proctoring domain entities/migration, `ProctoringController`, `ExamMonitoringHub` WebRTC signaling, Redis watch lock, teacher/student proctoring pages, evidence storage, policy engine, AI service, admin AI settings, CheatingLog bridge, tile live preview, manual clip recorder.
 
 Changed files (high level):
 
 - `backend/EduGuard.Api/Controllers/proctoring-controller.cs`
 - `backend/EduGuard.Api/Hubs/exam-monitoring-hub.cs`
 - `backend/EduGuard.Infrastructure/Proctoring/*`
+- `backend/EduGuard.Domain/Enums/CheatingType.cs`
 - `frontend/src/features/proctoring/**`
+- `frontend/src/api/proctoringApi.js`
 - `frontend/src/features/admin/pages/AdminProctoringAiSettingsPage.jsx`
 - `ai-services/proctoring-ai-service/**`
-- `plans/monitoring_camera/integration-with-question-bank-devB.md`
+- `docs/proctoring-devB-integration.md`
 
 Validation:
 
 - `dotnet build` (backend) — pass
 - `npm run build` (frontend) — pass
+- `npx eslint src/features/proctoring src/api/proctoringApi.js` — pass
 
 Unresolved questions:
 
-- Production YOLO model wiring in `ai-services/proctoring-ai-service` (current stub returns `Normal`).
-- Optional: SignalR events for pause/resume/terminate (student polling already handles `PausedByProctor`).
+- E2E WebRTC verification across NAT / two physical devices.
+- Production Ultralytics install and model tuning on AI server.
+- Merge/rebase onto `devD` / `devB` per `docs/proctoring-devB-integration.md`.
 
 ---
 

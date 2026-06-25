@@ -8,6 +8,8 @@ import { useProctoringHubConnection } from "./useProctoringHubConnection";
 
 export function useTeacherWebRtcViewer({ attemptId, enabled, enableAudio = false, videoRef }) {
   const peerRef = useRef(null);
+  const invokeRef = useRef(null);
+  const [remoteStream, setRemoteStream] = useState(null);
   const [remoteStatus, setRemoteStatus] = useState("idle");
   const iceServersRef = useRef([{ urls: "stun:stun.l.google.com:19302" }]);
 
@@ -21,6 +23,7 @@ export function useTeacherWebRtcViewer({ attemptId, enabled, enableAudio = false
     if (videoRef?.current) {
       videoRef.current.srcObject = null;
     }
+    setRemoteStream(null);
     setRemoteStatus("idle");
   }, [videoRef]);
 
@@ -38,7 +41,11 @@ export function useTeacherWebRtcViewer({ attemptId, enabled, enableAudio = false
 
         pc.ontrack = (event) => {
           const [stream] = event.streams;
-          if (videoRef?.current && stream) {
+          if (!stream) {
+            return;
+          }
+          setRemoteStream(stream);
+          if (videoRef?.current) {
             videoRef.current.srcObject = stream;
             videoRef.current.play().catch(() => {});
           }
@@ -49,15 +56,15 @@ export function useTeacherWebRtcViewer({ attemptId, enabled, enableAudio = false
           if (!event.candidate) {
             return;
           }
-          invoke(EXAM_MONITORING_METHODS.sendIceCandidate, attemptId, event.candidate.toJSON()).catch(
-            () => {},
-          );
+          invokeRef
+            .current?.(EXAM_MONITORING_METHODS.sendIceCandidate, attemptId, event.candidate.toJSON())
+            .catch(() => {});
         };
 
         await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        await invoke(EXAM_MONITORING_METHODS.sendAnswer, attemptId, answer);
+        await invokeRef.current?.(EXAM_MONITORING_METHODS.sendAnswer, attemptId, answer);
         return;
       }
 
@@ -77,7 +84,7 @@ export function useTeacherWebRtcViewer({ attemptId, enabled, enableAudio = false
         cleanupPeer();
       }
     },
-    [attemptId, cleanupPeer, enabled, invoke, videoRef],
+    [attemptId, cleanupPeer, enabled, videoRef],
   );
 
   const { isConnected, invoke } = useProctoringHubConnection({
@@ -85,25 +92,29 @@ export function useTeacherWebRtcViewer({ attemptId, enabled, enableAudio = false
     onEvent: handleHubEvent,
   });
 
+  useEffect(() => {
+    invokeRef.current = invoke;
+  }, [invoke]);
+
   const requestWatch = useCallback(async () => {
     if (!isConnected) {
       throw new Error("Chưa kết nối hub giám sát.");
     }
-    await invoke(EXAM_MONITORING_METHODS.teacherRequestWatch, attemptId, enableAudio);
-  }, [attemptId, enableAudio, invoke, isConnected]);
+    await invokeRef.current?.(EXAM_MONITORING_METHODS.teacherRequestWatch, attemptId, enableAudio);
+  }, [attemptId, enableAudio, isConnected]);
 
   const stopWatch = useCallback(async () => {
     if (!isConnected) {
+      cleanupPeer();
       return;
     }
-    await invoke(EXAM_MONITORING_METHODS.teacherStopWatch, attemptId);
+    await invokeRef.current?.(EXAM_MONITORING_METHODS.teacherStopWatch, attemptId);
     cleanupPeer();
-  }, [attemptId, cleanupPeer, invoke, isConnected]);
+  }, [attemptId, cleanupPeer, isConnected]);
 
   useEffect(() => {
     if (!enabled) {
-      cleanupPeer();
-      return undefined;
+      return () => cleanupPeer();
     }
 
     let isDisposed = false;
@@ -123,6 +134,7 @@ export function useTeacherWebRtcViewer({ attemptId, enabled, enableAudio = false
   }, [cleanupPeer, enabled]);
 
   return {
+    remoteStream,
     remoteStatus,
     isHubConnected: isConnected,
     requestWatch,

@@ -11,15 +11,18 @@ namespace EduGuard.Infrastructure.Proctoring;
 public class StudentProctoringService : IStudentProctoringService
 {
     private readonly AppDbContext _db;
+    private readonly IAntiCheatService _antiCheatService;
     private readonly IProctoringPolicyService _proctoringPolicyService;
     private readonly IProctoringRepository _proctoringRepository;
 
     public StudentProctoringService(
         AppDbContext db,
+        IAntiCheatService antiCheatService,
         IProctoringPolicyService proctoringPolicyService,
         IProctoringRepository proctoringRepository)
     {
         _db = db;
+        _antiCheatService = antiCheatService;
         _proctoringPolicyService = proctoringPolicyService;
         _proctoringRepository = proctoringRepository;
     }
@@ -57,6 +60,9 @@ public class StudentProctoringService : IStudentProctoringService
             ExamAttemptId = attemptId
         };
 
+        var previousCameraStatus = state.CameraStatus;
+        var previousFullscreenStatus = state.FullscreenStatus;
+        var previousConnectionStatus = state.ConnectionStatus;
         state.CameraStatus = string.IsNullOrWhiteSpace(request.CameraStatus) ? "On" : request.CameraStatus.Trim();
         state.FullscreenStatus = string.IsNullOrWhiteSpace(request.FullscreenStatus) ? state.FullscreenStatus : request.FullscreenStatus.Trim();
         state.ConnectionStatus = string.IsNullOrWhiteSpace(request.ConnectionStatus) ? "Online" : request.ConnectionStatus.Trim();
@@ -65,6 +71,65 @@ public class StudentProctoringService : IStudentProctoringService
         state = await _proctoringPolicyService.ApplyHeartbeatPolicyAsync(attempt, state, request, ct);
         attempt.SuspicionScore = state.SuspicionScore;
         await _db.SaveChangesAsync(ct);
+
+        if (!string.Equals(previousCameraStatus, "Off", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(state.CameraStatus, "Off", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                await ProctoringCheatingLogHelper.LogProctoringSignalAsync(
+                    _antiCheatService,
+                    attemptId,
+                    studentId,
+                    CheatingType.WebcamOff,
+                    "Camera tắt hoặc mất tín hiệu trong lúc làm bài.",
+                    null,
+                    ct);
+            }
+            catch
+            {
+                // Heartbeat should continue even if anti-cheat log fails.
+            }
+        }
+
+        if (!string.Equals(previousFullscreenStatus, "Exited", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(state.FullscreenStatus, "Exited", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                await ProctoringCheatingLogHelper.LogProctoringSignalAsync(
+                    _antiCheatService,
+                    attemptId,
+                    studentId,
+                    CheatingType.TabSwitch,
+                    "Thoát chế độ toàn màn hình trong lúc làm bài.",
+                    null,
+                    ct);
+            }
+            catch
+            {
+                // Heartbeat should continue even if anti-cheat log fails.
+            }
+        }
+
+        if (!IsDisconnectedStatus(previousConnectionStatus) && IsDisconnectedStatus(state.ConnectionStatus))
+        {
+            try
+            {
+                await ProctoringCheatingLogHelper.LogProctoringSignalAsync(
+                    _antiCheatService,
+                    attemptId,
+                    studentId,
+                    CheatingType.Disconnected,
+                    "Mất kết nối hoặc kết nối không ổn định trong lúc làm bài.",
+                    null,
+                    ct);
+            }
+            catch
+            {
+                // Heartbeat should continue even if anti-cheat log fails.
+            }
+        }
 
         var saved = await _proctoringRepository.UpsertStateAsync(state, ct);
         var requiresAutoSnapshot = await ShouldRequestAutoSnapshotAsync(attempt.Exam, saved, ct);
@@ -142,4 +207,8 @@ public class StudentProctoringService : IStudentProctoringService
         if (exam.Setting?.EnableLiveProctoring != true && exam.Setting?.RequireCamera != true)
             throw new InvalidOperationException("Đề thi này không bật giám sát camera.");
     }
+
+    private static bool IsDisconnectedStatus(string? status) =>
+        string.Equals(status, "Offline", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(status, "Unstable", StringComparison.OrdinalIgnoreCase);
 }

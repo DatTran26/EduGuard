@@ -14,6 +14,54 @@ export function useStudentWebRtcPublisher({
 }) {
   const peerRef = useRef(null);
   const iceServersRef = useRef([{ urls: "stun:stun.l.google.com:19302" }]);
+  const invokeRef = useRef(null);
+  const startPublishingRef = useRef(null);
+
+  const cleanupPeer = useCallback(() => {
+    if (peerRef.current) {
+      peerRef.current.onicecandidate = null;
+      peerRef.current.onconnectionstatechange = null;
+      peerRef.current.close();
+      peerRef.current = null;
+    }
+  }, []);
+
+  const startPublishing = useCallback(
+    async (withAudio) => {
+      if (!mediaStream?.current) {
+        return;
+      }
+
+      cleanupPeer();
+      const pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
+      peerRef.current = pc;
+
+      mediaStream.current.getTracks().forEach((track) => {
+        if (track.kind === "audio" && !withAudio && !enableAudio) {
+          return;
+        }
+        pc.addTrack(track, mediaStream.current);
+      });
+
+      pc.onicecandidate = (event) => {
+        if (!event.candidate) {
+          return;
+        }
+        invokeRef
+          .current?.(EXAM_MONITORING_METHODS.sendIceCandidate, attemptId, event.candidate.toJSON())
+          .catch(() => {});
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await invokeRef.current?.(EXAM_MONITORING_METHODS.sendOffer, attemptId, offer);
+    },
+    [attemptId, cleanupPeer, enableAudio, mediaStream],
+  );
+
+  useEffect(() => {
+    startPublishingRef.current = startPublishing;
+  }, [startPublishing]);
 
   const handleHubEvent = useCallback(
     async (eventName, payload) => {
@@ -22,7 +70,7 @@ export function useStudentWebRtcPublisher({
       }
 
       if (eventName === EXAM_MONITORING_EVENTS.teacherRequestedWatch) {
-        await startPublishing(Boolean(payload?.enableAudio));
+        await startPublishingRef.current?.(Boolean(payload?.enableAudio));
         return;
       }
 
@@ -55,47 +103,9 @@ export function useStudentWebRtcPublisher({
     onEvent: handleHubEvent,
   });
 
-  const cleanupPeer = useCallback(() => {
-    if (peerRef.current) {
-      peerRef.current.onicecandidate = null;
-      peerRef.current.onconnectionstatechange = null;
-      peerRef.current.close();
-      peerRef.current = null;
-    }
-  }, []);
-
-  const startPublishing = useCallback(
-    async (withAudio) => {
-      if (!mediaStream?.current) {
-        return;
-      }
-
-      cleanupPeer();
-      const pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
-      peerRef.current = pc;
-
-      mediaStream.current.getTracks().forEach((track) => {
-        if (track.kind === "audio" && !withAudio && !enableAudio) {
-          return;
-        }
-        pc.addTrack(track, mediaStream.current);
-      });
-
-      pc.onicecandidate = (event) => {
-        if (!event.candidate) {
-          return;
-        }
-        invoke(EXAM_MONITORING_METHODS.sendIceCandidate, attemptId, event.candidate.toJSON()).catch(
-          () => {},
-        );
-      };
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      await invoke(EXAM_MONITORING_METHODS.sendOffer, attemptId, offer);
-    },
-    [attemptId, cleanupPeer, enableAudio, invoke, mediaStream],
-  );
+  useEffect(() => {
+    invokeRef.current = invoke;
+  }, [invoke]);
 
   useEffect(() => {
     if (!enabled) {
@@ -116,7 +126,7 @@ export function useStudentWebRtcPublisher({
       }
 
       if (isConnected) {
-        await invoke(EXAM_MONITORING_METHODS.studentJoinAttemptStream, attemptId);
+        await invokeRef.current?.(EXAM_MONITORING_METHODS.studentJoinAttemptStream, attemptId);
       }
     }
 
@@ -125,7 +135,7 @@ export function useStudentWebRtcPublisher({
       isDisposed = true;
       cleanupPeer();
     };
-  }, [attemptId, cleanupPeer, enabled, invoke, isConnected]);
+  }, [attemptId, cleanupPeer, enabled, isConnected]);
 
   useEffect(() => {
     const handleStop = () => cleanupPeer();

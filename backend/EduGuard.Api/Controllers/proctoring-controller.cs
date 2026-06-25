@@ -198,6 +198,7 @@ public class ProctoringController : ControllerBase
         [FromForm] string evidenceType,
         [FromForm] string captureSource,
         [FromForm] string? triggerEventType,
+        [FromForm] string? metadata,
         CancellationToken ct) =>
         await ExecuteAsync(async () =>
         {
@@ -212,6 +213,7 @@ public class ProctoringController : ControllerBase
                 evidenceType,
                 captureSource,
                 triggerEventType,
+                metadata,
                 ct);
         });
 

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Backend
 
-- Added **Live Proctoring Control Room** module: proctoring entities/migration, lobby, WebRTC signaling via `ExamMonitoringHub`, teacher room/states APIs, watch lock (Redis), pause/resume/warn/terminate (SignalR + reason dialog), co-proctor assignments, evidence upload to `wwwroot/uploads/proctoring`, heartbeat policy with auto-snapshot flag, YOLO detection proxy with optional Ultralytics inference, and admin AI settings.
+- Added **Live Proctoring Control Room** module: proctoring entities/migration, lobby, WebRTC signaling via `ExamMonitoringHub`, teacher room/states APIs, watch lock (Redis), pause/resume/warn/terminate (SignalR + reason dialog), co-proctor assignments, evidence upload to `wwwroot/uploads/proctoring`, heartbeat policy with auto-snapshot flag, YOLO detection proxy with optional Ultralytics inference, admin AI settings, tile live preview, manual clip recording, CheatingLog integration (camera off, fullscreen exit, disconnect, AI detect), and YOLO bounding-box metadata on evidence.
 - Added FastAPI stub service at `ai-services/proctoring-ai-service/` for local YOLO integration testing.
 - Added `POST /api/exams/{id}/questions/import` for Teacher/Admin question import from `.csv`, `.xlsx`, `.txt`, `.docx`, and text-based `.pdf` files.
 - Added all-or-nothing import validation for file size, supported extension, content type, required columns, `question_type`, `correct_answer`, and `score` before saving questions.
@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Frontend
 
-- Added teacher **Phòng giám sát bài thi** (`/teacher/exams/:examId/proctoring`) with risk-prioritized camera grid, live watch drawer, co-proctor panel, manual snapshot/pause/warn/terminate controls, and link from Teacher Monitoring.
+- Added teacher **Phòng giám sát bài thi** (`/teacher/exams/:examId/proctoring`) with risk-prioritized camera grid, live video on active tile + drawer, co-proctor panel, manual snapshot/clip/pause/warn/terminate controls, and link from Teacher Monitoring.
 - Added student proctoring lobby/device-check/paused flows, camera preview + watermark on attempt, WebRTC publisher, and realtime proctoring warning toasts.
 - Added admin **Cấu hình AI giám sát** page (`/admin/proctoring-ai`).
 - Redesigned the entire UX/UI across Admin, Student, and Teacher modules to use a premium, consistent design system (Outfit/Inter typography, radial gradients, glowing heroes, standardized `StatCard`, `MetricBarList`, `TimelineList` components, and support for light/dark themes).

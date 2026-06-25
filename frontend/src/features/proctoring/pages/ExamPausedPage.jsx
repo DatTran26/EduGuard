@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { examAttemptApi } from "../../../api/examAttemptApi";
 import Badge from "../../../components/common/Badge";
@@ -13,7 +13,6 @@ import { useProctoringHeartbeat } from "../hooks/useProctoringHeartbeat";
 export default function ExamPausedPage() {
   const { attemptId } = useParams();
   const { user } = useAuth();
-  const [attempt, setAttempt] = useState(null);
   const { videoRef, status: cameraStatus, errorMessage } = useCameraStream({ enabled: true });
 
   useProctoringHeartbeat({
@@ -36,7 +35,6 @@ export default function ExamPausedPage() {
           return;
         }
 
-        setAttempt(response.data);
         if (response.data.status === "InProgress") {
           window.location.replace(`/student/attempts/${attemptId}`);
         }

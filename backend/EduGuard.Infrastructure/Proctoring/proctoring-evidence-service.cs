@@ -51,6 +51,7 @@ public class ProctoringEvidenceService : IProctoringEvidenceService
         string evidenceType,
         string captureSource,
         string? triggerEventType,
+        string? metadata,
         CancellationToken ct = default)
     {
         if (fileStream.CanSeek)
@@ -108,6 +109,7 @@ public class ProctoringEvidenceService : IProctoringEvidenceService
             FileUrl = publicUrl,
             CaptureSource = string.IsNullOrWhiteSpace(captureSource) ? "TeacherManual" : captureSource.Trim(),
             TriggerEventType = string.IsNullOrWhiteSpace(triggerEventType) ? null : triggerEventType.Trim(),
+            Metadata = string.IsNullOrWhiteSpace(metadata) ? null : metadata.Trim(),
             TriggeredByUserId = userId,
             CapturedAt = DateTime.UtcNow
         };

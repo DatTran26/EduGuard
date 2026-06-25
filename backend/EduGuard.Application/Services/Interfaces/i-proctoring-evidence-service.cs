@@ -14,5 +14,6 @@ public interface IProctoringEvidenceService
         string evidenceType,
         string captureSource,
         string? triggerEventType,
+        string? metadata,
         CancellationToken ct = default);
 }

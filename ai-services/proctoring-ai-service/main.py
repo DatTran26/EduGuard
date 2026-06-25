@@ -101,13 +101,28 @@ async def detect(file: UploadFile = File(...)) -> JSONResponse:
     results = MODEL.predict(image, verbose=False)
     labels: list[str] = []
     confidences: list[float] = []
+    boxes: list[dict[str, Any]] = []
 
     for result in results:
         names = result.names or {}
         for box in result.boxes or []:
             class_id = int(box.cls[0])
-            labels.append(str(names.get(class_id, class_id)))
-            confidences.append(float(box.conf[0]))
+            label = str(names.get(class_id, class_id))
+            confidence = float(box.conf[0])
+            labels.append(label)
+            confidences.append(confidence)
+            xyxy = box.xyxy[0].tolist()
+            boxes.append(
+                {
+                    "label": label,
+                    "confidence": round(confidence, 4),
+                    "x1": round(xyxy[0], 2),
+                    "y1": round(xyxy[1], 2),
+                    "x2": round(xyxy[2], 2),
+                    "y2": round(xyxy[3], 2),
+                }
+            )
 
     payload = _classify(labels, confidences)
+    payload["boxes"] = boxes
     return JSONResponse(payload)

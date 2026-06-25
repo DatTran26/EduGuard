@@ -10,6 +10,7 @@ import AttemptProctorDrawer from "../components/AttemptProctorDrawer";
 import CoProctorPanel from "../components/CoProctorPanel";
 import ProctoringReasonDialog from "../components/ProctoringReasonDialog";
 import StudentCameraGrid from "../components/StudentCameraGrid";
+import { useTeacherClipRecorder } from "../hooks/useTeacherClipRecorder";
 import { useTeacherWebRtcViewer } from "../hooks/useTeacherWebRtcViewer";
 
 function sortStudents(students = []) {
@@ -39,11 +40,21 @@ export default function TeacherProctoringRoomPage() {
   const sortedStudents = useMemo(() => sortStudents(students), [students]);
   const activeAttemptId = selectedStudent?.attemptId ?? null;
 
-  const { remoteStatus, requestWatch, stopWatch } = useTeacherWebRtcViewer({
+  const { remoteStream, remoteStatus, requestWatch, stopWatch } = useTeacherWebRtcViewer({
     attemptId: activeAttemptId,
     enabled: Boolean(activeAttemptId),
     enableAudio: isAudioEnabled,
     videoRef: liveVideoRef,
+  });
+
+  const {
+    elapsedSeconds: clipElapsedSeconds,
+    isRecording: isClipRecording,
+    startRecording: startClipRecording,
+    stopRecording: stopClipRecording,
+  } = useTeacherClipRecorder({
+    stream: remoteStream,
+    maxSeconds: 30,
   });
 
   const refreshRoom = useCallback(async () => {
@@ -86,7 +97,6 @@ export default function TeacherProctoringRoomPage() {
 
   useEffect(() => {
     if (!selectedStudent?.attemptId) {
-      setDetail(null);
       return undefined;
     }
 
@@ -113,6 +123,12 @@ export default function TeacherProctoringRoomPage() {
       stopWatch().catch(() => {});
     };
   }, [requestWatch, selectedStudent?.attemptId, showToast, stopWatch]);
+
+  function handleCloseDrawer() {
+    stopWatch().catch(() => {});
+    setSelectedStudent(null);
+    setDetail(null);
+  }
 
   async function handleRequestWatch(student) {
     setSelectedStudent(student);
@@ -201,6 +217,42 @@ export default function TeacherProctoringRoomPage() {
     }
   }
 
+  async function handleStartClip() {
+    if (remoteStatus !== "connected") {
+      return;
+    }
+    const started = startClipRecording();
+    if (!started) {
+      showToast({ tone: "danger", title: "Không thể bắt đầu ghi clip" });
+    }
+  }
+
+  async function handleStopClip() {
+    if (!selectedStudent?.attemptId) {
+      return;
+    }
+
+    const blob = await stopClipRecording();
+    if (!blob) {
+      showToast({ tone: "danger", title: "Clip trống hoặc quá ngắn" });
+      return;
+    }
+
+    try {
+      const file = new File([blob], `clip-${selectedStudent.attemptId}.webm`, { type: blob.type || "video/webm" });
+      await proctoringApi.uploadEvidence(selectedStudent.attemptId, file, {
+        evidenceType: "Clip",
+        captureSource: "TeacherManual",
+        triggerEventType: "ManualClip",
+      });
+      const detailResponse = await proctoringApi.getAttemptDetail(selectedStudent.attemptId);
+      setDetail(detailResponse.data);
+      showToast({ tone: "success", title: "Đã lưu clip giám sát" });
+    } catch (error) {
+      showToast({ tone: "danger", title: "Lưu clip thất bại", message: error.message });
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -228,17 +280,23 @@ export default function TeacherProctoringRoomPage() {
         activeAttemptId={activeAttemptId}
         onRequestWatch={handleRequestWatch}
         onSelectStudent={setSelectedStudent}
+        remoteStatus={remoteStatus}
+        remoteStream={remoteStream}
         students={sortedStudents}
       />
 
       <AttemptProctorDrawer
+        clipElapsedSeconds={clipElapsedSeconds}
         detail={detail}
         isAudioEnabled={isAudioEnabled}
+        isClipRecording={isClipRecording}
         liveVideoRef={liveVideoRef}
-        onClose={() => setSelectedStudent(null)}
+        onClose={handleCloseDrawer}
         onPause={handlePause}
         onResume={handleResume}
         onSnapshot={handleSnapshot}
+        onStartClip={handleStartClip}
+        onStopClip={handleStopClip}
         onTerminate={handleTerminate}
         onToggleAudio={() => setIsAudioEnabled((value) => !value)}
         onWarn={handleWarn}

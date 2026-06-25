@@ -3,6 +3,8 @@ import StudentLiveTile from "./StudentLiveTile";
 export default function StudentCameraGrid({
   students = [],
   activeAttemptId,
+  remoteStream,
+  remoteStatus,
   onSelectStudent,
   onRequestWatch,
 }) {
@@ -22,6 +24,8 @@ export default function StudentCameraGrid({
           isActive={activeAttemptId === student.attemptId}
           onRequestWatch={onRequestWatch}
           onSelect={onSelectStudent}
+          remoteStatus={remoteStatus}
+          remoteStream={activeAttemptId === student.attemptId ? remoteStream : null}
           student={student}
         />
       ))}

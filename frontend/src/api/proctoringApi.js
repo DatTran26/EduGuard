@@ -104,7 +104,7 @@ export const proctoringApi = {
     return { ...apiResponse, data: apiResponse.data };
   },
 
-  async requestWatch(attemptId, enableAudio = false) {
+  async requestWatch(attemptId) {
     return requestApi(() =>
       axiosClient.post(`/attempts/${attemptId}/live-proctoring/request`),
     );
