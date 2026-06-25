@@ -16,4 +16,16 @@ public interface IProctoringEvidenceService
         string? triggerEventType,
         string? metadata,
         CancellationToken ct = default);
+
+    Task<ProctoringEvidenceFileResult> GetEvidenceFileAsync(
+        int attemptId,
+        int evidenceId,
+        string userId,
+        IReadOnlyList<string> roles,
+        CancellationToken ct = default);
 }
+
+public sealed record ProctoringEvidenceFileResult(
+    Stream Stream,
+    string ContentType,
+    string FileName);

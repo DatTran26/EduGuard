@@ -298,7 +298,7 @@ public class ProctoringService : IProctoringService
     {
         Id = evidence.Id,
         EvidenceType = evidence.EvidenceType,
-        FileUrl = evidence.FileUrl,
+        FileUrl = ProctoringEvidenceUrlHelper.ToDownloadApiPath(evidence.ExamAttemptId, evidence.Id),
         ThumbnailUrl = evidence.ThumbnailUrl,
         CaptureSource = evidence.CaptureSource,
         TriggerEventType = evidence.TriggerEventType,

@@ -202,6 +202,9 @@ public class ProctoringController : ControllerBase
         CancellationToken ct) =>
         await ExecuteAsync(async () =>
         {
+            if (file is null || file.Length <= 0)
+                throw new ArgumentException("File bằng trống.");
+
             await using var stream = file.OpenReadStream();
             return await _proctoringEvidenceService.SaveEvidenceAsync(
                 attemptId,
@@ -216,6 +219,39 @@ public class ProctoringController : ControllerBase
                 metadata,
                 ct);
         });
+
+    [HttpGet("api/attempts/{attemptId:int}/proctoring/evidence/{evidenceId:int}/file")]
+    [Authorize(Roles = "Teacher,Admin,Student")]
+    public async Task<IActionResult> DownloadEvidence(int attemptId, int evidenceId, CancellationToken ct)
+    {
+        if (GetUserId() is null)
+            return Unauthorized();
+
+        try
+        {
+            var file = await _proctoringEvidenceService.GetEvidenceFileAsync(
+                attemptId,
+                evidenceId,
+                GetUserId()!,
+                GetRoles(),
+                ct);
+
+            Response.Headers.CacheControl = "private, no-store";
+            return File(file.Stream, file.ContentType, file.FileName, enableRangeProcessing: true);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (FileNotFoundException)
+        {
+            return NotFound();
+        }
+    }
 
     [HttpPost("api/attempts/{attemptId:int}/proctoring/detect")]
     [Authorize(Roles = "Teacher,Admin,Student")]
