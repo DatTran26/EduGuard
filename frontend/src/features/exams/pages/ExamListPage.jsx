@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { classroomApi } from "../../../api/classroomApi";
 import { examApi } from "../../../api/examApi";
+import { questionBankApi } from "../../../api/questionBankApi";
 import { assignmentApi } from "../../../api/assignmentApi";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
@@ -99,6 +100,25 @@ function buildEditableImportPreviewQuestions(questions = []) {
   );
 }
 
+function buildDraftQuestionFromBankQuestion(question, orderIndex) {
+  return buildDraftQuestion(
+    {
+      content: question.content,
+      questionType: question.questionType,
+      score: question.defaultScore,
+      orderIndex,
+      answers: Array.isArray(question.answers)
+        ? question.answers.map((answer, index) => ({
+            content: answer.content,
+            isCorrect: answer.isCorrect,
+            orderIndex: Number(answer.orderIndex) || index + 1,
+          }))
+        : [],
+    },
+    orderIndex,
+  );
+}
+
 function buildStudentAssignmentCard(assignment, classroomName, userId) {
   const submission = resolveAssignmentSubmission(assignment, userId);
 
@@ -159,6 +179,13 @@ export default function ExamListPage() {
   const [importReviewMessage, setImportReviewMessage] = useState("");
   const [importResultErrors, setImportResultErrors] = useState([]);
   const [isImportSubmitting, setIsImportSubmitting] = useState(false);
+  const [questionBanks, setQuestionBanks] = useState([]);
+  const [selectedQuestionBankId, setSelectedQuestionBankId] = useState("");
+  const [bankQuestions, setBankQuestions] = useState([]);
+  const [selectedBankQuestionIds, setSelectedBankQuestionIds] = useState([]);
+  const [bankReviewMessage, setBankReviewMessage] = useState("");
+  const [isBankLoading, setIsBankLoading] = useState(false);
+  const [isBankSubmitting, setIsBankSubmitting] = useState(false);
   const selectedClassroomId = searchParams.get("classroomId") ?? "";
   const selectedScheduleStatus = searchParams.get("scheduleStatus") ?? "";
   const isCreateFormVisible = searchParams.get("create") === "1";
@@ -306,6 +333,14 @@ export default function ExamListPage() {
     };
   }, [selectedClassroomId, showToast, user?.id, user?.role]);
 
+  useEffect(() => {
+    if (!isTeacherView || !isCreateFormVisible) {
+      return;
+    }
+
+    void loadQuestionBanksForCreateFlow();
+  }, [isTeacherView, isCreateFormVisible]);
+
   function resetCreateFlowQuestionUi() {
     setEditingQuestionId(null);
     setArmedDeleteQuestionId(null);
@@ -321,6 +356,10 @@ export default function ExamListPage() {
     setImportPreviewQuestions([]);
     setImportReviewMessage("");
     setImportResultErrors([]);
+    setSelectedQuestionBankId("");
+    setBankQuestions([]);
+    setSelectedBankQuestionIds([]);
+    setBankReviewMessage("");
   }
 
   async function refreshCreateFlowExam(examId = activeCreateExam?.id) {
@@ -345,6 +384,125 @@ export default function ExamListPage() {
 
   async function syncExamListSilently() {
     await loadExamPageData(buildExamListFilters(selectedClassroomId), { showPageLoader: false });
+  }
+
+  async function loadQuestionBanksForCreateFlow() {
+    try {
+      const response = await questionBankApi.getBanks();
+      setQuestionBanks(response.data);
+    } catch (error) {
+      showToast({
+        tone: "danger",
+        title: "Tải ngân hàng câu hỏi thất bại",
+        message: error.message || "Không thể tải danh sách ngân hàng câu hỏi.",
+      });
+    }
+  }
+
+  async function loadSelectedBankQuestions(bankId = selectedQuestionBankId) {
+    if (!bankId) {
+      setBankQuestions([]);
+      setSelectedBankQuestionIds([]);
+      setBankReviewMessage("");
+      return;
+    }
+
+    setIsBankLoading(true);
+    setBankReviewMessage("");
+
+    try {
+      const response = await questionBankApi.getQuestions(bankId, { status: "Approved" });
+      setBankQuestions(response.data);
+      setSelectedBankQuestionIds([]);
+      if (response.data.length === 0) {
+        setBankReviewMessage("Ngân hàng này chưa có câu hỏi đã duyệt để thêm vào đề.");
+      }
+    } catch (error) {
+      setBankReviewMessage(error.message || "Không thể tải câu hỏi từ ngân hàng.");
+      showToast({
+        tone: "danger",
+        title: "Tải câu hỏi ngân hàng thất bại",
+        message: error.message || "Không thể tải câu hỏi từ ngân hàng.",
+      });
+    } finally {
+      setIsBankLoading(false);
+    }
+  }
+
+  function handleChangeQuestionBank(nextBankId) {
+    setSelectedQuestionBankId(nextBankId);
+    setSelectedBankQuestionIds([]);
+    void loadSelectedBankQuestions(nextBankId);
+  }
+
+  function handleToggleBankQuestion(questionId) {
+    const nextQuestionId = Number(questionId);
+    setSelectedBankQuestionIds((previousIds) =>
+      previousIds.includes(nextQuestionId)
+        ? previousIds.filter((id) => id !== nextQuestionId)
+        : [...previousIds, nextQuestionId],
+    );
+  }
+
+  async function handleCommitBankQuestions() {
+    const selectedQuestions = selectedBankQuestionIds
+      .map((questionId) => bankQuestions.find((question) => Number(question.id) === Number(questionId)))
+      .filter(Boolean);
+
+    if (selectedQuestions.length === 0) {
+      setBankReviewMessage("Hãy chọn ít nhất một câu hỏi đã duyệt từ ngân hàng.");
+      return;
+    }
+
+    setIsBankSubmitting(true);
+    setBankReviewMessage("");
+
+    if (!activeCreateExam) {
+      const startOrderIndex = createFlowQuestions.length + 1;
+      const draftQuestions = selectedQuestions.map((question, index) => buildDraftQuestionFromBankQuestion(question, startOrderIndex + index));
+
+      setCreateFlowQuestions((previousQuestions) => resequenceDraftQuestions([...previousQuestions, ...draftQuestions]));
+      setSelectedBankQuestionIds([]);
+      setQuestionWorkspaceMode("manual");
+      setQuestionWorkspaceFilter("All");
+      setQuestionWorkspaceSort("OrderAsc");
+      setExpandedQuestionId(draftQuestions[0]?.id ?? null);
+      setIsBankSubmitting(false);
+      showToast({
+        tone: "success",
+        title: "Đã thêm câu hỏi từ ngân hàng",
+        message: `${draftQuestions.length} câu hỏi đã được đưa vào đề nháp.`,
+      });
+      return;
+    }
+
+    try {
+      const response = await questionBankApi.snapshotQuestionsToExam(activeCreateExam.id, {
+        bankQuestionIds: selectedBankQuestionIds,
+        startOrderIndex: createFlowQuestions.length + 1,
+      });
+      await refreshCreateFlowExam(activeCreateExam.id);
+      await syncExamListSilently();
+      setSelectedBankQuestionIds([]);
+      setQuestionWorkspaceMode("manual");
+      setQuestionWorkspaceFilter("All");
+      setQuestionWorkspaceSort("OrderAsc");
+      setExpandedQuestionId(response.data[0]?.id ?? null);
+      showToast({
+        tone: "success",
+        title: "Đã thêm câu hỏi từ ngân hàng",
+        message: response.message || `${selectedQuestions.length} câu hỏi đã được thêm vào đề.`,
+      });
+    } catch (error) {
+      setBankReviewMessage(error.message || "Không thể thêm câu hỏi từ ngân hàng vào đề.");
+      showToast({
+        tone: "danger",
+        title: "Thêm câu hỏi từ ngân hàng thất bại",
+        message: error.message || "Không thể thêm câu hỏi từ ngân hàng vào đề.",
+      });
+    } finally {
+      setIsBankSubmitting(false);
+    }
   }
 
   function buildPreviewDraftQuestions(startOrderIndex = createFlowQuestions.length + 1) {
@@ -592,6 +750,13 @@ export default function ExamListPage() {
     setEditingQuestionId(null);
     setComposerRevision((previousValue) => previousValue + 1);
     setQuestionWorkspaceMode(nextMode);
+
+    if (nextMode === "bank") {
+      void loadQuestionBanksForCreateFlow();
+      if (selectedQuestionBankId) {
+        void loadSelectedBankQuestions(selectedQuestionBankId);
+      }
+    }
   }
 
   function handleToggleQuestionExpand(questionId) {
@@ -1156,6 +1321,9 @@ export default function ExamListPage() {
 
               <TeacherQuestionWorkspace
                 armedDeleteQuestionId={armedDeleteQuestionId}
+                bankOptions={questionBanks.map((bank) => ({ label: `${bank.name} (${bank.questionCount} câu)`, value: String(bank.id) }))}
+                bankQuestions={bankQuestions}
+                bankReviewMessage={bankReviewMessage}
                 canManage
                 composerRevision={composerRevision}
                 deletingQuestionId={deletingQuestionId}
@@ -1170,19 +1338,25 @@ export default function ExamListPage() {
                 importSubmittingLabel="Đang xử lý..."
                 importResultErrors={importResultErrors}
                 importReviewMessage={importReviewMessage}
+                isBankLoading={isBankLoading}
+                isBankSubmitting={isBankSubmitting}
                 isImportSubmitting={isImportSubmitting}
                 isDraftMode={isCreateFlowDraftMode}
                 isImportCommitDisabled={importPreviewQuestions.length === 0}
                 isQuestionSubmitting={isQuestionSubmitting}
                 isReady
                 onChangeMode={handleChangeQuestionWorkspaceMode}
+                onBankChange={handleChangeQuestionBank}
+                onBankQuestionToggle={handleToggleBankQuestion}
                 onClearFile={handleClearImportFile}
+                onCommitBankQuestions={handleCommitBankQuestions}
                 onCommitImport={activeCreateExam ? handleCommitImportedQuestions : null}
                 onDeleteQuestion={activeCreateExam ? handleDeleteCreateFlowQuestion : handleDeleteDraftQuestion}
                 onEditQuestion={handleStartEditingQuestion}
                 onFileSelected={handlePreviewImportedQuestions}
                 onFilterChange={setQuestionWorkspaceFilter}
                 onQuestionDirtyChange={setIsComposerDirty}
+                onRefreshBankQuestions={() => loadSelectedBankQuestions(selectedQuestionBankId)}
                 onRequestCreateNew={handleReturnToCreateQuestion}
                 onSortChange={setQuestionWorkspaceSort}
                 onSubmitCreateQuestion={activeCreateExam ? handleCreateFlowCreateQuestion : handleCreateDraftQuestion}
@@ -1193,6 +1367,8 @@ export default function ExamListPage() {
                 questionWorkspaceMode={questionWorkspaceMode}
                 questionWorkspaceSort={questionWorkspaceSort}
                 questions={createFlowQuestions}
+                selectedBankId={selectedQuestionBankId}
+                selectedBankQuestionIds={selectedBankQuestionIds}
                 showImportCommitButton={!isCreateFlowDraftMode}
                 stagedImportFile={stagedImportFile}
               />
@@ -1201,7 +1377,7 @@ export default function ExamListPage() {
                 <div className="flex justify-end">
                   <Button
                     className="w-full sm:w-auto"
-                    disabled={isSubmitting || isQuestionSubmitting || isImportSubmitting}
+                    disabled={isSubmitting || isQuestionSubmitting || isImportSubmitting || isBankSubmitting}
                     form={createExamFormId}
                     type="submit"
                   >

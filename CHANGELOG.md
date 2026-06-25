@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Backend
+
+- Added teacher-owned question banks with bank questions, bank answers, difficulty/status metadata, versioning for snapshotted questions, and archived-question history.
+- Added exam matrix APIs so teachers can define matrix rows, validate available approved bank questions, generate a balanced preview, and create draft exams from the selected bank.
+- Added Admin read access for exam matrix list/detail while keeping create/update/delete/preview/create-exam restricted to Teacher-owned resources.
+- Aligned matrix exam creation with the proctoring integration contract by wrapping exam creation, `ExamSetting`, question snapshots, and bank usage updates in a single transaction.
+- Added EF Core migration `AddQuestionBanksAndExamMatrices` for `QuestionBanks`, `BankQuestions`, `BankAnswers`, `ExamMatrices`, `ExamMatrixItems`, and `Questions.BankQuestionId/BankQuestionVersion` snapshot metadata.
+
+### Frontend
+
+- Added a Teacher `Ngân hàng câu hỏi` workspace for creating question banks, filtering bank questions, manually adding/editing/archiving questions, importing files into a bank, creating matrix rows, previewing matrix selections, and creating draft exams from a matrix.
+- Added frontend question bank and exam matrix API adapters with enum normalization for question type, difficulty, and bank question status.
+- Added the Teacher sidebar route `/teacher/question-banks` while keeping the existing exam create/detail flow intact.
+- Changed the Teacher question bank route to open on a bank list first; selecting a bank now enters the full edit workspace with a collapsible horizontal question form, full-width question list, clearer status/difficulty badges, matrix jump action, and a closable matrix-shortfall dialog that lists required versus available questions.
+- Added a `Ngân hàng` mode to the Teacher exam create workspace so approved bank questions can be selected into an unsaved draft or snapshotted into an already saved exam through `POST /api/exams/{examId}/bank-questions`.
+
+### Docs
+
+- Added `docs/apiList.md` registry entries for `API-QBK-*` and `API-MTX-*`, including non-conflicting Swagger/API groups for Question Bank and Exam Matrix.
+
+### Known risks
+
+- Matrix-generated exams are created as drafts; publishing still uses the existing exam detail publish checklist.
+
 ## [1.2.0] - 2026-06-25
 
 ### Security

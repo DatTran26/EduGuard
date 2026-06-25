@@ -6,6 +6,8 @@ public class Question
 {
     public int Id { get; set; }
     public int ExamId { get; set; }
+    public int? BankQuestionId { get; set; }
+    public int? BankQuestionVersion { get; set; }
     public string Content { get; set; } = string.Empty;
     public QuestionType QuestionType { get; set; }
     public decimal Score { get; set; }
@@ -13,5 +15,6 @@ public class Question
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Exam Exam { get; set; } = null!;
+    public BankQuestion? BankQuestion { get; set; }
     public ICollection<Answer> Answers { get; set; } = [];
 }
