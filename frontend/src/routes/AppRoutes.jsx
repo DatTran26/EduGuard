@@ -20,6 +20,7 @@ import StudentDeviceCheckPage from "../features/proctoring/pages/StudentDeviceCh
 import TeacherProctoringRoomPage from "../features/proctoring/pages/TeacherProctoringRoomPage";
 import ExamDetailPage from "../features/exams/pages/ExamDetailPage";
 import ExamListPage from "../features/exams/pages/ExamListPage";
+import QuestionBankPage from "../features/question-banks/pages/QuestionBankPage";
 import TeacherNotificationsPage from "../features/notifications/pages/TeacherNotificationsPage";
 import NotificationsPage from "../features/notifications/pages/NotificationsPage";
 import TeacherResultsPage from "../features/results/pages/TeacherResultsPage";
@@ -82,6 +83,7 @@ export default function AppRoutes() {
             <Route element={<ClassroomDetailPage />} path={routeConfig.teacherClassroomDetail} />
             <Route element={<TeacherAssignmentListPage />} path={routeConfig.teacherAssignments} />
             <Route element={<ExamListPage />} path={routeConfig.teacherExams} />
+            <Route element={<QuestionBankPage />} path={routeConfig.teacherQuestionBanks} />
             <Route element={<ExamDetailPage />} path={routeConfig.teacherExamDetail} />
             <Route element={<TeacherMonitoringPage />} path={routeConfig.teacherMonitoring} />
             <Route element={<TeacherProctoringRoomPage />} path={routeConfig.teacherProctoring} />

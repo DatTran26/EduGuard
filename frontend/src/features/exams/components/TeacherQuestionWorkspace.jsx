@@ -1,11 +1,13 @@
 import { useState } from "react";
 import Badge from "../../../components/common/Badge";
+import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
 import QuestionCard from "./QuestionCard";
 import QuestionForm from "./QuestionForm";
 import QuestionImportPanel from "./QuestionImportPanel";
 import QuestionImportResources from "./QuestionImportResources";
+import { getQuestionTypeLabel } from "../examHelpers";
 import {
   buildQuestionSummaryItems,
   filterQuestionItems,
@@ -21,9 +23,104 @@ const EMPTY_SUBMIT_RESULT = {
   shouldReset: false,
 };
 
+function QuestionBankPickerPanel({
+  bankOptions = [],
+  bankQuestions = [],
+  bankReviewMessage = "",
+  isDraftMode = false,
+  isLoading = false,
+  isSubmitting = false,
+  selectedBankId = "",
+  selectedQuestionIds = [],
+  onBankChange,
+  onCommitBankQuestions,
+  onRefreshBankQuestions,
+  onToggleQuestion,
+}) {
+  const selectedQuestionIdSet = new Set(selectedQuestionIds.map((id) => Number(id)));
+  const selectedCount = selectedQuestionIdSet.size;
+  const hasSelectedBank = Boolean(selectedBankId);
+
+  return (
+    <Card className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-semibold text-primary">Chọn từ ngân hàng</h3>
+          <p className="mt-1 text-sm leading-6 text-secondary">Chỉ câu đã duyệt mới được thêm vào đề.</p>
+        </div>
+        <Badge variant={selectedCount > 0 ? "success" : "neutral"}>{selectedCount} đã chọn</Badge>
+      </div>
+
+      <label className="space-y-2 text-sm text-secondary">
+        <span className="block font-medium text-primary">Ngân hàng câu hỏi</span>
+        <select className="eg-input" onChange={(event) => onBankChange?.(event.target.value)} value={selectedBankId}>
+          <option value="">Chọn ngân hàng</option>
+          {bankOptions.map((bank) => (
+            <option key={bank.value} value={bank.value}>{bank.label}</option>
+          ))}
+        </select>
+      </label>
+
+      <div className="flex flex-wrap gap-2">
+        <Button disabled={!hasSelectedBank || isLoading} onClick={onRefreshBankQuestions} variant="secondary">
+          {isLoading ? "Đang tải..." : "Tải lại câu hỏi"}
+        </Button>
+        <Button disabled={selectedCount === 0 || isSubmitting} onClick={onCommitBankQuestions}>
+          {isSubmitting ? "Đang thêm..." : isDraftMode ? "Thêm vào đề nháp" : "Thêm vào đề"}
+        </Button>
+      </div>
+
+      {bankReviewMessage ? (
+        <p className="rounded-[16px] border border-caution/18 bg-caution-muted px-4 py-3 text-sm leading-6 text-caution">{bankReviewMessage}</p>
+      ) : null}
+
+      {hasSelectedBank ? (
+        bankQuestions.length > 0 ? (
+          <div className="max-h-[520px] space-y-3 overflow-auto pr-1">
+            {bankQuestions.map((question) => {
+              const isApproved = question.status === "Approved";
+              const isChecked = selectedQuestionIdSet.has(Number(question.id));
+
+              return (
+                <label key={question.id} className={`block rounded-[16px] border p-3 ${isChecked ? "border-tertiary bg-info-muted" : "border-border bg-neutral"} ${isApproved ? "cursor-pointer" : "opacity-70"}`}>
+                  <div className="flex items-start gap-3">
+                    <input
+                      checked={isChecked}
+                      className="mt-1 h-4 w-4 accent-[var(--color-tertiary)]"
+                      disabled={!isApproved || isSubmitting}
+                      onChange={() => onToggleQuestion?.(question.id)}
+                      type="checkbox"
+                    />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant={isApproved ? "success" : "neutral"}>{isApproved ? "Đã duyệt" : "Chưa duyệt"}</Badge>
+                        <Badge variant="info">{getQuestionTypeLabel(question.questionType)}</Badge>
+                        <Badge variant="neutral">{question.defaultScore} điểm</Badge>
+                      </div>
+                      <p className="text-sm font-semibold leading-6 text-primary">{question.content}</p>
+                      <p className="text-xs font-medium uppercase tracking-[0.12em] text-secondary">{question.chapter || "Chưa gán chương"} · dùng {question.timesUsed} lần</p>
+                    </div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState title={isLoading ? "Đang tải câu hỏi ngân hàng..." : "Ngân hàng này chưa có câu hỏi đã duyệt."} />
+        )
+      ) : (
+        <EmptyState title="Chọn ngân hàng để xem câu hỏi." />
+      )}
+    </Card>
+  );
+}
+
 export default function TeacherQuestionWorkspace({
   exam = null,
   questions = [],
+  bankOptions = [],
+  bankQuestions = [],
+  bankReviewMessage = "",
   canManage = false,
   importCommitLabel = "Commit vào đề",
   importInfoMessage = "",
@@ -37,6 +134,8 @@ export default function TeacherQuestionWorkspace({
   showImportCommitButton = true,
   readyBadgeLabel = "Lưu đề trước",
   isQuestionSubmitting = false,
+  isBankLoading = false,
+  isBankSubmitting = false,
   isImportSubmitting = false,
   editingQuestionId = null,
   deletingQuestionId = null,
@@ -45,6 +144,8 @@ export default function TeacherQuestionWorkspace({
   questionWorkspaceMode = "manual",
   questionWorkspaceFilter = "All",
   questionWorkspaceSort = "OrderAsc",
+  selectedBankId = "",
+  selectedBankQuestionIds = [],
   composerRevision = 0,
   stagedImportFile = null,
   importReviewMessage = "",
@@ -63,6 +164,10 @@ export default function TeacherQuestionWorkspace({
   onFileSelected,
   onClearFile,
   onCommitImport,
+  onBankChange,
+  onBankQuestionToggle,
+  onCommitBankQuestions,
+  onRefreshBankQuestions,
 }) {
   const [editingImportQuestionId, setEditingImportQuestionId] = useState(null);
   const editingQuestion = questions.find((question) => question.id === editingQuestionId) ?? null;
@@ -71,6 +176,7 @@ export default function TeacherQuestionWorkspace({
     ? `question-edit-${editingQuestion.id}-${composerRevision}`
     : `question-create-${questions.length}-${composerRevision}`;
   const isImportMode = questionWorkspaceMode === "import";
+  const isBankMode = questionWorkspaceMode === "bank";
   const reviewQuestions = importPreviewQuestions;
   const editingImportQuestionIndex =
     isImportMode && editingImportQuestionId !== null
@@ -126,8 +232,8 @@ export default function TeacherQuestionWorkspace({
           <h3 className="text-lg font-semibold text-primary">Workspace câu hỏi</h3>
 
           {canManage ? (
-            <Badge variant={isReady ? (isImportMode ? "info" : "success") : "neutral"}>
-              {isReady ? (isImportMode ? "Đang review import" : "Đang tạo tay") : readyBadgeLabel}
+            <Badge variant={isReady ? (isImportMode || isBankMode ? "info" : "success") : "neutral"}>
+              {isReady ? (isImportMode ? "Đang review import" : isBankMode ? "Đang chọn ngân hàng" : "Đang tạo tay") : readyBadgeLabel}
             </Badge>
           ) : null}
         </div>
@@ -178,9 +284,34 @@ export default function TeacherQuestionWorkspace({
               >
                 Nhập từ file
               </button>
+              <button
+                className={questionWorkspaceMode === "bank" ? "eg-question-filter-chip eg-question-filter-chip-active" : "eg-question-filter-chip"}
+                onClick={() => {
+                  setEditingImportQuestionId(null);
+                  onChangeMode?.("bank");
+                }}
+                type="button"
+              >
+                Ngân hàng
+              </button>
             </div>
 
-            {isImportMode ? isEditingImportReview ? (
+            {isBankMode ? (
+              <QuestionBankPickerPanel
+                bankOptions={bankOptions}
+                bankQuestions={bankQuestions}
+                bankReviewMessage={bankReviewMessage}
+                isDraftMode={isDraftMode}
+                isLoading={isBankLoading}
+                isSubmitting={isBankSubmitting}
+                onBankChange={onBankChange}
+                onCommitBankQuestions={onCommitBankQuestions}
+                onRefreshBankQuestions={onRefreshBankQuestions}
+                onToggleQuestion={onBankQuestionToggle}
+                selectedBankId={selectedBankId}
+                selectedQuestionIds={selectedBankQuestionIds}
+              />
+            ) : isImportMode ? isEditingImportReview ? (
               <QuestionForm
                 defaultOrderIndex={editingImportQuestion.orderIndex}
                 isDisabled={!isReady}

@@ -18,5 +18,10 @@ public class QuestionConfiguration : IEntityTypeConfiguration<Question>
             .WithMany(x => x.Questions)
             .HasForeignKey(x => x.ExamId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(x => x.BankQuestion)
+            .WithMany(x => x.ExamQuestionSnapshots)
+            .HasForeignKey(x => x.BankQuestionId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

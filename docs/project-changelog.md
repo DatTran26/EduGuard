@@ -1,5 +1,101 @@
 # Project Changelog
 
+## Feature: Question bank list/detail UX and exam bank picker
+
+Date: 2026-06-25
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Question bank list/detail UX and exam bank picker.
+- Purpose and user/business impact: Opens the Teacher question bank menu on a clear bank list, keeps editing scoped to the selected bank, explains matrix shortages in actionable detail, and lets teachers build an exam by selecting approved questions from a bank.
+- Files or modules changed: frontend question bank page, bank question form, question bank helpers/API adapter, Teacher exam create page, Teacher question workspace, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `frontend/src/features/question-banks/components/BankQuestionForm.jsx`
+- `frontend/src/features/question-banks/question-bank-helpers.js`
+- `frontend/src/api/questionBankApi.js`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Changed `/teacher/question-banks` to render a bank-list landing view first; selecting a bank opens the detail workspace instead of auto-selecting the first bank.
+- Reworked bank detail with question/matrix tabs, a matrix jump button, collapsible add/import panels, a horizontal question form layout, and a full-width question list with expandable answers.
+- Added status and difficulty marks/variants for faster scanning.
+- Added a closable matrix issue dialog that formats backend validation/preview shortages by row condition, required count, available count, and missing count while keeping the backend selection algorithm unchanged.
+- Added frontend support for `POST /api/exams/{examId}/bank-questions` and a `Ngân hàng` mode in the Teacher create-exam workspace. Unsaved exams receive local draft questions; saved exams use backend snapshots.
+
+Validation:
+
+- `npm.cmd --prefix frontend run build` passed; Vite/Rolldown still reports existing third-party pure-annotation warnings from `@microsoft/signalr` and the existing large bundle warning.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore` passed with 0 warnings and 0 errors.
+- `GET http://127.0.0.1:5173/teacher/question-banks` returned HTTP 200 from the running Vite server.
+- `GET http://127.0.0.1:5157/swagger/v1/swagger.json` returned HTTP 200 and contains `/api/exams/{examId}/bank-questions`.
+- `git diff --check` passed with no whitespace errors before merge; PowerShell reported only expected LF-to-CRLF working-copy warnings.
+
+Known risks / rollback / follow-up:
+
+- Manual browser UI verification is still recommended for exact spacing against the provided screenshots because the change is layout-heavy.
+- The bank picker filters to approved bank questions before adding to an exam, matching backend snapshot rules.
+- Rollback: revert the modified frontend question-bank/exam workspace files and remove the related changelog/Todo entries; no new backend schema change was added in this UX update.
+
+## Feature: Question bank and exam matrix workspace
+
+Date: 2026-06-25
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Question bank and exam matrix workspace.
+- Purpose and user/business impact: Lets teachers maintain reusable approved question banks, import questions into banks, generate exams from a matrix, and keep existing exam snapshots stable after bank questions are edited.
+- Files or modules changed: question bank/matrix backend entities, DTOs, validators, repositories, services, controllers, EF Core migration/snapshot, frontend API adapter, Teacher question bank route/page, API registry, changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Domain/Entities/QuestionBank.cs`
+- `backend/EduGuard.Domain/Entities/BankQuestion.cs`
+- `backend/EduGuard.Domain/Entities/BankAnswer.cs`
+- `backend/EduGuard.Domain/Entities/ExamMatrix.cs`
+- `backend/EduGuard.Domain/Entities/ExamMatrixItem.cs`
+- `backend/EduGuard.Domain/Entities/Question.cs`
+- `backend/EduGuard.Application/DTOs/QuestionBanks/*`
+- `backend/EduGuard.Application/DTOs/ExamMatrices/*`
+- `backend/EduGuard.Infrastructure/QuestionBanks/*`
+- `backend/EduGuard.Infrastructure/ExamMatrices/*`
+- `backend/EduGuard.Api/Controllers/question-banks-controller.cs`
+- `backend/EduGuard.Api/Controllers/exam-matrices-controller.cs`
+- `frontend/src/api/questionBankApi.js`
+- `frontend/src/features/question-banks/*`
+- `frontend/src/routes/*`
+- `docs/apiList.md`
+
+Technical summary:
+
+- Added teacher-owned question bank APIs for bank CRUD, bank question CRUD, file import, archive, and snapshotting approved bank questions into existing exams.
+- Added question snapshot metadata to exam questions so exam history remains stable after bank question revisions.
+- Added exam matrix APIs for matrix CRUD, availability validation against approved bank questions, preview generation ordered by lower `TimesUsed`, and draft exam creation.
+- Wrapped matrix create-exam in a database transaction that creates the `Exam`, default `ExamSetting`, question/answer snapshots, and bank usage updates together.
+- Added `QuestionBank` and `ExamMatrix` Swagger operation tags and documented the `API-QBK-*` / `API-MTX-*` endpoints in `docs/apiList.md`.
+
+Validation:
+
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore` passed with 0 warnings and 0 errors.
+- `npm.cmd --prefix frontend run build` passed; Vite/Rolldown still reports existing third-party pure-annotation warnings from `@microsoft/signalr` and the existing large bundle warning.
+- Swagger/runtime checks returned HTTP 200 for question bank and exam matrix routes before this merge.
+
+Known risks / rollback / follow-up:
+
+- Matrix-generated exams are draft exams; teachers still publish them through the existing exam detail publish workflow.
+- Rollback: remove the bank/matrix entities, DTOs, validators, repositories, services, controllers, frontend question-bank feature files, route/sidebar entries, and revert migration `20260625075714_AddQuestionBanksAndExamMatrices`.
+
 ## Feature: Redesign Student Task Center (Bài tập / Bài thi)
 
 Date: 2026-06-25
