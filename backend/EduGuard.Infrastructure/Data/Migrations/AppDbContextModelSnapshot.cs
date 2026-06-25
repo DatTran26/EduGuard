@@ -387,6 +387,43 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.ToTable("ExamAttempts", (string)null);
                 });
 
+            modelBuilder.Entity("EduGuard.Domain.Entities.ExamProctorAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ExamId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("InvitedByTeacherId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("TeacherId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamId", "TeacherId")
+                        .IsUnique();
+
+                    b.ToTable("ExamProctorAssignments", (string)null);
+                });
+
             modelBuilder.Entity("EduGuard.Domain.Entities.ExamSetting", b =>
                 {
                     b.Property<int>("Id")
@@ -395,13 +432,76 @@ namespace EduGuard.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("AllowMoveToWaitingRoom")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("AllowTeacherManualRecording")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("AllowTeacherManualSnapshot")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("AntiCheatMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasDefaultValue("BASIC");
+
+                    b.Property<int>("CameraHeartbeatIntervalSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("CaptureSnapshotOnViolation")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("DefaultLiveQuality")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasDefaultValue("360p");
+
+                    b.Property<bool>("EnableCameraProctoring")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableExternalDeviceDetection")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableLiveProctoring")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableRealtimeWarning")
+                        .HasColumnType("bit");
+
                     b.Property<int>("ExamId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FocusedLiveQuality")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasDefaultValue("720p");
+
+                    b.Property<int>("MaxActiveLiveTiles")
                         .HasColumnType("int");
 
                     b.Property<int>("MaxAttempts")
                         .HasColumnType("int");
 
+                    b.Property<int>("MaxCameraOffSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxSnapshotsPerAttempt")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("RequireCamera")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("RequireFullscreen")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("RequireMicrophone")
                         .HasColumnType("bit");
 
                     b.Property<bool>("ShowResultAfterSubmit")
@@ -413,12 +513,292 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.Property<bool>("ShuffleQuestions")
                         .HasColumnType("bit");
 
+                    b.Property<int>("SnapshotCooldownSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ViolationAction")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasDefaultValue("WARN_TEACHER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ExamId")
                         .IsUnique();
 
                     b.ToTable("ExamSettings", (string)null);
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.LiveProctoringSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ConnectedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EndReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ExamAttemptId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExamId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("TeacherId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamId");
+
+                    b.HasIndex("TeacherId");
+
+                    b.HasIndex("ExamAttemptId", "Status");
+
+                    b.ToTable("LiveProctoringSessions", (string)null);
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.ProctorAction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ExamAttemptId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("TeacherId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamAttemptId");
+
+                    b.ToTable("ProctorActions", (string)null);
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.ProctoringAiSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AiServiceBaseUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("BookVisibleMinConfidence")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("DetectionIntervalSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("EnableYoloDetection")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("PhoneVisibleMinConfidence")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("SecondPersonMinConfidence")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ProctoringAiSettings", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            AiServiceBaseUrl = "http://127.0.0.1:8800",
+                            BookVisibleMinConfidence = 0.60m,
+                            DetectionIntervalSeconds = 4,
+                            EnableYoloDetection = true,
+                            PhoneVisibleMinConfidence = 0.65m,
+                            SecondPersonMinConfidence = 0.65m,
+                            UpdatedAt = new DateTime(2026, 6, 25, 0, 0, 0, 0, DateTimeKind.Utc)
+                        });
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.ProctoringEvidence", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CaptureSource")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTime>("CapturedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CheatingLogId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("Confidence")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("EvidenceType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("ExamAttemptId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileUrl")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("TriggerEventType")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("TriggeredByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CheatingLogId");
+
+                    b.HasIndex("ExamAttemptId");
+
+                    b.ToTable("ProctoringEvidences", (string)null);
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.ProctoringState", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CameraStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("ConnectionStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("EnvironmentStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<int>("EvidenceCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExamAttemptId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FullscreenStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTime>("LastHeartbeatAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LatestDetectionType")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("LatestWarningAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LiveStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("RiskLevel")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<int>("SuspicionScore")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WarningCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamAttemptId")
+                        .IsUnique();
+
+                    b.ToTable("ProctoringStates", (string)null);
                 });
 
             modelBuilder.Entity("EduGuard.Domain.Entities.Question", b =>
@@ -837,6 +1217,17 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("EduGuard.Domain.Entities.ExamProctorAssignment", b =>
+                {
+                    b.HasOne("EduGuard.Domain.Entities.Exam", "Exam")
+                        .WithMany()
+                        .HasForeignKey("ExamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exam");
+                });
+
             modelBuilder.Entity("EduGuard.Domain.Entities.ExamSetting", b =>
                 {
                     b.HasOne("EduGuard.Domain.Entities.Exam", "Exam")
@@ -846,6 +1237,65 @@ namespace EduGuard.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Exam");
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.LiveProctoringSession", b =>
+                {
+                    b.HasOne("EduGuard.Domain.Entities.ExamAttempt", "ExamAttempt")
+                        .WithMany()
+                        .HasForeignKey("ExamAttemptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduGuard.Domain.Entities.Exam", "Exam")
+                        .WithMany()
+                        .HasForeignKey("ExamId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Exam");
+
+                    b.Navigation("ExamAttempt");
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.ProctorAction", b =>
+                {
+                    b.HasOne("EduGuard.Domain.Entities.ExamAttempt", "ExamAttempt")
+                        .WithMany()
+                        .HasForeignKey("ExamAttemptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ExamAttempt");
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.ProctoringEvidence", b =>
+                {
+                    b.HasOne("EduGuard.Domain.Entities.CheatingLog", "CheatingLog")
+                        .WithMany()
+                        .HasForeignKey("CheatingLogId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("EduGuard.Domain.Entities.ExamAttempt", "ExamAttempt")
+                        .WithMany()
+                        .HasForeignKey("ExamAttemptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CheatingLog");
+
+                    b.Navigation("ExamAttempt");
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.ProctoringState", b =>
+                {
+                    b.HasOne("EduGuard.Domain.Entities.ExamAttempt", "ExamAttempt")
+                        .WithOne()
+                        .HasForeignKey("EduGuard.Domain.Entities.ProctoringState", "ExamAttemptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ExamAttempt");
                 });
 
             modelBuilder.Entity("EduGuard.Domain.Entities.Question", b =>

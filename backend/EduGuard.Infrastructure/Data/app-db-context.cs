@@ -25,6 +25,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ExamAttempt> ExamAttempts => Set<ExamAttempt>();
     public DbSet<StudentAnswer> StudentAnswers => Set<StudentAnswer>();
     public DbSet<CheatingLog> CheatingLogs => Set<CheatingLog>();
+    public DbSet<LiveProctoringSession> LiveProctoringSessions => Set<LiveProctoringSession>();
+    public DbSet<ProctoringEvidence> ProctoringEvidences => Set<ProctoringEvidence>();
+    public DbSet<ProctoringState> ProctoringStates => Set<ProctoringState>();
+    public DbSet<ProctorAction> ProctorActions => Set<ProctorAction>();
+    public DbSet<ExamProctorAssignment> ExamProctorAssignments => Set<ExamProctorAssignment>();
+    public DbSet<ProctoringAiSettings> ProctoringAiSettings => Set<ProctoringAiSettings>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

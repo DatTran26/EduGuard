@@ -27,14 +27,7 @@ public static class ExamMapper
         };
     }
 
-    public static ExamSettingDto MapSetting(ExamSetting? setting) => new()
-    {
-        ShuffleQuestions = setting?.ShuffleQuestions ?? false,
-        ShuffleAnswers = setting?.ShuffleAnswers ?? false,
-        MaxAttempts = setting?.MaxAttempts ?? 1,
-        ShowResultAfterSubmit = setting?.ShowResultAfterSubmit ?? false,
-        RequireFullscreen = setting?.RequireFullscreen ?? false
-    };
+    public static ExamSettingDto MapSetting(ExamSetting? setting) => ExamSettingMapper.MapDto(setting);
 
     public static QuestionDto MapQuestion(Question question, bool hideCorrectAnswers = false) => new()
     {

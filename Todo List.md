@@ -4,8 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD` / `devH` / `devB` (nhánh dev theo feature)
-**Cập nhật:** 2026-06-20 (devH: đã chặn trường hợp `POST /api/auth/login` trả `401` làm trang đăng nhập refresh và mất form; đồng thời sửa các blocker compile của luồng import câu hỏi đề thi ở backend để build kiểm tra lại qua output tạm pass sạch. Luồng upload đề thi của Teacher nay kiểm tra định dạng file ở frontend, gọi backend preview ngay khi file hợp lệ, hiển thị câu hỏi + đáp án để review trước khi commit, và đẩy nút `Lưu đề` xuống bước cuối của create flow. Vừa bổ sung thêm fix cho create flow: lần lưu đầu sẽ gom cả câu hỏi soạn tay + câu hỏi đang preview, nếu tổng số câu > 0 thì tự publish ngay, còn nếu vẫn chưa có câu hỏi thì lưu ở trạng thái nháp. Sau đó tiếp tục vá lỗi `400` ở API tạo đề bằng cách không gửi các `answer.id` tạm kiểu string của draft/preview lên backend, đồng thời rút gọn card CTA cuối chỉ còn nút và bỏ message in-page "backend đã phân tích..." sau khi import preview thành công. Mới nhất đã bỏ hẳn submit DOM của nút `Tạo đề`, chuyển sang gọi callback submit trực tiếp từ `ExamForm` để bấm được ổn định ở create flow; đồng thời cho phép chỉnh sửa trực tiếp câu hỏi trong màn review import và khi lưu/commit sẽ tạo câu hỏi thật từ state đã chỉnh sửa thay vì import lại file gốc. Trước đó create-flow đề thi của Teacher đã chuyển sang soạn nháp cục bộ ngay trên `ExamListPage` để nhập câu hỏi/import preview trước rồi mới lưu toàn bộ một lần; backend tạo đề nay nhận kèm danh sách câu hỏi ngay trong request đầu tiên, đồng thời thêm endpoint preview import để nháp local không còn phải có `examId` trước; cùng lượt đã tách `ExamDetailPage` thành chế độ xem/chỉnh sửa riêng, đưa metadata lớp/giảng viên/lịch thi vào tooltip `Thông tin thêm`, bổ sung refresh + empty-state rõ nghĩa hơn cho bài tập trong classroom detail, và vừa đồng bộ shell/UI Teacher theo `docs/ui_tech.md` với menu mới, top bar search + quick-create, route teacher cho bài tập/giám sát/kết quả/thông báo, cùng workspace tab cho classroom detail. Mới nhất classroom detail của Teacher đã bỏ 2 nút tạo bài tập/đề thi trên header, làm nổi bật lại CTA `Sao chép mã lớp`, dồn phần xem thành viên về tab `Thành viên`, và đổi panel phụ ở `Tổng quan` thành hai nút ngang `Chỉnh sửa lớp học` / `Xoá Lớp học`.)
-**Ghi chú devB:** 2026-06-20 (đã thêm file chuẩn import `.md` và prompt chuyển đổi vào backend resource; Teacher/Admin có thể tải file chuẩn trong question workspace, xem prompt thu gọn/mở rộng và copy toàn bộ prompt bằng nút ở góc phải.)
+**Cập nhật:** 2026-06-25 (merge `feat/live-proctoring-control-room` → `release`: Live Proctoring Control Room v1 — backend entities/API/SignalR/WebRTC, student lobby+camera, teacher control room, evidence upload, YOLO proxy, admin AI settings, tile live preview, manual clip, CheatingLog; còn E2E WebRTC thật, cài Ultralytics production, responsive polish, merge devB/devD)
 **Ghi chú devB:** 2026-06-15 (backend cấu hình bài kiểm tra UTC, validation publish trắc nghiệm MVP; Phase 8 SignalR xong; Phase 9 Redis — kế hoạch chi tiết)
 **Ghi chú devH:** 2026-06-17 (đã xử lý conflict khi pull từ `release` theo hướng giữ bản release; hoàn thiện FE cho cấu hình lịch thi UTC+7, chia nhóm form, bỏ checkbox publish, thêm checklist điều kiện publish và nút `Publish đề` gọi backend thật, đồng thời bổ sung hướng dẫn theo loại câu hỏi và thống kê đầy đủ các dạng câu ở trang chi tiết đề thi; khóa exact version dependency frontend, thêm `.npmrc` `save-exact` và chuẩn hóa `package-lock.json` để giảm conflict merge với `release`; làm mới UI đăng nhập theo layout 2 cột cân giữa màn hình với panel thương hiệu và login card riêng)
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
@@ -25,9 +24,10 @@
 | 6 | Online Testing / Exam Attempt | ✅ Backend + FE core xong (start/resume, save answer, timer, auto submit, result, teacher attempt monitor) |
 | 7 | Anti-cheat Monitoring | ✅ Backend + FE REST cơ bản xong; realtime warning đã xử lý ở Phase 8 |
 | 8 | SignalR Realtime | ✅ Hoàn thành |
-| 9 | Redis | ⬜ Chưa bắt đầu |
+| 9 | Redis | 🟡 Backend + FE heartbeat xong; manual test Redis CLI còn lại |
 | 10 | Dashboard & Reporting | 🟡 Đang làm |
 | 11 | Docker Compose | ⬜ Chưa bắt đầu |
+| 12 | Live Proctoring Control Room | ✅ v1 hoàn thành trên `feat/live-proctoring-control-room`; E2E thật + merge dev còn backlog |
 | DOC | README giới thiệu hệ thống | ✅ Hoàn thành |
 
 ---
@@ -189,7 +189,6 @@
 - [x] Validate file import backend: `.csv`, `.xlsx`, `.txt`, `.docx`, PDF text, MIME type, giới hạn 5MB, cột/template bắt buộc, `question_type`, `correct_answer`, `score`
 - [x] Import backend hỗ trợ `single_choice`, `multiple_choice`, `true_false`, `short_answer`; `essay` / tự luận dài để phát triển sau
 - [x] API danh sách/tải file mẫu import câu hỏi (`GET /api/exams/question-import/templates`, `GET /api/exams/question-import/templates/{fileName}`) cho Teacher/Admin
-- [x] API file chuẩn import `.md` và prompt chuyển đổi (`GET /api/exams/question-import/prompt`) cho Teacher/Admin
 - [x] API publish đề thi *(cho phép công khai metadata trước; student chỉ start khi đề đã có câu hỏi)*
 
 ### Frontend
@@ -202,8 +201,7 @@
 - [x] UI quản lý câu hỏi & đáp án *(Teacher thêm/sửa/xóa câu hỏi qua backend thật; Admin xem được question bank; Student không thấy đáp án ở trang detail)*
 - [x] UI upload file chuẩn tạo câu hỏi trắc nghiệm bài kiểm tra *(Teacher có workspace 2 cột trong exam detail: composer bên trái, list câu hỏi bên phải; đã có mode `Nhập từ file`, chọn file, review trước khi commit và không ghi thẳng vào đề ngay khi chọn file)*
 - [x] Hiển thị lỗi import theo từng dòng/cột từ backend *(sau khi commit import lỗi, FE hiển thị danh sách lỗi theo `dòng / field / message` ngay trong panel review thay vì chỉ toast chung)*
-- [x] UI hướng dẫn tạo file import cho Teacher/Admin: workflow 4 bước tích hợp thao tác tải file chuẩn `.md`, copy prompt, dùng AI generate file Excel, rồi upload/review/commit vào đề
-- [ ] Tải đầy đủ bộ 20 file mẫu `.csv`, `.xlsx`, `.txt`, `.docx`, `.pdf` theo từng loại câu hỏi trong frontend template browser
+- [ ] Tải file mẫu `.csv`, `.xlsx`, `.txt`, `.docx` theo định chuẩn import ngân hàng câu hỏi
 - [ ] UI tự luận/essay import để phát triển sau khi hoàn thiện trắc nghiệm
 
 ### Backend — Cấu hình bài kiểm tra & trắc nghiệm MVP cần bổ sung
@@ -506,30 +504,30 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 
 - [ ] Chạy Redis local: `docker run -d --name eduguard-redis -p 6379:6379 redis:7-alpine`
 - [ ] Smoke: `redis-cli PING` → `PONG`; `SET eduguard:smoke 1` / `GET`
-- [ ] Xác nhận `appsettings.json` có `ConnectionStrings:Redis` (đã có) + section `Redis` như trên
+- [x] Xác nhận `appsettings.json` có `ConnectionStrings:Redis` (đã có) + section `Redis` như trên
 - [ ] Document trong `docs/02_SETUP_AND_PROJECT_STRUCTURE.md` (mục Redis) nếu lệnh Docker khác README — **chỉ khi dev hỏi setup**
 
 ### 9.1 — Hạ tầng DI & abstraction
 
-- [ ] Tạo `ICacheService` + `RedisCacheService` + `NullCacheService` (F-REDIS-02)
-- [ ] Tạo `redis-key-names.cs` — không hardcode string trong service
-- [ ] Đăng ký `ConnectionMultiplexer.Connect(configuration["ConnectionStrings:Redis"])` **singleton** trong `dependency-injection.cs` (F-REDIS-01)
-- [ ] Đọc `Redis:Enabled` — false → đăng ký `NullCacheService`
-- [ ] Log `Information` khi connect OK; `Warning` khi operation fail (không throw ra controller)
+- [x] Tạo `ICacheService` + `RedisCacheService` + `NullCacheService` (F-REDIS-02)
+- [x] Tạo `redis-key-names.cs` — không hardcode string trong service
+- [x] Đăng ký `ConnectionMultiplexer.Connect(configuration["ConnectionStrings:Redis"])` **singleton** trong `dependency-injection.cs` (F-REDIS-01)
+- [x] Đọc `Redis:Enabled` — false → đăng ký `NullCacheService`
+- [x] Log `Information` khi connect OK; `Warning` khi operation fail (không throw ra controller)
 - [ ] (Tùy chọn) Health check `/health` tag `redis`
 
 ### 9.2 — UC-1: Cache question bank
 
-- [ ] Bọc `ExamService.GetQuestionsAsync` — key `eduguard:exam:{examId}:questions`
-- [ ] Sau auth (`RequireAccessibleExamAsync` + `EnsureQuestionBankAccess`) mới trả cache — student không có quyền question bank vẫn 403 như cũ
-- [ ] Implement invalidate đủ ma trận (11 method `exam-service.cs`)
-- [ ] `DeleteAsync` exam: remove cả `questions` + `anticheat:summary` keys
+- [x] Bọc `ExamService.GetQuestionsAsync` — key `eduguard:exam:{examId}:questions`
+- [x] Sau auth (`RequireAccessibleExamAsync` + `EnsureQuestionBankAccess`) mới trả cache — student không có quyền question bank vẫn 403 như cũ
+- [x] Implement invalidate đủ ma trận (11 method `exam-service.cs`)
+- [x] `DeleteAsync` exam: remove cả `questions` + `anticheat:summary` keys
 - [ ] Verify FE `ExamDetailPage` / `examApi.getQuestions` — teacher sửa câu hỏi → reload thấy data mới
 
 ### 9.3 — UC-2: Cache anti-cheat summary
 
-- [ ] Bọc `AntiCheatService.GetExamSummaryAsync` — TTL `AntiCheatSummarySeconds`
-- [ ] `LogAsync`: sau `SaveChangesAsync` + `SendAntiCheatWarningAsync`, gọi `InvalidateExamAntiCheatSummaryAsync(examId)`
+- [x] Bọc `AntiCheatService.GetExamSummaryAsync` — TTL `AntiCheatSummarySeconds`
+- [x] `LogAsync`: sau `SaveChangesAsync` + `SendAntiCheatWarningAsync`, gọi `InvalidateExamAntiCheatSummaryAsync(examId)`
 - [ ] Giữ nguyên authorization: chỉ `exam.TeacherId == teacherId`
 - [ ] SignalR realtime **không** thay REST summary — cache giảm tải khi teacher refresh trang
 
@@ -537,16 +535,16 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 
 **Backend**
 
-- [ ] Tạo `IAttemptPresenceService` + `RedisAttemptPresenceService` (F-REDIS-05)
-- [ ] `POST /api/attempts/{attemptId}/heartbeat` — `[Authorize(Roles = Student)]`, attempt `InProgress`, owner đúng `studentId`
-- [ ] Body optional: `{ "client": "web" }` — lưu vào Hash
-- [ ] `ExamAttemptService.SubmitAsync` → `RemoveAsync(attemptId)` + `SREM` exam index
+- [x] Tạo `IAttemptPresenceService` + `RedisAttemptPresenceService` (F-REDIS-05)
+- [x] `POST /api/attempts/{attemptId}/heartbeat` — `[Authorize(Roles = Student)]`, attempt `InProgress`, owner đúng `studentId`
+- [x] Body optional: `{ "client": "web" }` — lưu vào Hash
+- [x] `ExamAttemptService.SubmitAsync` → `RemoveAsync(attemptId)` + `SREM` exam index
 - [ ] (Tùy chọn) `GET /api/exams/{examId}/presence` — Teacher owner — trả `attemptId[]` còn TTL
 
 **Frontend**
 
-- [ ] `examAttemptApi.sendHeartbeat(attemptId)` — gọi mỗi **30s** trong `ExamAttemptPage` (cùng lifecycle anti-cheat, `visibilitychange` pause khi tab hidden nếu muốn tiết kiệm)
-- [ ] Dừng interval khi submit / unmount / `status !== InProgress`
+- [x] `examAttemptApi.sendHeartbeat(attemptId)` — gọi mỗi **30s** trong `ExamAttemptPage` (cùng lifecycle anti-cheat, `visibilitychange` pause khi tab hidden nếu muốn tiết kiệm)
+- [x] Dừng interval khi submit / unmount / `status !== InProgress`
 - [ ] (Tùy chọn) `AttemptMonitorPanel`: hiển thị “Đang online” khi attempt ∈ presence set
 
 ### 9.5 — Kiểm thử *(để sau — không chặn 9.0–9.4)*
@@ -558,7 +556,7 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 - [ ] Manual: gửi anti-cheat log → summary key invalidate hoặc TTL hết → `flaggedAttempts` khớp DB
 - [ ] Manual: heartbeat → TTL refresh; submit → key biến mất
 - [ ] Redis tắt, `Enabled=true` → API vẫn 200 (degrade)
-- [ ] `dotnet test` pass
+- [x] `dotnet test` pass
 
 ---
 
@@ -612,6 +610,98 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 - [ ] Test `docker compose up`
 
 **Tiêu chí hoàn thành:** Hệ thống chạy được hoàn toàn trong Docker.
+
+---
+
+## Giai đoạn 12 — Live Proctoring Control Room
+
+**Mục tiêu:** Giáo viên giám sát live camera học sinh trong lúc thi — lobby trước giờ, WebRTC, control room, bằng chứng, AI YOLO proxy.
+
+**Branch:** `feat/live-proctoring-control-room` · Spec: `plans/monitoring_camera/EduGuard_Live_Proctoring_Control_Room_Spec.md` · Merge devB: `docs/proctoring-devB-integration.md`
+
+### Phase 0 — Chuẩn bị & data model
+
+- [x] Mở rộng `ExamSetting` (~20 field proctoring)
+- [x] Entity: `LiveProctoringSession`, `ProctoringEvidence`, `ProctoringState`, `ProctorAction`, `ExamProctorAssignment`, `ProctoringAiSettings`
+- [x] `ExamAttemptStatus.PausedByProctor`
+- [x] Migration `AddLiveProctoringEntities`
+- [x] Redis key naming (`proctoring:watch-lock`, lobby cache)
+
+### Phase 1 — API skeleton & services
+
+- [x] `ProctoringController` (room, states, detail, actions)
+- [x] Services: `ProctoringService`, `ExamLobbyService`, `StudentProctoringService`, `LiveProctoringService`, `ProctoringActionService`
+- [x] DTOs + validators cơ bản
+- [x] Static files `wwwroot/uploads/proctoring`
+
+### Phase 2 — Student lobby & camera
+
+- [x] `ExamLobbyPage` — vào phòng chờ trước `StartTime`
+- [x] `StudentDeviceCheckPage` — kiểm tra camera/mic
+- [x] Camera preview + watermark trên `ExamAttemptPage`
+- [x] Proctoring heartbeat + `RequiresAutoSnapshot`
+- [x] `ExamPausedPage` khi `PausedByProctor`
+
+### Phase 3 — WebRTC signaling
+
+- [x] Mở rộng `ExamMonitoringHub` (offer/answer/ICE, không tạo hub mới)
+- [x] `ProctoringSignalingService` + Redis watch lock (1 watcher / học sinh)
+- [x] `useStudentWebRtcPublisher` (student = offerer)
+- [x] `useTeacherWebRtcViewer` (teacher = answerer)
+- [ ] E2E verify WebRTC qua mạng thật (2 máy / NAT)
+
+### Phase 4 — Teacher Control Room UI
+
+- [x] `TeacherProctoringRoomPage` — grid + drawer
+- [x] Co-proctor panel (`ExamProctorAssignment`)
+- [x] Link từ `TeacherMonitoringPage` / `ExamDetailPage`
+- [x] Tile grid hiển thị live video khi đang watch (`remoteStream` trên `StudentLiveTile`)
+- [x] Pause / resume / warn / terminate + `ProctoringReasonDialog`
+- [x] SignalR control events (`StudentMovedToWaitingRoom`, …)
+- [ ] Responsive polish mobile/tablet cho control room
+- [ ] Multi-tile live đồng thời (hiện 1 active watch / drawer)
+
+### Phase 5 — Evidence
+
+- [x] Upload snapshot (teacher manual + student auto)
+- [x] Lưu local `wwwroot/uploads/proctoring/{examId}/{attemptId}/`
+- [x] Manual clip recording (MediaRecorder → upload `Clip`)
+- [ ] Playback timeline đồng bộ với anti-cheat log trên UI
+- [ ] Dọn file cũ / retention policy
+
+### Phase 6 — Policy engine & realtime warnings
+
+- [x] `ProctoringPolicyService` — suspicion score, risk level
+- [x] Auto snapshot qua heartbeat policy
+- [x] `ReceiveProctoringWarning` SignalR
+- [x] CheatingLog `WEBCAM_OFF` khi camera tắt (heartbeat)
+- [x] CheatingLog `TAB_SWITCH` khi thoát fullscreen; `DISCONNECTED` khi mất/ không ổn định kết nối
+- [x] CheatingLog cho AI flag (`PHONE_VISIBLE`, `BOOK_VISIBLE`, …)
+- [ ] Teacher notification toast đồng bộ với anti-cheat dashboard
+
+### Phase 7 — YOLO AI proxy
+
+- [x] `ai-services/proctoring-ai-service` (FastAPI + Ultralytics stub)
+- [x] `POST /api/attempts/{id}/proctoring/detect` proxy
+- [x] Admin `ProctoringAiSettings` (`/admin/proctoring-ai`)
+- [x] `useProctoringAutoDetection` loop phía student
+- [x] Bounding box metadata lưu vào `ProctoringEvidence.Metadata`
+- [x] CheatingLog cho AI flag (`PHONE_VISIBLE`, `BOOK_VISIBLE`, …)
+- [ ] Cài Ultralytics + model production trên server AI
+- [ ] Tune ngưỡng confidence theo môi trường thi thật
+
+### Phase 8 — Docs, QA, tích hợp
+
+- [x] `CHANGELOG.md`, `docs/project-changelog.md`, `docs/apiList.md` §12
+- [x] `docs/proctoring-devB-integration.md`
+- [x] `docs/features.md` — F-FUT-01 đánh dấu v1
+- [x] `npm run lint` sạch cho module proctoring (`src/features/proctoring`, `proctoringApi.js`)
+- [ ] Smoke E2E: lobby → thi → live watch → pause → evidence
+- [ ] Merge / rebase lên `devD` hoặc `release` (tránh conflict devB question bank)
+
+**Tiêu chí hoàn thành (v1):** Học sinh bật camera trước giờ thi → làm bài với heartbeat → giáo viên xem live, chụp/ghi clip, tạm dừng/cảnh báo → AI gợi ý gian lận lưu evidence + CheatingLog.
+
+**Còn lại trước production:** E2E WebRTC, deploy AI service, merge nhánh dev, QA checklist proctoring.
 
 ---
 
@@ -723,7 +813,7 @@ Checklist thực hiện & giám sát — **master** + **16 file chi tiết** (~1
 
 ## Hướng phát triển (ngoài MVP)
 
-- AI Proctoring
+- ~~AI Proctoring~~ → **v1 Live Control Room** (Giai đoạn 12, đang hoàn thiện E2E)
 - Facial Recognition
 - AI Auto Grading
 - Mobile App

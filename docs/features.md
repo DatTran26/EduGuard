@@ -520,7 +520,7 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 
 | ID | Feature | Ghi chú |
 |----|---------|---------|
-| F-FUT-01 | AI Proctoring | Camera / ML |
+| F-FUT-01 | AI Proctoring | Camera / ML — **v1 Live Control Room** (branch `feat/live-proctoring-control-room`) |
 | F-FUT-02 | Facial Recognition | Nhận diện khuôn mặt |
 | F-FUT-03 | AI Auto Grading | Tự luận / short answer |
 | F-FUT-04 | Mobile App | React Native / Flutter |
@@ -528,7 +528,7 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 | F-FUT-06 | Advanced Learning Analytics | Học tập nâng cao |
 | F-FUT-07 | Cloud Deployment | Azure / AWS / VPS |
 
-- [ ] F-FUT-01 AI Proctoring
+- [x] F-FUT-01 AI Proctoring *(v1: lobby, WebRTC live, control room, evidence, YOLO proxy, admin AI thresholds — E2E production hardening còn lại)*
 - [ ] F-FUT-02 Facial Recognition
 - [ ] F-FUT-03 AI Auto Grading
 - [ ] F-FUT-04 Mobile App

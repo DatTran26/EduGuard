@@ -8,5 +8,9 @@ public enum CheatingType
     ExitFullscreen,
     PageReload,
     Disconnected,
-    WebcamOff
+    WebcamOff,
+    PhoneVisible,
+    BookVisible,
+    SecondPersonVisible,
+    PersonNotVisible
 }

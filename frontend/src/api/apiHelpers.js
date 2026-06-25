@@ -19,6 +19,7 @@ export const QUESTION_TYPE_CODE_BY_VALUE = Object.entries(QUESTION_TYPE_VALUE_BY
 export const EXAM_ATTEMPT_STATUS_VALUE_BY_CODE = {
   1: "InProgress",
   2: "Submitted",
+  3: "PausedByProctor",
 };
 
 // Hàm này đổi response envelope chuẩn của backend thành object gọn để frontend dùng thống nhất.
