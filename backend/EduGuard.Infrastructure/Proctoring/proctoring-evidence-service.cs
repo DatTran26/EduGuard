@@ -123,16 +123,73 @@ public class ProctoringEvidenceService : IProctoringEvidenceService
             await _proctoringRepository.UpsertStateAsync(state, ct);
         }
 
-        return new ProctoringEvidenceDto
+        return MapEvidenceDto(evidence);
+    }
+
+    public async Task<ProctoringEvidenceFileResult> GetEvidenceFileAsync(
+        int attemptId,
+        int evidenceId,
+        string userId,
+        IReadOnlyList<string> roles,
+        CancellationToken ct = default)
+    {
+        var evidence = await _db.ProctoringEvidences
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == evidenceId && x.ExamAttemptId == attemptId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy bằng chứng.");
+
+        var attempt = await _db.ExamAttempts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == attemptId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy lượt làm bài.");
+
+        if (roles.Contains("Student"))
         {
-            Id = evidence.Id,
-            EvidenceType = evidence.EvidenceType,
-            FileUrl = evidence.FileUrl,
-            ThumbnailUrl = evidence.ThumbnailUrl,
-            CaptureSource = evidence.CaptureSource,
-            TriggerEventType = evidence.TriggerEventType,
-            Confidence = evidence.Confidence,
-            CapturedAt = evidence.CapturedAt
+            if (attempt.StudentId != userId)
+                throw new UnauthorizedAccessException("Bạn không có quyền xem bằng chứng này.");
+        }
+        else
+        {
+            await _examMonitoringService.EnsureCanMonitorExamAsync(attempt.ExamId, userId, roles, ct);
+        }
+
+        var webRoot = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
+        var relativePath = evidence.FileUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+        var absolutePath = Path.GetFullPath(Path.Combine(webRoot, relativePath));
+
+        var uploadsRoot = Path.GetFullPath(Path.Combine(webRoot, "uploads", "proctoring"));
+        if (!absolutePath.StartsWith(uploadsRoot, StringComparison.OrdinalIgnoreCase) || !File.Exists(absolutePath))
+            throw new FileNotFoundException("File bằng chứng không tồn tại.");
+
+        var contentType = GetContentType(absolutePath);
+        var fileName = Path.GetFileName(absolutePath);
+        var stream = File.OpenRead(absolutePath);
+        return new ProctoringEvidenceFileResult(stream, contentType, fileName);
+    }
+
+    private static ProctoringEvidenceDto MapEvidenceDto(ProctoringEvidence evidence) => new()
+    {
+        Id = evidence.Id,
+        EvidenceType = evidence.EvidenceType,
+        FileUrl = ProctoringEvidenceUrlHelper.ToDownloadApiPath(evidence.ExamAttemptId, evidence.Id),
+        ThumbnailUrl = evidence.ThumbnailUrl,
+        CaptureSource = evidence.CaptureSource,
+        TriggerEventType = evidence.TriggerEventType,
+        Confidence = evidence.Confidence,
+        CapturedAt = evidence.CapturedAt
+    };
+
+    private static string GetContentType(string absolutePath)
+    {
+        var extension = Path.GetExtension(absolutePath).ToLowerInvariant();
+        return extension switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            ".webm" => "video/webm",
+            ".mp4" => "video/mp4",
+            _ => "application/octet-stream"
         };
     }
 }

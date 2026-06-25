@@ -1,5 +1,6 @@
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
+import AuthenticatedEvidenceMedia from "./AuthenticatedEvidenceMedia";
 import RiskBadge from "./RiskBadge";
 
 export default function AttemptProctorDrawer({
@@ -92,11 +93,13 @@ export default function AttemptProctorDrawer({
               <ul className="grid grid-cols-2 gap-2">
                 {detail.evidence.map((item) => (
                   <li key={item.id} className="overflow-hidden rounded-[12px] border border-border">
-                    {item.fileUrl.match(/\.(webm|mp4)$/i) ? (
-                      <video className="aspect-video w-full object-cover" controls src={item.fileUrl} />
-                    ) : (
-                      <img alt={item.evidenceType} className="aspect-video w-full object-cover" src={item.fileUrl} />
-                    )}
+                    <AuthenticatedEvidenceMedia
+                      attemptId={student.attemptId}
+                      className="aspect-video w-full object-cover"
+                      evidenceId={item.id}
+                      evidenceType={item.evidenceType}
+                      fileUrl={item.fileUrl}
+                    />
                     <p className="px-2 py-1 text-[11px] text-secondary">{item.evidenceType}</p>
                   </li>
                 ))}
