@@ -1,30 +1,113 @@
+from __future__ import annotations
+
+import io
+from typing import Any
+
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
+from PIL import Image
 
-app = FastAPI(title="EduGuard Proctoring AI Service", version="0.1.0")
+app = FastAPI(title="EduGuard Proctoring AI Service", version="0.2.0")
+
+try:
+    from ultralytics import YOLO
+
+    MODEL = YOLO("yolo11n.pt")
+    HAS_YOLO = True
+except Exception:
+    MODEL = None
+    HAS_YOLO = False
+
+PHONE_LABELS = {"cell phone", "phone", "mobile phone"}
+BOOK_LABELS = {"book"}
+PERSON_LABEL = "person"
+
+
+def _classify(labels: list[str], confidences: list[float]) -> dict[str, Any]:
+    if not labels:
+        return {
+            "detectionType": "PersonNotVisible",
+            "confidence": 0.75,
+            "labels": [],
+            "message": "Không thấy người trong khung hình.",
+        }
+
+    label_set = {label.lower() for label in labels}
+    max_conf = max(confidences) if confidences else 0.0
+
+    if label_set.intersection(PHONE_LABELS):
+        return {
+            "detectionType": "PhoneVisible",
+            "confidence": round(max_conf, 4),
+            "labels": labels,
+            "message": "Có dấu hiệu thiết bị cầm tay.",
+        }
+
+    if label_set.intersection(BOOK_LABELS):
+        return {
+            "detectionType": "BookVisible",
+            "confidence": round(max_conf, 4),
+            "labels": labels,
+            "message": "Có dấu hiệu tài liệu trong khung hình.",
+        }
+
+    person_count = sum(1 for label in labels if label.lower() == PERSON_LABEL)
+    if person_count > 1:
+        return {
+            "detectionType": "MultipleFaces",
+            "confidence": round(max_conf, 4),
+            "labels": labels,
+            "message": "Có nhiều người trong khung hình.",
+        }
+
+    return {
+        "detectionType": "Normal",
+        "confidence": round(max_conf, 4),
+        "labels": labels,
+        "message": "Không phát hiện dấu hiệu vượt ngưỡng.",
+    }
 
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "yolo": "enabled" if HAS_YOLO else "stub"}
 
 
 @app.post("/detect")
 async def detect(file: UploadFile = File(...)) -> JSONResponse:
-    # Stub response for integration testing. Replace with YOLO inference in production.
     content_type = file.content_type or ""
-    detection_type = "Normal"
-    confidence = 0.12
-
     if "image" not in content_type:
-        detection_type = "UnsupportedMedia"
-        confidence = 0.0
+        return JSONResponse(
+            {
+                "detectionType": "UnsupportedMedia",
+                "confidence": 0.0,
+                "labels": [],
+                "message": "Chỉ hỗ trợ ảnh.",
+            }
+        )
 
-    return JSONResponse(
-        {
-            "detectionType": detection_type,
-            "confidence": confidence,
-            "labels": [],
-            "message": "Stub detector — wire Ultralytics YOLO for production.",
-        }
-    )
+    raw = await file.read()
+    if not HAS_YOLO:
+        return JSONResponse(
+            {
+                "detectionType": "Normal",
+                "confidence": 0.12,
+                "labels": [],
+                "message": "YOLO chưa cài — trả stub Normal.",
+            }
+        )
+
+    image = Image.open(io.BytesIO(raw)).convert("RGB")
+    results = MODEL.predict(image, verbose=False)
+    labels: list[str] = []
+    confidences: list[float] = []
+
+    for result in results:
+        names = result.names or {}
+        for box in result.boxes or []:
+            class_id = int(box.cls[0])
+            labels.append(str(names.get(class_id, class_id)))
+            confidences.append(float(box.conf[0]))
+
+    payload = _classify(labels, confidences)
+    return JSONResponse(payload)

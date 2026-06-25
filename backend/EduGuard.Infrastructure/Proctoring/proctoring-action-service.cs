@@ -38,6 +38,13 @@ public class ProctoringActionService : IProctoringActionService
 
         await UpsertEnvironmentStatusAsync(attemptId, "PausedByTeacher", attempt.SuspicionScore, ct);
         await LogActionAsync(attemptId, teacherId, "MOVE_TO_WAITING_ROOM", reason, ct);
+        await _examMonitoringNotifier.SendProctoringControlAsync(new ProctoringControlEventDto
+        {
+            ExamId = attempt.ExamId,
+            AttemptId = attemptId,
+            ActionType = "PAUSED",
+            Reason = reason?.Trim()
+        }, ct);
     }
 
     public async Task ResumeAttemptAsync(int attemptId, string teacherId, IReadOnlyList<string> roles, string? reason, CancellationToken ct = default)
@@ -51,6 +58,13 @@ public class ProctoringActionService : IProctoringActionService
 
         await UpsertEnvironmentStatusAsync(attemptId, "Normal", attempt.SuspicionScore, ct);
         await LogActionAsync(attemptId, teacherId, "RESUME_ATTEMPT", reason, ct);
+        await _examMonitoringNotifier.SendProctoringControlAsync(new ProctoringControlEventDto
+        {
+            ExamId = attempt.ExamId,
+            AttemptId = attemptId,
+            ActionType = "RESUMED",
+            Reason = reason?.Trim()
+        }, ct);
     }
 
     public async Task TerminateAttemptAsync(int attemptId, string teacherId, IReadOnlyList<string> roles, string reason, CancellationToken ct = default)
@@ -65,6 +79,13 @@ public class ProctoringActionService : IProctoringActionService
 
         await UpsertEnvironmentStatusAsync(attemptId, "Terminated", attempt.SuspicionScore, ct);
         await LogActionAsync(attemptId, teacherId, "TERMINATE_ATTEMPT", reason, ct);
+        await _examMonitoringNotifier.SendProctoringControlAsync(new ProctoringControlEventDto
+        {
+            ExamId = attempt.ExamId,
+            AttemptId = attemptId,
+            ActionType = "TERMINATED",
+            Reason = reason?.Trim()
+        }, ct);
     }
 
     public async Task WarnStudentAsync(int attemptId, string teacherId, IReadOnlyList<string> roles, string reason, CancellationToken ct = default)

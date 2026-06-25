@@ -8,8 +8,6 @@ export default function AttemptProctorDrawer({
   liveVideoRef,
   remoteStatus,
   isAudioEnabled,
-  isTerminateConfirmOpen,
-  onToggleTerminateConfirm,
   onClose,
   onPause,
   onResume,
@@ -70,26 +68,10 @@ export default function AttemptProctorDrawer({
                 Tạm dừng thi
               </Button>
             )}
-            <Button onClick={onToggleTerminateConfirm} variant="danger">
+            <Button onClick={() => onTerminate?.(student)} variant="danger">
               Kết thúc bài
             </Button>
           </div>
-
-          {isTerminateConfirmOpen ? (
-            <div className="space-y-3 rounded-[12px] border border-danger/30 bg-danger-muted p-4">
-              <p className="text-sm text-primary">
-                Xác nhận kết thúc bài làm của học sinh? Hành động này sẽ nộp bài ngay.
-              </p>
-              <div className="flex gap-2">
-                <Button onClick={() => onTerminate?.(student)} variant="danger">
-                  Xác nhận kết thúc
-                </Button>
-                <Button onClick={onToggleTerminateConfirm} variant="ghost">
-                  Hủy
-                </Button>
-              </div>
-            </div>
-          ) : null}
 
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-primary">Bằng chứng</h3>

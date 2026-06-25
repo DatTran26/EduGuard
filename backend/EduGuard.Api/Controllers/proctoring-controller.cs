@@ -190,7 +190,7 @@ public class ProctoringController : ControllerBase
         });
 
     [HttpPost("api/attempts/{attemptId:int}/proctoring/evidence")]
-    [Authorize(Roles = "Teacher,Admin")]
+    [Authorize(Roles = "Teacher,Admin,Student")]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<ApiResponse<ProctoringEvidenceDto>>> UploadEvidence(
         int attemptId,
@@ -199,7 +199,7 @@ public class ProctoringController : ControllerBase
         [FromForm] string captureSource,
         [FromForm] string? triggerEventType,
         CancellationToken ct) =>
-        await ExecuteTeacherAsync(async () =>
+        await ExecuteAsync(async () =>
         {
             await using var stream = file.OpenReadStream();
             return await _proctoringEvidenceService.SaveEvidenceAsync(

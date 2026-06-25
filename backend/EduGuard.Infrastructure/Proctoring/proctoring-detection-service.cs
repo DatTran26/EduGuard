@@ -14,17 +14,20 @@ public class ProctoringDetectionService : IProctoringDetectionService
     private readonly AppDbContext _db;
     private readonly IExamMonitoringService _examMonitoringService;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IProctoringEvidenceService _proctoringEvidenceService;
     private readonly IProctoringRepository _proctoringRepository;
 
     public ProctoringDetectionService(
         AppDbContext db,
         IExamMonitoringService examMonitoringService,
         IHttpClientFactory httpClientFactory,
+        IProctoringEvidenceService proctoringEvidenceService,
         IProctoringRepository proctoringRepository)
     {
         _db = db;
         _examMonitoringService = examMonitoringService;
         _httpClientFactory = httpClientFactory;
+        _proctoringEvidenceService = proctoringEvidenceService;
         _proctoringRepository = proctoringRepository;
     }
 
@@ -37,10 +40,20 @@ public class ProctoringDetectionService : IProctoringDetectionService
         string contentType,
         CancellationToken ct = default)
     {
-        var attempt = await _db.ExamAttempts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == attemptId, ct)
+        var attempt = await _db.ExamAttempts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == attemptId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy lượt làm bài.");
 
-        await _examMonitoringService.EnsureCanMonitorExamAsync(attempt.ExamId, userId, roles, ct);
+        if (roles.Contains("Student"))
+        {
+            if (attempt.StudentId != userId)
+                throw new UnauthorizedAccessException("Bạn không có quyền gửi frame cho lượt làm này.");
+        }
+        else
+        {
+            await _examMonitoringService.EnsureCanMonitorExamAsync(attempt.ExamId, userId, roles, ct);
+        }
 
         var settings = await _proctoringRepository.GetAiSettingsAsync(ct);
         if (!settings.EnableYoloDetection || string.IsNullOrWhiteSpace(settings.AiServiceBaseUrl))
@@ -54,8 +67,12 @@ public class ProctoringDetectionService : IProctoringDetectionService
             };
         }
 
+        await using var buffer = new MemoryStream();
+        await fileStream.CopyToAsync(buffer, ct);
+        buffer.Position = 0;
+
         using var content = new MultipartFormDataContent();
-        using var streamContent = new StreamContent(fileStream);
+        using var streamContent = new StreamContent(buffer);
         streamContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         content.Add(streamContent, "file", fileName);
 
@@ -70,12 +87,16 @@ public class ProctoringDetectionService : IProctoringDetectionService
         var confidence = payload.TryGetProperty("confidence", out var confidenceElement)
             ? confidenceElement.GetDecimal()
             : 0m;
+        var labels = payload.TryGetProperty("labels", out var labelsElement) && labelsElement.ValueKind == JsonValueKind.Array
+            ? labelsElement.EnumerateArray().Select(x => x.GetString() ?? string.Empty).Where(x => x.Length > 0).ToList()
+            : new List<string>();
 
         var isFlagged = detectionType switch
         {
             "PhoneVisible" => confidence >= settings.PhoneVisibleMinConfidence,
             "BookVisible" => confidence >= settings.BookVisibleMinConfidence,
             "MultipleFaces" => confidence >= settings.SecondPersonMinConfidence,
+            "PersonNotVisible" => confidence >= settings.SecondPersonMinConfidence,
             _ => false
         };
 
@@ -89,6 +110,20 @@ public class ProctoringDetectionService : IProctoringDetectionService
                 state.RiskLevel = ProctoringRiskHelper.GetRiskLevel(state.SuspicionScore);
                 await _proctoringRepository.UpsertStateAsync(state, ct);
             }
+
+            buffer.Position = 0;
+            var evidenceRoles = roles.Contains("Student") ? new List<string> { "Student" } : roles.ToList();
+            await _proctoringEvidenceService.SaveEvidenceAsync(
+                attemptId,
+                userId,
+                evidenceRoles,
+                buffer,
+                fileName,
+                contentType,
+                "AutoDetect",
+                roles.Contains("Student") ? "StudentAuto" : "TeacherManual",
+                detectionType,
+                ct);
         }
 
         return new ProctoringDetectionResultDto
@@ -96,6 +131,7 @@ public class ProctoringDetectionService : IProctoringDetectionService
             DetectionType = detectionType,
             Confidence = confidence,
             IsFlagged = isFlagged,
+            Labels = labels,
             Message = isFlagged ? "Có dấu hiệu bất thường cần theo dõi." : "Không phát hiện dấu hiệu vượt ngưỡng."
         };
     }

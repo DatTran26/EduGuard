@@ -5,10 +5,10 @@ import {
   EXAM_MONITORING_EVENTS,
   EXAM_MONITORING_METHODS,
 } from "../../../signalr/examMonitoringConnection";
-import { buildStudentExamPausedPath } from "../../../routes/routeConfig";
+import { buildStudentExamAttemptPath, buildStudentExamPausedPath } from "../../../routes/routeConfig";
 import { useProctoringHubConnection } from "./useProctoringHubConnection";
 
-export function useStudentProctoringEvents({ attemptId, enabled }) {
+export function useStudentProctoringEvents({ attemptId, examId, enabled }) {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -23,26 +23,34 @@ export function useStudentProctoringEvents({ attemptId, enabled }) {
         showToast({
           tone: "caution",
           title: "Nhắc nhở từ giáo viên",
-          message: payload?.message ?? "Hãy tập trung làm bài.",
+          message: payload?.message ?? payload?.reason ?? "Hãy tập trung làm bài.",
         });
         return;
       }
 
-      if (
-        eventName === EXAM_MONITORING_EVENTS.studentMovedToWaitingRoom ||
-        eventName === EXAM_MONITORING_EVENTS.studentWarnedByTeacher
-      ) {
-        if (eventName === EXAM_MONITORING_EVENTS.studentMovedToWaitingRoom) {
-          navigate(buildStudentExamPausedPath(attemptId));
-        }
+      if (eventName === EXAM_MONITORING_EVENTS.studentMovedToWaitingRoom) {
+        navigate(buildStudentExamPausedPath(attemptId));
+        return;
+      }
+
+      if (eventName === EXAM_MONITORING_EVENTS.studentAttemptResumed) {
+        showToast({
+          tone: "success",
+          title: "Được phép tiếp tục",
+          message: payload?.reason ?? "Giáo viên đã cho bạn làm bài tiếp.",
+        });
+        return;
       }
 
       if (eventName === EXAM_MONITORING_EVENTS.studentAttemptTerminated) {
         showToast({
           tone: "danger",
           title: "Bài làm đã kết thúc",
-          message: "Giáo viên đã kết thúc bài làm của bạn.",
+          message: payload?.reason ?? "Giáo viên đã kết thúc bài làm của bạn.",
         });
+        if (examId) {
+          navigate(buildStudentExamAttemptPath(attemptId));
+        }
       }
     },
   });

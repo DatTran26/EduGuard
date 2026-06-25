@@ -18,6 +18,8 @@ import {
 import CameraPreview from "../../proctoring/components/CameraPreview";
 import ExamWatermark from "../../proctoring/components/ExamWatermark";
 import { useCameraStream } from "../../proctoring/hooks/useCameraStream";
+import { useProctoringAutoDetection } from "../../proctoring/hooks/useProctoringAutoDetection";
+import { useProctoringHeartbeat } from "../../proctoring/hooks/useProctoringHeartbeat";
 import { useStudentWebRtcPublisher } from "../../proctoring/hooks/useStudentWebRtcPublisher";
 import { useStudentProctoringEvents } from "../../proctoring/hooks/useStudentProctoringEvents";
 import {
@@ -215,6 +217,13 @@ export default function ExamAttemptPage() {
     cameraStatus: cameraStatus === "ready" ? "On" : "Off",
     fullscreenStatus: isFullscreen ? "On" : "Off",
     connectionStatus: isOnline ? "Online" : "Offline",
+    videoRef,
+  });
+  useProctoringAutoDetection({
+    attemptId,
+    enabled: proctoringEnabled && Boolean(exam?.settings?.enableExternalDeviceDetection),
+    intervalMs: 4000,
+    videoRef,
   });
   useStudentWebRtcPublisher({
     attemptId,
@@ -223,6 +232,7 @@ export default function ExamAttemptPage() {
   });
   useStudentProctoringEvents({
     attemptId,
+    examId: exam?.id,
     enabled: proctoringEnabled,
   });
   const orderedResultQuestions = useMemo(() => {

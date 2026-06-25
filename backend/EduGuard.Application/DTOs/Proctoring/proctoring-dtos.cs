@@ -59,6 +59,7 @@ public class ProctoringStateDto
     public int EvidenceCount { get; set; }
     public int SuspicionScore { get; set; }
     public string RiskLevel { get; set; } = "Normal";
+    public bool RequiresAutoSnapshot { get; set; }
     public DateTime LastHeartbeatAt { get; set; }
     public DateTime? LatestWarningAt { get; set; }
 }

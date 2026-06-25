@@ -17,6 +17,7 @@ import {
   buildStudentExamAttemptPath,
   buildStudentDeviceCheckPath,
   buildStudentExamLobbyPath,
+  buildTeacherProctoringPath,
 } from "../../../routes/routeConfig";
 import { isExamLobbyRequired, isProctoringRequired } from "../../proctoring/utils/proctoringRouting";
 import { formatShortDateTime } from "../../../utils/formatDate";
@@ -909,6 +910,10 @@ export default function ExamDetailPage() {
           user?.role === "Student" ? (
             <Button disabled={isStartingAttempt} onClick={handleStartAttempt}>
               {isStartingAttempt ? "Đang vào phòng thi..." : "Bắt đầu làm bài"}
+            </Button>
+          ) : exam.settings?.enableLiveProctoring ? (
+            <Button as={Link} to={buildTeacherProctoringPath(exam.id)} variant="secondary">
+              Mở phòng giám sát live
             </Button>
           ) : null
         }

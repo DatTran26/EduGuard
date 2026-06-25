@@ -27,6 +27,7 @@ function normalizeProctoringState(data) {
     evidenceCount: Number(data?.evidenceCount) || 0,
     suspicionScore: Number(data?.suspicionScore) || 0,
     riskLevel: data?.riskLevel ?? "Normal",
+    requiresAutoSnapshot: Boolean(data?.requiresAutoSnapshot),
     lastHeartbeatAt: data?.lastHeartbeatAt ?? null,
     latestWarningAt: data?.latestWarningAt ?? null,
   };
@@ -164,6 +165,17 @@ export const proctoringApi = {
 
     const apiResponse = await requestApi(() =>
       axiosClient.post(`/attempts/${attemptId}/proctoring/evidence`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      }),
+    );
+    return { ...apiResponse, data: apiResponse.data };
+  },
+
+  async detectFrame(attemptId, file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const apiResponse = await requestApi(() =>
+      axiosClient.post(`/attempts/${attemptId}/proctoring/detect`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       }),
     );

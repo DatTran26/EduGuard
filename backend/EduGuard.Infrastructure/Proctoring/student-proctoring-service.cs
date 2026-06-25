@@ -67,6 +67,8 @@ public class StudentProctoringService : IStudentProctoringService
         await _db.SaveChangesAsync(ct);
 
         var saved = await _proctoringRepository.UpsertStateAsync(state, ct);
+        var requiresAutoSnapshot = await ShouldRequestAutoSnapshotAsync(attempt.Exam, saved, ct);
+
         return new ProctoringStateDto
         {
             CameraStatus = saved.CameraStatus,
@@ -79,9 +81,33 @@ public class StudentProctoringService : IStudentProctoringService
             EvidenceCount = saved.EvidenceCount,
             SuspicionScore = saved.SuspicionScore,
             RiskLevel = saved.RiskLevel,
+            RequiresAutoSnapshot = requiresAutoSnapshot,
             LastHeartbeatAt = saved.LastHeartbeatAt,
             LatestWarningAt = saved.LatestWarningAt
         };
+    }
+
+    private async Task<bool> ShouldRequestAutoSnapshotAsync(Exam exam, ProctoringState state, CancellationToken ct)
+    {
+        var setting = exam.Setting;
+        if (setting?.CaptureSnapshotOnViolation != true)
+            return false;
+
+        if (state.EvidenceCount >= setting.MaxSnapshotsPerAttempt)
+            return false;
+
+        if (state.RiskLevel is not ("Warning" or "Critical"))
+            return false;
+
+        var evidence = await _proctoringRepository.GetEvidenceByAttemptIdAsync(state.ExamAttemptId, ct);
+        var latest = evidence.OrderByDescending(x => x.CapturedAt).FirstOrDefault();
+        if (latest is not null &&
+            (DateTime.UtcNow - latest.CapturedAt).TotalSeconds < setting.SnapshotCooldownSeconds)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     public async Task StopProctoringAsync(int attemptId, string studentId, CancellationToken ct = default)

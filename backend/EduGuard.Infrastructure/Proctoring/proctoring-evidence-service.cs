@@ -70,7 +70,15 @@ public class ProctoringEvidenceService : IProctoringEvidenceService
             .FirstOrDefaultAsync(x => x.Id == attemptId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy lượt làm bài.");
 
-        await _examMonitoringService.EnsureCanMonitorExamAsync(attempt.ExamId, userId, roles, ct);
+        if (roles.Contains("Student"))
+        {
+            if (attempt.StudentId != userId)
+                throw new UnauthorizedAccessException("Bạn không có quyền lưu bằng chứng cho lượt làm này.");
+        }
+        else
+        {
+            await _examMonitoringService.EnsureCanMonitorExamAsync(attempt.ExamId, userId, roles, ct);
+        }
 
         var extension = Path.GetExtension(fileName);
         if (string.IsNullOrWhiteSpace(extension))

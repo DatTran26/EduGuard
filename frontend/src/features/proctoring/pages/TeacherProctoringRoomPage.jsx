@@ -8,6 +8,7 @@ import { useToast } from "../../../hooks/useToast";
 import { routeConfig } from "../../../routes/routeConfig";
 import AttemptProctorDrawer from "../components/AttemptProctorDrawer";
 import CoProctorPanel from "../components/CoProctorPanel";
+import ProctoringReasonDialog from "../components/ProctoringReasonDialog";
 import StudentCameraGrid from "../components/StudentCameraGrid";
 import { useTeacherWebRtcViewer } from "../hooks/useTeacherWebRtcViewer";
 
@@ -30,7 +31,9 @@ export default function TeacherProctoringRoomPage() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [detail, setDetail] = useState(null);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
-  const [isTerminateConfirmOpen, setIsTerminateConfirmOpen] = useState(false);
+  const [reasonDialog, setReasonDialog] = useState(null);
+  const [reasonText, setReasonText] = useState("");
+  const [isActionSubmitting, setIsActionSubmitting] = useState(false);
   const liveVideoRef = useRef(null);
 
   const sortedStudents = useMemo(() => sortStudents(students), [students]);
@@ -115,19 +118,46 @@ export default function TeacherProctoringRoomPage() {
     setSelectedStudent(student);
   }
 
-  async function handlePause(student) {
-    try {
-      await proctoringApi.pauseAttempt(student.attemptId, "Giáo viên tạm dừng để xem xét hành vi");
-      await refreshRoom();
-      showToast({ tone: "success", title: "Đã tạm dừng bài làm" });
-    } catch (error) {
-      showToast({ tone: "danger", title: "Tạm dừng thất bại", message: error.message });
+  function openReasonDialog(type, student) {
+    setReasonDialog({ type, student });
+    setReasonText("");
+  }
+
+  async function confirmReasonDialog() {
+    if (!reasonDialog?.student || !reasonText.trim()) {
+      return;
     }
+
+    const { type, student } = reasonDialog;
+    setIsActionSubmitting(true);
+    try {
+      if (type === "pause") {
+        await proctoringApi.pauseAttempt(student.attemptId, reasonText.trim());
+        showToast({ tone: "success", title: "Đã tạm dừng bài làm" });
+      } else if (type === "warn") {
+        await proctoringApi.warnStudent(student.attemptId, reasonText.trim());
+        showToast({ tone: "success", title: "Đã gửi nhắc nhở" });
+      } else if (type === "terminate") {
+        await proctoringApi.terminateAttempt(student.attemptId, reasonText.trim());
+        setSelectedStudent(null);
+        showToast({ tone: "success", title: "Đã kết thúc bài làm" });
+      }
+      setReasonDialog(null);
+      await refreshRoom();
+    } catch (error) {
+      showToast({ tone: "danger", title: "Thao tác thất bại", message: error.message });
+    } finally {
+      setIsActionSubmitting(false);
+    }
+  }
+
+  async function handlePause(student) {
+    openReasonDialog("pause", student);
   }
 
   async function handleResume(student) {
     try {
-      await proctoringApi.resumeAttempt(student.attemptId, "Giáo viên cho tiếp tục");
+      await proctoringApi.resumeAttempt(student.attemptId, "Giáo viên cho tiếp tục làm bài");
       await refreshRoom();
       showToast({ tone: "success", title: "Đã cho tiếp tục làm bài" });
     } catch (error) {
@@ -136,24 +166,11 @@ export default function TeacherProctoringRoomPage() {
   }
 
   async function handleWarn(student) {
-    try {
-      await proctoringApi.warnStudent(student.attemptId, "Giáo viên nhắc nhở tập trung làm bài");
-      showToast({ tone: "success", title: "Đã gửi nhắc nhở" });
-    } catch (error) {
-      showToast({ tone: "danger", title: "Gửi nhắc nhở thất bại", message: error.message });
-    }
+    openReasonDialog("warn", student);
   }
 
   async function handleTerminate(student) {
-    try {
-      await proctoringApi.terminateAttempt(student.attemptId, "Giáo viên kết thúc bài làm do hành vi bất thường");
-      setIsTerminateConfirmOpen(false);
-      setSelectedStudent(null);
-      await refreshRoom();
-      showToast({ tone: "success", title: "Đã kết thúc bài làm" });
-    } catch (error) {
-      showToast({ tone: "danger", title: "Kết thúc bài thất bại", message: error.message });
-    }
+    openReasonDialog("terminate", student);
   }
 
   async function handleSnapshot() {
@@ -217,21 +234,45 @@ export default function TeacherProctoringRoomPage() {
       <AttemptProctorDrawer
         detail={detail}
         isAudioEnabled={isAudioEnabled}
-        isTerminateConfirmOpen={isTerminateConfirmOpen}
         liveVideoRef={liveVideoRef}
-        onClose={() => {
-          setIsTerminateConfirmOpen(false);
-          setSelectedStudent(null);
-        }}
+        onClose={() => setSelectedStudent(null)}
         onPause={handlePause}
         onResume={handleResume}
         onSnapshot={handleSnapshot}
         onTerminate={handleTerminate}
         onToggleAudio={() => setIsAudioEnabled((value) => !value)}
-        onToggleTerminateConfirm={() => setIsTerminateConfirmOpen((value) => !value)}
         onWarn={handleWarn}
         remoteStatus={remoteStatus}
         student={selectedStudent}
+      />
+
+      <ProctoringReasonDialog
+        confirmLabel={
+          reasonDialog?.type === "terminate"
+            ? "Kết thúc bài"
+            : reasonDialog?.type === "pause"
+              ? "Tạm dừng"
+              : "Gửi nhắc nhở"
+        }
+        confirmVariant={reasonDialog?.type === "warn" ? "secondary" : "danger"}
+        description={
+          reasonDialog?.type === "terminate"
+            ? "Học sinh sẽ nộp bài ngay sau khi xác nhận."
+            : undefined
+        }
+        isOpen={Boolean(reasonDialog)}
+        isSubmitting={isActionSubmitting}
+        onCancel={() => setReasonDialog(null)}
+        onConfirm={confirmReasonDialog}
+        onReasonChange={setReasonText}
+        reason={reasonText}
+        title={
+          reasonDialog?.type === "terminate"
+            ? "Kết thúc bài làm"
+            : reasonDialog?.type === "pause"
+              ? "Tạm dừng bài làm"
+              : "Nhắc nhở học sinh"
+        }
       />
     </div>
   );

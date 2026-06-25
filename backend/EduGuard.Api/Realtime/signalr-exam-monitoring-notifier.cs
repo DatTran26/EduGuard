@@ -25,4 +25,19 @@ public class SignalRExamMonitoringNotifier : IExamMonitoringNotifier
         _hubContext.Clients
             .Group(ExamMonitoringHub.GetAttemptGroupName(warning.AttemptId))
             .SendAsync(ProctoringWarningEvent, warning, ct);
+
+    public Task SendProctoringControlAsync(ProctoringControlEventDto controlEvent, CancellationToken ct = default)
+    {
+        var eventName = controlEvent.ActionType switch
+        {
+            "PAUSED" => "StudentMovedToWaitingRoom",
+            "RESUMED" => "StudentAttemptResumed",
+            "TERMINATED" => "StudentAttemptTerminated",
+            _ => "StudentProctoringControl"
+        };
+
+        return _hubContext.Clients
+            .Group(ExamMonitoringHub.GetAttemptGroupName(controlEvent.AttemptId))
+            .SendAsync(eventName, controlEvent, ct);
+    }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { proctoringApi } from "../../../api/proctoringApi";
+import { captureVideoFrame } from "../utils/captureVideoFrame";
 
 export function useProctoringHeartbeat({
   attemptId,
@@ -8,8 +9,10 @@ export function useProctoringHeartbeat({
   cameraStatus = "On",
   fullscreenStatus = "Unknown",
   connectionStatus = "Online",
+  videoRef,
 }) {
   const payloadRef = useRef({ cameraStatus, fullscreenStatus, connectionStatus });
+  const isUploadingRef = useRef(false);
 
   useEffect(() => {
     payloadRef.current = { cameraStatus, fullscreenStatus, connectionStatus };
@@ -22,9 +25,37 @@ export function useProctoringHeartbeat({
 
     let isDisposed = false;
 
+    async function uploadAutoSnapshot() {
+      const video = videoRef?.current;
+      if (!video || isUploadingRef.current) {
+        return;
+      }
+
+      const file = await captureVideoFrame(video);
+      if (!file) {
+        return;
+      }
+
+      isUploadingRef.current = true;
+      try {
+        await proctoringApi.uploadEvidence(attemptId, file, {
+          evidenceType: "AutoSnapshot",
+          captureSource: "AutoPolicy",
+          triggerEventType: "PolicyViolation",
+        });
+      } catch {
+        // Ignore auto snapshot failures to avoid interrupting the attempt.
+      } finally {
+        isUploadingRef.current = false;
+      }
+    }
+
     async function sendHeartbeat() {
       try {
-        await proctoringApi.heartbeatProctoring(attemptId, payloadRef.current);
+        const response = await proctoringApi.heartbeatProctoring(attemptId, payloadRef.current);
+        if (!isDisposed && response.data?.requiresAutoSnapshot) {
+          await uploadAutoSnapshot();
+        }
       } catch {
         if (!isDisposed) {
           payloadRef.current = {
@@ -41,5 +72,5 @@ export function useProctoringHeartbeat({
       isDisposed = true;
       window.clearInterval(intervalId);
     };
-  }, [attemptId, enabled, intervalMs]);
+  }, [attemptId, enabled, intervalMs, videoRef]);
 }

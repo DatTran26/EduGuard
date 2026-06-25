@@ -1,5 +1,4 @@
 import {
-  getDashboardPathByRole,
   getProfilePathByRole,
   routeConfig,
 } from "./routeConfig";
@@ -8,22 +7,27 @@ import {
 const ROLE_NAVIGATION_ITEMS = {
   Admin: [
     { label: "Dashboard", path: routeConfig.adminDashboard },
-    { label: "Lớp học", path: routeConfig.adminClassrooms },
-    { label: "Bài kiểm tra", path: routeConfig.adminExams },
-    { label: "Người dùng", path: routeConfig.adminUsers },
-    { label: "Hồ sơ", path: routeConfig.adminProfile },
+    { label: "Quản lí lớp học", path: routeConfig.adminClassrooms },
+    { label: "Quản lí bài kiểm tra", path: routeConfig.adminExams },
+    { label: "Giám sát", path: routeConfig.adminMonitoring },
+    { label: "AI giám sát", path: routeConfig.adminProctoringAi },
+    { label: "Quản lí người dùng", path: routeConfig.adminUsers },
+    { label: "Hồ sơ cá nhân", path: routeConfig.adminProfile },
   ],
   Teacher: [
-    { label: "Lớp học", path: routeConfig.teacherClassrooms },
-    { label: "Bài kiểm tra", path: routeConfig.teacherExams },
     { label: "Dashboard", path: routeConfig.teacherDashboard },
+    { label: "Lớp học", path: routeConfig.teacherClassrooms },
+    { label: "Bài tập", path: routeConfig.teacherAssignments },
+    { label: "Đề thi", path: routeConfig.teacherExams },
+    { label: "Giám sát thi", path: routeConfig.teacherMonitoring },
+    { label: "Kết quả", path: routeConfig.teacherResults },
+    { label: "Thông báo", path: routeConfig.teacherNotifications },
     { label: "Hồ sơ", path: routeConfig.teacherProfile },
   ],
   Student: [
     { label: "Lớp của tôi", path: routeConfig.studentClassrooms },
     { label: "Bài kiểm tra", path: routeConfig.studentExams },
     { label: "Tham gia lớp", path: routeConfig.studentJoinClassroom },
-    { label: "Dashboard", path: routeConfig.studentDashboard },
     { label: "Hồ sơ", path: routeConfig.studentProfile },
   ],
 };
@@ -35,7 +39,15 @@ export function getNavigationItemsByRole(role) {
 
 // Hàm này trả route mặc định sau khi user đăng nhập hoặc bị redirect do sai quyền.
 export function getDefaultPathByRole(role) {
-  return getDashboardPathByRole(role);
+  if (role === "Admin") {
+    return routeConfig.adminDashboard;
+  }
+
+  if (role === "Teacher") {
+    return routeConfig.teacherDashboard;
+  }
+
+  return routeConfig.studentClassrooms;
 }
 
 // Hàm này đổi role kỹ thuật sang nhãn tiếng Việt để đưa lên UI cho tự nhiên hơn.
