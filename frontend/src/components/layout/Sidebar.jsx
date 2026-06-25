@@ -99,12 +99,19 @@ function getNavigationItemIsActive(itemPath, pathname) {
     return (
       pathname === routeConfig.studentExams ||
       Boolean(matchPath(routeConfig.studentExamDetail, pathname)) ||
-      Boolean(matchPath(routeConfig.studentExamAttempt, pathname))
+      Boolean(matchPath(routeConfig.studentExamAttempt, pathname)) ||
+      Boolean(matchPath(routeConfig.studentExamLobby, pathname)) ||
+      Boolean(matchPath(routeConfig.studentExamDeviceCheck, pathname)) ||
+      Boolean(matchPath(routeConfig.studentExamPaused, pathname))
     );
   }
 
   if (itemPath === routeConfig.teacherExams) {
-    return pathname === routeConfig.teacherExams || Boolean(matchPath(routeConfig.teacherExamDetail, pathname));
+    return (
+      pathname === routeConfig.teacherExams ||
+      Boolean(matchPath(routeConfig.teacherExamDetail, pathname)) ||
+      Boolean(matchPath(routeConfig.teacherProctoring, pathname))
+    );
   }
 
   if (itemPath === routeConfig.teacherMonitoring) {
@@ -121,6 +128,10 @@ function getNavigationItemIsActive(itemPath, pathname) {
 
   if (itemPath === routeConfig.adminExams) {
     return pathname === routeConfig.adminExams || Boolean(matchPath(routeConfig.adminExamDetail, pathname));
+  }
+
+  if (itemPath === routeConfig.adminProctoringAi) {
+    return pathname === routeConfig.adminProctoringAi;
   }
 
   return pathname === itemPath;

@@ -7,11 +7,16 @@ using EduGuard.Infrastructure.Assignments;
 using EduGuard.Infrastructure.Auth;
 using EduGuard.Infrastructure.Classrooms;
 using EduGuard.Infrastructure.Exams;
+using EduGuard.Application.Options;
 using EduGuard.Infrastructure.Data;
 using EduGuard.Infrastructure.Notifications;
+using EduGuard.Infrastructure.Proctoring;
+using EduGuard.Infrastructure.Redis;
 using EduGuard.Infrastructure.Repositories;
 using EduGuard.Infrastructure.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Logging;
+using StackExchange.Redis;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -102,9 +107,49 @@ public static class DependencyInjection
         services.AddScoped<IExamService, ExamService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
         services.AddScoped<IExamMonitoringService, ExamMonitoringService>();
+        services.AddScoped<IProctoringRepository, ProctoringRepository>();
+        services.AddScoped<IProctoringService, ProctoringService>();
+        services.AddScoped<IExamLobbyService, ExamLobbyService>();
+        services.AddScoped<IStudentProctoringService, StudentProctoringService>();
+        services.AddScoped<ILiveProctoringService, LiveProctoringService>();
+        services.AddScoped<IProctoringActionService, ProctoringActionService>();
+        services.AddScoped<IProctoringEvidenceService, ProctoringEvidenceService>();
+        services.AddScoped<IProctoringPolicyService, ProctoringPolicyService>();
+        services.AddScoped<IProctoringDetectionService, ProctoringDetectionService>();
+        services.AddScoped<IProctoringSignalingService, ProctoringSignalingService>();
+        services.AddScoped<IWebRtcConfigService, WebRtcConfigService>();
         services.AddScoped<ICheatingLogRepository, CheatingLogRepository>();
         services.AddScoped<IAntiCheatService, AntiCheatService>();
         services.AddScoped<INotificationService, NotificationService>();
+
+        services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionName));
+        services.Configure<WebRtcOptions>(configuration.GetSection(WebRtcOptions.SectionName));
+        services.Configure<ProctoringOptions>(configuration.GetSection(ProctoringOptions.SectionName));
+        var redisOptions = configuration.GetSection(RedisOptions.SectionName).Get<RedisOptions>() ?? new RedisOptions();
+
+        if (redisOptions.Enabled)
+        {
+            services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                var connectionString = configuration.GetConnectionString("Redis") ?? "localhost:6379";
+                var options = ConfigurationOptions.Parse(connectionString);
+                options.AbortOnConnectFail = redisOptions.AbortOnConnectFail;
+                var multiplexer = ConnectionMultiplexer.Connect(options);
+                var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("Redis");
+                logger.LogInformation("Redis connection established.");
+                return multiplexer;
+            });
+            services.AddScoped<ICacheService, RedisCacheService>();
+            services.AddScoped<IAttemptPresenceService, RedisAttemptPresenceService>();
+        }
+        else
+        {
+            services.AddScoped<ICacheService, NullCacheService>();
+            services.AddScoped<IAttemptPresenceService, NullAttemptPresenceService>();
+        }
+
+        services.AddScoped<IExamCacheInvalidator, ExamCacheInvalidator>();
+        services.AddHttpClient("ProctoringAi");
 
         return services;
     }

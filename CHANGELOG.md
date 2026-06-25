@@ -7,8 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-25
+
+### Security
+
+- Proctoring evidence is served only through authenticated `GET /api/attempts/{attemptId}/proctoring/evidence/{evidenceId}/file`; public static access to `/uploads/proctoring` is blocked.
+- Non-Development environments fail fast when `Jwt:Key` is missing or still contains the demo placeholder.
+
 ### Backend
 
+- Added **Live Proctoring Control Room** module: proctoring entities/migration, lobby, WebRTC signaling via `ExamMonitoringHub`, teacher room/states APIs, watch lock (Redis), pause/resume/warn/terminate (SignalR + reason dialog), co-proctor assignments, evidence upload to `wwwroot/uploads/proctoring`, heartbeat policy with auto-snapshot flag, YOLO detection proxy with optional Ultralytics inference, admin AI settings, tile live preview, manual clip recording, CheatingLog integration (camera off, fullscreen exit, disconnect, AI detect), and YOLO bounding-box metadata on evidence.
+- Added FastAPI stub service at `ai-services/proctoring-ai-service/` for local YOLO integration testing.
+- Added Docker Compose and production README for the proctoring AI service; `PROCTORING_MODEL` env for Ultralytics weights.
+- WebRTC ICE config omits empty TURN credentials; see `docs/proctoring-webrtc-nat.md` for STUN/TURN across NAT.
 - Fixed real-time notifications for students by broadcasting classroom notifications via `INotificationNotifier` on creation.
 - Added `Notification` and `UserNotification` tables to SQL Server database with cascading delete rules for user notifications.
 - Implemented `NotificationService` that handles classroom notifications creation for teachers, fetching announcements of a classroom, and get/mark-as-read/mark-all-as-read API operations.
@@ -22,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Frontend
 
+- Added teacher **Phòng giám sát bài thi** (`/teacher/exams/:examId/proctoring`) with risk-prioritized camera grid, live video on active tile + drawer, co-proctor panel, manual snapshot/clip/pause/warn/terminate controls, and link from Teacher Monitoring.
+- Added student proctoring lobby/device-check/paused flows, camera preview + watermark on attempt, WebRTC publisher, and realtime proctoring warning toasts.
+- Added admin **Cấu hình AI giám sát** page (`/admin/proctoring-ai`).
 - Redesigned the Student's "Bài tập / Bài thi" page (`ExamListPage.jsx`):
   - Replaced the mixed student list view with a compact page header titled "Bài tập / Bài thi" and a clear segmented switch for `Bài thi` / `Bài tập`.
   - Rebuilt `StudentTaskTabs.jsx`, `StudentTaskToolbar.jsx`, `StudentTaskGrid.jsx`, `StudentAssignmentCard.jsx`, and `StudentExamCard.jsx` into a responsive card-grid flow with separate loading and empty states per tab.
@@ -114,6 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - PDF import supports text-based PDFs only; scanned/image PDFs still require OCR and are not supported.
 - The frontend now exposes the standard markdown guide and prompt; full browsing of all 20 per-question-type template files remains API-only for now.
+- The production frontend upload UI for browsing templates and displaying row-level import errors is still pending.
 - Uploaded import file names do not need to match template names, but the extension must match the actual file format so the backend selects the correct parser.
 
 ## [1.1.0] - 2026-06-10

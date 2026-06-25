@@ -27,6 +27,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<CheatingLog> CheatingLogs => Set<CheatingLog>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+    public DbSet<LiveProctoringSession> LiveProctoringSessions => Set<LiveProctoringSession>();
+    public DbSet<ProctoringEvidence> ProctoringEvidences => Set<ProctoringEvidence>();
+    public DbSet<ProctoringState> ProctoringStates => Set<ProctoringState>();
+    public DbSet<ProctorAction> ProctorActions => Set<ProctorAction>();
+    public DbSet<ExamProctorAssignment> ExamProctorAssignments => Set<ExamProctorAssignment>();
+    public DbSet<ProctoringAiSettings> ProctoringAiSettings => Set<ProctoringAiSettings>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -12,7 +12,11 @@ public static class CheatingTypeHelper
         [CheatingType.ExitFullscreen] = 8,
         [CheatingType.PageReload] = 6,
         [CheatingType.Disconnected] = 5,
-        [CheatingType.WebcamOff] = 15
+        [CheatingType.WebcamOff] = 15,
+        [CheatingType.PhoneVisible] = 12,
+        [CheatingType.BookVisible] = 10,
+        [CheatingType.SecondPersonVisible] = 12,
+        [CheatingType.PersonNotVisible] = 8
     };
 
     public static int GetSuspicionPoint(CheatingType type) =>
@@ -26,7 +30,11 @@ public static class CheatingTypeHelper
         CheatingType.ExitFullscreen => "EXIT_FULLSCREEN",
         CheatingType.PageReload => "PAGE_RELOAD",
         CheatingType.Disconnected => "DISCONNECTED",
-        CheatingType.WebcamOff => "WEBCAM_OFF", 
+        CheatingType.WebcamOff => "WEBCAM_OFF",
+        CheatingType.PhoneVisible => "PHONE_VISIBLE",
+        CheatingType.BookVisible => "BOOK_VISIBLE",
+        CheatingType.SecondPersonVisible => "SECOND_PERSON_VISIBLE",
+        CheatingType.PersonNotVisible => "PERSON_NOT_VISIBLE",
         _ => type.ToString().ToUpperInvariant()
     };
 
@@ -43,6 +51,10 @@ public static class CheatingTypeHelper
             "PAGE_RELOAD" => CheatingType.PageReload,
             "DISCONNECTED" => CheatingType.Disconnected,
             "WEBCAM_OFF" => CheatingType.WebcamOff,
+            "PHONE_VISIBLE" => CheatingType.PhoneVisible,
+            "BOOK_VISIBLE" => CheatingType.BookVisible,
+            "SECOND_PERSON_VISIBLE" => CheatingType.SecondPersonVisible,
+            "PERSON_NOT_VISIBLE" => CheatingType.PersonNotVisible,
             _ => throw new ArgumentException($"Loại hành vi anti-cheat không hợp lệ: {rawType}.")
         };
     }

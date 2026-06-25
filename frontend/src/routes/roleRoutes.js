@@ -10,6 +10,7 @@ const ROLE_NAVIGATION_ITEMS = {
     { label: "Quản lí lớp học", path: routeConfig.adminClassrooms },
     { label: "Quản lí bài kiểm tra", path: routeConfig.adminExams },
     { label: "Giám sát", path: routeConfig.adminMonitoring },
+    { label: "AI giám sát", path: routeConfig.adminProctoringAi },
     { label: "Quản lí người dùng", path: routeConfig.adminUsers },
     { label: "Hồ sơ cá nhân", path: routeConfig.adminProfile },
   ],

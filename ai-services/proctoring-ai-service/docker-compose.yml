@@ -1,0 +1,13 @@
+services:
+  proctoring-ai:
+    build: .
+    ports:
+      - "8800:8800"
+    environment:
+      PROCTORING_MODEL: yolo11n.pt
+    volumes:
+      - proctoring-models:/root/.cache/ultralytics
+    restart: unless-stopped
+
+volumes:
+  proctoring-models:

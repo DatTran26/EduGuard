@@ -375,50 +375,63 @@ Known risks / rollback / follow-up:
 
 - The local cache is now intentionally a fallback only. Backend `mySubmission` remains the primary source of truth, so any future submission payload changes must keep that DTO populated consistently.
 
-## Feature: Teacher/Admin import standard guide and copyable prompt
+## Feature: Proctoring ops — WebRTC NAT + AI Docker
 
-Date: 2026-06-20
+Date: 2026-06-25
 
-Branch/source: `devB`
+Branch/source: `feat/live-proctoring-control-room` → `release`
 
 Description:
 
-- Feature or fix name: Teacher/Admin import standard guide and copyable prompt.
-- Purpose and user/business impact: Gives teachers and admins one authenticated place in the question workspace to download the exact standard import guide and copy the AI conversion prompt, reducing formatting mistakes before uploading question import files.
-- Files or modules changed: backend import resource files, exam controller import resource endpoints, prompt DTO, frontend exam API adapter, question workspace, import resources UI, main changelog, project changelog, and Todo List.
-
-Changed files:
-
-- `backend/EduGuard.Api/Controllers/exams-controller.cs`
-- `backend/EduGuard.Api/Resources/QuestionImportTemplates/Dinh_dang_chuan_de_import_file.md`
-- `backend/EduGuard.Api/Resources/QuestionImportTemplates/Prompt_Chuyen_Doi_De_Import.txt`
-- `backend/EduGuard.Application/DTOs/Exams/question-import-prompt-dto.cs`
-- `frontend/src/api/examApi.js`
-- `frontend/src/features/exams/components/QuestionImportResources.jsx`
-- `frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx`
-- `CHANGELOG.md`
-- `docs/project-changelog.md`
-- `Todo List.md`
-
-Technical summary:
-
-- Added the provided standard markdown file to backend `QuestionImportTemplates` resources and included it in the authenticated template metadata/download flow for Teacher/Admin users.
-- Added a backend prompt endpoint, `GET /api/exams/question-import/prompt`, that reads the stored prompt text and returns it as `QuestionImportPromptDto` instead of exposing the prompt as a downloadable public asset.
-- Added frontend exam API methods for template list retrieval, prompt retrieval, and authenticated blob download so the browser download still carries the JWT bearer token.
-- Added `QuestionImportResources` to the Teacher/Admin question workspace as one integrated four-step AI workflow: download the standard file, copy the prompt, generate the Excel file with AI, then upload to EduGuard. The download and copy actions now live inside their corresponding workflow steps.
+- Purpose: Production readiness for live proctoring — TURN documentation, cleaner ICE server JSON, Dockerized YOLO service.
+- Files: `docs/proctoring-webrtc-nat.md`, `ai-services/proctoring-ai-service/Dockerfile`, `docker-compose.yml`, `web-rtc-config-service.cs`, `appsettings.Development.json`.
 
 Validation:
 
-- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore` passed with 0 warnings and 0 errors.
-- `npm.cmd run build` passed; Vite/Rolldown still reports existing third-party pure-annotation warnings from `@microsoft/signalr` and the existing large bundle warning.
-- `npx.cmd eslint src/api/examApi.js src/features/exams/components/QuestionImportResources.jsx src/features/exams/components/TeacherQuestionWorkspace.jsx` passed.
-- `npm.cmd run lint` did not complete because the repo-level lint currently scans existing `frontend/temp-build-*` bundled artifacts and ESLint's stylish formatter fails with `RangeError: Invalid string length`; the targeted lint above passed for this change set.
+- `dotnet build` — pending in merge commit
+- `docker compose config` — optional local
 
-Known risks / rollback / follow-up:
+Unresolved questions: None.
 
-- The UI currently highlights the standard markdown guide and prompt only; the 20 per-question-type sample templates remain available through the API but are not yet exposed as a full frontend template browser.
-- Download uses an authenticated blob request from the SPA, so direct copying of the backend download URL into a browser address bar will still require an authenticated session/token path.
-- Rollback: remove the two resource files, the prompt DTO/endpoints, the frontend import resources component/API methods, and the `QuestionImportResources` insertion in `TeacherQuestionWorkspace`.
+---
+
+## Feature: Live Proctoring Control Room v1
+
+Date: 2026-06-25
+
+Branch/source: `feat/live-proctoring-control-room`
+
+Description:
+
+- Feature or fix name: EduGuard Live Proctoring Control Room v1.
+- Purpose and user/business impact: Teachers monitor live student cameras during exams with risk-prioritized grid, manual controls (pause/warn/snapshot/terminate), co-proctor support, and optional YOLO-assisted detection via backend proxy.
+- Files or modules changed: Proctoring domain entities/migration, `ProctoringController`, `ExamMonitoringHub` WebRTC signaling, Redis watch lock, teacher/student proctoring pages, evidence storage, policy engine, AI service, admin AI settings, CheatingLog bridge, tile live preview, manual clip recorder.
+
+Changed files (high level):
+
+- `backend/EduGuard.Api/Controllers/proctoring-controller.cs`
+- `backend/EduGuard.Api/Hubs/exam-monitoring-hub.cs`
+- `backend/EduGuard.Infrastructure/Proctoring/*`
+- `backend/EduGuard.Domain/Enums/CheatingType.cs`
+- `frontend/src/features/proctoring/**`
+- `frontend/src/api/proctoringApi.js`
+- `frontend/src/features/admin/pages/AdminProctoringAiSettingsPage.jsx`
+- `ai-services/proctoring-ai-service/**`
+- `docs/proctoring-devB-integration.md`
+
+Validation:
+
+- `dotnet build` (backend) ΓÇö pass
+- `npm run build` (frontend) ΓÇö pass
+- `npx eslint src/features/proctoring src/api/proctoringApi.js` ΓÇö pass
+
+Unresolved questions:
+
+- E2E WebRTC verification across NAT / two physical devices.
+- Production Ultralytics install and model tuning on AI server.
+- Merge/rebase onto `devD` / `devB` per `docs/proctoring-devB-integration.md`.
+
+---
 
 ## Feature: Student assignment sub-navigation tab and details visualizer
 
@@ -562,8 +575,8 @@ Branch/source: `devH`
 Description:
 
 - Feature or fix name: Teacher classroom detail action simplification.
-- Purpose and user/business impact: Giảm độ rối ở trang chi tiết lớp học của Teacher bằng cách làm nổi bật thao tác sao chép mã lớp, bỏ các nút tạo bài tập/đề thi ngay trên header, và dồn việc xem thành viên về đúng tab `Thành viên` để tab `Tổng quan` chỉ còn thông tin lớp và hành động quản trị.
-- Files or modules changed: classroom detail page của Teacher, changelog chính, project changelog, và Todo List.
+- Purpose and user/business impact: Giß║úm ─æß╗Ö rß╗æi ß╗ƒ trang chi tiß║┐t lß╗¢p hß╗ìc cß╗ºa Teacher bß║▒ng c├ích l├ám nß╗òi bß║¡t thao t├íc sao ch├⌐p m├ú lß╗¢p, bß╗Å c├íc n├║t tß║ío b├ái tß║¡p/─æß╗ü thi ngay tr├¬n header, v├á dß╗ôn viß╗çc xem th├ánh vi├¬n vß╗ü ─æ├║ng tab `Th├ánh vi├¬n` ─æß╗â tab `Tß╗òng quan` chß╗ë c├▓n th├┤ng tin lß╗¢p v├á h├ánh ─æß╗Öng quß║ún trß╗ï.
+- Files or modules changed: classroom detail page cß╗ºa Teacher, changelog ch├¡nh, project changelog, v├á Todo List.
 
 Changed files:
 
@@ -574,20 +587,20 @@ Changed files:
 
 Technical summary:
 
-- Rút gọn `PageHeader` của classroom detail để với role khác Student chỉ còn nút `Sao chép mã lớp`; riêng luồng Teacher giờ dùng CTA primary để thao tác này nổi bật hơn khi vào chức năng lớp học.
-- Bỏ block preview thành viên ở tab `Tổng quan` của Teacher vì danh sách thành viên đã có tab chuyên biệt `Thành viên`.
-- Thay panel phụ ở `Tổng quan` bằng đúng hai nút nằm ngang `Chỉnh sửa lớp học` và `Xoá Lớp học` như yêu cầu UI.
-- Giữ lại `CreateClassroomForm` dùng chung cho update, nhưng đổi sang chỉ hiển thị sau khi Teacher bấm `Chỉnh sửa lớp học`, và tự đóng lại sau khi cập nhật thành công để layout tổng quan vẫn gọn.
+- R├║t gß╗ìn `PageHeader` cß╗ºa classroom detail ─æß╗â vß╗¢i role kh├íc Student chß╗ë c├▓n n├║t `Sao ch├⌐p m├ú lß╗¢p`; ri├¬ng luß╗ông Teacher giß╗¥ d├╣ng CTA primary ─æß╗â thao t├íc n├áy nß╗òi bß║¡t h╞ín khi v├áo chß╗⌐c n─âng lß╗¢p hß╗ìc.
+- Bß╗Å block preview th├ánh vi├¬n ß╗ƒ tab `Tß╗òng quan` cß╗ºa Teacher v├¼ danh s├ích th├ánh vi├¬n ─æ├ú c├│ tab chuy├¬n biß╗çt `Th├ánh vi├¬n`.
+- Thay panel phß╗Ñ ß╗ƒ `Tß╗òng quan` bß║▒ng ─æ├║ng hai n├║t nß║▒m ngang `Chß╗ënh sß╗¡a lß╗¢p hß╗ìc` v├á `Xo├í Lß╗¢p hß╗ìc` nh╞░ y├¬u cß║ºu UI.
+- Giß╗» lß║íi `CreateClassroomForm` d├╣ng chung cho update, nh╞░ng ─æß╗òi sang chß╗ë hiß╗ân thß╗ï sau khi Teacher bß║Ñm `Chß╗ënh sß╗¡a lß╗¢p hß╗ìc`, v├á tß╗▒ ─æ├│ng lß║íi sau khi cß║¡p nhß║¡t th├ánh c├┤ng ─æß╗â layout tß╗òng quan vß║½n gß╗ìn.
 
 Validation:
 
 - `npm exec eslint src/features/classrooms/pages/ClassroomDetailPage.jsx` (run in `frontend/`) - passed.
-- `npm run build` (run in `frontend/`) - passed; Vite vẫn báo các warning đã tồn tại từ `@microsoft/signalr` về `INVALID_ANNOTATION` và chunk lớn, nhưng bundle được tạo thành công.
+- `npm run build` (run in `frontend/`) - passed; Vite vß║½n b├ío c├íc warning ─æ├ú tß╗ôn tß║íi tß╗½ `@microsoft/signalr` vß╗ü `INVALID_ANNOTATION` v├á chunk lß╗¢n, nh╞░ng bundle ─æ╞░ß╗úc tß║ío th├ánh c├┤ng.
 
 Known risks / rollback / follow-up:
 
-- Teacher cần thêm một lần bấm để mở form chỉnh sửa lớp học; đây là đánh đổi có chủ đích để màn tổng quan gọn hơn.
-- Tab `Thành viên` hiện vẫn giữ cả danh sách thành viên cơ bản lẫn card thống kê theo sinh viên; nếu muốn tiếp tục rút gọn nữa thì cần chốt lại phạm vi hiển thị của tab này ở lượt sau.
+- Teacher cß║ºn th├¬m mß╗Öt lß║ºn bß║Ñm ─æß╗â mß╗ƒ form chß╗ënh sß╗¡a lß╗¢p hß╗ìc; ─æ├óy l├á ─æ├ính ─æß╗òi c├│ chß╗º ─æ├¡ch ─æß╗â m├án tß╗òng quan gß╗ìn h╞ín.
+- Tab `Th├ánh vi├¬n` hiß╗çn vß║½n giß╗» cß║ú danh s├ích th├ánh vi├¬n c╞í bß║ún lß║½n card thß╗æng k├¬ theo sinh vi├¬n; nß║┐u muß╗æn tiß║┐p tß╗Ñc r├║t gß╗ìn nß╗»a th├¼ cß║ºn chß╗æt lß║íi phß║ím vi hiß╗ân thß╗ï cß╗ºa tab n├áy ß╗ƒ l╞░ß╗út sau.
 
 ## Docs: Frontend inventory Excel workbook
 
@@ -598,8 +611,8 @@ Branch/source: `devH`
 Description:
 
 - Feature or fix name: Frontend inventory Excel workbook.
-- Purpose and user/business impact: Tạo một workbook Excel dễ tra cứu để đọc nhanh toàn bộ cây thư mục `frontend`, hiểu vai trò của từng thư mục và tệp, đồng thời xem số lượng/chức năng các hàm trong những file mã nguồn do dự án sở hữu.
-- Files or modules changed: workbook tài liệu frontend, script sinh workbook, và project changelog.
+- Purpose and user/business impact: Tß║ío mß╗Öt workbook Excel dß╗à tra cß╗⌐u ─æß╗â ─æß╗ìc nhanh to├án bß╗Ö c├óy th╞░ mß╗Ñc `frontend`, hiß╗âu vai tr├▓ cß╗ºa tß╗½ng th╞░ mß╗Ñc v├á tß╗çp, ─æß╗ông thß╗¥i xem sß╗æ l╞░ß╗úng/chß╗⌐c n─âng c├íc h├ám trong nhß╗»ng file m├ú nguß╗ôn do dß╗▒ ├ín sß╗ƒ hß╗»u.
+- Files or modules changed: workbook t├ái liß╗çu frontend, script sinh workbook, v├á project changelog.
 
 Changed files:
 
@@ -610,22 +623,22 @@ Changed files:
 
 Technical summary:
 
-- Quét toàn bộ `frontend/` để lập cây thư mục, phân loại thư mục mã nguồn, tài sản tĩnh, cấu hình và artifact build/debug.
-- Phân tích các file `.js/.jsx/.ts/.tsx` thuộc mã nguồn dự án bằng Babel AST để lấy danh sách hàm có tên, loại hàm, dòng bắt đầu và tham số.
-- Sinh workbook nhiều sheet gồm `TongQuan`, `CayThuMuc`, `ThuMuc`, `TapTin`, `Ham`, có freeze pane, filter, tự giãn cột và mô tả tiếng Việt để đọc nhanh.
-- Ghi thêm bản sao `docs/doc_hieu.xlxn` theo đúng đường dẫn người dùng yêu cầu, đồng thời giữ `docs/doc_hieu.xlsx` là bản mở trực tiếp tương thích với Excel.
+- Qu├⌐t to├án bß╗Ö `frontend/` ─æß╗â lß║¡p c├óy th╞░ mß╗Ñc, ph├ón loß║íi th╞░ mß╗Ñc m├ú nguß╗ôn, t├ái sß║ún t─⌐nh, cß║Ñu h├¼nh v├á artifact build/debug.
+- Ph├ón t├¡ch c├íc file `.js/.jsx/.ts/.tsx` thuß╗Öc m├ú nguß╗ôn dß╗▒ ├ín bß║▒ng Babel AST ─æß╗â lß║Ñy danh s├ích h├ám c├│ t├¬n, loß║íi h├ám, d├▓ng bß║»t ─æß║ºu v├á tham sß╗æ.
+- Sinh workbook nhiß╗üu sheet gß╗ôm `TongQuan`, `CayThuMuc`, `ThuMuc`, `TapTin`, `Ham`, c├│ freeze pane, filter, tß╗▒ gi├ún cß╗Öt v├á m├┤ tß║ú tiß║┐ng Viß╗çt ─æß╗â ─æß╗ìc nhanh.
+- Ghi th├¬m bß║ún sao `docs/doc_hieu.xlxn` theo ─æ├║ng ─æ╞░ß╗¥ng dß║½n ng╞░ß╗¥i d├╣ng y├¬u cß║ºu, ─æß╗ông thß╗¥i giß╗» `docs/doc_hieu.xlsx` l├á bß║ún mß╗ƒ trß╗▒c tiß║┐p t╞░╞íng th├¡ch vß╗¢i Excel.
 
 Validation:
 
 - `python -m py_compile temp/generate_frontend_inventory_excel.py` - passed.
-- `python temp/generate_frontend_inventory_excel.py` - passed; sinh `96` thư mục, `501` tệp và `680` hàm vào workbook.
+- `python temp/generate_frontend_inventory_excel.py` - passed; sinh `96` th╞░ mß╗Ñc, `501` tß╗çp v├á `680` h├ám v├áo workbook.
 - `python -c "from openpyxl import load_workbook; import json; wb=load_workbook(r'docs/doc_hieu.xlsx', read_only=True); ws=wb['TongQuan']; ws2=wb['TapTin']; payload={'sheets': wb.sheetnames, 'a1': ws['A1'].value, 'a2': ws['A2'].value, 'headers': [c.value for c in next(ws2.iter_rows(min_row=1, max_row=1))], 'sample': [c.value for c in next(ws2.iter_rows(min_row=2, max_row=2))]}; print(json.dumps(payload, ensure_ascii=True))"` - passed.
 
 Known risks / rollback / follow-up:
 
-- Mô tả chức năng tệp và hàm hiện được suy ra từ tên file, tên hàm và vị trí thư mục; đây là tài liệu định hướng đọc code, không phải đặc tả nghiệp vụ chuẩn hóa thủ công từng hàm.
-- Các thư mục phụ thuộc như `node_modules` bị loại trừ khỏi chi tiết, và các file build/minified hoặc DLL chỉ được giữ ở mức artifact để workbook không phình quá mức.
-- Đuôi `.xlxn` không phải đuôi Excel chuẩn; nếu cần mở trực tiếp, dùng `docs/doc_hieu.xlsx` hoặc đổi lại đuôi `.xlsx`.
+- M├┤ tß║ú chß╗⌐c n─âng tß╗çp v├á h├ám hiß╗çn ─æ╞░ß╗úc suy ra tß╗½ t├¬n file, t├¬n h├ám v├á vß╗ï tr├¡ th╞░ mß╗Ñc; ─æ├óy l├á t├ái liß╗çu ─æß╗ïnh h╞░ß╗¢ng ─æß╗ìc code, kh├┤ng phß║úi ─æß║╖c tß║ú nghiß╗çp vß╗Ñ chuß║⌐n h├│a thß╗º c├┤ng tß╗½ng h├ám.
+- C├íc th╞░ mß╗Ñc phß╗Ñ thuß╗Öc nh╞░ `node_modules` bß╗ï loß║íi trß╗½ khß╗Åi chi tiß║┐t, v├á c├íc file build/minified hoß║╖c DLL chß╗ë ─æ╞░ß╗úc giß╗» ß╗ƒ mß╗⌐c artifact ─æß╗â workbook kh├┤ng ph├¼nh qu├í mß╗⌐c.
+- ─Éu├┤i `.xlxn` kh├┤ng phß║úi ─æu├┤i Excel chuß║⌐n; nß║┐u cß║ºn mß╗ƒ trß╗▒c tiß║┐p, d├╣ng `docs/doc_hieu.xlsx` hoß║╖c ─æß╗òi lß║íi ─æu├┤i `.xlsx`.
 
 ## Feature: Teacher exam upload preview flow and final save placement
 
@@ -636,7 +649,7 @@ Branch/source: `devH`
 Description:
 
 - Feature or fix name: Teacher exam upload preview flow and final save placement.
-- Purpose and user/business impact: Let teachers review parsed questions and answers from uploaded files before importing them into an exam, while making the main `Lưu đề` action appear at the end of the create flow so the final confirmation step matches the full drafting workflow.
+- Purpose and user/business impact: Let teachers review parsed questions and answers from uploaded files before importing them into an exam, while making the main `L╞░u ─æß╗ü` action appear at the end of the create flow so the final confirmation step matches the full drafting workflow.
 - Files or modules changed: teacher exam form, question workspace/review cards, exam create page, exam detail page, Todo List, main changelog, and project changelog.
 
 Changed files:
@@ -658,9 +671,9 @@ Technical summary:
 - Updated both `ExamListPage` and `ExamDetailPage` to keep preview state (`staged file`, preview questions, row-level import errors, review info message) separate from the real question bank, and only persist questions after explicit commit.
 - Updated the Teacher create-flow final save handler so it now merges draft questions with previewed import questions, saves them on the first create, keeps empty exams as draft, and auto-publishes immediately when the final saved question count is greater than zero.
 - Sanitized draft/preview answer IDs in the shared exam write payload so temporary string IDs from local draft state are converted to `null` before hitting the backend create endpoint, eliminating the `400` deserialization failure on first save.
-- Simplified the final create-flow action area to keep only the button, and removed the extra in-page "backend đã phân tích..." import success copy while keeping the actual review list visible.
-- Replaced the final create CTA form linkage from passive DOM submit wiring with a registered submit callback from `ExamForm`, so the `Tạo đề` button reliably triggers validation and save in the create-flow layout.
-- Hid the `Thêm vào đề nháp` button in draft file-import mode; previewed questions are now only reviewed there and then saved automatically with the final exam create action.
+- Simplified the final create-flow action area to keep only the button, and removed the extra in-page "backend ─æ├ú ph├ón t├¡ch..." import success copy while keeping the actual review list visible.
+- Replaced the final create CTA form linkage from passive DOM submit wiring with a registered submit callback from `ExamForm`, so the `Tß║ío ─æß╗ü` button reliably triggers validation and save in the create-flow layout.
+- Hid the `Th├¬m v├áo ─æß╗ü nh├íp` button in draft file-import mode; previewed questions are now only reviewed there and then saved automatically with the final exam create action.
 - Converted import preview questions into editable local draft state in both create and detail workspaces, so teachers can edit review questions directly and the final save/commit path now creates real questions from the edited preview instead of re-importing the original file.
 
 Validation:
@@ -716,6 +729,41 @@ Known risks / rollback / follow-up:
 - The client still intentionally redirects to `/login` for expired or invalid authenticated sessions; the change only stops unauthenticated login failures from causing a hard page refresh.
 - Local in-place backend builds remain sensitive to running API/Visual Studio file locks; stop those processes before rebuilding into the default output if needed.
 
+## Feature: Redis cache & attempt presence (Phase 9)
+
+Date: 2026-06-19
+
+Branch/source: local dev
+
+Description:
+
+- T├¡ch hß╗úp Redis cache-aside cho question bank gi├ío vi├¬n v├á anti-cheat summary (TTL 45s).
+- Th├¬m heartbeat/presence theo attempt (Hash + Set index, TTL sliding 120s).
+- Graceful degradation: Redis down hoß║╖c `Redis:Enabled=false` ΓåÆ fallback DB / no-op.
+
+Changed files:
+
+- `backend/EduGuard.Application/Services/Interfaces/i-cache-service.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-attempt-presence-service.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-exam-cache-invalidator.cs`
+- `backend/EduGuard.Application/Options/redis-options.cs`
+- `backend/EduGuard.Application/Redis/redis-key-names.cs`
+- `backend/EduGuard.Application/DTOs/Exams/attempt-heartbeat-request.cs`
+- `backend/EduGuard.Infrastructure/Redis/*`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-service.cs`
+- `backend/EduGuard.Infrastructure/AntiCheat/anti-cheat-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-attempt-service.cs`
+- `backend/EduGuard.Api/Controllers/exam-attempts-controller.cs`
+- `backend/EduGuard.Api/appsettings.json`
+- `frontend/src/api/examAttemptApi.js`
+- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
+
+Validation:
+
+- `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` ΓÇö passed.
+- `dotnet test` ΓÇö passed.
+
 ## Feature: Teacher import template standardization
 
 Date: 2026-06-20
@@ -748,9 +796,9 @@ Branch/source: `devH`
 
 Description:
 
-- Đồng bộ lại khu vực Teacher với `docs/ui_tech.md` ở các lệch lớn nhất của frontend: điều hướng thiếu mục, top bar chưa có search/quick-create, classroom detail chưa có tab nghiệp vụ, và chưa có các page teacher riêng cho bài tập, giám sát thi, kết quả, thông báo.
-- Giữ nguyên API contract hiện có, ưu tiên dựng lại luồng teacher từ dữ liệu thật đang có thay vì thêm mock mới.
-- Tận dụng notification/local realtime đã có sẵn để bell dropdown và trang `Thông báo` dùng chung một nguồn dữ liệu, tránh lệch giữa shell và detail page.
+- ─Éß╗ông bß╗Ö lß║íi khu vß╗▒c Teacher vß╗¢i `docs/ui_tech.md` ß╗ƒ c├íc lß╗çch lß╗¢n nhß║Ñt cß╗ºa frontend: ─æiß╗üu h╞░ß╗¢ng thiß║┐u mß╗Ñc, top bar ch╞░a c├│ search/quick-create, classroom detail ch╞░a c├│ tab nghiß╗çp vß╗Ñ, v├á ch╞░a c├│ c├íc page teacher ri├¬ng cho b├ái tß║¡p, gi├ím s├ít thi, kß║┐t quß║ú, th├┤ng b├ío.
+- Giß╗» nguy├¬n API contract hiß╗çn c├│, ╞░u ti├¬n dß╗▒ng lß║íi luß╗ông teacher tß╗½ dß╗» liß╗çu thß║¡t ─æang c├│ thay v├¼ th├¬m mock mß╗¢i.
+- Tß║¡n dß╗Ñng notification/local realtime ─æ├ú c├│ sß║╡n ─æß╗â bell dropdown v├á trang `Th├┤ng b├ío` d├╣ng chung mß╗Öt nguß╗ôn dß╗» liß╗çu, tr├ính lß╗çch giß╗»a shell v├á detail page.
 
 Changed files:
 
@@ -806,21 +854,21 @@ Description:
 - Feature or fix name: Backend question import template downloads.
 - Purpose and user/business impact: Teachers/Admins can list and download official import templates directly from the backend, so template files used by the import workflow stay versioned with the application instead of living only in local Downloads.
 - Files or modules changed: backend API controller, API project resources, import template DTO, imported template documentation, API/feature tracking, Todo List, and project changelog.
-- Teacher sidebar nay khớp spec hơn với đầy đủ menu `Dashboard`, `Lớp học`, `Bài tập`, `Đề thi`, `Giám sát thi`, `Kết quả`, `Thông báo`, `Hồ sơ`, đồng thời bổ sung icon/active-state cho các route mới.
-- Top bar được nâng cấp thành shell làm việc thực sự cho Teacher: search thật trên classroom/exam/assignment/student, quick-create dropdown đi thẳng tới `Tạo lớp học`, `Tạo bài tập`, `Tạo đề thi`, và dropdown thông báo có lối mở sang trang danh sách thông báo.
-- Thêm các page teacher mới dùng dữ liệu thật hiện có: assignment center với grading workspace, monitor list/detail dựa trên `AttemptMonitorPanel`, result/report page tổng hợp attempt + anti-cheat, và notification page dùng chung local realtime store.
-- `ClassroomDetailPage` của Teacher nay có workspace tab `Tổng quan / Học sinh / Bài tập / Bài thi / Kết quả / Hoạt động`, giúp teacher xem theo đúng ngữ cảnh nghiệp vụ thay vì một trang detail kéo dài một mạch.
-- `AssignmentForm` được mở rộng nhẹ để hỗ trợ chọn lớp khi tạo bài tập từ assignment center, nhưng vẫn tương thích với flow cũ trong classroom detail.
+- Teacher sidebar nay khß╗¢p spec h╞ín vß╗¢i ─æß║ºy ─æß╗º menu `Dashboard`, `Lß╗¢p hß╗ìc`, `B├ái tß║¡p`, `─Éß╗ü thi`, `Gi├ím s├ít thi`, `Kß║┐t quß║ú`, `Th├┤ng b├ío`, `Hß╗ô s╞í`, ─æß╗ông thß╗¥i bß╗ò sung icon/active-state cho c├íc route mß╗¢i.
+- Top bar ─æ╞░ß╗úc n├óng cß║Ñp th├ánh shell l├ám viß╗çc thß╗▒c sß╗▒ cho Teacher: search thß║¡t tr├¬n classroom/exam/assignment/student, quick-create dropdown ─æi thß║│ng tß╗¢i `Tß║ío lß╗¢p hß╗ìc`, `Tß║ío b├ái tß║¡p`, `Tß║ío ─æß╗ü thi`, v├á dropdown th├┤ng b├ío c├│ lß╗æi mß╗ƒ sang trang danh s├ích th├┤ng b├ío.
+- Th├¬m c├íc page teacher mß╗¢i d├╣ng dß╗» liß╗çu thß║¡t hiß╗çn c├│: assignment center vß╗¢i grading workspace, monitor list/detail dß╗▒a tr├¬n `AttemptMonitorPanel`, result/report page tß╗òng hß╗úp attempt + anti-cheat, v├á notification page d├╣ng chung local realtime store.
+- `ClassroomDetailPage` cß╗ºa Teacher nay c├│ workspace tab `Tß╗òng quan / Hß╗ìc sinh / B├ái tß║¡p / B├ái thi / Kß║┐t quß║ú / Hoß║ít ─æß╗Öng`, gi├║p teacher xem theo ─æ├║ng ngß╗» cß║únh nghiß╗çp vß╗Ñ thay v├¼ mß╗Öt trang detail k├⌐o d├ái mß╗Öt mß║ích.
+- `AssignmentForm` ─æ╞░ß╗úc mß╗ƒ rß╗Öng nhß║╣ ─æß╗â hß╗ù trß╗ú chß╗ìn lß╗¢p khi tß║ío b├ái tß║¡p tß╗½ assignment center, nh╞░ng vß║½n t╞░╞íng th├¡ch vß╗¢i flow c┼⌐ trong classroom detail.
 
 Validation:
 
-- `frontend\node_modules\.bin\eslint.cmd frontend\src\routes\routeConfig.js frontend\src\routes\roleRoutes.js frontend\src\routes\AppRoutes.jsx frontend\src\components\layout\Sidebar.jsx frontend\src\components\layout\TopBar.jsx frontend\src\components\layout\TeacherShellSearch.jsx frontend\src\components\layout\TeacherQuickCreateButton.jsx frontend\src\features\notifications\notificationStorage.js frontend\src\features\notifications\components\RealtimeNotificationListener.jsx frontend\src\features\notifications\pages\TeacherNotificationsPage.jsx frontend\src\features\results\pages\TeacherResultsPage.jsx frontend\src\features\anti-cheat\pages\TeacherMonitoringPage.jsx frontend\src\features\assignments\components\AssignmentForm.jsx frontend\src\features\assignments\pages\TeacherAssignmentListPage.jsx frontend\src\features\classrooms\components\TeacherClassroomWorkspace.jsx frontend\src\features\classrooms\pages\ClassroomDetailPage.jsx frontend\src\features\classrooms\pages\ClassroomListPage.jsx frontend\src\features\exams\pages\ExamListPage.jsx` — passed.
-- `npm.cmd --prefix frontend run build` — passed.
+- `frontend\node_modules\.bin\eslint.cmd frontend\src\routes\routeConfig.js frontend\src\routes\roleRoutes.js frontend\src\routes\AppRoutes.jsx frontend\src\components\layout\Sidebar.jsx frontend\src\components\layout\TopBar.jsx frontend\src\components\layout\TeacherShellSearch.jsx frontend\src\components\layout\TeacherQuickCreateButton.jsx frontend\src\features\notifications\notificationStorage.js frontend\src\features\notifications\components\RealtimeNotificationListener.jsx frontend\src\features\notifications\pages\TeacherNotificationsPage.jsx frontend\src\features\results\pages\TeacherResultsPage.jsx frontend\src\features\anti-cheat\pages\TeacherMonitoringPage.jsx frontend\src\features\assignments\components\AssignmentForm.jsx frontend\src\features\assignments\pages\TeacherAssignmentListPage.jsx frontend\src\features\classrooms\components\TeacherClassroomWorkspace.jsx frontend\src\features\classrooms\pages\ClassroomDetailPage.jsx frontend\src\features\classrooms\pages\ClassroomListPage.jsx frontend\src\features\exams\pages\ExamListPage.jsx` ΓÇö passed.
+- `npm.cmd --prefix frontend run build` ΓÇö passed.
 
 Unresolved questions:
 
-- Notification list hiện vẫn dùng persistence ở frontend/local realtime store; khi backend notifications API xuất hiện, cần thay adapter này bằng nguồn server-side.
-- Assignment center và classroom workspace hiện vẫn reload lại page sau một số thao tác create/update/grade để giữ thay đổi đồng bộ nhanh với data layer hiện tại; có thể tinh chỉnh thành reload cục bộ sau nếu muốn mượt hơn.
+- Notification list hiß╗çn vß║½n d├╣ng persistence ß╗ƒ frontend/local realtime store; khi backend notifications API xuß║Ñt hiß╗çn, cß║ºn thay adapter n├áy bß║▒ng nguß╗ôn server-side.
+- Assignment center v├á classroom workspace hiß╗çn vß║½n reload lß║íi page sau mß╗Öt sß╗æ thao t├íc create/update/grade ─æß╗â giß╗» thay ─æß╗òi ─æß╗ông bß╗Ö nhanh vß╗¢i data layer hiß╗çn tß║íi; c├│ thß╗â tinh chß╗ënh th├ánh reload cß╗Ñc bß╗Ö sau nß║┐u muß╗æn m╞░ß╗út h╞ín.
 
 ## Fix: Exam detail view/edit split and classroom assignment empty-state clarity
 
@@ -830,8 +878,8 @@ Branch/source: `devH`
 
 Description:
 
-- Refined the exam detail experience so the default screen stays focused on `Cấu hình bài kiểm tra`, `Trạng thái publish`, `Tóm tắt đề thi`, and `Tóm tắt anti-cheat`, while the heavier edit tools only appear when the teacher explicitly opens them.
-- Moved classroom / teacher / schedule metadata out of the always-visible detail form into a compact `Thông tin thêm` hover/focus panel, reducing visual noise on the main exam page without removing useful context.
+- Refined the exam detail experience so the default screen stays focused on `Cß║Ñu h├¼nh b├ái kiß╗âm tra`, `Trß║íng th├íi publish`, `T├│m tß║»t ─æß╗ü thi`, and `T├│m tß║»t anti-cheat`, while the heavier edit tools only appear when the teacher explicitly opens them.
+- Moved classroom / teacher / schedule metadata out of the always-visible detail form into a compact `Th├┤ng tin th├¬m` hover/focus panel, reducing visual noise on the main exam page without removing useful context.
 - Improved the classroom assignment section when no backend records are available by adding a refresh action and a clearer empty-state message tied to the current classroom.
 
 Changed files:
@@ -849,13 +897,13 @@ Technical summary:
 
 Validation:
 
-- `frontend\node_modules\.bin\eslint.cmd frontend\src\features\exams\pages\ExamDetailPage.jsx frontend\src\features\assignments\components\AssignmentSection.jsx` — passed.
-- `npm.cmd --prefix frontend run build` — passed.
-- `sqlcmd -S "HOANGZIN72\MSSQLSERVER01" -d "EduGuardExam" -E -Q "SELECT TOP 20 c.Id AS ClassroomId, c.Name AS ClassroomName, COUNT(a.Id) AS AssignmentCount FROM Classrooms c LEFT JOIN Assignments a ON a.ClassroomId = c.Id GROUP BY c.Id, c.Name ORDER BY c.Id DESC; SELECT TOP 20 a.Id, a.ClassroomId, a.Title, a.CreatedAt FROM Assignments a ORDER BY a.CreatedAt DESC;"` — local backend database returned `0` assignment rows during verification.
+- `frontend\node_modules\.bin\eslint.cmd frontend\src\features\exams\pages\ExamDetailPage.jsx frontend\src\features\assignments\components\AssignmentSection.jsx` ΓÇö passed.
+- `npm.cmd --prefix frontend run build` ΓÇö passed.
+- `sqlcmd -S "HOANGZIN72\MSSQLSERVER01" -d "EduGuardExam" -E -Q "SELECT TOP 20 c.Id AS ClassroomId, c.Name AS ClassroomName, COUNT(a.Id) AS AssignmentCount FROM Classrooms c LEFT JOIN Assignments a ON a.ClassroomId = c.Id GROUP BY c.Id, c.Name ORDER BY c.Id DESC; SELECT TOP 20 a.Id, a.ClassroomId, a.Title, a.CreatedAt FROM Assignments a ORDER BY a.CreatedAt DESC;"` ΓÇö local backend database returned `0` assignment rows during verification.
 
 Unresolved questions:
 
-- In this local environment, the backend database currently has no assignment records, so the original “assignment exists but classroom detail shows none” report could not be reproduced as a data/API mismatch here.
+- In this local environment, the backend database currently has no assignment records, so the original ΓÇ£assignment exists but classroom detail shows noneΓÇ¥ report could not be reproduced as a data/API mismatch here.
 - If the missing assignments were created in another database or an older mock/local-only flow, that source still needs to be identified before a deeper backend fix can be confirmed.
 ## Feature: Teacher one-shot exam save with local draft questions and import preview
 
@@ -865,7 +913,7 @@ Branch/source: `devH`
 
 Description:
 
-- Reworked the teacher create-exam flow so exam metadata and questions can now be composed together locally on `ExamListPage`, then persisted with one final save instead of forcing an initial `Lưu đề thi` just to unlock question input.
+- Reworked the teacher create-exam flow so exam metadata and questions can now be composed together locally on `ExamListPage`, then persisted with one final save instead of forcing an initial `L╞░u ─æß╗ü thi` just to unlock question input.
 - Extended the backend create contract to accept the full draft question list in the first exam-create request, so the initial save now materializes the exam and its questions in one pass.
 - Added a teacher import-preview API plus frontend draft-import flow, allowing teachers to review a supported question file and merge it into the local draft before any `examId` exists.
 
@@ -963,7 +1011,7 @@ Branch/source: `devH`
 
 Description:
 
-- Widened the teacher exam detail question-management area by moving the question workspace into its own full-width section, so `Danh sách câu hỏi` is no longer squeezed inside the metadata column.
+- Widened the teacher exam detail question-management area by moving the question workspace into its own full-width section, so `Danh s├ích c├óu hß╗Åi` is no longer squeezed inside the metadata column.
 - Redesigned the student exam-taking page so the room now reflects teacher settings more clearly: fullscreen enforcement, random-order-friendly numbering, cleaner answer cards, stronger right-rail navigation, and clearer post-submit result handling.
 - Tightened the attempt save contract so clearing an answer from the UI now really clears the saved server state instead of silently leaving stale data behind.
 
@@ -1116,9 +1164,9 @@ Branch/source: `devH`
 
 Description:
 
-- Sửa lệch dữ liệu ở cụm Admin khi `Dashboard`, `Quản lí lớp học` và `Quản lí bài kiểm tra` chưa khớp với database thật.
-- Mở quyền backend để Admin đọc toàn bộ lớp học, danh sách thành viên lớp, lượt làm bài thi và dữ liệu anti-cheat cần thiết cho tổng hợp quản trị.
-- Chuyển `Dashboard` admin từ nguồn mock sang tổng hợp bằng API thật hiện có, giữ nguyên layout/title-only nhưng thay toàn bộ số liệu chính bằng dữ liệu backend.
+- Sß╗¡a lß╗çch dß╗» liß╗çu ß╗ƒ cß╗Ñm Admin khi `Dashboard`, `Quß║ún l├¡ lß╗¢p hß╗ìc` v├á `Quß║ún l├¡ b├ái kiß╗âm tra` ch╞░a khß╗¢p vß╗¢i database thß║¡t.
+- Mß╗ƒ quyß╗ün backend ─æß╗â Admin ─æß╗ìc to├án bß╗Ö lß╗¢p hß╗ìc, danh s├ích th├ánh vi├¬n lß╗¢p, l╞░ß╗út l├ám b├ái thi v├á dß╗» liß╗çu anti-cheat cß║ºn thiß║┐t cho tß╗òng hß╗úp quß║ún trß╗ï.
+- Chuyß╗ân `Dashboard` admin tß╗½ nguß╗ôn mock sang tß╗òng hß╗úp bß║▒ng API thß║¡t hiß╗çn c├│, giß╗» nguy├¬n layout/title-only nh╞░ng thay to├án bß╗Ö sß╗æ liß╗çu ch├¡nh bß║▒ng dß╗» liß╗çu backend.
 
 Changed files:
 
@@ -1141,22 +1189,22 @@ Changed files:
 
 Technical summary:
 
-- Thêm nhánh admin cho classroom backend: `/api/classrooms` giờ trả toàn bộ classroom cho Admin, và `/api/classrooms/{id}/members` cũng cho phép Admin đọc member list để FE suy ra `memberCount` thật thay vì để trống hoặc lệch số liệu.
-- Mở quyền admin cho `GET /api/exams/{id}/attempts` và các endpoint anti-cheat xem log/score/summary; phần service vẫn giữ rule cũ cho Teacher nhưng bổ sung allow-list rõ ràng cho Admin thay vì tạo endpoint song song.
-- `classroomApi` phía frontend không còn bỏ qua member fetch ở role Admin; `ClassroomDetailPage` cũng hiển thị member list thật cho admin để phần quản lí lớp nhất quán với database.
-- `dashboardApi.getAdminDashboard()` không còn đọc mock database/localStorage; thay vào đó FE tổng hợp dữ liệu thật từ `userApi`, `classroomApi`, `examApi`, `examAttemptApi`, `antiCheatApi`, nên các chỉ số người dùng/lớp học/bài kiểm tra/lượt làm nghi ngờ phản ánh trực tiếp từ backend hiện tại.
-- Không thêm backend endpoint dashboard admin riêng trong thay đổi này; mục tiêu là sửa lệch dữ liệu với mức xâm lấn thấp nhất lên UI và giữ tương thích với cấu trúc route/page đã có.
+- Th├¬m nh├ính admin cho classroom backend: `/api/classrooms` giß╗¥ trß║ú to├án bß╗Ö classroom cho Admin, v├á `/api/classrooms/{id}/members` c┼⌐ng cho ph├⌐p Admin ─æß╗ìc member list ─æß╗â FE suy ra `memberCount` thß║¡t thay v├¼ ─æß╗â trß╗æng hoß║╖c lß╗çch sß╗æ liß╗çu.
+- Mß╗ƒ quyß╗ün admin cho `GET /api/exams/{id}/attempts` v├á c├íc endpoint anti-cheat xem log/score/summary; phß║ºn service vß║½n giß╗» rule c┼⌐ cho Teacher nh╞░ng bß╗ò sung allow-list r├╡ r├áng cho Admin thay v├¼ tß║ío endpoint song song.
+- `classroomApi` ph├¡a frontend kh├┤ng c├▓n bß╗Å qua member fetch ß╗ƒ role Admin; `ClassroomDetailPage` c┼⌐ng hiß╗ân thß╗ï member list thß║¡t cho admin ─æß╗â phß║ºn quß║ún l├¡ lß╗¢p nhß║Ñt qu├ín vß╗¢i database.
+- `dashboardApi.getAdminDashboard()` kh├┤ng c├▓n ─æß╗ìc mock database/localStorage; thay v├áo ─æ├│ FE tß╗òng hß╗úp dß╗» liß╗çu thß║¡t tß╗½ `userApi`, `classroomApi`, `examApi`, `examAttemptApi`, `antiCheatApi`, n├¬n c├íc chß╗ë sß╗æ ng╞░ß╗¥i d├╣ng/lß╗¢p hß╗ìc/b├ái kiß╗âm tra/l╞░ß╗út l├ám nghi ngß╗¥ phß║ún ├ính trß╗▒c tiß║┐p tß╗½ backend hiß╗çn tß║íi.
+- Kh├┤ng th├¬m backend endpoint dashboard admin ri├¬ng trong thay ─æß╗òi n├áy; mß╗Ñc ti├¬u l├á sß╗¡a lß╗çch dß╗» liß╗çu vß╗¢i mß╗⌐c x├óm lß║Ñn thß║Ñp nhß║Ñt l├¬n UI v├á giß╗» t╞░╞íng th├¡ch vß╗¢i cß║Ñu tr├║c route/page ─æ├ú c├│.
 
 Validation:
 
-- `npx eslint src/api/classroomApi.js src/api/dashboardApi.js src/features/classrooms/pages/ClassroomDetailPage.jsx` — passed.
-- `dotnet build ..\backend\EduGuard.Api\EduGuard.Api.csproj -o .\temp-backend-build-admin-real-data` — passed.
-- `npm run build -- --outDir temp-build-admin-real-data-sync` — passed.
+- `npx eslint src/api/classroomApi.js src/api/dashboardApi.js src/features/classrooms/pages/ClassroomDetailPage.jsx` ΓÇö passed.
+- `dotnet build ..\backend\EduGuard.Api\EduGuard.Api.csproj -o .\temp-backend-build-admin-real-data` ΓÇö passed.
+- `npm run build -- --outDir temp-build-admin-real-data-sync` ΓÇö passed.
 
 Unresolved questions:
 
-- `AdminMonitoringPage` hiện vẫn dùng nguồn tổng hợp mock riêng; thay đổi này mới đưa `Dashboard`, `Lớp học` và `Bài kiểm tra` của admin về dữ liệu thật như yêu cầu.
-- Build frontend vẫn còn warning sẵn có từ `@microsoft/signalr` PURE annotation và cảnh báo chunk lớn; thay đổi này không làm phát sinh lỗi build mới.
+- `AdminMonitoringPage` hiß╗çn vß║½n d├╣ng nguß╗ôn tß╗òng hß╗úp mock ri├¬ng; thay ─æß╗òi n├áy mß╗¢i ─æ╞░a `Dashboard`, `Lß╗¢p hß╗ìc` v├á `B├ái kiß╗âm tra` cß╗ºa admin vß╗ü dß╗» liß╗çu thß║¡t nh╞░ y├¬u cß║ºu.
+- Build frontend vß║½n c├▓n warning sß║╡n c├│ tß╗½ `@microsoft/signalr` PURE annotation v├á cß║únh b├ío chunk lß╗¢n; thay ─æß╗òi n├áy kh├┤ng l├ám ph├ít sinh lß╗ùi build mß╗¢i.
 
 ## Feature: Modern in-app submit validation for frontend forms
 
@@ -1166,9 +1214,9 @@ Branch/source: `devH`
 
 Description:
 
-- Loại bỏ trải nghiệm validate submit mặc định của trình duyệt trên các form chính để giao diện nhập liệu đồng nhất, hiện đại hơn và không còn popup native gây lệch style.
-- Chuyển các form đăng nhập, đăng ký, tạo/join lớp, bài tập, hồ sơ, quản lí người dùng, đề thi và câu hỏi sang cơ chế validation nội bộ với lỗi hiển thị ngay trong UI.
-- Giữ nguyên flow submit và API hiện có; thay đổi tập trung vào UX form, cách báo lỗi và tính nhất quán của trải nghiệm người dùng.
+- Loß║íi bß╗Å trß║úi nghiß╗çm validate submit mß║╖c ─æß╗ïnh cß╗ºa tr├¼nh duyß╗çt tr├¬n c├íc form ch├¡nh ─æß╗â giao diß╗çn nhß║¡p liß╗çu ─æß╗ông nhß║Ñt, hiß╗çn ─æß║íi h╞ín v├á kh├┤ng c├▓n popup native g├óy lß╗çch style.
+- Chuyß╗ân c├íc form ─æ─âng nhß║¡p, ─æ─âng k├╜, tß║ío/join lß╗¢p, b├ái tß║¡p, hß╗ô s╞í, quß║ún l├¡ ng╞░ß╗¥i d├╣ng, ─æß╗ü thi v├á c├óu hß╗Åi sang c╞í chß║┐ validation nß╗Öi bß╗Ö vß╗¢i lß╗ùi hiß╗ân thß╗ï ngay trong UI.
+- Giß╗» nguy├¬n flow submit v├á API hiß╗çn c├│; thay ─æß╗òi tß║¡p trung v├áo UX form, c├ích b├ío lß╗ùi v├á t├¡nh nhß║Ñt qu├ín cß╗ºa trß║úi nghiß╗çm ng╞░ß╗¥i d├╣ng.
 
 Changed files:
 
@@ -1189,20 +1237,20 @@ Changed files:
 
 Technical summary:
 
-- Tạo bộ helper validation dùng chung trong `formValidation.js` để kiểm tra text bắt buộc, email, độ dài tối thiểu, số hợp lệ và lấy lỗi đầu tiên cho banner tổng hợp.
-- Thêm `FormErrorSummary` và style đi kèm trong `index.css` để tất cả form có cùng cách hiển thị lỗi submit thay vì phụ thuộc vào tooltip/native prompt của browser.
-- Các form auth/classroom/assignment/admin user/profile đã được chuyển sang `noValidate`, clear lỗi theo field khi người dùng sửa dữ liệu và giữ lỗi hiển thị inline ở từng input.
-- Hoàn tất phần còn sót ở `ExamForm` và `QuestionForm`: thêm `noValidate`, banner lỗi tổng hợp, validate riêng cho điểm, thứ tự, nội dung câu hỏi, từng đáp án và rule chọn đáp án đúng theo loại câu hỏi.
+- Tß║ío bß╗Ö helper validation d├╣ng chung trong `formValidation.js` ─æß╗â kiß╗âm tra text bß║»t buß╗Öc, email, ─æß╗Ö d├ái tß╗æi thiß╗âu, sß╗æ hß╗úp lß╗ç v├á lß║Ñy lß╗ùi ─æß║ºu ti├¬n cho banner tß╗òng hß╗úp.
+- Th├¬m `FormErrorSummary` v├á style ─æi k├¿m trong `index.css` ─æß╗â tß║Ñt cß║ú form c├│ c├╣ng c├ích hiß╗ân thß╗ï lß╗ùi submit thay v├¼ phß╗Ñ thuß╗Öc v├áo tooltip/native prompt cß╗ºa browser.
+- C├íc form auth/classroom/assignment/admin user/profile ─æ├ú ─æ╞░ß╗úc chuyß╗ân sang `noValidate`, clear lß╗ùi theo field khi ng╞░ß╗¥i d├╣ng sß╗¡a dß╗» liß╗çu v├á giß╗» lß╗ùi hiß╗ân thß╗ï inline ß╗ƒ tß╗½ng input.
+- Ho├án tß║Ñt phß║ºn c├▓n s├│t ß╗ƒ `ExamForm` v├á `QuestionForm`: th├¬m `noValidate`, banner lß╗ùi tß╗òng hß╗úp, validate ri├¬ng cho ─æiß╗âm, thß╗⌐ tß╗▒, nß╗Öi dung c├óu hß╗Åi, tß╗½ng ─æ├íp ├ín v├á rule chß╗ìn ─æ├íp ├ín ─æ├║ng theo loß║íi c├óu hß╗Åi.
 
 Validation:
 
-- `npx eslint src/utils/formValidation.js src/components/forms/FormErrorSummary.jsx src/features/auth/pages/LoginPage.jsx src/features/auth/pages/RegisterPage.jsx src/features/classrooms/components/CreateClassroomForm.jsx src/features/classrooms/components/JoinClassroomForm.jsx src/features/assignments/components/AssignmentForm.jsx src/features/users/components/AdminUserForm.jsx src/features/users/pages/ProfilePage.jsx src/features/exams/components/QuestionForm.jsx src/features/exams/components/question-form-answers-section.jsx src/features/exams/components/ExamForm.jsx` — passed.
-- `npm run build -- --outDir temp-build-form-validation-refresh` — passed.
+- `npx eslint src/utils/formValidation.js src/components/forms/FormErrorSummary.jsx src/features/auth/pages/LoginPage.jsx src/features/auth/pages/RegisterPage.jsx src/features/classrooms/components/CreateClassroomForm.jsx src/features/classrooms/components/JoinClassroomForm.jsx src/features/assignments/components/AssignmentForm.jsx src/features/users/components/AdminUserForm.jsx src/features/users/pages/ProfilePage.jsx src/features/exams/components/QuestionForm.jsx src/features/exams/components/question-form-answers-section.jsx src/features/exams/components/ExamForm.jsx` ΓÇö passed.
+- `npm run build -- --outDir temp-build-form-validation-refresh` ΓÇö passed.
 
 Unresolved questions:
 
-- Một số trang vẫn còn dùng `window.confirm` cho thao tác xoá; nếu muốn đồng bộ hoàn toàn UX popup với form mới, nên thay các confirm native này bằng modal nội bộ ở bước tiếp theo.
-- Build vẫn còn warning sẵn có từ `@microsoft/signalr` PURE annotation và cảnh báo bundle size lớn; thay đổi này không làm phát sinh lỗi build mới.
+- Mß╗Öt sß╗æ trang vß║½n c├▓n d├╣ng `window.confirm` cho thao t├íc xo├í; nß║┐u muß╗æn ─æß╗ông bß╗Ö ho├án to├án UX popup vß╗¢i form mß╗¢i, n├¬n thay c├íc confirm native n├áy bß║▒ng modal nß╗Öi bß╗Ö ß╗ƒ b╞░ß╗¢c tiß║┐p theo.
+- Build vß║½n c├▓n warning sß║╡n c├│ tß╗½ `@microsoft/signalr` PURE annotation v├á cß║únh b├ío bundle size lß╗¢n; thay ─æß╗òi n├áy kh├┤ng l├ám ph├ít sinh lß╗ùi build mß╗¢i.
 
 ## Feature: Admin user management real API and CRUD
 
@@ -1212,9 +1260,9 @@ Branch/source: `devH`
 
 Description:
 
-- Bỏ mock data cho màn `Quản lí người dùng` của Admin và chuyển sang dữ liệu backend thật qua `GET /api/users`.
-- Bổ sung đầy đủ thao tác `Thêm`, `Sửa`, `Xóa` người dùng ngay trong màn `Người dùng` hiện có, giữ bố cục title-only theo hướng filter + danh sách + chi tiết thay vì tách page mới.
-- Backend chặn các thao tác nguy hiểm như tự xóa tài khoản, tự bỏ quyền Admin, tự khóa chính mình, đồng thời chặn xóa cứng user đã có dữ liệu liên quan để không phá vỡ quan hệ lớp học/bài thi/bài nộp.
+- Bß╗Å mock data cho m├án `Quß║ún l├¡ ng╞░ß╗¥i d├╣ng` cß╗ºa Admin v├á chuyß╗ân sang dß╗» liß╗çu backend thß║¡t qua `GET /api/users`.
+- Bß╗ò sung ─æß║ºy ─æß╗º thao t├íc `Th├¬m`, `Sß╗¡a`, `X├│a` ng╞░ß╗¥i d├╣ng ngay trong m├án `Ng╞░ß╗¥i d├╣ng` hiß╗çn c├│, giß╗» bß╗æ cß╗Ñc title-only theo h╞░ß╗¢ng filter + danh s├ích + chi tiß║┐t thay v├¼ t├ích page mß╗¢i.
+- Backend chß║╖n c├íc thao t├íc nguy hiß╗âm nh╞░ tß╗▒ x├│a t├ái khoß║ún, tß╗▒ bß╗Å quyß╗ün Admin, tß╗▒ kh├│a ch├¡nh m├¼nh, ─æß╗ông thß╗¥i chß║╖n x├│a cß╗⌐ng user ─æ├ú c├│ dß╗» liß╗çu li├¬n quan ─æß╗â kh├┤ng ph├í vß╗í quan hß╗ç lß╗¢p hß╗ìc/b├ái thi/b├ái nß╗Öp.
 
 Changed files:
 
@@ -1238,21 +1286,21 @@ Changed files:
 
 Technical summary:
 
-- Thêm backend admin users API mới dựa trên ASP.NET Identity: `UsersController`, `IUserService`, `UserService`, DTO create/update và FluentValidation; giữ nguyên `AuthController` và flow đăng nhập hiện có.
-- Mở rộng `UserDto` để trả thêm `avatarUrl`, `isActive`, `createdAt`, `updatedAt`; `authApi` và `userApi` phía frontend normalize lại theo shape user hiện ứng dụng đang dùng.
-- `UserService` dùng `UserManager` + `RoleManager` để tạo/cập nhật role user, revoke refresh token khi email/role/trạng thái đổi, và chặn xóa cứng nếu user đã có dữ liệu liên quan trong classroom/assignment/exam/submission.
-- `UserManagementPage` giữ layout quản trị đang có, thêm `AdminUserForm`, action `Thêm/Sửa/Xóa`, reload dữ liệu sau mutation và không đụng luồng profile hiện còn mock.
+- Th├¬m backend admin users API mß╗¢i dß╗▒a tr├¬n ASP.NET Identity: `UsersController`, `IUserService`, `UserService`, DTO create/update v├á FluentValidation; giß╗» nguy├¬n `AuthController` v├á flow ─æ─âng nhß║¡p hiß╗çn c├│.
+- Mß╗ƒ rß╗Öng `UserDto` ─æß╗â trß║ú th├¬m `avatarUrl`, `isActive`, `createdAt`, `updatedAt`; `authApi` v├á `userApi` ph├¡a frontend normalize lß║íi theo shape user hiß╗çn ß╗⌐ng dß╗Ñng ─æang d├╣ng.
+- `UserService` d├╣ng `UserManager` + `RoleManager` ─æß╗â tß║ío/cß║¡p nhß║¡t role user, revoke refresh token khi email/role/trß║íng th├íi ─æß╗òi, v├á chß║╖n x├│a cß╗⌐ng nß║┐u user ─æ├ú c├│ dß╗» liß╗çu li├¬n quan trong classroom/assignment/exam/submission.
+- `UserManagementPage` giß╗» layout quß║ún trß╗ï ─æang c├│, th├¬m `AdminUserForm`, action `Th├¬m/Sß╗¡a/X├│a`, reload dß╗» liß╗çu sau mutation v├á kh├┤ng ─æß╗Ñng luß╗ông profile hiß╗çn c├▓n mock.
 
 Validation:
 
-- `npx eslint src/api/userApi.js src/api/authApi.js src/hooks/useAuth.jsx src/features/users/components/AdminUserForm.jsx src/features/users/pages/UserManagementPage.jsx` — passed.
-- `npm run build -- --outDir temp-build-admin-users` — passed.
-- `dotnet build ..\backend\EduGuard.Api\EduGuard.Api.csproj -o .\temp-backend-build-admin-users` — passed.
+- `npx eslint src/api/userApi.js src/api/authApi.js src/hooks/useAuth.jsx src/features/users/components/AdminUserForm.jsx src/features/users/pages/UserManagementPage.jsx` ΓÇö passed.
+- `npm run build -- --outDir temp-build-admin-users` ΓÇö passed.
+- `dotnet build ..\backend\EduGuard.Api\EduGuard.Api.csproj -o .\temp-backend-build-admin-users` ΓÇö passed.
 
 Unresolved questions:
 
-- `npm run lint` toàn frontend hiện vẫn có thể fail vì script đang quét cả các thư mục artifact như `temp-build-ui/**`, làm formatter ESLint văng `RangeError: Invalid string length`; thay đổi này được verify bằng targeted eslint cho đúng các file đã sửa.
-- `npm run build` mặc định ra `dist` có thể gặp `EPERM` nếu file build cũ đang bị process khác giữ; build ra thư mục tạm riêng vẫn pass và không phát sinh lỗi từ code mới.
+- `npm run lint` to├án frontend hiß╗çn vß║½n c├│ thß╗â fail v├¼ script ─æang qu├⌐t cß║ú c├íc th╞░ mß╗Ñc artifact nh╞░ `temp-build-ui/**`, l├ám formatter ESLint v─âng `RangeError: Invalid string length`; thay ─æß╗òi n├áy ─æ╞░ß╗úc verify bß║▒ng targeted eslint cho ─æ├║ng c├íc file ─æ├ú sß╗¡a.
+- `npm run build` mß║╖c ─æß╗ïnh ra `dist` c├│ thß╗â gß║╖p `EPERM` nß║┐u file build c┼⌐ ─æang bß╗ï process kh├íc giß╗»; build ra th╞░ mß╗Ñc tß║ím ri├¬ng vß║½n pass v├á kh├┤ng ph├ít sinh lß╗ùi tß╗½ code mß╗¢i.
 
 ## Feature: Admin MVP navigation, monitoring center, and title-only management UI
 
@@ -1262,10 +1310,10 @@ Branch/source: `devH`
 
 Description:
 
-- Hoàn thiện cụm tính năng `Admin` theo sitemap MVP đã chốt: `Dashboard`, `Quản lí lớp học`, `Quản lí bài kiểm tra`, `Giám sát`, `Quản lí người dùng`, `Hồ sơ cá nhân`.
-- Thêm trang `Giám sát` riêng cho Admin để theo dõi anti-cheat thay vì chỉ nhìn số liệu trong dashboard: có bộ lọc theo từ khóa, mức độ, loại vi phạm; có danh sách đề thi rủi ro, sinh viên cần chú ý và sự kiện gần đây.
-- Nâng giao diện admin theo hướng `title-only`: các block chỉ còn tiêu đề, bỏ mô tả thừa ở phần header admin và các màn shared như `Lớp học` / `Bài kiểm tra` khi truy cập bằng role Admin.
-- Làm lại trang `Người dùng` thành bố cục quản trị rõ hơn với bộ lọc, danh sách chọn nhanh và panel chi tiết người dùng.
+- Ho├án thiß╗çn cß╗Ñm t├¡nh n─âng `Admin` theo sitemap MVP ─æ├ú chß╗æt: `Dashboard`, `Quß║ún l├¡ lß╗¢p hß╗ìc`, `Quß║ún l├¡ b├ái kiß╗âm tra`, `Gi├ím s├ít`, `Quß║ún l├¡ ng╞░ß╗¥i d├╣ng`, `Hß╗ô s╞í c├í nh├ón`.
+- Th├¬m trang `Gi├ím s├ít` ri├¬ng cho Admin ─æß╗â theo d├╡i anti-cheat thay v├¼ chß╗ë nh├¼n sß╗æ liß╗çu trong dashboard: c├│ bß╗Ö lß╗ìc theo tß╗½ kh├│a, mß╗⌐c ─æß╗Ö, loß║íi vi phß║ím; c├│ danh s├ích ─æß╗ü thi rß╗ºi ro, sinh vi├¬n cß║ºn ch├║ ├╜ v├á sß╗▒ kiß╗çn gß║ºn ─æ├óy.
+- N├óng giao diß╗çn admin theo h╞░ß╗¢ng `title-only`: c├íc block chß╗ë c├▓n ti├¬u ─æß╗ü, bß╗Å m├┤ tß║ú thß╗½a ß╗ƒ phß║ºn header admin v├á c├íc m├án shared nh╞░ `Lß╗¢p hß╗ìc` / `B├ái kiß╗âm tra` khi truy cß║¡p bß║▒ng role Admin.
+- L├ám lß║íi trang `Ng╞░ß╗¥i d├╣ng` th├ánh bß╗æ cß╗Ñc quß║ún trß╗ï r├╡ h╞ín vß╗¢i bß╗Ö lß╗ìc, danh s├ích chß╗ìn nhanh v├á panel chi tiß║┐t ng╞░ß╗¥i d├╣ng.
 
 Changed files:
 
@@ -1292,12 +1340,12 @@ Technical summary:
 
 Validation:
 
-- `dotnet restore backend\EduGuard.slnx` — succeeded.
-- `dotnet build backend\EduGuard.slnx --no-restore` — succeeded, 0 warnings, 0 errors.
-- `npm.cmd run build` — succeeded; Vite emitted existing dependency/chunk-size warnings only.
-- `curl http://127.0.0.1:5157/swagger/index.html` — returned HTTP 200.
-- `curl http://127.0.0.1:5173` — returned HTTP 200.
-- `curl http://127.0.0.1:5173/api/Test` — returned HTTP 200 with backend JSON `{ "message": "EduGuard API is running" }`.
+- `dotnet restore backend\EduGuard.slnx` ΓÇö succeeded.
+- `dotnet build backend\EduGuard.slnx --no-restore` ΓÇö succeeded, 0 warnings, 0 errors.
+- `npm.cmd run build` ΓÇö succeeded; Vite emitted existing dependency/chunk-size warnings only.
+- `curl http://127.0.0.1:5157/swagger/index.html` ΓÇö returned HTTP 200.
+- `curl http://127.0.0.1:5173` ΓÇö returned HTTP 200.
+- `curl http://127.0.0.1:5173/api/Test` ΓÇö returned HTTP 200 with backend JSON `{ "message": "EduGuard API is running" }`.
 
 Unresolved questions:
 
@@ -1330,22 +1378,22 @@ Changed files:
 - `docs/README.md`
 - `docs/apiList.md`
 - `docs/features.md`
-- Bổ sung route `routeConfig.adminMonitoring`, thêm menu `Giám sát` cho Admin, gắn breadcrumb label và icon riêng trong `TopBar` / `Sidebar`, đồng thời mount route mới trong `AppRoutes`.
-- Mở rộng `dashboardApi` cho Admin với dữ liệu trạng thái đề thi, lượt làm rủi ro cao, breakdown vi phạm, bảng xếp hạng đề thi rủi ro, bảng xếp hạng sinh viên cần chú ý và sự kiện anti-cheat gần đây.
-- Tạo `AdminMonitoringPage` với bộ lọc client-side theo từ khóa, severity và loại vi phạm; dữ liệu hiển thị ở dạng summary cards, metric bar và danh sách thao tác nhanh, không dùng phần mô tả phụ.
-- Dựng lại `AdminDashboardPage` để hiển thị các khối chính xác hơn cho vận hành: vai trò, trạng thái bài kiểm tra, lớp học, lượt làm cần chú ý, hoạt động gần đây và hành vi anti-cheat.
-- Dựng lại `UserManagementPage` với filter bar, danh sách chọn user, panel chi tiết và lớp học do giảng viên quản lý; không thêm text mô tả ở đầu khối.
-- Chỉnh `ClassroomListPage` và `ExamListPage` để role Admin chỉ hiển thị header/title và empty state ngắn gọn, không còn eyebrow hoặc mô tả phụ.
+- Bß╗ò sung route `routeConfig.adminMonitoring`, th├¬m menu `Gi├ím s├ít` cho Admin, gß║»n breadcrumb label v├á icon ri├¬ng trong `TopBar` / `Sidebar`, ─æß╗ông thß╗¥i mount route mß╗¢i trong `AppRoutes`.
+- Mß╗ƒ rß╗Öng `dashboardApi` cho Admin vß╗¢i dß╗» liß╗çu trß║íng th├íi ─æß╗ü thi, l╞░ß╗út l├ám rß╗ºi ro cao, breakdown vi phß║ím, bß║úng xß║┐p hß║íng ─æß╗ü thi rß╗ºi ro, bß║úng xß║┐p hß║íng sinh vi├¬n cß║ºn ch├║ ├╜ v├á sß╗▒ kiß╗çn anti-cheat gß║ºn ─æ├óy.
+- Tß║ío `AdminMonitoringPage` vß╗¢i bß╗Ö lß╗ìc client-side theo tß╗½ kh├│a, severity v├á loß║íi vi phß║ím; dß╗» liß╗çu hiß╗ân thß╗ï ß╗ƒ dß║íng summary cards, metric bar v├á danh s├ích thao t├íc nhanh, kh├┤ng d├╣ng phß║ºn m├┤ tß║ú phß╗Ñ.
+- Dß╗▒ng lß║íi `AdminDashboardPage` ─æß╗â hiß╗ân thß╗ï c├íc khß╗æi ch├¡nh x├íc h╞ín cho vß║¡n h├ánh: vai tr├▓, trß║íng th├íi b├ái kiß╗âm tra, lß╗¢p hß╗ìc, l╞░ß╗út l├ám cß║ºn ch├║ ├╜, hoß║ít ─æß╗Öng gß║ºn ─æ├óy v├á h├ánh vi anti-cheat.
+- Dß╗▒ng lß║íi `UserManagementPage` vß╗¢i filter bar, danh s├ích chß╗ìn user, panel chi tiß║┐t v├á lß╗¢p hß╗ìc do giß║úng vi├¬n quß║ún l├╜; kh├┤ng th├¬m text m├┤ tß║ú ß╗ƒ ─æß║ºu khß╗æi.
+- Chß╗ënh `ClassroomListPage` v├á `ExamListPage` ─æß╗â role Admin chß╗ë hiß╗ân thß╗ï header/title v├á empty state ngß║»n gß╗ìn, kh├┤ng c├▓n eyebrow hoß║╖c m├┤ tß║ú phß╗Ñ.
 
 Validation:
 
-- `npx eslint src/routes/routeConfig.js src/routes/roleRoutes.js src/routes/AppRoutes.jsx src/components/layout/TopBar.jsx src/components/layout/Sidebar.jsx src/api/dashboardApi.js src/features/admin/admin-monitoring-helpers.js src/features/admin/pages/AdminMonitoringPage.jsx src/features/dashboard/pages/AdminDashboardPage.jsx src/features/users/pages/UserManagementPage.jsx src/features/classrooms/pages/ClassroomListPage.jsx src/features/exams/pages/ExamListPage.jsx` — passed.
-- `npm run build -- --outDir temp-build-admin-mvp-final` — passed.
+- `npx eslint src/routes/routeConfig.js src/routes/roleRoutes.js src/routes/AppRoutes.jsx src/components/layout/TopBar.jsx src/components/layout/Sidebar.jsx src/api/dashboardApi.js src/features/admin/admin-monitoring-helpers.js src/features/admin/pages/AdminMonitoringPage.jsx src/features/dashboard/pages/AdminDashboardPage.jsx src/features/users/pages/UserManagementPage.jsx src/features/classrooms/pages/ClassroomListPage.jsx src/features/exams/pages/ExamListPage.jsx` ΓÇö passed.
+- `npm run build -- --outDir temp-build-admin-mvp-final` ΓÇö passed.
 
 Unresolved questions:
 
-- Dữ liệu `Giám sát` của Admin hiện đang tổng hợp từ nguồn mock admin dashboard vì backend chưa có bộ endpoint admin anti-cheat riêng; khi BE mở API phù hợp, nên thay dần phần tổng hợp FE này bằng nguồn thật.
-- Build vẫn còn warning sẵn có từ `@microsoft/signalr` PURE annotation và cảnh báo chunk lớn của Rolldown; thay đổi này không làm phát sinh lỗi build mới.
+- Dß╗» liß╗çu `Gi├ím s├ít` cß╗ºa Admin hiß╗çn ─æang tß╗òng hß╗úp tß╗½ nguß╗ôn mock admin dashboard v├¼ backend ch╞░a c├│ bß╗Ö endpoint admin anti-cheat ri├¬ng; khi BE mß╗ƒ API ph├╣ hß╗úp, n├¬n thay dß║ºn phß║ºn tß╗òng hß╗úp FE n├áy bß║▒ng nguß╗ôn thß║¡t.
+- Build vß║½n c├▓n warning sß║╡n c├│ tß╗½ `@microsoft/signalr` PURE annotation v├á cß║únh b├ío chunk lß╗¢n cß╗ºa Rolldown; thay ─æß╗òi n├áy kh├┤ng l├ám ph├ít sinh lß╗ùi build mß╗¢i.
 
 ## Feature: Student profile UX refresh and dashboard removal
 
@@ -1355,9 +1403,9 @@ Branch/source: `devH`
 
 Description:
 
-- Gỡ `Dashboard` khỏi điều hướng Student vì không còn cần thiết trong flow hiện tại; Student vào app sẽ đi thẳng tới `Lớp của tôi` và route cũ `/student/dashboard` được giữ dưới dạng redirect để không làm hỏng bookmark cũ.
-- Làm mới hoàn toàn trang `Hồ sơ` của Student theo hướng nổi bật hơn và dễ thao tác hơn: đầu trang có hero nhận diện rõ ngữ cảnh, các khối chỉ giữ title, khu avatar tách riêng, form cập nhật gọn hơn và có trạng thái `Đã đồng bộ` / `Chưa lưu` cùng nút `Hoàn tác`.
-- Sửa breadcrumb `Trang chủ` cho Student để không còn trỏ về dashboard đã bị gỡ khỏi UI.
+- Gß╗í `Dashboard` khß╗Åi ─æiß╗üu h╞░ß╗¢ng Student v├¼ kh├┤ng c├▓n cß║ºn thiß║┐t trong flow hiß╗çn tß║íi; Student v├áo app sß║╜ ─æi thß║│ng tß╗¢i `Lß╗¢p cß╗ºa t├┤i` v├á route c┼⌐ `/student/dashboard` ─æ╞░ß╗úc giß╗» d╞░ß╗¢i dß║íng redirect ─æß╗â kh├┤ng l├ám hß╗Ång bookmark c┼⌐.
+- L├ám mß╗¢i ho├án to├án trang `Hß╗ô s╞í` cß╗ºa Student theo h╞░ß╗¢ng nß╗òi bß║¡t h╞ín v├á dß╗à thao t├íc h╞ín: ─æß║ºu trang c├│ hero nhß║¡n diß╗çn r├╡ ngß╗» cß║únh, c├íc khß╗æi chß╗ë giß╗» title, khu avatar t├ích ri├¬ng, form cß║¡p nhß║¡t gß╗ìn h╞ín v├á c├│ trß║íng th├íi `─É├ú ─æß╗ông bß╗Ö` / `Ch╞░a l╞░u` c├╣ng n├║t `Ho├án t├íc`.
+- Sß╗¡a breadcrumb `Trang chß╗º` cho Student ─æß╗â kh├┤ng c├▓n trß╗Å vß╗ü dashboard ─æ├ú bß╗ï gß╗í khß╗Åi UI.
 
 Changed files:
 
@@ -1377,30 +1425,30 @@ Technical summary:
 
 Validation:
 
-- `dotnet build backend\EduGuard.slnx` — blocked at API output copy because running `EduGuard.Api` / Visual Studio locked DLLs.
-- Backend build with isolated output path — succeeded, 0 warnings, 0 errors.
-- Backend test with isolated output path — succeeded with exit code 0.
-- Parser smoke checks — passed for `.csv`, `.xlsx`, `.txt`, `.docx`, and text-based `.pdf`.
-- Backend API E2E import check — passed: imported a standard CSV with 3 objective rows into an exam, verified saved question types `single_choice`, `multiple_choice`, `true_false`, and verified correct-answer counts.
+- `dotnet build backend\EduGuard.slnx` ΓÇö blocked at API output copy because running `EduGuard.Api` / Visual Studio locked DLLs.
+- Backend build with isolated output path ΓÇö succeeded, 0 warnings, 0 errors.
+- Backend test with isolated output path ΓÇö succeeded with exit code 0.
+- Parser smoke checks ΓÇö passed for `.csv`, `.xlsx`, `.txt`, `.docx`, and text-based `.pdf`.
+- Backend API E2E import check ΓÇö passed: imported a standard CSV with 3 objective rows into an exam, verified saved question types `single_choice`, `multiple_choice`, `true_false`, and verified correct-answer counts.
 
 Unresolved questions:
 
 - Frontend upload UI, template download, and row-level/case-level error display are still pending.
 - Images/media, ZIP import, OCR for scanned PDFs, short-answer, essay, persistent import batches, and duplicate detection remain later phases.
 
-- `getNavigationItemsByRole` không còn trả menu `Dashboard` cho Student và `getDefaultPathByRole` nay trả `routeConfig.studentClassrooms` để login/root redirect đưa Student về danh sách lớp thay vì dashboard.
-- `AppRoutes` không còn mount `StudentDashboardPage` cho route công khai của Student; `routeConfig.studentDashboard` giờ render `Navigate` sang `studentClassrooms` để giữ tương thích với link cũ.
-- `TopBar.buildBreadcrumbTrail` chuyển `Trang chủ` của Student sang `routeConfig.studentClassrooms` thay vì hard-code `/${rolePrefix}/dashboard`.
-- `ProfilePage` được dựng lại với hero profile nổi bật, card thông tin theo bố cục mới, dirty-state detection cho form, nút `Hoàn tác`, khu avatar độc lập và submit payload đã được normalize trước khi lưu.
+- `getNavigationItemsByRole` kh├┤ng c├▓n trß║ú menu `Dashboard` cho Student v├á `getDefaultPathByRole` nay trß║ú `routeConfig.studentClassrooms` ─æß╗â login/root redirect ─æ╞░a Student vß╗ü danh s├ích lß╗¢p thay v├¼ dashboard.
+- `AppRoutes` kh├┤ng c├▓n mount `StudentDashboardPage` cho route c├┤ng khai cß╗ºa Student; `routeConfig.studentDashboard` giß╗¥ render `Navigate` sang `studentClassrooms` ─æß╗â giß╗» t╞░╞íng th├¡ch vß╗¢i link c┼⌐.
+- `TopBar.buildBreadcrumbTrail` chuyß╗ân `Trang chß╗º` cß╗ºa Student sang `routeConfig.studentClassrooms` thay v├¼ hard-code `/${rolePrefix}/dashboard`.
+- `ProfilePage` ─æ╞░ß╗úc dß╗▒ng lß║íi vß╗¢i hero profile nß╗òi bß║¡t, card th├┤ng tin theo bß╗æ cß╗Ñc mß╗¢i, dirty-state detection cho form, n├║t `Ho├án t├íc`, khu avatar ─æß╗Öc lß║¡p v├á submit payload ─æ├ú ─æ╞░ß╗úc normalize tr╞░ß╗¢c khi l╞░u.
 
 Validation:
 
-- `npx eslint src/routes/roleRoutes.js src/routes/AppRoutes.jsx src/components/layout/TopBar.jsx src/features/users/pages/ProfilePage.jsx` — passed.
-- `npm run build -- --outDir temp-build-student-profile-refresh` — passed.
+- `npx eslint src/routes/roleRoutes.js src/routes/AppRoutes.jsx src/components/layout/TopBar.jsx src/features/users/pages/ProfilePage.jsx` ΓÇö passed.
+- `npm run build -- --outDir temp-build-student-profile-refresh` ΓÇö passed.
 
 Unresolved questions:
 
-- Build vẫn còn warning sẵn có từ `@microsoft/signalr` PURE annotation và cảnh báo chunk lớn của Rolldown; thay đổi này không làm phát sinh lỗi build mới.
+- Build vß║½n c├▓n warning sß║╡n c├│ tß╗½ `@microsoft/signalr` PURE annotation v├á cß║únh b├ío chunk lß╗¢n cß╗ºa Rolldown; thay ─æß╗òi n├áy kh├┤ng l├ám ph├ít sinh lß╗ùi build mß╗¢i.
 
 ## Feature: Student classroom navigation active-state fix
 
@@ -1410,8 +1458,8 @@ Branch/source: `devH`
 
 Description:
 
-- Bug fix: sửa lỗi ở role Student khi mở `Tham gia lớp` thì sidebar cũng tô sáng `Lớp của tôi`, gây cảm giác như người dùng đang đứng ở hai mục điều hướng cùng lúc.
-- Giữ nguyên routing và flow tham gia lớp hiện tại; thay đổi chỉ giới hạn ở logic xác định menu active nên không ảnh hưởng render trang hoặc API join classroom.
+- Bug fix: sß╗¡a lß╗ùi ß╗ƒ role Student khi mß╗ƒ `Tham gia lß╗¢p` th├¼ sidebar c┼⌐ng t├┤ s├íng `Lß╗¢p cß╗ºa t├┤i`, g├óy cß║úm gi├íc nh╞░ ng╞░ß╗¥i d├╣ng ─æang ─æß╗⌐ng ß╗ƒ hai mß╗Ñc ─æiß╗üu h╞░ß╗¢ng c├╣ng l├║c.
+- Giß╗» nguy├¬n routing v├á flow tham gia lß╗¢p hiß╗çn tß║íi; thay ─æß╗òi chß╗ë giß╗¢i hß║ín ß╗ƒ logic x├íc ─æß╗ïnh menu active n├¬n kh├┤ng ß║únh h╞░ß╗ƒng render trang hoß║╖c API join classroom.
 
 Changed files:
 
@@ -1421,18 +1469,18 @@ Changed files:
 
 Technical summary:
 
-- `getNavigationItemIsActive` trước đó dùng `matchPath(routeConfig.studentClassroomDetail, pathname)` cho mục `Lớp của tôi`; pattern `/student/classrooms/:classroomId` match luôn `/student/classrooms/join`, nên cả `Lớp của tôi` và `Tham gia lớp` cùng được đánh dấu active.
-- Thêm điều kiện loại trừ rõ ràng `routeConfig.studentJoinClassroom` trước khi match route detail của classroom để trang `/student/classrooms/join` chỉ kích hoạt đúng menu `Tham gia lớp`.
+- `getNavigationItemIsActive` tr╞░ß╗¢c ─æ├│ d├╣ng `matchPath(routeConfig.studentClassroomDetail, pathname)` cho mß╗Ñc `Lß╗¢p cß╗ºa t├┤i`; pattern `/student/classrooms/:classroomId` match lu├┤n `/student/classrooms/join`, n├¬n cß║ú `Lß╗¢p cß╗ºa t├┤i` v├á `Tham gia lß╗¢p` c├╣ng ─æ╞░ß╗úc ─æ├ính dß║Ñu active.
+- Th├¬m ─æiß╗üu kiß╗çn loß║íi trß╗½ r├╡ r├áng `routeConfig.studentJoinClassroom` tr╞░ß╗¢c khi match route detail cß╗ºa classroom ─æß╗â trang `/student/classrooms/join` chß╗ë k├¡ch hoß║ít ─æ├║ng menu `Tham gia lß╗¢p`.
 
 Validation:
 
-- `npx eslint src/components/layout/Sidebar.jsx` — passed.
-- `npm run build -- --outDir temp-build-student-join-active-fix` — passed.
-- `npm run lint` — failed do script hiện quét cả các thư mục build tạm như `frontend/temp-build-ui/**`; ESLint formatter đụng `RangeError: Invalid string length` trên artifact sinh sẵn này, không phải do thay đổi ở `Sidebar.jsx`.
+- `npx eslint src/components/layout/Sidebar.jsx` ΓÇö passed.
+- `npm run build -- --outDir temp-build-student-join-active-fix` ΓÇö passed.
+- `npm run lint` ΓÇö failed do script hiß╗çn qu├⌐t cß║ú c├íc th╞░ mß╗Ñc build tß║ím nh╞░ `frontend/temp-build-ui/**`; ESLint formatter ─æß╗Ñng `RangeError: Invalid string length` tr├¬n artifact sinh sß║╡n n├áy, kh├┤ng phß║úi do thay ─æß╗òi ß╗ƒ `Sidebar.jsx`.
 
 Unresolved questions:
 
-- Nên loại trừ hoặc dọn các thư mục `temp-build-*` khỏi phạm vi lint để `npm run lint` tiếp tục là bước verify toàn dự án đáng tin cậy.
+- N├¬n loß║íi trß╗½ hoß║╖c dß╗ìn c├íc th╞░ mß╗Ñc `temp-build-*` khß╗Åi phß║ím vi lint ─æß╗â `npm run lint` tiß║┐p tß╗Ñc l├á b╞░ß╗¢c verify to├án dß╗▒ ├ín ─æ├íng tin cß║¡y.
 
 ## Feature: Auth UI refinement with centered two-column login experience
 
@@ -1442,9 +1490,9 @@ Branch/source: `devH`
 
 Description:
 
-- Thiết kế lại giao diện đăng nhập theo layout 2 cột cân giữa màn hình: brand panel navy gradient bên trái và login card trắng bên phải, không còn tình trạng form kéo full width như trước.
-- Tăng khoảng trắng, giới hạn chiều rộng tổng thể, làm lại hierarchy chữ, input, checkbox row và nút CTA để khu vực xác thực nhìn rõ ràng và chuyên nghiệp hơn trên desktop lẫn mobile.
-- Giữ nguyên toàn bộ logic đăng nhập hiện tại; chỉ thay đổi UI/CSS/layout và làm mới skin của toast để popup lỗi/thông báo đồng bộ hơn với màn xác thực.
+- Thiß║┐t kß║┐ lß║íi giao diß╗çn ─æ─âng nhß║¡p theo layout 2 cß╗Öt c├ón giß╗»a m├án h├¼nh: brand panel navy gradient b├¬n tr├íi v├á login card trß║»ng b├¬n phß║úi, kh├┤ng c├▓n t├¼nh trß║íng form k├⌐o full width nh╞░ tr╞░ß╗¢c.
+- T─âng khoß║úng trß║»ng, giß╗¢i hß║ín chiß╗üu rß╗Öng tß╗òng thß╗â, l├ám lß║íi hierarchy chß╗», input, checkbox row v├á n├║t CTA ─æß╗â khu vß╗▒c x├íc thß╗▒c nh├¼n r├╡ r├áng v├á chuy├¬n nghiß╗çp h╞ín tr├¬n desktop lß║½n mobile.
+- Giß╗» nguy├¬n to├án bß╗Ö logic ─æ─âng nhß║¡p hiß╗çn tß║íi; chß╗ë thay ─æß╗òi UI/CSS/layout v├á l├ám mß╗¢i skin cß╗ºa toast ─æß╗â popup lß╗ùi/th├┤ng b├ío ─æß╗ông bß╗Ö h╞ín vß╗¢i m├án x├íc thß╗▒c.
 
 Changed files:
 
@@ -1463,8 +1511,8 @@ Technical summary:
 
 Validation:
 
-- `npm run lint` — passed.
-- `npm run build -- --outDir temp-build-auth-ui` — passed.
+- `npm run lint` ΓÇö passed.
+- `npm run build -- --outDir temp-build-auth-ui` ΓÇö passed.
 
 Unresolved questions:
 
@@ -1478,9 +1526,9 @@ Branch/source: `devH`
 
 Description:
 
-- Ổn định bộ dependency frontend giữa `devH` và `release` bằng cách khóa exact version cho React, React Router, Vite, Tailwind và các package trực tiếp khác thay vì tiếp tục để semver range trôi theo `^`.
-- Bổ sung metadata/cấu hình npm để những lần `npm install` sau không tự ghi thêm range mới vào manifest, từ đó giảm diff `package-lock.json` vô nghĩa khi sync hoặc merge nhánh.
-- Đồng bộ lại lockfile theo bộ version đã chốt và kiểm tra lại build frontend trên codebase hiện tại để tránh tái phát lỗi thư viện Vite do drift dependency sau merge.
+- ß╗ön ─æß╗ïnh bß╗Ö dependency frontend giß╗»a `devH` v├á `release` bß║▒ng c├ích kh├│a exact version cho React, React Router, Vite, Tailwind v├á c├íc package trß╗▒c tiß║┐p kh├íc thay v├¼ tiß║┐p tß╗Ñc ─æß╗â semver range tr├┤i theo `^`.
+- Bß╗ò sung metadata/cß║Ñu h├¼nh npm ─æß╗â nhß╗»ng lß║ºn `npm install` sau kh├┤ng tß╗▒ ghi th├¬m range mß╗¢i v├áo manifest, tß╗½ ─æ├│ giß║úm diff `package-lock.json` v├┤ ngh─⌐a khi sync hoß║╖c merge nh├ính.
+- ─Éß╗ông bß╗Ö lß║íi lockfile theo bß╗Ö version ─æ├ú chß╗æt v├á kiß╗âm tra lß║íi build frontend tr├¬n codebase hiß╗çn tß║íi ─æß╗â tr├ính t├íi ph├ít lß╗ùi th╞░ viß╗çn Vite do drift dependency sau merge.
 
 Changed files:
 
@@ -1492,21 +1540,21 @@ Changed files:
 
 Technical summary:
 
-- Thêm `packageManager: npm@11.6.2` và `.npmrc` với `save-exact=true` để chuẩn hóa công cụ cài package ở frontend.
-- Đổi toàn bộ direct dependency/devDependency từ semver range sang exact version khớp với bộ đã verify: React `19.2.7`, React Router `7.18.0`, Vite `8.0.16`, `@tailwindcss/vite`/`tailwindcss` `4.3.1`, `axios` `1.18.0`, `lucide-react` `1.20.0`, cùng các package lint/type liên quan.
-- Re-sync `frontend/package-lock.json` để metadata ở root khớp manifest mới và bỏ các entry stale không còn nên được track sau những lần cài đặt trôi version trước đó.
-- Giữ nguyên `vite.config.js`; sau rà soát, khác biệt gây merge noise nằm ở dependency resolution chứ không phải cấu hình proxy/alias của Vite.
+- Th├¬m `packageManager: npm@11.6.2` v├á `.npmrc` vß╗¢i `save-exact=true` ─æß╗â chuß║⌐n h├│a c├┤ng cß╗Ñ c├ái package ß╗ƒ frontend.
+- ─Éß╗òi to├án bß╗Ö direct dependency/devDependency tß╗½ semver range sang exact version khß╗¢p vß╗¢i bß╗Ö ─æ├ú verify: React `19.2.7`, React Router `7.18.0`, Vite `8.0.16`, `@tailwindcss/vite`/`tailwindcss` `4.3.1`, `axios` `1.18.0`, `lucide-react` `1.20.0`, c├╣ng c├íc package lint/type li├¬n quan.
+- Re-sync `frontend/package-lock.json` ─æß╗â metadata ß╗ƒ root khß╗¢p manifest mß╗¢i v├á bß╗Å c├íc entry stale kh├┤ng c├▓n n├¬n ─æ╞░ß╗úc track sau nhß╗»ng lß║ºn c├ái ─æß║╖t tr├┤i version tr╞░ß╗¢c ─æ├│.
+- Giß╗» nguy├¬n `vite.config.js`; sau r├á so├ít, kh├íc biß╗çt g├óy merge noise nß║▒m ß╗ƒ dependency resolution chß╗⌐ kh├┤ng phß║úi cß║Ñu h├¼nh proxy/alias cß╗ºa Vite.
 
 Validation:
 
-- `npm install --package-lock-only` — passed.
-- `npm run build -- --outDir temp-build-verify-pinned` — passed.
-- `git merge-tree $(git merge-base origin/release devH) origin/release devH` — inspected; không xuất hiện textual conflict marker ở `frontend/package.json`, `frontend/package-lock.json`, `frontend/vite.config.js`.
+- `npm install --package-lock-only` ΓÇö passed.
+- `npm run build -- --outDir temp-build-verify-pinned` ΓÇö passed.
+- `git merge-tree $(git merge-base origin/release devH) origin/release devH` ΓÇö inspected; kh├┤ng xuß║Ñt hiß╗çn textual conflict marker ß╗ƒ `frontend/package.json`, `frontend/package-lock.json`, `frontend/vite.config.js`.
 
 Unresolved questions:
 
-- `npm ls --depth=0` vẫn báo một số package WASM helper ở `node_modules` là extraneous từ lần cài trước; build hiện không bị ảnh hưởng, nhưng nên chạy `npm prune` hoặc `npm ci` khi workspace không còn process `node` giữ file.
-- Vite/Rolldown vẫn in warning không chặn build từ `@microsoft/signalr` PURE annotation và cảnh báo chunk size lớn mặc định.
+- `npm ls --depth=0` vß║½n b├ío mß╗Öt sß╗æ package WASM helper ß╗ƒ `node_modules` l├á extraneous tß╗½ lß║ºn c├ái tr╞░ß╗¢c; build hiß╗çn kh├┤ng bß╗ï ß║únh h╞░ß╗ƒng, nh╞░ng n├¬n chß║íy `npm prune` hoß║╖c `npm ci` khi workspace kh├┤ng c├▓n process `node` giß╗» file.
+- Vite/Rolldown vß║½n in warning kh├┤ng chß║╖n build tß╗½ `@microsoft/signalr` PURE annotation v├á cß║únh b├ío chunk size lß╗¢n mß║╖c ─æß╗ïnh.
 
 ## Feature: Frontend exam publish readiness and Vietnam timezone workflow
 
@@ -1553,9 +1601,9 @@ Technical summary:
 
 Validation:
 
-- `npm.cmd --prefix frontend run lint` — passed.
-- `npm.cmd --prefix frontend install` — succeeded, restored missing frontend dependency state after merge.
-- `npm.cmd --prefix frontend run build` — passed.
+- `npm.cmd --prefix frontend run lint` ΓÇö passed.
+- `npm.cmd --prefix frontend install` ΓÇö succeeded, restored missing frontend dependency state after merge.
+- `npm.cmd --prefix frontend run build` ΓÇö passed.
 
 Unresolved questions:
 
@@ -1589,8 +1637,8 @@ Technical summary:
 
 Validation:
 
-- `npm run build` — succeeded.
-- `npm test` (pre-commit) — passed.
+- `npm run build` ΓÇö succeeded.
+- `npm test` (pre-commit) ΓÇö passed.
 
 Unresolved questions:
 
@@ -1668,9 +1716,9 @@ Date: 2026-06-15
 Branch/source: `devD`
 
 Description:
-- Tái cấu trúc lại giao diện Teacher từ dạng Floating Header cũ sang Nav bar chuyên nghiệp, tạo không gian làm việc đồng bộ, cố định và tối ưu trải nghiệm sử dụng (ergonomics) cho giảng viên.
-- Tích hợp thư viện Recharts để trực quan hóa dữ liệu thống kê lớp học sinh động, bao gồm biểu đồ kết hợp (Classroom Performance: Submission Rate vs. Average Score) và biểu đồ tròn (Anti-cheat Incidents breakdown) có chú thích chi tiết.
-- Bổ sung panel giám sát phòng thi realtime dưới dạng Proctoring Streams Placeholder có overlay "Coming Soon", định hình lộ trình phát triển tích hợp WebRTC và SignalR Hub trong tương lai.
+- T├íi cß║Ñu tr├║c lß║íi giao diß╗çn Teacher tß╗½ dß║íng Floating Header c┼⌐ sang Nav bar chuy├¬n nghiß╗çp, tß║ío kh├┤ng gian l├ám viß╗çc ─æß╗ông bß╗Ö, cß╗æ ─æß╗ïnh v├á tß╗æi ╞░u trß║úi nghiß╗çm sß╗¡ dß╗Ñng (ergonomics) cho giß║úng vi├¬n.
+- T├¡ch hß╗úp th╞░ viß╗çn Recharts ─æß╗â trß╗▒c quan h├│a dß╗» liß╗çu thß╗æng k├¬ lß╗¢p hß╗ìc sinh ─æß╗Öng, bao gß╗ôm biß╗âu ─æß╗ô kß║┐t hß╗úp (Classroom Performance: Submission Rate vs. Average Score) v├á biß╗âu ─æß╗ô tr├▓n (Anti-cheat Incidents breakdown) c├│ ch├║ th├¡ch chi tiß║┐t.
+- Bß╗ò sung panel gi├ím s├ít ph├▓ng thi realtime d╞░ß╗¢i dß║íng Proctoring Streams Placeholder c├│ overlay "Coming Soon", ─æß╗ïnh h├¼nh lß╗Ö tr├¼nh ph├ít triß╗ân t├¡ch hß╗úp WebRTC v├á SignalR Hub trong t╞░╞íng lai.
 
 Changed files:
 - `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
@@ -1687,19 +1735,19 @@ Changed files:
 - `Todo List.md`
 
 Technical summary:
-- Thay thế toàn bộ layout thẻ nổi cũ bằng khung dashboard lưới (grid) linh hoạt, tuân thủ bảng màu Institutional Slate v1.1.
-- Sử dụng `<ComposedChart>` hiển thị đồng thời tỉ lệ nộp bài (Bar) và điểm trung bình (Line) của các lớp học, cùng chú giải (Tooltip) tùy biến cao.
-- Thiết kế biểu đồ `<PieChart>` với góc bo nhẹ cho từng phần, tự động ánh xạ màu sắc theo mức độ rủi ro (High/Medium/Low) của cheat log, đi kèm Custom Legend dạng nút tròn đồng bộ.
-- Xây dựng component `ProctoringStreamsPlaceholder` sử dụng các thẻ stream mô phỏng hoạt động camera giám sát, bọc bởi filter glassmorphic mờ và biểu tượng khóa/thông tin tính năng đang phát triển.
+- Thay thß║┐ to├án bß╗Ö layout thß║╗ nß╗òi c┼⌐ bß║▒ng khung dashboard l╞░ß╗¢i (grid) linh hoß║ít, tu├ón thß╗º bß║úng m├áu Institutional Slate v1.1.
+- Sß╗¡ dß╗Ñng `<ComposedChart>` hiß╗ân thß╗ï ─æß╗ông thß╗¥i tß╗ë lß╗ç nß╗Öp b├ái (Bar) v├á ─æiß╗âm trung b├¼nh (Line) cß╗ºa c├íc lß╗¢p hß╗ìc, c├╣ng ch├║ giß║úi (Tooltip) t├╣y biß║┐n cao.
+- Thiß║┐t kß║┐ biß╗âu ─æß╗ô `<PieChart>` vß╗¢i g├│c bo nhß║╣ cho tß╗½ng phß║ºn, tß╗▒ ─æß╗Öng ├ính xß║í m├áu sß║»c theo mß╗⌐c ─æß╗Ö rß╗ºi ro (High/Medium/Low) cß╗ºa cheat log, ─æi k├¿m Custom Legend dß║íng n├║t tr├▓n ─æß╗ông bß╗Ö.
+- X├óy dß╗▒ng component `ProctoringStreamsPlaceholder` sß╗¡ dß╗Ñng c├íc thß║╗ stream m├┤ phß╗Ång hoß║ít ─æß╗Öng camera gi├ím s├ít, bß╗ìc bß╗ƒi filter glassmorphic mß╗¥ v├á biß╗âu t╞░ß╗úng kh├│a/th├┤ng tin t├¡nh n─âng ─æang ph├ít triß╗ân.
 
 Validation:
-- `npm install react-is` — Đã cài đặt dependency bổ sung để giải quyết vấn đề import của Recharts trên môi trường Vite/Rolldown.
-- `npm run build` — Biên dịch thành công dự án frontend, mã nguồn tối ưu hóa không có lỗi cú pháp hay import.
-- Kiểm tra trực quan cấu trúc giao diện trên trình duyệt đảm bảo responsive đầy đủ ở các độ phân giải màn hình.
+- `npm install react-is` ΓÇö ─É├ú c├ái ─æß║╖t dependency bß╗ò sung ─æß╗â giß║úi quyß║┐t vß║Ñn ─æß╗ü import cß╗ºa Recharts tr├¬n m├┤i tr╞░ß╗¥ng Vite/Rolldown.
+- `npm run build` ΓÇö Bi├¬n dß╗ïch th├ánh c├┤ng dß╗▒ ├ín frontend, m├ú nguß╗ôn tß╗æi ╞░u h├│a kh├┤ng c├│ lß╗ùi c├║ ph├íp hay import.
+- Kiß╗âm tra trß╗▒c quan cß║Ñu tr├║c giao diß╗çn tr├¬n tr├¼nh duyß╗çt ─æß║úm bß║úo responsive ─æß║ºy ─æß╗º ß╗ƒ c├íc ─æß╗Ö ph├ón giß║úi m├án h├¼nh.
 
 Unresolved questions:
-- Proctoring streams hiện tại mới là mock placeholder; cần kết nối với camera student thông qua WebRTC và SignalR hub giám sát trong các phase sau.
-- Tích hợp dashboard API thật từ backend khi endpoints cho vai trò Teacher được hoàn thiện đầy đủ trên service layer.
+- Proctoring streams hiß╗çn tß║íi mß╗¢i l├á mock placeholder; cß║ºn kß║┐t nß╗æi vß╗¢i camera student th├┤ng qua WebRTC v├á SignalR hub gi├ím s├ít trong c├íc phase sau.
+- T├¡ch hß╗úp dashboard API thß║¡t tß╗½ backend khi endpoints cho vai tr├▓ Teacher ─æ╞░ß╗úc ho├án thiß╗çn ─æß║ºy ─æß╗º tr├¬n service layer.
 
 ## Feature: Backend exam configuration validation
 
@@ -1709,10 +1757,10 @@ Branch/source: `devB`
 
 Description:
 
-- Chuẩn hóa backend cho cấu hình bài kiểm tra trước khi làm tiếp frontend: thời gian mở/đóng đề được lưu và trả về theo UTC rõ ràng để frontend có thể hiển thị đúng giờ Việt Nam.
-- Siết validation cấu hình exam ở tầng request/service: duration, max attempts và cửa sổ mở/đóng đề phải hợp lệ.
-- Siết điều kiện publish để đề chỉ được publish khi có câu hỏi hợp lệ; lỗi publish trả về message rõ theo từng câu/cấu hình để frontend hiển thị cho teacher.
-- Bổ sung validation publish cho trắc nghiệm MVP: `SingleChoice`, `MultipleChoice`, `TrueFalse`; giữ mô hình `Question` / `Answer` gắn trực tiếp với `Exam`, chưa triển khai `QuestionBank` hoặc import file trong bước này.
+- Chuß║⌐n h├│a backend cho cß║Ñu h├¼nh b├ái kiß╗âm tra tr╞░ß╗¢c khi l├ám tiß║┐p frontend: thß╗¥i gian mß╗ƒ/─æ├│ng ─æß╗ü ─æ╞░ß╗úc l╞░u v├á trß║ú vß╗ü theo UTC r├╡ r├áng ─æß╗â frontend c├│ thß╗â hiß╗ân thß╗ï ─æ├║ng giß╗¥ Viß╗çt Nam.
+- Siß║┐t validation cß║Ñu h├¼nh exam ß╗ƒ tß║ºng request/service: duration, max attempts v├á cß╗¡a sß╗ò mß╗ƒ/─æ├│ng ─æß╗ü phß║úi hß╗úp lß╗ç.
+- Siß║┐t ─æiß╗üu kiß╗çn publish ─æß╗â ─æß╗ü chß╗ë ─æ╞░ß╗úc publish khi c├│ c├óu hß╗Åi hß╗úp lß╗ç; lß╗ùi publish trß║ú vß╗ü message r├╡ theo tß╗½ng c├óu/cß║Ñu h├¼nh ─æß╗â frontend hiß╗ân thß╗ï cho teacher.
+- Bß╗ò sung validation publish cho trß║»c nghiß╗çm MVP: `SingleChoice`, `MultipleChoice`, `TrueFalse`; giß╗» m├┤ h├¼nh `Question` / `Answer` gß║»n trß╗▒c tiß║┐p vß╗¢i `Exam`, ch╞░a triß╗ân khai `QuestionBank` hoß║╖c import file trong b╞░ß╗¢c n├áy.
 
 Changed files:
 
@@ -1735,14 +1783,14 @@ Technical summary:
 
 Validation:
 
-- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -o temp\backend-exam-config-build` — succeeded, 0 warnings, 0 errors. Used separate output because a running `EduGuard.Api` process locked the default build DLLs.
-- `npm.cmd test` — passed; current script runs `dotnet test backend/EduGuard.Api/EduGuard.Api.slnx` and the solution currently has no test project output.
-- `git diff --check` — passed; only existing LF/CRLF conversion warnings were reported.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -o temp\backend-exam-config-build` ΓÇö succeeded, 0 warnings, 0 errors. Used separate output because a running `EduGuard.Api` process locked the default build DLLs.
+- `npm.cmd test` ΓÇö passed; current script runs `dotnet test backend/EduGuard.Api/EduGuard.Api.slnx` and the solution currently has no test project output.
+- `git diff --check` ΓÇö passed; only existing LF/CRLF conversion warnings were reported.
 
 Unresolved questions:
 
 - Frontend still needs the matching timezone helper and UI changes so `datetime-local` inputs show `Asia/Ho_Chi_Minh` consistently.
-- Manual Swagger/browser publish tests should cover invalid no-question exam, invalid answer counts, invalid correct-answer counts and valid trắc nghiệm exam before commit.
+- Manual Swagger/browser publish tests should cover invalid no-question exam, invalid answer counts, invalid correct-answer counts and valid trß║»c nghiß╗çm exam before commit.
 - Question bank/import file remains a later feature; this change keeps questions attached directly to exams for MVP.
 
 ## Feature: SignalR realtime monitoring
@@ -1753,11 +1801,11 @@ Branch/source: `devB`
 
 Description:
 
-- Hoàn thiện Phase 8 SignalR realtime để teacher nhận cảnh báo anti-cheat ngay khi student phát sinh log hợp lệ trong lúc làm bài.
-- Bổ sung `NotificationHub` và `ExamMonitoringHub`; hub dùng JWT Bearer qua query `access_token`, join group theo exam và chỉ teacher sở hữu đề mới được monitor.
-- Thêm abstraction notifier trong Application để `AntiCheatService` gửi realtime warning sau khi lưu `CheatingLog` thành công mà không phụ thuộc trực tiếp vào API/Hub.
-- Frontend cài `@microsoft/signalr`, thêm connection factory cho notification/exam monitoring, listener notification toàn app và cập nhật `AttemptMonitorPanel` để nhận `ReceiveAntiCheatWarning`, cập nhật score/log realtime và hiển thị toast cho teacher.
-- Cập nhật registry/todo feature SignalR; notification realtime hiện có hub/notifier/listener, còn entity/API lưu notification vẫn thuộc Notification System riêng.
+- Ho├án thiß╗çn Phase 8 SignalR realtime ─æß╗â teacher nhß║¡n cß║únh b├ío anti-cheat ngay khi student ph├ít sinh log hß╗úp lß╗ç trong l├║c l├ám b├ái.
+- Bß╗ò sung `NotificationHub` v├á `ExamMonitoringHub`; hub d├╣ng JWT Bearer qua query `access_token`, join group theo exam v├á chß╗ë teacher sß╗ƒ hß╗»u ─æß╗ü mß╗¢i ─æ╞░ß╗úc monitor.
+- Th├¬m abstraction notifier trong Application ─æß╗â `AntiCheatService` gß╗¡i realtime warning sau khi l╞░u `CheatingLog` th├ánh c├┤ng m├á kh├┤ng phß╗Ñ thuß╗Öc trß╗▒c tiß║┐p v├áo API/Hub.
+- Frontend c├ái `@microsoft/signalr`, th├¬m connection factory cho notification/exam monitoring, listener notification to├án app v├á cß║¡p nhß║¡t `AttemptMonitorPanel` ─æß╗â nhß║¡n `ReceiveAntiCheatWarning`, cß║¡p nhß║¡t score/log realtime v├á hiß╗ân thß╗ï toast cho teacher.
+- Cß║¡p nhß║¡t registry/todo feature SignalR; notification realtime hiß╗çn c├│ hub/notifier/listener, c├▓n entity/API l╞░u notification vß║½n thuß╗Öc Notification System ri├¬ng.
 
 Changed files:
 
@@ -1801,11 +1849,11 @@ Technical summary:
 
 Validation:
 
-- `npm.cmd --prefix frontend install @microsoft/signalr` — installed `@microsoft/signalr@10.0.0`, audit found 0 vulnerabilities.
-- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj` — succeeded, 0 warnings, 0 errors.
-- `npm.cmd --prefix frontend run lint` — passed.
-- `npm.cmd --prefix frontend run build` — passed; Vite/Rolldown emitted non-blocking warnings from `@microsoft/signalr` pure annotations and bundle size.
-- `npm.cmd test` — passed (`dotnet test backend/EduGuard.Api/EduGuard.Api.slnx`).
+- `npm.cmd --prefix frontend install @microsoft/signalr` ΓÇö installed `@microsoft/signalr@10.0.0`, audit found 0 vulnerabilities.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj` ΓÇö succeeded, 0 warnings, 0 errors.
+- `npm.cmd --prefix frontend run lint` ΓÇö passed.
+- `npm.cmd --prefix frontend run build` ΓÇö passed; Vite/Rolldown emitted non-blocking warnings from `@microsoft/signalr` pure annotations and bundle size.
+- `npm.cmd test` ΓÇö passed (`dotnet test backend/EduGuard.Api/EduGuard.Api.slnx`).
 
 Unresolved questions:
 
@@ -1813,7 +1861,7 @@ Unresolved questions:
 - Notification persistence/list/read APIs are still not implemented; current Phase 8 covers realtime hub/notifier/listener only.
 - Frontend production bundle now crosses Vite's default 500 kB chunk warning after adding SignalR; consider route-based code splitting later if bundle size becomes a release concern.
 
-## Feature: Identity keys — int → string (GUID)
+## Feature: Identity keys ΓÇö int ΓåÆ string (GUID)
 
 Date: 2026-06-13
 
@@ -1821,12 +1869,12 @@ Branch/source: local workspace
 
 Description:
 
-- Chuyển ASP.NET Core Identity sang mặc định Microsoft: `IdentityUser` / `IdentityRole` với khóa `string` (GUID).
-- Các FK liên quan user (`TeacherId`, `StudentId`, `UserId` trên Classroom, Assignment, Exam, …) đổi sang `string`.
-- Role seed dùng GUID cố định (`RoleIds.Admin/Teacher/Student`).
-- JWT `NameIdentifier` và API DTO `UserDto.Id` trả GUID string.
-- Migration `20260613065925_ConvertIdentityKeysToString` dùng raw SQL (drop/recreate PK + indexes) vì SQL Server không cho `AlterColumn` trên cột IDENTITY.
-- **Breaking:** DB dev đã drop/recreate; user cũ (id int) không migrate được — cần đăng ký lại.
+- Chuyß╗ân ASP.NET Core Identity sang mß║╖c ─æß╗ïnh Microsoft: `IdentityUser` / `IdentityRole` vß╗¢i kh├│a `string` (GUID).
+- C├íc FK li├¬n quan user (`TeacherId`, `StudentId`, `UserId` tr├¬n Classroom, Assignment, Exam, ΓÇª) ─æß╗òi sang `string`.
+- Role seed d├╣ng GUID cß╗æ ─æß╗ïnh (`RoleIds.Admin/Teacher/Student`).
+- JWT `NameIdentifier` v├á API DTO `UserDto.Id` trß║ú GUID string.
+- Migration `20260613065925_ConvertIdentityKeysToString` d├╣ng raw SQL (drop/recreate PK + indexes) v├¼ SQL Server kh├┤ng cho `AlterColumn` tr├¬n cß╗Öt IDENTITY.
+- **Breaking:** DB dev ─æ├ú drop/recreate; user c┼⌐ (id int) kh├┤ng migrate ─æ╞░ß╗úc ΓÇö cß║ºn ─æ─âng k├╜ lß║íi.
 
 Changed files:
 
@@ -1839,12 +1887,12 @@ Changed files:
 
 Validation:
 
-- `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` — 0 errors
-- `dotnet ef database drop --force` + `dotnet ef database update` — applied all migrations including `ConvertIdentityKeysToString`
+- `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` ΓÇö 0 errors
+- `dotnet ef database drop --force` + `dotnet ef database update` ΓÇö applied all migrations including `ConvertIdentityKeysToString`
 
 Unresolved questions:
 
-- Production DB có dữ liệu thật cần script migrate int→GUID riêng (không dùng migration dev hiện tại).
+- Production DB c├│ dß╗» liß╗çu thß║¡t cß║ºn script migrate intΓåÆGUID ri├¬ng (kh├┤ng d├╣ng migration dev hiß╗çn tß║íi).
 
 ## Feature: Teacher exam publish and schedule defaults
 
@@ -1854,10 +1902,10 @@ Branch/source: `devH`
 
 Description:
 
-- Sửa luồng tạo bài kiểm tra cho Teacher để có thể chọn publish ngay khi tạo, thay vì luôn tạo ở trạng thái nháp.
-- Cho phép backend publish metadata đề thi trước khi có câu hỏi, nhưng chặn Student bắt đầu làm bài nếu đề chưa có câu hỏi để không tạo attempt rỗng.
-- Tối ưu form lịch thi: khi nhập thời gian làm bài và chọn thời gian mở đề, frontend tự set thời gian đóng đề bằng `startTime + durationMinutes`; field đóng đề vẫn là input thường để giảng viên chỉnh tay khi cần.
-- Đồng bộ lại tài liệu API/test guide để không còn mô tả publish bắt buộc phải có câu hỏi.
+- Sß╗¡a luß╗ông tß║ío b├ái kiß╗âm tra cho Teacher ─æß╗â c├│ thß╗â chß╗ìn publish ngay khi tß║ío, thay v├¼ lu├┤n tß║ío ß╗ƒ trß║íng th├íi nh├íp.
+- Cho ph├⌐p backend publish metadata ─æß╗ü thi tr╞░ß╗¢c khi c├│ c├óu hß╗Åi, nh╞░ng chß║╖n Student bß║»t ─æß║ºu l├ám b├ái nß║┐u ─æß╗ü ch╞░a c├│ c├óu hß╗Åi ─æß╗â kh├┤ng tß║ío attempt rß╗ùng.
+- Tß╗æi ╞░u form lß╗ïch thi: khi nhß║¡p thß╗¥i gian l├ám b├ái v├á chß╗ìn thß╗¥i gian mß╗ƒ ─æß╗ü, frontend tß╗▒ set thß╗¥i gian ─æ├│ng ─æß╗ü bß║▒ng `startTime + durationMinutes`; field ─æ├│ng ─æß╗ü vß║½n l├á input th╞░ß╗¥ng ─æß╗â giß║úng vi├¬n chß╗ënh tay khi cß║ºn.
+- ─Éß╗ông bß╗Ö lß║íi t├ái liß╗çu API/test guide ─æß╗â kh├┤ng c├▓n m├┤ tß║ú publish bß║»t buß╗Öc phß║úi c├│ c├óu hß╗Åi.
 
 Changed files:
 
@@ -1871,14 +1919,14 @@ Changed files:
 
 Validation:
 
-- `npm --prefix frontend run lint` — passed
-- `npm --prefix frontend run build` — passed
-- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore --configuration Release` — 0 warnings, 0 errors
-- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore` — blocked by local Debug output lock from running Visual Studio / `EduGuard.Api` process
+- `npm --prefix frontend run lint` ΓÇö passed
+- `npm --prefix frontend run build` ΓÇö passed
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore --configuration Release` ΓÇö 0 warnings, 0 errors
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore` ΓÇö blocked by local Debug output lock from running Visual Studio / `EduGuard.Api` process
 
 Unresolved questions:
 
-- Publish hiện công khai metadata đề thi; đề chưa có câu hỏi vẫn không cho Student bắt đầu làm bài.
+- Publish hiß╗çn c├┤ng khai metadata ─æß╗ü thi; ─æß╗ü ch╞░a c├│ c├óu hß╗Åi vß║½n kh├┤ng cho Student bß║»t ─æß║ºu l├ám b├ái.
 
 ## Feature: Frontend assignment, exam attempt, and anti-cheat REST workflows
 
@@ -1888,11 +1936,11 @@ Branch/source: `devH`
 
 Description:
 
-- Hoàn thiện 3 luồng frontend còn thiếu nhưng backend đã sẵn sàng: `Assignment Management`, `Online Testing / Exam Attempt`, và `Anti-cheat Monitoring` bản REST cơ bản.
-- Gắn `assignment` trực tiếp vào `ClassroomDetailPage`: teacher có thể tạo/sửa/xóa bài tập, mở danh sách bài nộp và chấm điểm; student có thể nộp bài ngay trong lớp học theo đúng palette/token hiện tại.
-- Thêm route làm bài riêng cho student tại `student/attempts/:attemptId`: start/resume từ exam detail, timer cố định, auto-save, điều hướng câu hỏi desktop/mobile, xác nhận nộp bài, auto submit khi hết giờ và màn kết quả sau nộp.
-- Bổ sung hook anti-cheat REST cơ bản trong lúc làm bài: ghi `TAB_SWITCH`, `COPY_PASTE`, `EXIT_FULLSCREEN`, `PAGE_RELOAD`, `DISCONNECTED`; đồng thời mở `AttemptMonitorPanel` ở exam detail cho teacher để xem suspicion score, log count và timeline theo từng lượt làm.
-- Giữ đúng design direction trong `docs/design-guidelines.md` và token màu trong `docs/eduguard-design-tokens-preview.html`: flat surfaces, một primary CTA mỗi vùng, không thêm gradient/shadow mới.
+- Ho├án thiß╗çn 3 luß╗ông frontend c├▓n thiß║┐u nh╞░ng backend ─æ├ú sß║╡n s├áng: `Assignment Management`, `Online Testing / Exam Attempt`, v├á `Anti-cheat Monitoring` bß║ún REST c╞í bß║ún.
+- Gß║»n `assignment` trß╗▒c tiß║┐p v├áo `ClassroomDetailPage`: teacher c├│ thß╗â tß║ío/sß╗¡a/x├│a b├ái tß║¡p, mß╗ƒ danh s├ích b├ái nß╗Öp v├á chß║Ñm ─æiß╗âm; student c├│ thß╗â nß╗Öp b├ái ngay trong lß╗¢p hß╗ìc theo ─æ├║ng palette/token hiß╗çn tß║íi.
+- Th├¬m route l├ám b├ái ri├¬ng cho student tß║íi `student/attempts/:attemptId`: start/resume tß╗½ exam detail, timer cß╗æ ─æß╗ïnh, auto-save, ─æiß╗üu h╞░ß╗¢ng c├óu hß╗Åi desktop/mobile, x├íc nhß║¡n nß╗Öp b├ái, auto submit khi hß║┐t giß╗¥ v├á m├án kß║┐t quß║ú sau nß╗Öp.
+- Bß╗ò sung hook anti-cheat REST c╞í bß║ún trong l├║c l├ám b├ái: ghi `TAB_SWITCH`, `COPY_PASTE`, `EXIT_FULLSCREEN`, `PAGE_RELOAD`, `DISCONNECTED`; ─æß╗ông thß╗¥i mß╗ƒ `AttemptMonitorPanel` ß╗ƒ exam detail cho teacher ─æß╗â xem suspicion score, log count v├á timeline theo tß╗½ng l╞░ß╗út l├ám.
+- Giß╗» ─æ├║ng design direction trong `docs/design-guidelines.md` v├á token m├áu trong `docs/eduguard-design-tokens-preview.html`: flat surfaces, mß╗Öt primary CTA mß╗ùi v├╣ng, kh├┤ng th├¬m gradient/shadow mß╗¢i.
 
 Changed files:
 
@@ -1918,7 +1966,7 @@ Validation:
 
 Unresolved questions:
 
-- Backend hiện chưa có endpoint để student lấy lại bài nộp của chính mình, nên trạng thái `Đã nộp` của assignment đang được giữ ổn định trên FE bằng local cache sau khi submit; teacher vẫn xem/chấm qua API thật bình thường.
+- Backend hiß╗çn ch╞░a c├│ endpoint ─æß╗â student lß║Ñy lß║íi b├ái nß╗Öp cß╗ºa ch├¡nh m├¼nh, n├¬n trß║íng th├íi `─É├ú nß╗Öp` cß╗ºa assignment ─æang ─æ╞░ß╗úc giß╗» ß╗òn ─æß╗ïnh tr├¬n FE bß║▒ng local cache sau khi submit; teacher vß║½n xem/chß║Ñm qua API thß║¡t b├¼nh th╞░ß╗¥ng.
 
 ## Fix: Refresh JWT claims when backend role changes
 
@@ -1928,10 +1976,10 @@ Branch/source: `devH`
 
 Description:
 
-- Xác định lỗi 403 ở các API chỉ cho `Teacher` như `POST /api/classrooms`: frontend có thể đã đọc role mới từ `GET /api/auth/me`, nhưng access token cũ vẫn giữ claim `Student`.
-- Nguyên nhân xảy ra khi quyền được đổi trong database sau lần đăng nhập trước đó; UI route guard nhìn theo `user.roles` mới nên cho vào màn Teacher, còn backend authorize vẫn đọc claim role cũ trong JWT.
-- Vá `AuthProvider` để trong lúc hydrate session, nếu role từ `/api/auth/me` khác role đang lưu, app tự gọi `POST /api/auth/refresh-token` và lưu lại access token/refresh token mới trước khi tiếp tục dùng session.
-- Nhờ đó các màn Teacher như tạo lớp học, tạo đề thi, xem endpoint `teacher-only` không còn bị lệch giữa role hiển thị ở UI và quyền thật trong token.
+- X├íc ─æß╗ïnh lß╗ùi 403 ß╗ƒ c├íc API chß╗ë cho `Teacher` nh╞░ `POST /api/classrooms`: frontend c├│ thß╗â ─æ├ú ─æß╗ìc role mß╗¢i tß╗½ `GET /api/auth/me`, nh╞░ng access token c┼⌐ vß║½n giß╗» claim `Student`.
+- Nguy├¬n nh├ón xß║úy ra khi quyß╗ün ─æ╞░ß╗úc ─æß╗òi trong database sau lß║ºn ─æ─âng nhß║¡p tr╞░ß╗¢c ─æ├│; UI route guard nh├¼n theo `user.roles` mß╗¢i n├¬n cho v├áo m├án Teacher, c├▓n backend authorize vß║½n ─æß╗ìc claim role c┼⌐ trong JWT.
+- V├í `AuthProvider` ─æß╗â trong l├║c hydrate session, nß║┐u role tß╗½ `/api/auth/me` kh├íc role ─æang l╞░u, app tß╗▒ gß╗ìi `POST /api/auth/refresh-token` v├á l╞░u lß║íi access token/refresh token mß╗¢i tr╞░ß╗¢c khi tiß║┐p tß╗Ñc d├╣ng session.
+- Nhß╗¥ ─æ├│ c├íc m├án Teacher nh╞░ tß║ío lß╗¢p hß╗ìc, tß║ío ─æß╗ü thi, xem endpoint `teacher-only` kh├┤ng c├▓n bß╗ï lß╗çch giß╗»a role hiß╗ân thß╗ï ß╗ƒ UI v├á quyß╗ün thß║¡t trong token.
 
 Changed files:
 
@@ -1946,7 +1994,7 @@ Validation:
 
 Unresolved questions:
 
-- Nếu tài khoản thực tế chưa được gán role `Teacher` trong database thì backend vẫn sẽ trả `403` đúng thiết kế; fix này chỉ xử lý trường hợp role đã đổi nhưng token chưa được làm mới.
+- Nß║┐u t├ái khoß║ún thß╗▒c tß║┐ ch╞░a ─æ╞░ß╗úc g├ín role `Teacher` trong database th├¼ backend vß║½n sß║╜ trß║ú `403` ─æ├║ng thiß║┐t kß║┐; fix n├áy chß╗ë xß╗¡ l├╜ tr╞░ß╗¥ng hß╗úp role ─æ├ú ─æß╗òi nh╞░ng token ch╞░a ─æ╞░ß╗úc l├ám mß╗¢i.
 
 ## Feature: Role UI simplification and design-token color alignment
 
@@ -1956,10 +2004,10 @@ Branch/source: `devH`
 
 Description:
 
-- Rà lại các màn chính của `Admin`, `Teacher`, `Student` và bỏ phần mô tả phụ ở cấp page header, section block, stat card, list card, form intro và note panel; UI giữ lại title, số liệu và dữ liệu nghiệp vụ cần đọc.
-- Tinh gọn dashboard components dùng chung: `StatCard`, `MetricBarList`, `TimelineList` không còn render helper/subtitle/description mặc định; dữ liệu cần thiết được dồn về title hoặc meta ngắn.
-- Dọn các màn classroom, exam, dashboard, user/profile theo hướng title-first: card lớp học và bài kiểm tra không còn đoạn mô tả dài; form tạo/join/chỉnh sửa giảm helper copy không cần thiết.
-- Chuẩn hóa màu ở workspace đã đăng nhập theo token trong `docs/eduguard-design-tokens-preview.html`: badge, toast, sidebar active state, user trigger, avatar fallback và shell surface chuyển về palette phẳng, bỏ gradient/tone xanh riêng ở các thành phần này.
+- R├á lß║íi c├íc m├án ch├¡nh cß╗ºa `Admin`, `Teacher`, `Student` v├á bß╗Å phß║ºn m├┤ tß║ú phß╗Ñ ß╗ƒ cß║Ñp page header, section block, stat card, list card, form intro v├á note panel; UI giß╗» lß║íi title, sß╗æ liß╗çu v├á dß╗» liß╗çu nghiß╗çp vß╗Ñ cß║ºn ─æß╗ìc.
+- Tinh gß╗ìn dashboard components d├╣ng chung: `StatCard`, `MetricBarList`, `TimelineList` kh├┤ng c├▓n render helper/subtitle/description mß║╖c ─æß╗ïnh; dß╗» liß╗çu cß║ºn thiß║┐t ─æ╞░ß╗úc dß╗ôn vß╗ü title hoß║╖c meta ngß║»n.
+- Dß╗ìn c├íc m├án classroom, exam, dashboard, user/profile theo h╞░ß╗¢ng title-first: card lß╗¢p hß╗ìc v├á b├ái kiß╗âm tra kh├┤ng c├▓n ─æoß║ín m├┤ tß║ú d├ái; form tß║ío/join/chß╗ënh sß╗¡a giß║úm helper copy kh├┤ng cß║ºn thiß║┐t.
+- Chuß║⌐n h├│a m├áu ß╗ƒ workspace ─æ├ú ─æ─âng nhß║¡p theo token trong `docs/eduguard-design-tokens-preview.html`: badge, toast, sidebar active state, user trigger, avatar fallback v├á shell surface chuyß╗ân vß╗ü palette phß║│ng, bß╗Å gradient/tone xanh ri├¬ng ß╗ƒ c├íc th├ánh phß║ºn n├áy.
 
 Changed files:
 
@@ -1995,7 +2043,7 @@ Validation:
 
 Unresolved questions:
 
-- Auth screens và các thành phần ngoài workspace role-based chưa được re-theme trong thay đổi này; nếu muốn toàn bộ frontend dùng cùng hệ màu token, cần thêm một lượt cleanup riêng.
+- Auth screens v├á c├íc th├ánh phß║ºn ngo├ái workspace role-based ch╞░a ─æ╞░ß╗úc re-theme trong thay ─æß╗òi n├áy; nß║┐u muß╗æn to├án bß╗Ö frontend d├╣ng c├╣ng hß╗ç m├áu token, cß║ºn th├¬m mß╗Öt l╞░ß╗út cleanup ri├¬ng.
 
 ## Feature: Frontend integration for classroom, exam, attempt, and anti-cheat APIs
 
@@ -2005,11 +2053,11 @@ Branch/source: `devH`
 
 Description:
 
-- Chuyển các màn frontend lớp học và bài kiểm tra từ `mockDatabase/localStorage` sang gọi backend thật qua `axiosClient`, bám theo các endpoint đã có trong `docs/apiList.md`.
-- Thêm lớp adapter ở FE để chuẩn hóa DTO backend về shape UI hiện tại: classroom có `memberCount` khi role được phép xem thành viên; exam có `statusLabel`, `canEdit`, `canViewQuestionBank`, và tự suy ra `totalQuestionScore`.
-- Sửa các form để khớp contract backend thật: tạo lớp không còn nhập `joinCode` thủ công; đề thi không đổi được classroom sau khi tạo; publish dùng endpoint riêng và chỉ xuất hiện ở ngữ cảnh phù hợp.
-- Bổ sung API client cho `assignment`, `exam attempt`, `anti-cheat`; đồng thời tận dụng `exam attempt` + `anti-cheat summary` ngay trên trang chi tiết đề thi để teacher xem điểm trung bình và số liệu giám sát thật.
-- Giữ rõ trạng thái mock cho các phần backend chưa có endpoint tương ứng như `user/profile` và `dashboard`, đồng thời cập nhật todo/docs để nhóm nhìn đúng tiến độ tích hợp.
+- Chuyß╗ân c├íc m├án frontend lß╗¢p hß╗ìc v├á b├ái kiß╗âm tra tß╗½ `mockDatabase/localStorage` sang gß╗ìi backend thß║¡t qua `axiosClient`, b├ím theo c├íc endpoint ─æ├ú c├│ trong `docs/apiList.md`.
+- Th├¬m lß╗¢p adapter ß╗ƒ FE ─æß╗â chuß║⌐n h├│a DTO backend vß╗ü shape UI hiß╗çn tß║íi: classroom c├│ `memberCount` khi role ─æ╞░ß╗úc ph├⌐p xem th├ánh vi├¬n; exam c├│ `statusLabel`, `canEdit`, `canViewQuestionBank`, v├á tß╗▒ suy ra `totalQuestionScore`.
+- Sß╗¡a c├íc form ─æß╗â khß╗¢p contract backend thß║¡t: tß║ío lß╗¢p kh├┤ng c├▓n nhß║¡p `joinCode` thß╗º c├┤ng; ─æß╗ü thi kh├┤ng ─æß╗òi ─æ╞░ß╗úc classroom sau khi tß║ío; publish d├╣ng endpoint ri├¬ng v├á chß╗ë xuß║Ñt hiß╗çn ß╗ƒ ngß╗» cß║únh ph├╣ hß╗úp.
+- Bß╗ò sung API client cho `assignment`, `exam attempt`, `anti-cheat`; ─æß╗ông thß╗¥i tß║¡n dß╗Ñng `exam attempt` + `anti-cheat summary` ngay tr├¬n trang chi tiß║┐t ─æß╗ü thi ─æß╗â teacher xem ─æiß╗âm trung b├¼nh v├á sß╗æ liß╗çu gi├ím s├ít thß║¡t.
+- Giß╗» r├╡ trß║íng th├íi mock cho c├íc phß║ºn backend ch╞░a c├│ endpoint t╞░╞íng ß╗⌐ng nh╞░ `user/profile` v├á `dashboard`, ─æß╗ông thß╗¥i cß║¡p nhß║¡t todo/docs ─æß╗â nh├│m nh├¼n ─æ├║ng tiß║┐n ─æß╗Ö t├¡ch hß╗úp.
 
 Changed files:
 
@@ -2043,9 +2091,9 @@ Validation:
 
 Unresolved questions:
 
-- Backend hiện chưa có user/profile CRUD, dashboard, notification và admin classroom aggregation tương ứng với toàn bộ màn FE hiện có, nên các khu vực đó vẫn đang mock hoặc chỉ hiển thị dữ liệu giới hạn theo quyền endpoint thật.
+- Backend hiß╗çn ch╞░a c├│ user/profile CRUD, dashboard, notification v├á admin classroom aggregation t╞░╞íng ß╗⌐ng vß╗¢i to├án bß╗Ö m├án FE hiß╗çn c├│, n├¬n c├íc khu vß╗▒c ─æ├│ vß║½n ─æang mock hoß║╖c chß╗ë hiß╗ân thß╗ï dß╗» liß╗çu giß╗¢i hß║ín theo quyß╗ün endpoint thß║¡t.
 
-## Feature: Backend Phase 7 — Anti-cheat Monitoring APIs
+## Feature: Backend Phase 7 ΓÇö Anti-cheat Monitoring APIs
 
 Date: 2026-06-11
 
@@ -2053,10 +2101,10 @@ Branch/source: local workspace (`release`)
 
 Description:
 
-- Thêm entity `CheatingLog`, bảng `CheatingLogs` (gộp trong migration `AddAssignmentsExamsAndAttempts` sau regenerate).
-- `AntiCheatController` + `AntiCheatService` + `CheatingLogRepository`: ghi log hành vi, xem log/score theo attempt, tổng hợp theo đề thi.
-- Student chỉ ghi log khi attempt **InProgress** và exam **EnableAntiCheat**; cộng dồn `SuspicionScore` trên `ExamAttempt`.
-- Loại hành vi API: `TAB_SWITCH`, `WINDOW_BLUR`, `COPY_PASTE`, `EXIT_FULLSCREEN`, `PAGE_RELOAD`, `DISCONNECTED`, `WEBCAM_OFF`.
+- Th├¬m entity `CheatingLog`, bß║úng `CheatingLogs` (gß╗Öp trong migration `AddAssignmentsExamsAndAttempts` sau regenerate).
+- `AntiCheatController` + `AntiCheatService` + `CheatingLogRepository`: ghi log h├ánh vi, xem log/score theo attempt, tß╗òng hß╗úp theo ─æß╗ü thi.
+- Student chß╗ë ghi log khi attempt **InProgress** v├á exam **EnableAntiCheat**; cß╗Öng dß╗ôn `SuspicionScore` tr├¬n `ExamAttempt`.
+- Loß║íi h├ánh vi API: `TAB_SWITCH`, `WINDOW_BLUR`, `COPY_PASTE`, `EXIT_FULLSCREEN`, `PAGE_RELOAD`, `DISCONNECTED`, `WEBCAM_OFF`.
 
 Changed files:
 
@@ -2070,13 +2118,13 @@ Changed files:
 
 Validation:
 
-- `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` — 0 errors
-- `dotnet ef database update` — applied `20260611090709_AddAssignmentsExamsAndAttempts` (includes `CheatingLogs` table)
+- `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` ΓÇö 0 errors
+- `dotnet ef database update` ΓÇö applied `20260611090709_AddAssignmentsExamsAndAttempts` (includes `CheatingLogs` table)
 
 Unresolved questions:
 
-- SignalR realtime warning (Phase 8) chưa implement.
-- Frontend monitor hook/dashboard chưa làm (ngoài scope backend-only).
+- SignalR realtime warning (Phase 8) ch╞░a implement.
+- Frontend monitor hook/dashboard ch╞░a l├ám (ngo├ái scope backend-only).
 
 ## Feature: PATCH endpoints (partial update)
 
@@ -2086,9 +2134,9 @@ Branch/source: local workspace
 
 Description:
 
-- Thêm **PATCH** cho cập nhật một phần: Classroom, Assignment, Exam, Question, Answer.
-- Dùng `Optional<T>` — field không có trong JSON body được giữ nguyên; PUT vẫn thay thế đầy đủ.
-- Ví dụ: `PATCH /api/classrooms/1` body `{"name":"..."}` — không đổi `description`.
+- Th├¬m **PATCH** cho cß║¡p nhß║¡t mß╗Öt phß║ºn: Classroom, Assignment, Exam, Question, Answer.
+- D├╣ng `Optional<T>` ΓÇö field kh├┤ng c├│ trong JSON body ─æ╞░ß╗úc giß╗» nguy├¬n; PUT vß║½n thay thß║┐ ─æß║ºy ─æß╗º.
+- V├¡ dß╗Ñ: `PATCH /api/classrooms/1` body `{"name":"..."}` ΓÇö kh├┤ng ─æß╗òi `description`.
 
 Changed files:
 
@@ -2099,7 +2147,7 @@ Changed files:
 - `backend/EduGuard.Api/Controllers/*.cs`, `Program.cs`
 - `docs/apiList.md`, `docs/swagger-api-testing-guide.md`
 
-Validation: `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` — 0 errors.
+Validation: `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` ΓÇö 0 errors.
 
 ## Fix: JSON response cho 401/403 (Authorize / JWT)
 
@@ -2109,9 +2157,9 @@ Branch/source: local workspace
 
 Description:
 
-- **Bug:** Student gọi API Teacher (vd. `PUT /api/classrooms/{id}`) trả 403 với body rỗng (`content-length: 0`).
-- **Fix:** Handler toàn cục `ApiAuthorizationMiddlewareResultHandler` + `JwtBearerEvents` trả `ApiResponse<object>` JSON cho 401/403 trên mọi API có `[Authorize]`.
-- Lỗi nghiệp vụ trong controller (`UnauthorizedAccessException`) vẫn trả message chi tiết như trước.
+- **Bug:** Student gß╗ìi API Teacher (vd. `PUT /api/classrooms/{id}`) trß║ú 403 vß╗¢i body rß╗ùng (`content-length: 0`).
+- **Fix:** Handler to├án cß╗Ñc `ApiAuthorizationMiddlewareResultHandler` + `JwtBearerEvents` trß║ú `ApiResponse<object>` JSON cho 401/403 tr├¬n mß╗ìi API c├│ `[Authorize]`.
+- Lß╗ùi nghiß╗çp vß╗Ñ trong controller (`UnauthorizedAccessException`) vß║½n trß║ú message chi tiß║┐t nh╞░ tr╞░ß╗¢c.
 
 Changed files:
 
@@ -2124,7 +2172,7 @@ Changed files:
 
 Validation:
 
-- `dotnet build` (cần restart/stop `EduGuard.Api` nếu process đang lock DLL)
+- `dotnet build` (cß║ºn restart/stop `EduGuard.Api` nß║┐u process ─æang lock DLL)
 
 ## Feature: Swagger API testing guide
 
@@ -2134,13 +2182,13 @@ Branch/source: local workspace
 
 Description:
 
-- Thêm `docs/swagger-api-testing-guide.md`: hướng dẫn mở Swagger, Authorize JWT, gán role Teacher qua SQL, luồng test Phase 2–6 và checklist E2E.
-- Sửa URL Swagger cũ (`7234`) trong `05_API_FRONTEND_INTEGRATION.md` → `7168`.
-- Liên kết từ `apiList.md`, `07_DEVELOPMENT_RULES.md`.
+- Th├¬m `docs/swagger-api-testing-guide.md`: h╞░ß╗¢ng dß║½n mß╗ƒ Swagger, Authorize JWT, g├ín role Teacher qua SQL, luß╗ông test Phase 2ΓÇô6 v├á checklist E2E.
+- Sß╗¡a URL Swagger c┼⌐ (`7234`) trong `05_API_FRONTEND_INTEGRATION.md` ΓåÆ `7168`.
+- Li├¬n kß║┐t tß╗½ `apiList.md`, `07_DEVELOPMENT_RULES.md`.
 
 Changed files:
 
-- `docs/swagger-api-testing-guide.md` (mới)
+- `docs/swagger-api-testing-guide.md` (mß╗¢i)
 - `docs/05_API_FRONTEND_INTEGRATION.md`
 - `docs/07_DEVELOPMENT_RULES.md`
 - `docs/apiList.md`
@@ -2148,9 +2196,9 @@ Changed files:
 
 Validation:
 
-- Nội dung đối chiếu `launchSettings.json`, controllers và DTO hiện tại.
+- Nß╗Öi dung ─æß╗æi chiß║┐u `launchSettings.json`, controllers v├á DTO hiß╗çn tß║íi.
 
-## Feature: Backend Phase 3–6 — Classroom, Assignment, Exam, Exam Attempt APIs
+## Feature: Backend Phase 3ΓÇô6 ΓÇö Classroom, Assignment, Exam, Exam Attempt APIs
 
 Date: 2026-06-11
 
@@ -2158,12 +2206,12 @@ Branch/source: `release` (local workspace)
 
 Description:
 
-- Hoàn thiện **Phase 3** Classroom: GET/PUT/DELETE lớp, xóa thành viên (8/8 API).
-- Triển khai **Phase 4** Assignment: entity `Assignment`/`Submission`, 8 API (CRUD, submit, grade).
-- Triển khai **Phase 5** Exam: entity `Exam`/`ExamSetting`/`Question`/`Answer`, 11 API + question bank cho teacher.
-- Triển khai **Phase 6** Exam Attempt: start (shuffle + resume), save answer, submit (auto-grade), result, list attempts.
-- Migration EF `20260611022446_AddAssignmentsExamsAndAttempts` đã apply lên `EduGuardExam`.
-- Frontend vẫn dùng mock; tích hợp API thật là bước riêng.
+- Ho├án thiß╗çn **Phase 3** Classroom: GET/PUT/DELETE lß╗¢p, x├│a th├ánh vi├¬n (8/8 API).
+- Triß╗ân khai **Phase 4** Assignment: entity `Assignment`/`Submission`, 8 API (CRUD, submit, grade).
+- Triß╗ân khai **Phase 5** Exam: entity `Exam`/`ExamSetting`/`Question`/`Answer`, 11 API + question bank cho teacher.
+- Triß╗ân khai **Phase 6** Exam Attempt: start (shuffle + resume), save answer, submit (auto-grade), result, list attempts.
+- Migration EF `20260611022446_AddAssignmentsExamsAndAttempts` ─æ├ú apply l├¬n `EduGuardExam`.
+- Frontend vß║½n d├╣ng mock; t├¡ch hß╗úp API thß║¡t l├á b╞░ß╗¢c ri├¬ng.
 
 Changed files:
 
@@ -2175,15 +2223,15 @@ Changed files:
 
 Validation:
 
-- `dotnet build` (backend) — 0 errors
-- `dotnet ef database update` — migration applied successfully
+- `dotnet build` (backend) ΓÇö 0 errors
+- `dotnet ef database update` ΓÇö migration applied successfully
 
 Unresolved questions:
 
-- Chưa chạy Swagger E2E đầy đủ classroom → assignment → exam → attempt trên môi trường dev.
-- Anti-cheat (Phase 7) chưa ghi log suspicion khi làm bài.
+- Ch╞░a chß║íy Swagger E2E ─æß║ºy ─æß╗º classroom ΓåÆ assignment ΓåÆ exam ΓåÆ attempt tr├¬n m├┤i tr╞░ß╗¥ng dev.
+- Anti-cheat (Phase 7) ch╞░a ghi log suspicion khi l├ám b├ái.
 
-## Feature: Design tokens v1.1 — Institutional Slate palette
+## Feature: Design tokens v1.1 ΓÇö Institutional Slate palette
 
 Date: 2026-06-11
 
@@ -2191,10 +2239,10 @@ Branch/source: local workspace (`design.md` + preview + frontend tokens)
 
 Description:
 
-- Nâng cấp bộ màu EduGuard từ Apple Gray sang **Institutional Slate**: slate authority cho text, blue sâu hơn cho CTA, neutral/border tinh chỉnh cho cảm giác B2B education SaaS premium.
-- Giữ nguyên quy tắc flat: một accent `tertiary` cho CTA, link riêng, không gradient/shadow trên card.
-- Thêm token `tertiary-hover`, `surface-sunken`, `border-subtle`, và `*-muted` cho badge/alert surface.
-- Đồng bộ `design.md`, preview HTML, `frontend/src/index.css`, `docs/design-guidelines.md`, và rule files.
+- N├óng cß║Ñp bß╗Ö m├áu EduGuard tß╗½ Apple Gray sang **Institutional Slate**: slate authority cho text, blue s├óu h╞ín cho CTA, neutral/border tinh chß╗ënh cho cß║úm gi├íc B2B education SaaS premium.
+- Giß╗» nguy├¬n quy tß║»c flat: mß╗Öt accent `tertiary` cho CTA, link ri├¬ng, kh├┤ng gradient/shadow tr├¬n card.
+- Th├¬m token `tertiary-hover`, `surface-sunken`, `border-subtle`, v├á `*-muted` cho badge/alert surface.
+- ─Éß╗ông bß╗Ö `design.md`, preview HTML, `frontend/src/index.css`, `docs/design-guidelines.md`, v├á rule files.
 
 Changed files:
 
@@ -2208,12 +2256,12 @@ Changed files:
 
 Validation:
 
-- Grep repo: không còn `#0071E3`, `#0066CC`, `#1D1D1F` trong `frontend/`
-- Preview: mở `plans/visuals/eduguard-design-tokens-preview.html` trong browser
+- Grep repo: kh├┤ng c├▓n `#0071E3`, `#0066CC`, `#1D1D1F` trong `frontend/`
+- Preview: mß╗ƒ `plans/visuals/eduguard-design-tokens-preview.html` trong browser
 
 Unresolved questions:
 
-- Dark mode pairing chưa định nghĩa trong v1.1 (chỉ light theme).
+- Dark mode pairing ch╞░a ─æß╗ïnh ngh─⌐a trong v1.1 (chß╗ë light theme).
 
 ## Feature: Dark theme toggle and mock status mapping
 
@@ -2223,10 +2271,10 @@ Branch/source: `devH`
 
 Description:
 
-- Bật thật chức năng đổi theme từ dropdown thông tin cá nhân trên top bar: người dùng có thể chuyển qua lại giữa giao diện sáng và tối ngay trong khu vực đã đăng nhập.
-- Thiết lập `ThemeProvider` và bộ biến màu toàn cục để header, sidebar, card, button, input và dropdown đồng loạt chuyển sang nền tối/chữ sáng thay vì chỉ đổi màu cục bộ ở một vài component.
-- Tinh chỉnh nhận diện thương hiệu ở dark mode: logo trên top bar được đặt trong khung bo góc riêng để nổi bật hơn trên nền đen.
-- Gắn thêm các khối comment `MOCK STATUS` / `INTEGRATION STATUS` ở các module dữ liệu chính để nhìn nhanh phần nào đã nối backend thật, phần nào vẫn đang chạy bằng `mockDatabase` và `localStorage`.
+- Bß║¡t thß║¡t chß╗⌐c n─âng ─æß╗òi theme tß╗½ dropdown th├┤ng tin c├í nh├ón tr├¬n top bar: ng╞░ß╗¥i d├╣ng c├│ thß╗â chuyß╗ân qua lß║íi giß╗»a giao diß╗çn s├íng v├á tß╗æi ngay trong khu vß╗▒c ─æ├ú ─æ─âng nhß║¡p.
+- Thiß║┐t lß║¡p `ThemeProvider` v├á bß╗Ö biß║┐n m├áu to├án cß╗Ñc ─æß╗â header, sidebar, card, button, input v├á dropdown ─æß╗ông loß║ít chuyß╗ân sang nß╗ün tß╗æi/chß╗» s├íng thay v├¼ chß╗ë ─æß╗òi m├áu cß╗Ñc bß╗Ö ß╗ƒ mß╗Öt v├ái component.
+- Tinh chß╗ënh nhß║¡n diß╗çn th╞░╞íng hiß╗çu ß╗ƒ dark mode: logo tr├¬n top bar ─æ╞░ß╗úc ─æß║╖t trong khung bo g├│c ri├¬ng ─æß╗â nß╗òi bß║¡t h╞ín tr├¬n nß╗ün ─æen.
+- Gß║»n th├¬m c├íc khß╗æi comment `MOCK STATUS` / `INTEGRATION STATUS` ß╗ƒ c├íc module dß╗» liß╗çu ch├¡nh ─æß╗â nh├¼n nhanh phß║ºn n├áo ─æ├ú nß╗æi backend thß║¡t, phß║ºn n├áo vß║½n ─æang chß║íy bß║▒ng `mockDatabase` v├á `localStorage`.
 
 Changed files:
 
@@ -2252,7 +2300,7 @@ Validation:
 
 Unresolved questions:
 
-- Theme tối hiện đã áp vào khu vực app đã đăng nhập; nếu muốn đồng bộ cả login/register theo theme này thì có thể làm tiếp ở nhịp UI sau.
+- Theme tß╗æi hiß╗çn ─æ├ú ├íp v├áo khu vß╗▒c app ─æ├ú ─æ─âng nhß║¡p; nß║┐u muß╗æn ─æß╗ông bß╗Ö cß║ú login/register theo theme n├áy th├¼ c├│ thß╗â l├ám tiß║┐p ß╗ƒ nhß╗ïp UI sau.
 
 ## Feature: Auth page redesign and top bar logo scaling
 
@@ -2262,11 +2310,11 @@ Branch/source: `devH`
 
 Description:
 
-- Thiết kế lại giao diện xác thực EduGuard theo hướng tối giản, hiện đại: bố cục 2 cột với panel giới thiệu nền navy gradient ở bên trái và form trắng nhiều khoảng thở ở bên phải.
-- Panel giới thiệu được tinh chỉnh tiếp theo góp ý UI: logo dùng bản nền trong suốt, phóng lớn hơn, thêm wordmark `EduGuard` ngay dưới logo và chuyển thông điệp thành 2 dòng chữ riêng `Học tập an toàn.` / `Thi trực tuyến minh bạch.` để không bị xuống hàng.
-- Màn đăng nhập được bổ sung đúng các thành phần UI yêu cầu: nhãn `XÁC THỰC TÀI KHOẢN`, tiêu đề `Đăng nhập EduGuard`, checkbox `Ghi nhớ đăng nhập`, link `Quên mật khẩu?` và CTA chính màu xanh.
-- Đồng bộ lại register page để dùng cùng ngôn ngữ thiết kế mới của khu xác thực thay vì giữ layout cũ lệch tông.
-- Chỉnh logo trên top bar: dùng bản logo nền trong suốt, bỏ lớp nền trắng bao quanh và phóng logo lớn lên để cân bằng với chiều cao chữ `EduGuard Workspace`.
+- Thiß║┐t kß║┐ lß║íi giao diß╗çn x├íc thß╗▒c EduGuard theo h╞░ß╗¢ng tß╗æi giß║ún, hiß╗çn ─æß║íi: bß╗æ cß╗Ñc 2 cß╗Öt vß╗¢i panel giß╗¢i thiß╗çu nß╗ün navy gradient ß╗ƒ b├¬n tr├íi v├á form trß║»ng nhiß╗üu khoß║úng thß╗ƒ ß╗ƒ b├¬n phß║úi.
+- Panel giß╗¢i thiß╗çu ─æ╞░ß╗úc tinh chß╗ënh tiß║┐p theo g├│p ├╜ UI: logo d├╣ng bß║ún nß╗ün trong suß╗æt, ph├│ng lß╗¢n h╞ín, th├¬m wordmark `EduGuard` ngay d╞░ß╗¢i logo v├á chuyß╗ân th├┤ng ─æiß╗çp th├ánh 2 d├▓ng chß╗» ri├¬ng `Hß╗ìc tß║¡p an to├án.` / `Thi trß╗▒c tuyß║┐n minh bß║ích.` ─æß╗â kh├┤ng bß╗ï xuß╗æng h├áng.
+- M├án ─æ─âng nhß║¡p ─æ╞░ß╗úc bß╗ò sung ─æ├║ng c├íc th├ánh phß║ºn UI y├¬u cß║ºu: nh├ún `X├üC THß╗░C T├ÇI KHOß║óN`, ti├¬u ─æß╗ü `─É─âng nhß║¡p EduGuard`, checkbox `Ghi nhß╗¢ ─æ─âng nhß║¡p`, link `Qu├¬n mß║¡t khß║⌐u?` v├á CTA ch├¡nh m├áu xanh.
+- ─Éß╗ông bß╗Ö lß║íi register page ─æß╗â d├╣ng c├╣ng ng├┤n ngß╗» thiß║┐t kß║┐ mß╗¢i cß╗ºa khu x├íc thß╗▒c thay v├¼ giß╗» layout c┼⌐ lß╗çch t├┤ng.
+- Chß╗ënh logo tr├¬n top bar: d├╣ng bß║ún logo nß╗ün trong suß╗æt, bß╗Å lß╗¢p nß╗ün trß║»ng bao quanh v├á ph├│ng logo lß╗¢n l├¬n ─æß╗â c├ón bß║▒ng vß╗¢i chiß╗üu cao chß╗» `EduGuard Workspace`.
 
 Changed files:
 
@@ -2285,7 +2333,7 @@ Validation:
 
 Unresolved questions:
 
-- Link `Quên mật khẩu?` hiện mới là placeholder UI có toast vì backend chưa có luồng khôi phục mật khẩu tương ứng.
+- Link `Qu├¬n mß║¡t khß║⌐u?` hiß╗çn mß╗¢i l├á placeholder UI c├│ toast v├¼ backend ch╞░a c├│ luß╗ông kh├┤i phß╗Ñc mß║¡t khß║⌐u t╞░╞íng ß╗⌐ng.
 
 ## Feature: Top bar cue cleanup for header actions
 
@@ -2295,8 +2343,8 @@ Branch/source: `devH`
 
 Description:
 
-- Bỏ nút 3 gạch đứng trước logo trong header workspace để phần thương hiệu bên trái gọn hơn đúng theo yêu cầu UI mới.
-- Thêm lại dấu `v` ở cuối khối thông tin cá nhân để người dùng dễ nhận ra card này có thể bấm mở dropdown thao tác.
+- Bß╗Å n├║t 3 gß║ích ─æß╗⌐ng tr╞░ß╗¢c logo trong header workspace ─æß╗â phß║ºn th╞░╞íng hiß╗çu b├¬n tr├íi gß╗ìn h╞ín ─æ├║ng theo y├¬u cß║ºu UI mß╗¢i.
+- Th├¬m lß║íi dß║Ñu `v` ß╗ƒ cuß╗æi khß╗æi th├┤ng tin c├í nh├ón ─æß╗â ng╞░ß╗¥i d├╣ng dß╗à nhß║¡n ra card n├áy c├│ thß╗â bß║Ñm mß╗ƒ dropdown thao t├íc.
 
 Changed files:
 
@@ -2311,7 +2359,7 @@ Validation:
 
 Unresolved questions:
 
-- Sau thay đổi này, header không còn điểm mở sidebar từ chính top bar nữa; nếu sau này cần hỗ trợ mobile rõ hơn có thể cân nhắc đặt trigger ở vị trí khác.
+- Sau thay ─æß╗òi n├áy, header kh├┤ng c├▓n ─æiß╗âm mß╗ƒ sidebar tß╗½ ch├¡nh top bar nß╗»a; nß║┐u sau n├áy cß║ºn hß╗ù trß╗ú mobile r├╡ h╞ín c├│ thß╗â c├ón nhß║»c ─æß║╖t trigger ß╗ƒ vß╗ï tr├¡ kh├íc.
 
 ## Feature: Admin classroom list filters and simplified overview
 
@@ -2321,10 +2369,10 @@ Branch/source: `devH`
 
 Description:
 
-- Tinh chỉnh màn `admin/classrooms` để bỏ 3 ô tổng hợp phía trên danh sách lớp học, giữ trọng tâm vào việc duyệt danh sách lớp thay vì overview ngắn.
-- Thêm khối `Bộ lọc lớp học` cho Admin với tìm kiếm theo `tên lớp học` hoặc `tên giảng viên`.
-- Bổ sung sắp xếp danh sách lớp theo `tên lớp học` và `số lượng thành viên`, đồng thời thêm trạng thái rỗng riêng khi bộ lọc không khớp lớp nào.
-- Giữ nguyên flow hiện tại của Teacher và Student để không làm lệch trải nghiệm ở các vai trò còn lại.
+- Tinh chß╗ënh m├án `admin/classrooms` ─æß╗â bß╗Å 3 ├┤ tß╗òng hß╗úp ph├¡a tr├¬n danh s├ích lß╗¢p hß╗ìc, giß╗» trß╗ìng t├óm v├áo viß╗çc duyß╗çt danh s├ích lß╗¢p thay v├¼ overview ngß║»n.
+- Th├¬m khß╗æi `Bß╗Ö lß╗ìc lß╗¢p hß╗ìc` cho Admin vß╗¢i t├¼m kiß║┐m theo `t├¬n lß╗¢p hß╗ìc` hoß║╖c `t├¬n giß║úng vi├¬n`.
+- Bß╗ò sung sß║»p xß║┐p danh s├ích lß╗¢p theo `t├¬n lß╗¢p hß╗ìc` v├á `sß╗æ l╞░ß╗úng th├ánh vi├¬n`, ─æß╗ông thß╗¥i th├¬m trß║íng th├íi rß╗ùng ri├¬ng khi bß╗Ö lß╗ìc kh├┤ng khß╗¢p lß╗¢p n├áo.
+- Giß╗» nguy├¬n flow hiß╗çn tß║íi cß╗ºa Teacher v├á Student ─æß╗â kh├┤ng l├ám lß╗çch trß║úi nghiß╗çm ß╗ƒ c├íc vai tr├▓ c├▓n lß║íi.
 
 Changed files:
 
@@ -2339,7 +2387,7 @@ Validation:
 
 Unresolved questions:
 
-- Màn Admin hiện vẫn đọc dữ liệu lớp học từ mock API; khi nối backend thật có thể đẩy phần sắp xếp/tìm kiếm này xuống query server nếu số lượng lớp tăng lớn.
+- M├án Admin hiß╗çn vß║½n ─æß╗ìc dß╗» liß╗çu lß╗¢p hß╗ìc tß╗½ mock API; khi nß╗æi backend thß║¡t c├│ thß╗â ─æß║⌐y phß║ºn sß║»p xß║┐p/t├¼m kiß║┐m n├áy xuß╗æng query server nß║┐u sß╗æ l╞░ß╗úng lß╗¢p t─âng lß╗¢n.
 
 ## Feature: Profile avatar upload and local session hydration
 
@@ -2349,9 +2397,9 @@ Branch/source: `devH`
 
 Description:
 
-- Bổ sung khả năng tải ảnh đại diện từ máy ở trang hồ sơ thay cho việc chỉ nhập `Avatar URL`; người dùng có thể xem trước ảnh, dùng lại avatar mặc định và chỉ cập nhật thật sau khi bấm lưu.
-- Thêm kiểm tra định dạng ảnh `PNG/JPG/WEBP` và giới hạn dung lượng `700 KB` để tránh phình `localStorage` trong mock app hiện tại.
-- Vá luồng hydrate auth khi tải lại trang: sau khi xác thực token bằng backend `me`, app sẽ trộn lại profile mock cục bộ để avatar và thông tin cá nhân vừa cập nhật không bị mất khỏi session frontend.
+- Bß╗ò sung khß║ú n─âng tß║úi ß║únh ─æß║íi diß╗çn tß╗½ m├íy ß╗ƒ trang hß╗ô s╞í thay cho viß╗çc chß╗ë nhß║¡p `Avatar URL`; ng╞░ß╗¥i d├╣ng c├│ thß╗â xem tr╞░ß╗¢c ß║únh, d├╣ng lß║íi avatar mß║╖c ─æß╗ïnh v├á chß╗ë cß║¡p nhß║¡t thß║¡t sau khi bß║Ñm l╞░u.
+- Th├¬m kiß╗âm tra ─æß╗ïnh dß║íng ß║únh `PNG/JPG/WEBP` v├á giß╗¢i hß║ín dung l╞░ß╗úng `700 KB` ─æß╗â tr├ính ph├¼nh `localStorage` trong mock app hiß╗çn tß║íi.
+- V├í luß╗ông hydrate auth khi tß║úi lß║íi trang: sau khi x├íc thß╗▒c token bß║▒ng backend `me`, app sß║╜ trß╗Ön lß║íi profile mock cß╗Ñc bß╗Ö ─æß╗â avatar v├á th├┤ng tin c├í nh├ón vß╗½a cß║¡p nhß║¡t kh├┤ng bß╗ï mß║Ñt khß╗Åi session frontend.
 
 Changed files:
 
@@ -2367,7 +2415,7 @@ Validation:
 
 Unresolved questions:
 
-- Ảnh đại diện hiện được lưu cục bộ dưới dạng data URL trong trình duyệt; khi nối backend thật nên chuyển sang upload file lên server hoặc object storage.
+- ß║ónh ─æß║íi diß╗çn hiß╗çn ─æ╞░ß╗úc l╞░u cß╗Ñc bß╗Ö d╞░ß╗¢i dß║íng data URL trong tr├¼nh duyß╗çt; khi nß╗æi backend thß║¡t n├¬n chuyß╗ân sang upload file l├¬n server hoß║╖c object storage.
 
 ## Feature: Admin dashboard navigation cleanup and role stats
 
@@ -2377,10 +2425,10 @@ Branch/source: `devH`
 
 Description:
 
-- Tinh gọn lại phần điều hướng của màn `admin/dashboard`: bỏ icon-only ở cạnh phải thẻ thông tin cá nhân trên header để khối user gọn hơn nhưng vẫn giữ dropdown thao tác.
-- Đồng bộ menu Admin ở sidebar theo nhãn mới: `Dashboard`, `Quản lí lớp học`, `Quản lí bài kiểm tra`, `Quản lí người dùng`, `Hồ sơ cá nhân`.
-- Dọn sidebar để chỉ còn tiêu đề và danh sách route, bỏ hai khối mô tả `EduGuard điều hướng nhanh...` và `Sidebar hiện chỉ giữ...` theo yêu cầu UI.
-- Bổ sung thống kê tách riêng `Giảng viên` và `Sinh viên` trên dashboard Admin thay vì chỉ để trong helper text của thẻ `Người dùng`.
+- Tinh gß╗ìn lß║íi phß║ºn ─æiß╗üu h╞░ß╗¢ng cß╗ºa m├án `admin/dashboard`: bß╗Å icon-only ß╗ƒ cß║ính phß║úi thß║╗ th├┤ng tin c├í nh├ón tr├¬n header ─æß╗â khß╗æi user gß╗ìn h╞ín nh╞░ng vß║½n giß╗» dropdown thao t├íc.
+- ─Éß╗ông bß╗Ö menu Admin ß╗ƒ sidebar theo nh├ún mß╗¢i: `Dashboard`, `Quß║ún l├¡ lß╗¢p hß╗ìc`, `Quß║ún l├¡ b├ái kiß╗âm tra`, `Quß║ún l├¡ ng╞░ß╗¥i d├╣ng`, `Hß╗ô s╞í c├í nh├ón`.
+- Dß╗ìn sidebar ─æß╗â chß╗ë c├▓n ti├¬u ─æß╗ü v├á danh s├ích route, bß╗Å hai khß╗æi m├┤ tß║ú `EduGuard ─æiß╗üu h╞░ß╗¢ng nhanh...` v├á `Sidebar hiß╗çn chß╗ë giß╗»...` theo y├¬u cß║ºu UI.
+- Bß╗ò sung thß╗æng k├¬ t├ích ri├¬ng `Giß║úng vi├¬n` v├á `Sinh vi├¬n` tr├¬n dashboard Admin thay v├¼ chß╗ë ─æß╗â trong helper text cß╗ºa thß║╗ `Ng╞░ß╗¥i d├╣ng`.
 
 Changed files:
 
@@ -2398,7 +2446,7 @@ Validation:
 
 Unresolved questions:
 
-- Dashboard Admin hiện vẫn đọc mock API, nên số liệu giảng viên và sinh viên đang phản ánh dữ liệu mock/session hiện có của frontend.
+- Dashboard Admin hiß╗çn vß║½n ─æß╗ìc mock API, n├¬n sß╗æ liß╗çu giß║úng vi├¬n v├á sinh vi├¬n ─æang phß║ún ├ính dß╗» liß╗çu mock/session hiß╗çn c├│ cß╗ºa frontend.
 
 ## Feature: Workspace header layout and simplified role sidebar
 
@@ -2408,10 +2456,10 @@ Branch/source: `devH`
 
 Description:
 
-- Thay khung layout chung của toàn bộ vai trò để bám giao diện EduGuard hiện tại: bỏ `BrandNavbar` cũ ở phía trên, đưa khối workspace lên làm header chính, giữ nền sáng, card trắng, bo góc lớn và tông xanh navy/xanh nhạt.
-- Header được tinh chỉnh tiếp theo phản hồi UI: bên trái thay khối `EG` bằng ảnh thật `public/logo.png`, bỏ chữ `Mở menu` và `Khu làm việc`, ở giữa bỏ hẳn khối cờ Việt Nam để tổng thể gọn hơn.
-- Khối thông tin người dùng bên phải giữ badge vai trò và dropdown cá nhân; nút `Đăng xuất` được chuyển vào trong dropdown thay vì đứng riêng bên ngoài. Các mục `Thông tin`, `Đổi mật khẩu`, `Chế độ tối`, `EduGuard Premium` vẫn giữ nguyên; chỉ `Thông tin` điều hướng sang hồ sơ, các mục còn lại hiện là placeholder UI để không đụng logic trang.
-- Tối giản lại sidebar để chỉ giữ điều hướng, bỏ phần lặp thông tin người dùng; đồng thời chỉnh active state và spacing để nhìn sạch hơn trên desktop lẫn mobile.
+- Thay khung layout chung cß╗ºa to├án bß╗Ö vai tr├▓ ─æß╗â b├ím giao diß╗çn EduGuard hiß╗çn tß║íi: bß╗Å `BrandNavbar` c┼⌐ ß╗ƒ ph├¡a tr├¬n, ─æ╞░a khß╗æi workspace l├¬n l├ám header ch├¡nh, giß╗» nß╗ün s├íng, card trß║»ng, bo g├│c lß╗¢n v├á t├┤ng xanh navy/xanh nhß║ít.
+- Header ─æ╞░ß╗úc tinh chß╗ënh tiß║┐p theo phß║ún hß╗ôi UI: b├¬n tr├íi thay khß╗æi `EG` bß║▒ng ß║únh thß║¡t `public/logo.png`, bß╗Å chß╗» `Mß╗ƒ menu` v├á `Khu l├ám viß╗çc`, ß╗ƒ giß╗»a bß╗Å hß║│n khß╗æi cß╗¥ Viß╗çt Nam ─æß╗â tß╗òng thß╗â gß╗ìn h╞ín.
+- Khß╗æi th├┤ng tin ng╞░ß╗¥i d├╣ng b├¬n phß║úi giß╗» badge vai tr├▓ v├á dropdown c├í nh├ón; n├║t `─É─âng xuß║Ñt` ─æ╞░ß╗úc chuyß╗ân v├áo trong dropdown thay v├¼ ─æß╗⌐ng ri├¬ng b├¬n ngo├ái. C├íc mß╗Ñc `Th├┤ng tin`, `─Éß╗òi mß║¡t khß║⌐u`, `Chß║┐ ─æß╗Ö tß╗æi`, `EduGuard Premium` vß║½n giß╗» nguy├¬n; chß╗ë `Th├┤ng tin` ─æiß╗üu h╞░ß╗¢ng sang hß╗ô s╞í, c├íc mß╗Ñc c├▓n lß║íi hiß╗çn l├á placeholder UI ─æß╗â kh├┤ng ─æß╗Ñng logic trang.
+- Tß╗æi giß║ún lß║íi sidebar ─æß╗â chß╗ë giß╗» ─æiß╗üu h╞░ß╗¢ng, bß╗Å phß║ºn lß║╖p th├┤ng tin ng╞░ß╗¥i d├╣ng; ─æß╗ông thß╗¥i chß╗ënh active state v├á spacing ─æß╗â nh├¼n sß║ích h╞ín tr├¬n desktop lß║½n mobile.
 
 Changed files:
 
@@ -2428,7 +2476,7 @@ Validation:
 
 Unresolved questions:
 
-- `Đổi mật khẩu`, `Chế độ tối`, `EduGuard Premium` hiện mới là mục dropdown ở mức giao diện; nếu muốn dùng thật sẽ cần nối thêm logic riêng sau.
+- `─Éß╗òi mß║¡t khß║⌐u`, `Chß║┐ ─æß╗Ö tß╗æi`, `EduGuard Premium` hiß╗çn mß╗¢i l├á mß╗Ñc dropdown ß╗ƒ mß╗⌐c giao diß╗çn; nß║┐u muß╗æn d├╣ng thß║¡t sß║╜ cß║ºn nß╗æi th├¬m logic ri├¬ng sau.
 
 ## Feature: Frontend role sync for protected routes and mock dashboards
 
@@ -2438,9 +2486,9 @@ Branch/source: `devH`
 
 Description:
 
-- Vá frontend auth mapping để không còn lấy bừa `roles[0]` từ backend. App giờ chọn role chính theo ưu tiên `Admin -> Teacher -> Student`, nên redirect và route guard không bị lệch khi user có nhiều quyền.
-- Sửa bridge giữa backend session và mock database: nếu user đã tồn tại trong mock DB theo `id` hoặc `email`, frontend sẽ cập nhật lại `role`, `email`, `fullName`, trạng thái và timestamp từ session backend thay vì giữ role mock cũ.
-- Nhờ đó các màn dashboard mock cho `Admin` và `Teacher` sẽ đọc đúng vai trò mới sau khi đổi quyền trong database và tải lại phiên đăng nhập.
+- V├í frontend auth mapping ─æß╗â kh├┤ng c├▓n lß║Ñy bß╗½a `roles[0]` tß╗½ backend. App giß╗¥ chß╗ìn role ch├¡nh theo ╞░u ti├¬n `Admin -> Teacher -> Student`, n├¬n redirect v├á route guard kh├┤ng bß╗ï lß╗çch khi user c├│ nhiß╗üu quyß╗ün.
+- Sß╗¡a bridge giß╗»a backend session v├á mock database: nß║┐u user ─æ├ú tß╗ôn tß║íi trong mock DB theo `id` hoß║╖c `email`, frontend sß║╜ cß║¡p nhß║¡t lß║íi `role`, `email`, `fullName`, trß║íng th├íi v├á timestamp tß╗½ session backend thay v├¼ giß╗» role mock c┼⌐.
+- Nhß╗¥ ─æ├│ c├íc m├án dashboard mock cho `Admin` v├á `Teacher` sß║╜ ─æß╗ìc ─æ├║ng vai tr├▓ mß╗¢i sau khi ─æß╗òi quyß╗ün trong database v├á tß║úi lß║íi phi├¬n ─æ─âng nhß║¡p.
 
 Changed files:
 
@@ -2458,7 +2506,7 @@ Validation:
 
 Unresolved questions:
 
-- Nếu user đang giữ access token/session cũ từ trước khi đổi role trong DB, vẫn nên tải lại trang hoặc đăng xuất rồi đăng nhập lại để frontend hydrate lại thông tin quyền mới.
+- Nß║┐u user ─æang giß╗» access token/session c┼⌐ tß╗½ tr╞░ß╗¢c khi ─æß╗òi role trong DB, vß║½n n├¬n tß║úi lß║íi trang hoß║╖c ─æ─âng xuß║Ñt rß╗ôi ─æ─âng nhß║¡p lß║íi ─æß╗â frontend hydrate lß║íi th├┤ng tin quyß╗ün mß╗¢i.
 
 ## Feature: Frontend auth integration with backend API
 
@@ -2468,10 +2516,10 @@ Branch/source: `devH`
 
 Description:
 
-- Chuyển `LoginPage` và `RegisterPage` sang gọi backend auth thật theo đúng docs và controller hiện tại: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`.
-- Giữ nguyên trải nghiệm hiện có của frontend bằng cách map `UserDto.Roles` từ backend về shape `user.role` mà app đang dùng, nên route guard, sidebar và redirect theo role không phải sửa lan rộng.
-- Vì dashboard/classroom/exam vẫn đang đọc mock API, thêm một lớp bridge trong `mockDatabase` để user đăng nhập từ backend thật vẫn được đồng bộ vào mock DB khi cần, tránh vỡ flow sau lúc login.
-- Gỡ luồng Google/demo auth khỏi UI đăng nhập và đăng ký để bám sát yêu cầu hệ thống trong `docs/` và tránh tạo session mock không khớp backend.
+- Chuyß╗ân `LoginPage` v├á `RegisterPage` sang gß╗ìi backend auth thß║¡t theo ─æ├║ng docs v├á controller hiß╗çn tß║íi: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`.
+- Giß╗» nguy├¬n trß║úi nghiß╗çm hiß╗çn c├│ cß╗ºa frontend bß║▒ng c├ích map `UserDto.Roles` tß╗½ backend vß╗ü shape `user.role` m├á app ─æang d├╣ng, n├¬n route guard, sidebar v├á redirect theo role kh├┤ng phß║úi sß╗¡a lan rß╗Öng.
+- V├¼ dashboard/classroom/exam vß║½n ─æang ─æß╗ìc mock API, th├¬m mß╗Öt lß╗¢p bridge trong `mockDatabase` ─æß╗â user ─æ─âng nhß║¡p tß╗½ backend thß║¡t vß║½n ─æ╞░ß╗úc ─æß╗ông bß╗Ö v├áo mock DB khi cß║ºn, tr├ính vß╗í flow sau l├║c login.
+- Gß╗í luß╗ông Google/demo auth khß╗Åi UI ─æ─âng nhß║¡p v├á ─æ─âng k├╜ ─æß╗â b├ím s├ít y├¬u cß║ºu hß╗ç thß╗æng trong `docs/` v├á tr├ính tß║ío session mock kh├┤ng khß╗¢p backend.
 
 Changed files:
 
@@ -2491,9 +2539,9 @@ Validation:
 
 Unresolved questions:
 
-- `users`, `classrooms`, `dashboard`, `exams` trên frontend vẫn còn dùng mock API; bước tiếp theo nên nối dần các module này với backend thật để bỏ bridge tạm.
+- `users`, `classrooms`, `dashboard`, `exams` tr├¬n frontend vß║½n c├▓n d├╣ng mock API; b╞░ß╗¢c tiß║┐p theo n├¬n nß╗æi dß║ºn c├íc module n├áy vß╗¢i backend thß║¡t ─æß╗â bß╗Å bridge tß║ím.
 
-## Feature: Release integration — backend phases 1-3 with frontend mock MVP
+## Feature: Release integration ΓÇö backend phases 1-3 with frontend mock MVP
 
 Date: 2026-06-11
 
@@ -2501,9 +2549,9 @@ Branch/source: `release` (merge `devD` backend line with `devH` frontend line)
 
 Description:
 
-- Gộp nhánh `devH` vào `release` để nhánh tích hợp chứa đồng thời backend Phase 1-3 và frontend mock cho auth, classroom, exam, dashboard.
-- Đồng bộ `Todo List.md` để trạng thái dự án phản ánh đúng: backend auth/classroom đã xong, frontend mock đã có nhưng chưa nối API thật.
-- Giữ `release` là nhánh tích hợp nội bộ, chưa tạo thêm production release hay PR mới vào `main` trong thay đổi này.
+- Gß╗Öp nh├ính `devH` v├áo `release` ─æß╗â nh├ính t├¡ch hß╗úp chß╗⌐a ─æß╗ông thß╗¥i backend Phase 1-3 v├á frontend mock cho auth, classroom, exam, dashboard.
+- ─Éß╗ông bß╗Ö `Todo List.md` ─æß╗â trß║íng th├íi dß╗▒ ├ín phß║ún ├ính ─æ├║ng: backend auth/classroom ─æ├ú xong, frontend mock ─æ├ú c├│ nh╞░ng ch╞░a nß╗æi API thß║¡t.
+- Giß╗» `release` l├á nh├ính t├¡ch hß╗úp nß╗Öi bß╗Ö, ch╞░a tß║ío th├¬m production release hay PR mß╗¢i v├áo `main` trong thay ─æß╗òi n├áy.
 
 Changed files:
 
@@ -2519,9 +2567,9 @@ Validation:
 
 Unresolved questions:
 
-- Frontend hiện vẫn dùng mock/localStorage cho auth, classroom, dashboard và exam; cần bước tích hợp với backend thật ở nhịp tiếp theo.
+- Frontend hiß╗çn vß║½n d├╣ng mock/localStorage cho auth, classroom, dashboard v├á exam; cß║ºn b╞░ß╗¢c t├¡ch hß╗úp vß╗¢i backend thß║¡t ß╗ƒ nhß╗ïp tiß║┐p theo.
 
-## Release: v1.1.0 (stable) — promote from v1.1.0-rc.1
+## Release: v1.1.0 (stable) ΓÇö promote from v1.1.0-rc.1
 
 Date: 2026-06-10
 
@@ -2545,13 +2593,13 @@ Branch/source: `devH`
 
 Description:
 
-- Bổ sung mock social auth bằng Google trên frontend: `LoginPage` và `RegisterPage` đều có nút Google, dùng profile Google demo để mô phỏng OAuth trước khi có backend thật.
-- Luồng đăng ký thường giờ gắn sẵn avatar capybara mặc định; luồng Google mock sẽ dùng ảnh từ profile Google demo. Đồng thời thêm component `Avatar` dùng chung cho top bar, sidebar và hồ sơ cá nhân.
-- Dựng thêm `BrandNavbar` ngang trên cùng để chừa không gian cho logo/thương hiệu; từ đó hạ sidebar xuống dưới, kéo vùng nội dung chính thoáng hơn và thêm quick links theo role.
-- Đổi thứ tự menu của `Teacher` và `Student` để `Dashboard` nằm gần cuối danh sách chức năng như yêu cầu; đồng thời giữ `Hồ sơ` ở cuối.
-- Tinh gọn dashboard giảng viên và sinh viên: bỏ thẻ “điểm trung bình” khỏi phần tổng quan, sửa helper text để dashboard chỉ tập trung vào tiến độ, cảnh báo và việc sắp tới.
-- Chuyển trang lớp học của giảng viên sang flow thực tế hơn: chỉ hiện button `Tạo lớp học`, bấm vào mới mở form.
-- Nâng cấp UI toast: nền dịu hơn, chữ trắng, hiệu ứng nổi rõ hơn; đồng thời thêm thông báo khi đăng nhập thành công và khi đăng xuất.
+- Bß╗ò sung mock social auth bß║▒ng Google tr├¬n frontend: `LoginPage` v├á `RegisterPage` ─æß╗üu c├│ n├║t Google, d├╣ng profile Google demo ─æß╗â m├┤ phß╗Ång OAuth tr╞░ß╗¢c khi c├│ backend thß║¡t.
+- Luß╗ông ─æ─âng k├╜ th╞░ß╗¥ng giß╗¥ gß║»n sß║╡n avatar capybara mß║╖c ─æß╗ïnh; luß╗ông Google mock sß║╜ d├╣ng ß║únh tß╗½ profile Google demo. ─Éß╗ông thß╗¥i th├¬m component `Avatar` d├╣ng chung cho top bar, sidebar v├á hß╗ô s╞í c├í nh├ón.
+- Dß╗▒ng th├¬m `BrandNavbar` ngang tr├¬n c├╣ng ─æß╗â chß╗½a kh├┤ng gian cho logo/th╞░╞íng hiß╗çu; tß╗½ ─æ├│ hß║í sidebar xuß╗æng d╞░ß╗¢i, k├⌐o v├╣ng nß╗Öi dung ch├¡nh tho├íng h╞ín v├á th├¬m quick links theo role.
+- ─Éß╗òi thß╗⌐ tß╗▒ menu cß╗ºa `Teacher` v├á `Student` ─æß╗â `Dashboard` nß║▒m gß║ºn cuß╗æi danh s├ích chß╗⌐c n─âng nh╞░ y├¬u cß║ºu; ─æß╗ông thß╗¥i giß╗» `Hß╗ô s╞í` ß╗ƒ cuß╗æi.
+- Tinh gß╗ìn dashboard giß║úng vi├¬n v├á sinh vi├¬n: bß╗Å thß║╗ ΓÇ£─æiß╗âm trung b├¼nhΓÇ¥ khß╗Åi phß║ºn tß╗òng quan, sß╗¡a helper text ─æß╗â dashboard chß╗ë tß║¡p trung v├áo tiß║┐n ─æß╗Ö, cß║únh b├ío v├á viß╗çc sß║»p tß╗¢i.
+- Chuyß╗ân trang lß╗¢p hß╗ìc cß╗ºa giß║úng vi├¬n sang flow thß╗▒c tß║┐ h╞ín: chß╗ë hiß╗çn button `Tß║ío lß╗¢p hß╗ìc`, bß║Ñm v├áo mß╗¢i mß╗ƒ form.
+- N├óng cß║Ñp UI toast: nß╗ün dß╗ïu h╞ín, chß╗» trß║»ng, hiß╗çu ß╗⌐ng nß╗òi r├╡ h╞ín; ─æß╗ông thß╗¥i th├¬m th├┤ng b├ío khi ─æ─âng nhß║¡p th├ánh c├┤ng v├á khi ─æ─âng xuß║Ñt.
 
 Changed files:
 
@@ -2586,7 +2634,7 @@ Validation:
 
 Unresolved questions:
 
-- Google auth hiện là mock frontend để test UX; khi backend sẵn sàng sẽ cần thay bằng OAuth thật hoặc Google Identity Services.
+- Google auth hiß╗çn l├á mock frontend ─æß╗â test UX; khi backend sß║╡n s├áng sß║╜ cß║ºn thay bß║▒ng OAuth thß║¡t hoß║╖c Google Identity Services.
 
 ## Feature: Exam question bank and answer management on mock frontend
 
@@ -2596,11 +2644,11 @@ Branch/source: `devH`
 
 Description:
 
-- Mở rộng `examApi` để quản lý dữ liệu `Question` và `Answer` theo kiểu database thật: lấy danh sách câu hỏi theo đề, thêm câu hỏi, cập nhật câu hỏi, xóa câu hỏi và đồng bộ lại `orderIndex`.
-- Thêm validate cho từng loại câu hỏi `SingleChoice / MultipleChoice / TrueFalse / ShortAnswer`, bao gồm số lượng đáp án tối thiểu, số đáp án đúng hợp lệ và bộ đáp án cố định cho câu đúng/sai.
-- Dựng `QuestionForm` và `QuestionCard` trong trang chi tiết đề thi để giảng viên thêm/sửa/xóa câu hỏi cùng đáp án ngay tại chỗ; phần chỉnh sửa dùng chung một form động để giảm lặp UI.
-- Bổ sung question summary trong `ExamDetailPage`: tổng câu hỏi, tổng điểm, số câu một đáp án, nhiều đáp án và tự luận; sau mỗi thao tác CRUD sẽ reload lại dữ liệu để summary luôn khớp mock DB.
-- Giữ quyền truy cập an toàn hơn ở mức frontend mock: `Admin` xem được question bank, `Teacher` chỉ quản lý đề của mình, `Student` không xem được nội dung câu hỏi/đáp án ở trang detail để tránh lộ đáp án.
+- Mß╗ƒ rß╗Öng `examApi` ─æß╗â quß║ún l├╜ dß╗» liß╗çu `Question` v├á `Answer` theo kiß╗âu database thß║¡t: lß║Ñy danh s├ích c├óu hß╗Åi theo ─æß╗ü, th├¬m c├óu hß╗Åi, cß║¡p nhß║¡t c├óu hß╗Åi, x├│a c├óu hß╗Åi v├á ─æß╗ông bß╗Ö lß║íi `orderIndex`.
+- Th├¬m validate cho tß╗½ng loß║íi c├óu hß╗Åi `SingleChoice / MultipleChoice / TrueFalse / ShortAnswer`, bao gß╗ôm sß╗æ l╞░ß╗úng ─æ├íp ├ín tß╗æi thiß╗âu, sß╗æ ─æ├íp ├ín ─æ├║ng hß╗úp lß╗ç v├á bß╗Ö ─æ├íp ├ín cß╗æ ─æß╗ïnh cho c├óu ─æ├║ng/sai.
+- Dß╗▒ng `QuestionForm` v├á `QuestionCard` trong trang chi tiß║┐t ─æß╗ü thi ─æß╗â giß║úng vi├¬n th├¬m/sß╗¡a/x├│a c├óu hß╗Åi c├╣ng ─æ├íp ├ín ngay tß║íi chß╗ù; phß║ºn chß╗ënh sß╗¡a d├╣ng chung mß╗Öt form ─æß╗Öng ─æß╗â giß║úm lß║╖p UI.
+- Bß╗ò sung question summary trong `ExamDetailPage`: tß╗òng c├óu hß╗Åi, tß╗òng ─æiß╗âm, sß╗æ c├óu mß╗Öt ─æ├íp ├ín, nhiß╗üu ─æ├íp ├ín v├á tß╗▒ luß║¡n; sau mß╗ùi thao t├íc CRUD sß║╜ reload lß║íi dß╗» liß╗çu ─æß╗â summary lu├┤n khß╗¢p mock DB.
+- Giß╗» quyß╗ün truy cß║¡p an to├án h╞ín ß╗ƒ mß╗⌐c frontend mock: `Admin` xem ─æ╞░ß╗úc question bank, `Teacher` chß╗ë quß║ún l├╜ ─æß╗ü cß╗ºa m├¼nh, `Student` kh├┤ng xem ─æ╞░ß╗úc nß╗Öi dung c├óu hß╗Åi/─æ├íp ├ín ß╗ƒ trang detail ─æß╗â tr├ính lß╗Ö ─æ├íp ├ín.
 
 Changed files:
 
@@ -2619,7 +2667,7 @@ Validation:
 
 Unresolved questions:
 
-- Chưa có màn hình làm bài và chấm điểm thật, nên phần `ShortAnswer` hiện mới lưu các đáp án mẫu chấp nhận để chuẩn bị cho bước exam attempt sau.
+- Ch╞░a c├│ m├án h├¼nh l├ám b├ái v├á chß║Ñm ─æiß╗âm thß║¡t, n├¬n phß║ºn `ShortAnswer` hiß╗çn mß╗¢i l╞░u c├íc ─æ├íp ├ín mß║½u chß║Ñp nhß║¡n ─æß╗â chuß║⌐n bß╗ï cho b╞░ß╗¢c exam attempt sau.
 
 ## Feature: Global toast notifications for frontend feedback
 
@@ -2629,10 +2677,10 @@ Branch/source: `devH`
 
 Description:
 
-- Bổ sung hệ thống toast dùng chung cho toàn frontend để các thông báo thành công/thất bại hiện ở góc trên bên phải màn hình và tự ẩn sau 3 giây.
-- Thay các banner thông báo tạm thời trong login, register, classroom, exam, profile, user management và dashboard bằng popup toast để giao diện gọn hơn, thống nhất hơn.
-- Giữ `EmptyState` cho các trường hợp tải dữ liệu thất bại nghiêm trọng để người dùng vẫn có ngữ cảnh màn hình, còn các phản hồi thao tác nhanh sẽ đi qua toast.
-- Rà lại dependency của các `useEffect` liên quan đến `showToast` và dọn timer cleanup trong provider để tránh warning lint.
+- Bß╗ò sung hß╗ç thß╗æng toast d├╣ng chung cho to├án frontend ─æß╗â c├íc th├┤ng b├ío th├ánh c├┤ng/thß║Ñt bß║íi hiß╗çn ß╗ƒ g├│c tr├¬n b├¬n phß║úi m├án h├¼nh v├á tß╗▒ ß║⌐n sau 3 gi├óy.
+- Thay c├íc banner th├┤ng b├ío tß║ím thß╗¥i trong login, register, classroom, exam, profile, user management v├á dashboard bß║▒ng popup toast ─æß╗â giao diß╗çn gß╗ìn h╞ín, thß╗æng nhß║Ñt h╞ín.
+- Giß╗» `EmptyState` cho c├íc tr╞░ß╗¥ng hß╗úp tß║úi dß╗» liß╗çu thß║Ñt bß║íi nghi├¬m trß╗ìng ─æß╗â ng╞░ß╗¥i d├╣ng vß║½n c├│ ngß╗» cß║únh m├án h├¼nh, c├▓n c├íc phß║ún hß╗ôi thao t├íc nhanh sß║╜ ─æi qua toast.
+- R├á lß║íi dependency cß╗ºa c├íc `useEffect` li├¬n quan ─æß║┐n `showToast` v├á dß╗ìn timer cleanup trong provider ─æß╗â tr├ính warning lint.
 
 Changed files:
 
@@ -2662,7 +2710,7 @@ Validation:
 
 Unresolved questions:
 
-- Khi nối backend thật hoặc thêm realtime sau này, có thể cần mở rộng toast thành nhiều mức ưu tiên hơn như queue, action button hoặc cảnh báo không tự ẩn.
+- Khi nß╗æi backend thß║¡t hoß║╖c th├¬m realtime sau n├áy, c├│ thß╗â cß║ºn mß╗ƒ rß╗Öng toast th├ánh nhiß╗üu mß╗⌐c ╞░u ti├¬n h╞ín nh╞░ queue, action button hoß║╖c cß║únh b├ío kh├┤ng tß╗▒ ß║⌐n.
 
 ## Feature: Exam CRUD on role-based mock API
 
@@ -2672,12 +2720,12 @@ Branch/source: `devH`
 
 Description:
 
-- Bổ sung `examApi` cho CRUD bài kiểm tra theo mock database: danh sách, chi tiết, tạo, cập nhật, xóa; quyền được tách rõ cho `Admin / Teacher / Student`.
-- Mở rộng route và navigation với khu vực `Bài kiểm tra` cho cả 3 role; sau đó dựng `ExamListPage`, `ExamDetailPage`, `ExamForm`, `ExamCard`.
-- Teacher hiện có thể tạo/sửa/xóa/publish-unpublish đề thi ở mức metadata + settings: lớp học, thời lượng, lịch mở-đóng, anti-cheat, fullscreen, random câu hỏi/đáp án, max attempts, show result.
-- Student chỉ nhìn thấy đề đã publish trong các lớp đã tham gia; Admin có thể xem toàn bộ đề thi trong hệ thống mock.
-- Mở rộng mock database với `examSettings`, `questions`, `answers` để bám sát tài liệu entity và chuẩn bị cho bước question editor sau.
-- Vá logic xóa lớp học để cascade luôn `assignments`, `submissions`, `exams`, `examSettings`, `questions`, `answers`, `examAttempts`, `cheatingLogs`, tránh dashboard đếm sai dữ liệu mồ côi.
+- Bß╗ò sung `examApi` cho CRUD b├ái kiß╗âm tra theo mock database: danh s├ích, chi tiß║┐t, tß║ío, cß║¡p nhß║¡t, x├│a; quyß╗ün ─æ╞░ß╗úc t├ích r├╡ cho `Admin / Teacher / Student`.
+- Mß╗ƒ rß╗Öng route v├á navigation vß╗¢i khu vß╗▒c `B├ái kiß╗âm tra` cho cß║ú 3 role; sau ─æ├│ dß╗▒ng `ExamListPage`, `ExamDetailPage`, `ExamForm`, `ExamCard`.
+- Teacher hiß╗çn c├│ thß╗â tß║ío/sß╗¡a/x├│a/publish-unpublish ─æß╗ü thi ß╗ƒ mß╗⌐c metadata + settings: lß╗¢p hß╗ìc, thß╗¥i l╞░ß╗úng, lß╗ïch mß╗ƒ-─æ├│ng, anti-cheat, fullscreen, random c├óu hß╗Åi/─æ├íp ├ín, max attempts, show result.
+- Student chß╗ë nh├¼n thß║Ñy ─æß╗ü ─æ├ú publish trong c├íc lß╗¢p ─æ├ú tham gia; Admin c├│ thß╗â xem to├án bß╗Ö ─æß╗ü thi trong hß╗ç thß╗æng mock.
+- Mß╗ƒ rß╗Öng mock database vß╗¢i `examSettings`, `questions`, `answers` ─æß╗â b├ím s├ít t├ái liß╗çu entity v├á chuß║⌐n bß╗ï cho b╞░ß╗¢c question editor sau.
+- V├í logic x├│a lß╗¢p hß╗ìc ─æß╗â cascade lu├┤n `assignments`, `submissions`, `exams`, `examSettings`, `questions`, `answers`, `examAttempts`, `cheatingLogs`, tr├ính dashboard ─æß║┐m sai dß╗» liß╗çu mß╗ô c├┤i.
 
 Changed files:
 
@@ -2704,8 +2752,8 @@ Validation:
 
 Unresolved questions:
 
-- Chưa triển khai editor câu hỏi/đáp án trên UI, mới dừng ở CRUD đề thi và settings.
-- Chưa có backend thật; toàn bộ exam CRUD hiện chạy trên localStorage theo mock API.
+- Ch╞░a triß╗ân khai editor c├óu hß╗Åi/─æ├íp ├ín tr├¬n UI, mß╗¢i dß╗½ng ß╗ƒ CRUD ─æß╗ü thi v├á settings.
+- Ch╞░a c├│ backend thß║¡t; to├án bß╗Ö exam CRUD hiß╗çn chß║íy tr├¬n localStorage theo mock API.
 
 ## Feature: Role-based dashboards on mock API
 
@@ -2715,11 +2763,11 @@ Branch/source: `devH`
 
 Description:
 
-- Bổ sung `dashboardApi` chạy trên mock database để mô phỏng 3 endpoint `GET /api/dashboard/admin`, `GET /api/dashboard/teacher`, `GET /api/dashboard/student`.
-- Mở rộng mock database với các bảng dữ liệu phục vụ thống kê: `assignments`, `submissions`, `exams`, `examAttempts`, `cheatingLogs`, `notifications`; dùng cơ chế bổ sung schema mềm để không phải reset dữ liệu classroom cũ trong localStorage.
-- Thêm dashboard riêng cho `Admin`, `Teacher`, `Student`; mỗi role có nội dung khác nhau: admin xem user/classroom/activity, teacher xem hiệu suất lớp/rủi ro anti-cheat/lịch thi, student xem tiến độ cá nhân/việc sắp tới/kết quả.
-- Thêm các component dashboard dùng chung như `StatCard`, `MetricBarList`, `TimelineList` để giữ UI thống nhất và bám theo design guideline phần dashboard.
-- Đổi luồng đăng nhập mặc định sang dashboard theo role thay vì vào thẳng trang classroom.
+- Bß╗ò sung `dashboardApi` chß║íy tr├¬n mock database ─æß╗â m├┤ phß╗Ång 3 endpoint `GET /api/dashboard/admin`, `GET /api/dashboard/teacher`, `GET /api/dashboard/student`.
+- Mß╗ƒ rß╗Öng mock database vß╗¢i c├íc bß║úng dß╗» liß╗çu phß╗Ñc vß╗Ñ thß╗æng k├¬: `assignments`, `submissions`, `exams`, `examAttempts`, `cheatingLogs`, `notifications`; d├╣ng c╞í chß║┐ bß╗ò sung schema mß╗üm ─æß╗â kh├┤ng phß║úi reset dß╗» liß╗çu classroom c┼⌐ trong localStorage.
+- Th├¬m dashboard ri├¬ng cho `Admin`, `Teacher`, `Student`; mß╗ùi role c├│ nß╗Öi dung kh├íc nhau: admin xem user/classroom/activity, teacher xem hiß╗çu suß║Ñt lß╗¢p/rß╗ºi ro anti-cheat/lß╗ïch thi, student xem tiß║┐n ─æß╗Ö c├í nh├ón/viß╗çc sß║»p tß╗¢i/kß║┐t quß║ú.
+- Th├¬m c├íc component dashboard d├╣ng chung nh╞░ `StatCard`, `MetricBarList`, `TimelineList` ─æß╗â giß╗» UI thß╗æng nhß║Ñt v├á b├ím theo design guideline phß║ºn dashboard.
+- ─Éß╗òi luß╗ông ─æ─âng nhß║¡p mß║╖c ─æß╗ïnh sang dashboard theo role thay v├¼ v├áo thß║│ng trang classroom.
 
 Changed files:
 
@@ -2744,8 +2792,8 @@ Validation:
 
 Unresolved questions:
 
-- Dashboard hiện dùng mock data trong localStorage, chưa lấy từ backend thật.
-- Chưa có chart library, nên biểu đồ đang ở mức progress bar và timeline cơ bản.
+- Dashboard hiß╗çn d├╣ng mock data trong localStorage, ch╞░a lß║Ñy tß╗½ backend thß║¡t.
+- Ch╞░a c├│ chart library, n├¬n biß╗âu ─æß╗ô ─æang ß╗ƒ mß╗⌐c progress bar v├á timeline c╞í bß║ún.
 
 ## Feature: Role-based mock API, classroom CRUD, and profile management
 
@@ -2755,11 +2803,11 @@ Branch/source: `devH`
 
 Description:
 
-- Chuyển frontend từ mức UI skeleton sang mock logic gần giống backend thật: dữ liệu lưu trong localStorage theo các bảng `users`, `classrooms`, `classroomMembers`, `refreshTokens`, `activityLogs`.
-- Đổi `authApi`, `classroomApi`, thêm `userApi` để response có dạng `success/message/data`, gần với tài liệu API integration và dễ thay bằng backend ASP.NET Core sau này.
-- Tách route theo role `Admin / Teacher / Student`; mỗi role có luồng classroom riêng, teacher có CRUD lớp học, student join lớp bằng mã, admin xem người dùng và lớp học tổng quan.
-- Bổ sung trang hồ sơ cá nhân cho mọi role; người dùng có thể xem và sửa `fullName`, `email`, `avatarUrl`, đồng thời đồng bộ lại session đang đăng nhập.
-- Rà lại logic truy cập classroom: teacher chỉ quản lý lớp mình tạo, student chỉ xem lớp đã tham gia, admin xem toàn hệ thống.
+- Chuyß╗ân frontend tß╗½ mß╗⌐c UI skeleton sang mock logic gß║ºn giß╗æng backend thß║¡t: dß╗» liß╗çu l╞░u trong localStorage theo c├íc bß║úng `users`, `classrooms`, `classroomMembers`, `refreshTokens`, `activityLogs`.
+- ─Éß╗òi `authApi`, `classroomApi`, th├¬m `userApi` ─æß╗â response c├│ dß║íng `success/message/data`, gß║ºn vß╗¢i t├ái liß╗çu API integration v├á dß╗à thay bß║▒ng backend ASP.NET Core sau n├áy.
+- T├ích route theo role `Admin / Teacher / Student`; mß╗ùi role c├│ luß╗ông classroom ri├¬ng, teacher c├│ CRUD lß╗¢p hß╗ìc, student join lß╗¢p bß║▒ng m├ú, admin xem ng╞░ß╗¥i d├╣ng v├á lß╗¢p hß╗ìc tß╗òng quan.
+- Bß╗ò sung trang hß╗ô s╞í c├í nh├ón cho mß╗ìi role; ng╞░ß╗¥i d├╣ng c├│ thß╗â xem v├á sß╗¡a `fullName`, `email`, `avatarUrl`, ─æß╗ông thß╗¥i ─æß╗ông bß╗Ö lß║íi session ─æang ─æ─âng nhß║¡p.
+- R├á lß║íi logic truy cß║¡p classroom: teacher chß╗ë quß║ún l├╜ lß╗¢p m├¼nh tß║ío, student chß╗ë xem lß╗¢p ─æ├ú tham gia, admin xem to├án hß╗ç thß╗æng.
 
 Changed files:
 
@@ -2799,8 +2847,8 @@ Validation:
 
 Unresolved questions:
 
-- Chưa có backend thật, nên toàn bộ auth/classroom/profile hiện vẫn là mock API chạy trên localStorage.
-- Chưa triển khai dashboard, assignment, exam CRUD và các luồng thi/anti-cheat.
+- Ch╞░a c├│ backend thß║¡t, n├¬n to├án bß╗Ö auth/classroom/profile hiß╗çn vß║½n l├á mock API chß║íy tr├¬n localStorage.
+- Ch╞░a triß╗ân khai dashboard, assignment, exam CRUD v├á c├íc luß╗ông thi/anti-cheat.
 
 ## Feature: Frontend demo polish and classroom state persistence
 
@@ -2810,10 +2858,10 @@ Branch/source: `devH`
 
 Description:
 
-- Rà lại logic demo frontend và sửa lỗi classroom state: lớp mới tạo giờ dùng chung qua provider + local storage, không còn mất khi đổi route hoặc mở trang chi tiết.
-- Sửa hành vi mobile sidebar để bấm menu item là đóng sidebar luôn, tránh cảm giác route đã đổi mà panel vẫn che màn hình.
-- Tinh gọn lại giao diện auth, top bar, sidebar và classroom theo hướng ít chữ hơn, rõ hành động hơn, bám sát design guideline Apple-inspired và quy tắc Vietnamese-first.
-- Giữ nguyên chế độ test/mock khi chưa có backend: auth vẫn đăng nhập demo, classroom vẫn chạy bằng dữ liệu mô phỏng.
+- R├á lß║íi logic demo frontend v├á sß╗¡a lß╗ùi classroom state: lß╗¢p mß╗¢i tß║ío giß╗¥ d├╣ng chung qua provider + local storage, kh├┤ng c├▓n mß║Ñt khi ─æß╗òi route hoß║╖c mß╗ƒ trang chi tiß║┐t.
+- Sß╗¡a h├ánh vi mobile sidebar ─æß╗â bß║Ñm menu item l├á ─æ├│ng sidebar lu├┤n, tr├ính cß║úm gi├íc route ─æ├ú ─æß╗òi m├á panel vß║½n che m├án h├¼nh.
+- Tinh gß╗ìn lß║íi giao diß╗çn auth, top bar, sidebar v├á classroom theo h╞░ß╗¢ng ├¡t chß╗» h╞ín, r├╡ h├ánh ─æß╗Öng h╞ín, b├ím s├ít design guideline Apple-inspired v├á quy tß║»c Vietnamese-first.
+- Giß╗» nguy├¬n chß║┐ ─æß╗Ö test/mock khi ch╞░a c├│ backend: auth vß║½n ─æ─âng nhß║¡p demo, classroom vß║½n chß║íy bß║▒ng dß╗» liß╗çu m├┤ phß╗Ång.
 
 Changed files:
 
@@ -2842,7 +2890,7 @@ Validation:
 
 Unresolved questions:
 
-- Chưa có backend thật, nên auth/classroom vẫn chỉ kiểm thử bằng dữ liệu demo và local storage.
+- Ch╞░a c├│ backend thß║¡t, n├¬n auth/classroom vß║½n chß╗ë kiß╗âm thß╗¡ bß║▒ng dß╗» liß╗çu demo v├á local storage.
 
 ## Feature: Frontend foundation, auth routing skeleton, and classroom skeleton
 
@@ -2852,11 +2900,11 @@ Branch/source: `devH`
 
 Description:
 
-- Dựng lại nền giao diện frontend theo token trong `design.md`: bỏ template Vite demo, thay bằng palette phẳng, surface/card, button/input/badge dùng chung và layout Apple-inspired.
-- Thêm `react-router-dom`, dựng `AppRoutes`, `PublicRoute`, `ProtectedRoute`, `AppShell`, `Sidebar`, `TopBar` để khóa sớm luồng route theo role.
-- Tạo auth skeleton chạy bằng local storage mô phỏng: login, register, session tạm, logout, role-based redirect; mục tiêu là test UI và flow trước khi backend auth sẵn sàng.
-- Tạo classroom skeleton với mock data: danh sách lớp, form tạo lớp cho Teacher, form nhập mã cho Student, classroom detail + thành viên.
-- Bổ sung comment tiếng Việt trong từng component/hàm để dễ đọc lại khi học hoặc tiếp tục phát triển.
+- Dß╗▒ng lß║íi nß╗ün giao diß╗çn frontend theo token trong `design.md`: bß╗Å template Vite demo, thay bß║▒ng palette phß║│ng, surface/card, button/input/badge d├╣ng chung v├á layout Apple-inspired.
+- Th├¬m `react-router-dom`, dß╗▒ng `AppRoutes`, `PublicRoute`, `ProtectedRoute`, `AppShell`, `Sidebar`, `TopBar` ─æß╗â kh├│a sß╗¢m luß╗ông route theo role.
+- Tß║ío auth skeleton chß║íy bß║▒ng local storage m├┤ phß╗Ång: login, register, session tß║ím, logout, role-based redirect; mß╗Ñc ti├¬u l├á test UI v├á flow tr╞░ß╗¢c khi backend auth sß║╡n s├áng.
+- Tß║ío classroom skeleton vß╗¢i mock data: danh s├ích lß╗¢p, form tß║ío lß╗¢p cho Teacher, form nhß║¡p m├ú cho Student, classroom detail + th├ánh vi├¬n.
+- Bß╗ò sung comment tiß║┐ng Viß╗çt trong tß╗½ng component/h├ám ─æß╗â dß╗à ─æß╗ìc lß║íi khi hß╗ìc hoß║╖c tiß║┐p tß╗Ñc ph├ít triß╗ân.
 
 Changed files:
 
@@ -2891,9 +2939,9 @@ Validation:
 
 Unresolved questions:
 
-- Auth và classroom hiện mới là skeleton UI dùng local storage + mock data; cần nối `authApi` và `classroomApi` khi backend phase 2 và 3 sẵn sàng.
+- Auth v├á classroom hiß╗çn mß╗¢i l├á skeleton UI d├╣ng local storage + mock data; cß║ºn nß╗æi `authApi` v├á `classroomApi` khi backend phase 2 v├á 3 sß║╡n s├áng.
 
-## Feature: Phase 3 — Classroom Management API (backend)
+## Feature: Phase 3 ΓÇö Classroom Management API (backend)
 
 Date: 2026-06-10
 
@@ -2901,10 +2949,10 @@ Branch/source: `devD`
 
 Description:
 
-- Hoàn thành backend Giai đoạn 3 (phạm vi MVP): Teacher tạo lớp, Student join bằng mã, danh sách lớp, danh sách thành viên.
+- Ho├án th├ánh backend Giai ─æoß║ín 3 (phß║ím vi MVP): Teacher tß║ío lß╗¢p, Student join bß║▒ng m├ú, danh s├ích lß╗¢p, danh s├ích th├ánh vi├¬n.
 - Application: DTOs (`CreateClassroomRequest`, `ClassroomDto`, `JoinClassroomRequest`, `ClassroomMemberDto`), `IClassroomRepository`, `IClassroomService`, FluentValidation.
-- Infrastructure: `ClassroomRepository`, `ClassroomService` (sinh `JoinCode` 6 ký tự, rejoin sau Removed), DI registration.
-- Api: `ClassroomsController` với `[Authorize]`, role Teacher/Student cho create/join.
+- Infrastructure: `ClassroomRepository`, `ClassroomService` (sinh `JoinCode` 6 k├╜ tß╗▒, rejoin sau Removed), DI registration.
+- Api: `ClassroomsController` vß╗¢i `[Authorize]`, role Teacher/Student cho create/join.
 
 Changed files:
 
@@ -2923,13 +2971,13 @@ Changed files:
 
 Validation:
 
-- `dotnet build backend/EduGuard.Api/EduGuard.Api.slnx` — 0 errors, 0 warnings.
+- `dotnet build backend/EduGuard.Api/EduGuard.Api.slnx` ΓÇö 0 errors, 0 warnings.
 
 Unresolved questions:
 
-- `GET /api/classrooms/{id}` (F-CLS-03) chưa trong checklist Giai đoạn 3 — để phase sau hoặc khi FE cần.
+- `GET /api/classrooms/{id}` (F-CLS-03) ch╞░a trong checklist Giai ─æoß║ín 3 ΓÇö ─æß╗â phase sau hoß║╖c khi FE cß║ºn.
 
-## Feature: Phase 2 — Authentication API (backend)
+## Feature: Phase 2 ΓÇö Authentication API (backend)
 
 Date: 2026-06-10
 
@@ -2937,7 +2985,7 @@ Branch/source: `devD`
 
 Description:
 
-- Hoàn thành backend Giai đoạn 2: đăng ký, đăng nhập, refresh/logout token, profile `me`.
+- Ho├án th├ánh backend Giai ─æoß║ín 2: ─æ─âng k├╜, ─æ─âng nhß║¡p, refresh/logout token, profile `me`.
 - Application: DTOs (`RegisterRequest`, `LoginRequest`, `LoginResponse`, `UserDto`, `ApiResponse`), `IAuthService`, `IJwtTokenService`, FluentValidation.
 - Infrastructure: `JwtTokenService`, `AuthService` (Identity + refresh token rotate/revoke), DI registration.
 - Api: `AuthController`, Swagger Bearer security, `GET /api/Test/teacher-only` role test.
@@ -2961,10 +3009,10 @@ Changed files:
 
 Validation:
 
-- `dotnet build backend/EduGuard.Api/EduGuard.Api.slnx` — 0 errors, 0 warnings.
-- Manual Swagger E2E: register, login, me, refresh-token, logout, `GET /api/Test`, `teacher-only` — đã verify 2026-06-10.
+- `dotnet build backend/EduGuard.Api/EduGuard.Api.slnx` ΓÇö 0 errors, 0 warnings.
+- Manual Swagger E2E: register, login, me, refresh-token, logout, `GET /api/Test`, `teacher-only` ΓÇö ─æ├ú verify 2026-06-10.
 
-## Feature: Docs — Auth DI trong AddInfrastructure
+## Feature: Docs ΓÇö Auth DI trong AddInfrastructure
 
 Date: 2026-06-10
 
@@ -2972,9 +3020,9 @@ Branch/source: `devD`
 
 Description:
 
-- Làm rõ quy ước Giai đoạn 2: `AddIdentity`, JwtBearer, `AddAuthorization`, auth services đăng ký trong `dependency-injection.cs` (`AddInfrastructure`); `Program.cs` chỉ middleware `UseAuthentication` / `UseAuthorization`.
-- Bỏ wording mơ hồ "AddInfrastructure hoặc Program.cs" cho đăng ký DI.
-- Cập nhật `docs/02_SETUP_AND_PROJECT_STRUCTURE.md` §7.2 (ví dụ đầy đủ) và `docs/03_BACKEND_ARCHITECTURE.md` §6.
+- L├ám r├╡ quy ╞░ß╗¢c Giai ─æoß║ín 2: `AddIdentity`, JwtBearer, `AddAuthorization`, auth services ─æ─âng k├╜ trong `dependency-injection.cs` (`AddInfrastructure`); `Program.cs` chß╗ë middleware `UseAuthentication` / `UseAuthorization`.
+- Bß╗Å wording m╞í hß╗ô "AddInfrastructure hoß║╖c Program.cs" cho ─æ─âng k├╜ DI.
+- Cß║¡p nhß║¡t `docs/02_SETUP_AND_PROJECT_STRUCTURE.md` ┬º7.2 (v├¡ dß╗Ñ ─æß║ºy ─æß╗º) v├á `docs/03_BACKEND_ARCHITECTURE.md` ┬º6.
 
 Changed files:
 
@@ -2984,13 +3032,13 @@ Changed files:
 
 Validation:
 
-- Đối chiếu quy ước DI Giai đoạn 1 (`AddDbContext` đã trong `AddInfrastructure`).
+- ─Éß╗æi chiß║┐u quy ╞░ß╗¢c DI Giai ─æoß║ín 1 (`AddDbContext` ─æ├ú trong `AddInfrastructure`).
 
 Unresolved questions:
 
 - None.
 
-## Feature: Docs sync — Program.cs & AddInfrastructure
+## Feature: Docs sync ΓÇö Program.cs & AddInfrastructure
 
 Date: 2026-06-10
 
@@ -2998,9 +3046,9 @@ Branch/source: `devD`
 
 Description:
 
-- Đồng bộ `docs/02_SETUP_AND_PROJECT_STRUCTURE.md` với code Giai đoạn 1: `Program.cs` dùng `AddInfrastructure`, tách mục hiện tại (§7.1) vs mục tiêu Auth/JWT (§7.2).
-- Cập nhật cấu trúc Infrastructure: tên file kebab-case thực tế (`app-db-context.cs`, `dependency-injection.cs`, configs) vs thư mục kế hoạch.
-- Cập nhật `docs/03_BACKEND_ARCHITECTURE.md` §6: phân biệt DI hiện tại và đăng ký repository/service tương lai.
+- ─Éß╗ông bß╗Ö `docs/02_SETUP_AND_PROJECT_STRUCTURE.md` vß╗¢i code Giai ─æoß║ín 1: `Program.cs` d├╣ng `AddInfrastructure`, t├ích mß╗Ñc hiß╗çn tß║íi (┬º7.1) vs mß╗Ñc ti├¬u Auth/JWT (┬º7.2).
+- Cß║¡p nhß║¡t cß║Ñu tr├║c Infrastructure: t├¬n file kebab-case thß╗▒c tß║┐ (`app-db-context.cs`, `dependency-injection.cs`, configs) vs th╞░ mß╗Ñc kß║┐ hoß║ích.
+- Cß║¡p nhß║¡t `docs/03_BACKEND_ARCHITECTURE.md` ┬º6: ph├ón biß╗çt DI hiß╗çn tß║íi v├á ─æ─âng k├╜ repository/service t╞░╞íng lai.
 
 Changed files:
 
@@ -3010,13 +3058,13 @@ Changed files:
 
 Validation:
 
-- Đối chiếu với `backend/EduGuard.Api/Program.cs` và `backend/EduGuard.Infrastructure/dependency-injection.cs`.
+- ─Éß╗æi chiß║┐u vß╗¢i `backend/EduGuard.Api/Program.cs` v├á `backend/EduGuard.Infrastructure/dependency-injection.cs`.
 
 Unresolved questions:
 
 - None.
 
-## Feature: Phase 1 — Database + Foundation Entities
+## Feature: Phase 1 ΓÇö Database + Foundation Entities
 
 Date: 2026-06-10
 
@@ -3024,11 +3072,11 @@ Branch/source: `devD`
 
 Description:
 
-- Hoàn thành Giai đoạn 1: EF Core + SQL Server database `EduGuardExam` với Identity schema và entity nền tảng.
+- Ho├án th├ánh Giai ─æoß║ín 1: EF Core + SQL Server database `EduGuardExam` vß╗¢i Identity schema v├á entity nß╗ün tß║úng.
 - Domain: `ApplicationUser`, `RefreshToken`, `Classroom`, `ClassroomMember`, `ClassroomMemberStatus`.
 - Infrastructure: `AppDbContext`, Fluent API configs, `DependencyInjection.AddInfrastructure`, role seed (Admin/Teacher/Student).
-- Migration `InitialIdentityAndClassroom` tạo bảng Users, Roles, UserRoles, RefreshTokens, Classrooms, ClassroomMembers.
-- Api: đăng ký `AddInfrastructure` trong `Program.cs`; thêm `Microsoft.EntityFrameworkCore.Design`.
+- Migration `InitialIdentityAndClassroom` tß║ío bß║úng Users, Roles, UserRoles, RefreshTokens, Classrooms, ClassroomMembers.
+- Api: ─æ─âng k├╜ `AddInfrastructure` trong `Program.cs`; th├¬m `Microsoft.EntityFrameworkCore.Design`.
 
 Changed files:
 
@@ -3047,15 +3095,15 @@ Changed files:
 
 Validation:
 
-- `dotnet build` — 0 errors.
-- `dotnet ef migrations add InitialIdentityAndClassroom` — success.
-- `dotnet ef database update` — created `EduGuardExam`, applied migration, seeded 3 roles.
+- `dotnet build` ΓÇö 0 errors.
+- `dotnet ef migrations add InitialIdentityAndClassroom` ΓÇö success.
+- `dotnet ef database update` ΓÇö created `EduGuardExam`, applied migration, seeded 3 roles.
 
 Unresolved questions:
 
 - None.
 
-## Feature: Phase 0 — Frontend/Backend API connectivity
+## Feature: Phase 0 ΓÇö Frontend/Backend API connectivity
 
 Date: 2026-06-10
 
@@ -3063,17 +3111,17 @@ Branch/source: `devD`
 
 Description:
 
-- Hoàn thành Giai đoạn 0: React (Vite, port 5173) gọi `GET /api/Test`, hiển thị JSON từ ASP.NET Core API (HTTPS 7168).
-- Backend: `TestController`, CORS `FrontendPolicy` (`Cors:AllowedOrigins` → `http://localhost:5173`).
+- Ho├án th├ánh Giai ─æoß║ín 0: React (Vite, port 5173) gß╗ìi `GET /api/Test`, hiß╗ân thß╗ï JSON tß╗½ ASP.NET Core API (HTTPS 7168).
+- Backend: `TestController`, CORS `FrontendPolicy` (`Cors:AllowedOrigins` ΓåÆ `http://localhost:5173`).
 - Frontend: `axiosClient`, `.env` (`VITE_API_BASE_URL`), `App.jsx` smoke test; Tailwind deps + `index.css` import.
-- Cập nhật tiến độ: `Todo List.md`, `README.md`, roadmap, `features.md`, `apiList.md`.
+- Cß║¡p nhß║¡t tiß║┐n ─æß╗Ö: `Todo List.md`, `README.md`, roadmap, `features.md`, `apiList.md`.
 
 Changed files:
 
 - `backend/EduGuard.Api/Controllers/TestController.cs`
 - `backend/EduGuard.Api/Program.cs`
 - `backend/EduGuard.Api/appsettings.json`
-- `frontend/` (Vite, axios, App, env, proxy tùy chọn)
+- `frontend/` (Vite, axios, App, env, proxy t├╣y chß╗ìn)
 - `Todo List.md`
 - `README.md`
 - `docs/06_DEVELOPMENT_ROADMAP.md`
@@ -3083,13 +3131,13 @@ Changed files:
 
 Validation:
 
-- `dotnet run` (profile https) + `npm run dev`; trang React hiển thị `{ "message": "EduGuard API is running" }`.
+- `dotnet run` (profile https) + `npm run dev`; trang React hiß╗ân thß╗ï `{ "message": "EduGuard API is running" }`.
 
 Unresolved questions:
 
-- Gắn `@tailwindcss/vite` vào `vite.config.js` khi bắt đầu dùng utility classes trong component (hiện UI smoke test dùng inline style).
+- Gß║»n `@tailwindcss/vite` v├áo `vite.config.js` khi bß║»t ─æß║ºu d├╣ng utility classes trong component (hiß╗çn UI smoke test d├╣ng inline style).
 
-## Feature: Auth stack — Identity + JWT
+## Feature: Auth stack ΓÇö Identity + JWT
 
 Date: 2026-06-10
 
@@ -3097,11 +3145,11 @@ Branch/source: `devD` (documentation only)
 
 Description:
 
-- Chuyển thiết kế auth từ POCO User/Role/UserRole + hash thủ công sang **ASP.NET Core Identity** + **JWT Bearer** + **RefreshToken** custom.
+- Chuyß╗ân thiß║┐t kß║┐ auth tß╗½ POCO User/Role/UserRole + hash thß╗º c├┤ng sang **ASP.NET Core Identity** + **JWT Bearer** + **RefreshToken** custom.
 - `ApplicationUser : IdentityUser<int>`, `IdentityDbContext`, seed Admin/Teacher/Student.
-- Cập nhật Todo List Phase 1–2, roadmap, entity docs, backend architecture, setup guide, overview, README, API integration notes.
-- Connection string dev mẫu: `DefaultConnection` → `EduGuardExam` trên `WPC-ADMIN\SQLEXPRESS`.
-- Migration đề xuất: `InitialIdentityAndClassroom`.
+- Cß║¡p nhß║¡t Todo List Phase 1ΓÇô2, roadmap, entity docs, backend architecture, setup guide, overview, README, API integration notes.
+- Connection string dev mß║½u: `DefaultConnection` ΓåÆ `EduGuardExam` tr├¬n `WPC-ADMIN\SQLEXPRESS`.
+- Migration ─æß╗ü xuß║Ñt: `InitialIdentityAndClassroom`.
 
 Changed files:
 

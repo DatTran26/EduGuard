@@ -1705,3 +1705,7 @@ button {
   background: var(--color-surface-sunken);
   border-color: var(--color-border-subtle);
 }
+
+.mirror-video {
+  transform: scaleX(-1);
+}
