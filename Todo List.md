@@ -5,7 +5,9 @@
 
 **Branch làm việc:** `devD` / `devH` / `devB` (nhánh dev theo feature)
 **Cập nhật:** 2026-06-21 (devH: sửa `AssignmentSection.jsx` theo pattern hiện tại của project, đồng bộ lại trạng thái nộp bài của student giữa classroom detail và `Bài kiểm tra -> Bài tập` bằng `mySubmission` + fallback cache, đồng thời giữ hiển thị điểm số/nhận xét ổn định sau submit và sau reload.)
+**Ghi chú devB:** 2026-06-20 (đã thêm file chuẩn import `.md` và prompt chuyển đổi vào backend resource; Teacher/Admin có thể tải file chuẩn trong question workspace, xem prompt thu gọn/mở rộng và copy toàn bộ prompt bằng nút ở góc phải.)
 **Ghi chú devB:** 2026-06-15 (backend cấu hình bài kiểm tra UTC, validation publish trắc nghiệm MVP; Phase 8 SignalR xong; Phase 9 Redis — kế hoạch chi tiết)
+**Ghi chú devH:** 2026-06-20 (đã chặn trường hợp `POST /api/auth/login` trả `401` làm trang đăng nhập refresh và mất form; đồng thời sửa các blocker compile của luồng import câu hỏi đề thi ở backend để build kiểm tra lại qua output tạm pass sạch. Luồng upload đề thi của Teacher nay kiểm tra định dạng file ở frontend, gọi backend preview ngay khi file hợp lệ, hiển thị câu hỏi + đáp án để review trước khi commit, và đẩy nút `Lưu đề` xuống bước cuối của create flow. Vừa bổ sung thêm fix cho create flow: lần lưu đầu sẽ gom cả câu hỏi soạn tay + câu hỏi đang preview, nếu tổng số câu > 0 thì tự publish ngay, còn nếu vẫn chưa có câu hỏi thì lưu ở trạng thái nháp. Sau đó tiếp tục vá lỗi `400` ở API tạo đề bằng cách không gửi các `answer.id` tạm kiểu string của draft/preview lên backend, đồng thời rút gọn card CTA cuối chỉ còn nút và bỏ message in-page "backend đã phân tích..." sau khi import preview thành công. Mới nhất đã bỏ hẳn submit DOM của nút `Tạo đề`, chuyển sang gọi callback submit trực tiếp từ `ExamForm` để bấm được ổn định ở create flow; đồng thời cho phép chỉnh sửa trực tiếp câu hỏi trong màn review import và khi lưu/commit sẽ tạo câu hỏi thật từ state đã chỉnh sửa thay vì import lại file gốc. Trước đó create-flow đề thi của Teacher đã chuyển sang soạn nháp cục bộ ngay trên `ExamListPage` để nhập câu hỏi/import preview trước rồi mới lưu toàn bộ một lần; backend tạo đề nay nhận kèm danh sách câu hỏi ngay trong request đầu tiên, đồng thời thêm endpoint preview import để nháp local không còn phải có `examId` trước; cùng lượt đã tách `ExamDetailPage` thành chế độ xem/chỉnh sửa riêng, đưa metadata lớp/giảng viên/lịch thi vào tooltip `Thông tin thêm`, bổ sung refresh + empty-state rõ nghĩa hơn cho bài tập trong classroom detail, và vừa đồng bộ shell/UI Teacher theo `docs/ui_tech.md` với menu mới, top bar search + quick-create, route teacher cho bài tập/giám sát/kết quả/thông báo, cùng workspace tab cho classroom detail. Mới nhất classroom detail của Teacher đã bỏ 2 nút tạo bài tập/đề thi trên header, làm nổi bật lại CTA `Sao chép mã lớp`, dồn phần xem thành viên về tab `Thành viên`, và đổi panel phụ ở `Tổng quan` thành hai nút ngang `Chỉnh sửa lớp học` / `Xoá Lớp học`.)
 **Ghi chú devH:** 2026-06-17 (đã xử lý conflict khi pull từ `release` theo hướng giữ bản release; hoàn thiện FE cho cấu hình lịch thi UTC+7, chia nhóm form, bỏ checkbox publish, thêm checklist điều kiện publish và nút `Publish đề` gọi backend thật, đồng thời bổ sung hướng dẫn theo loại câu hỏi và thống kê đầy đủ các dạng câu ở trang chi tiết đề thi; khóa exact version dependency frontend, thêm `.npmrc` `save-exact` và chuẩn hóa `package-lock.json` để giảm conflict merge với `release`; làm mới UI đăng nhập theo layout 2 cột cân giữa màn hình với panel thương hiệu và login card riêng)
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
@@ -188,6 +190,7 @@
 - [x] Validate file import backend: `.csv`, `.xlsx`, `.txt`, `.docx`, PDF text, MIME type, giới hạn 5MB, cột/template bắt buộc, `question_type`, `correct_answer`, `score`
 - [x] Import backend hỗ trợ `single_choice`, `multiple_choice`, `true_false`, `short_answer`; `essay` / tự luận dài để phát triển sau
 - [x] API danh sách/tải file mẫu import câu hỏi (`GET /api/exams/question-import/templates`, `GET /api/exams/question-import/templates/{fileName}`) cho Teacher/Admin
+- [x] API file chuẩn import `.md` và prompt chuyển đổi (`GET /api/exams/question-import/prompt`) cho Teacher/Admin
 - [x] API publish đề thi *(cho phép công khai metadata trước; student chỉ start khi đề đã có câu hỏi)*
 
 ### Frontend
@@ -200,7 +203,8 @@
 - [x] UI quản lý câu hỏi & đáp án *(Teacher thêm/sửa/xóa câu hỏi qua backend thật; Admin xem được question bank; Student không thấy đáp án ở trang detail)*
 - [x] UI upload file chuẩn tạo câu hỏi trắc nghiệm bài kiểm tra *(Teacher có workspace 2 cột trong exam detail: composer bên trái, list câu hỏi bên phải; đã có mode `Nhập từ file`, chọn file, review trước khi commit và không ghi thẳng vào đề ngay khi chọn file)*
 - [x] Hiển thị lỗi import theo từng dòng/cột từ backend *(sau khi commit import lỗi, FE hiển thị danh sách lỗi theo `dòng / field / message` ngay trong panel review thay vì chỉ toast chung)*
-- [ ] Tải file mẫu `.csv`, `.xlsx`, `.txt`, `.docx` theo định chuẩn import ngân hàng câu hỏi
+- [x] UI hướng dẫn tạo file import cho Teacher/Admin: workflow 4 bước tích hợp thao tác tải file chuẩn `.md`, copy prompt, dùng AI generate file Excel, rồi upload/review/commit vào đề
+- [ ] Tải đầy đủ bộ 20 file mẫu `.csv`, `.xlsx`, `.txt`, `.docx`, `.pdf` theo từng loại câu hỏi trong frontend template browser
 - [ ] UI tự luận/essay import để phát triển sau khi hoàn thiện trắc nghiệm
 
 ### Backend — Cấu hình bài kiểm tra & trắc nghiệm MVP cần bổ sung

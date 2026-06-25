@@ -36,6 +36,51 @@ Known risks / rollback / follow-up:
 
 - The local cache is now intentionally a fallback only. Backend `mySubmission` remains the primary source of truth, so any future submission payload changes must keep that DTO populated consistently.
 
+## Feature: Teacher/Admin import standard guide and copyable prompt
+
+Date: 2026-06-20
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Teacher/Admin import standard guide and copyable prompt.
+- Purpose and user/business impact: Gives teachers and admins one authenticated place in the question workspace to download the exact standard import guide and copy the AI conversion prompt, reducing formatting mistakes before uploading question import files.
+- Files or modules changed: backend import resource files, exam controller import resource endpoints, prompt DTO, frontend exam API adapter, question workspace, import resources UI, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Api/Controllers/exams-controller.cs`
+- `backend/EduGuard.Api/Resources/QuestionImportTemplates/Dinh_dang_chuan_de_import_file.md`
+- `backend/EduGuard.Api/Resources/QuestionImportTemplates/Prompt_Chuyen_Doi_De_Import.txt`
+- `backend/EduGuard.Application/DTOs/Exams/question-import-prompt-dto.cs`
+- `frontend/src/api/examApi.js`
+- `frontend/src/features/exams/components/QuestionImportResources.jsx`
+- `frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Added the provided standard markdown file to backend `QuestionImportTemplates` resources and included it in the authenticated template metadata/download flow for Teacher/Admin users.
+- Added a backend prompt endpoint, `GET /api/exams/question-import/prompt`, that reads the stored prompt text and returns it as `QuestionImportPromptDto` instead of exposing the prompt as a downloadable public asset.
+- Added frontend exam API methods for template list retrieval, prompt retrieval, and authenticated blob download so the browser download still carries the JWT bearer token.
+- Added `QuestionImportResources` to the Teacher/Admin question workspace as one integrated four-step AI workflow: download the standard file, copy the prompt, generate the Excel file with AI, then upload to EduGuard. The download and copy actions now live inside their corresponding workflow steps.
+
+Validation:
+
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore` passed with 0 warnings and 0 errors.
+- `npm.cmd run build` passed; Vite/Rolldown still reports existing third-party pure-annotation warnings from `@microsoft/signalr` and the existing large bundle warning.
+- `npx.cmd eslint src/api/examApi.js src/features/exams/components/QuestionImportResources.jsx src/features/exams/components/TeacherQuestionWorkspace.jsx` passed.
+- `npm.cmd run lint` did not complete because the repo-level lint currently scans existing `frontend/temp-build-*` bundled artifacts and ESLint's stylish formatter fails with `RangeError: Invalid string length`; the targeted lint above passed for this change set.
+
+Known risks / rollback / follow-up:
+
+- The UI currently highlights the standard markdown guide and prompt only; the 20 per-question-type sample templates remain available through the API but are not yet exposed as a full frontend template browser.
+- Download uses an authenticated blob request from the SPA, so direct copying of the backend download URL into a browser address bar will still require an authenticated session/token path.
+- Rollback: remove the two resource files, the prompt DTO/endpoints, the frontend import resources component/API methods, and the `QuestionImportResources` insertion in `TeacherQuestionWorkspace`.
+
 ## Feature: Student assignment sub-navigation tab and details visualizer
 
 Date: 2026-06-21
