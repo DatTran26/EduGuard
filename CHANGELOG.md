@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Frontend
 
+- Redesigned the Teacher's Classrooms (Lớp học của giảng viên) page (`ClassroomListPage.jsx`):
+  - Removed the bulky hero banner and replaced it with a clean, compact header title and a "Tạo lớp học" button.
+  - Implemented `ClassroomSummary.jsx` displaying 4 key classroom metrics: total classrooms, total students, open assignments, and active exams.
+  - Implemented `ClassroomToolbar.jsx` supporting search (by name or join code), status filtering (Tất cả, Đang mở, Đã đóng), and sorting (Mới nhất, Tên A-Z, Nhiều sinh viên nhất).
+  - Implemented `TeacherClassroomCard.jsx` displaying classrooms in a 2-column grid layout with copyable join codes, compact indicator stats, and quick links to "Xem lớp" and "Gửi thông báo".
+  - Built an API enrichment engine fetching exams, assignments, and attempts in parallel to aggregate metrics per classroom without changing backend schemas.
 - Redesigned the Teacher Dashboard to be lighter, more compact, and cleaner:
   - Replaced the large Hero section with a clean title and quick action buttons row (`Tạo bài tập`, `Tạo đề thi`, `Gửi thông báo`).
   - Arranged the 6 KPI cards (`Lớp`, `Sinh viên`, `Bài kiểm tra`, `Bài tập`, `Tỉ lệ nộp bài`, `Cảnh báo bất thường`) in a single row without text wrapping.

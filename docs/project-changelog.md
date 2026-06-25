@@ -1,5 +1,38 @@
 # Project Changelog
 
+## Feature: Redesign Teacher Classrooms Layout & Filter Toolbar
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Redesign Teacher Classrooms Layout & Filter Toolbar.
+- Purpose and user/business impact: Improve classrooms management UX for teachers. Provides real-time stats count summary (students, assignments, exams, anomalies), instant filtering by search term and status, and compact cards with shortcuts like Xem lớp and Gửi thông báo.
+- Files or modules changed: `ClassroomListPage.jsx`, `ClassroomSummary.jsx` (New), `ClassroomToolbar.jsx` (New), `TeacherClassroomCard.jsx` (New).
+
+Changed files:
+
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/components/ClassroomSummary.jsx`
+- `frontend/src/features/classrooms/components/ClassroomToolbar.jsx`
+- `frontend/src/features/classrooms/components/TeacherClassroomCard.jsx`
+
+Technical summary:
+
+- Replaced hero section for teachers with a compact title + primary button row.
+- Built a metrics enrichment engine inside the classrooms list page, fetching exams, assignments, and attempts in parallel to aggregate metrics per classroom.
+- Created `ClassroomSummary` displaying managed classrooms, student enrollments, open assignments, and active exams.
+- Created `ClassroomToolbar` featuring inline search (name or join code), status dropdowns (Tất cả, Đang mở, Đã đóng), and sort order selectors (Mới nhất, Tên A-Z, Nhiều sinh viên nhất).
+- Created `TeacherClassroomCard` styled with clean borders, hover elevations, copyable mono-styled join codes, compact stats, open/closed status badges, and quick links to details and notification tab.
+
+Validation:
+
+- Frontend builds successfully (`npm run build`).
+
+---
+
 ## Fix: Define Missing Brand Color Variables for Notification UI
 
 Date: 2026-06-25
