@@ -1,5 +1,33 @@
 # Project Changelog
 
+## Fix: Define Missing Brand Color Variables for Notification UI
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Define Missing Brand Color Variables for Notification UI.
+- Purpose and user/business impact: Resolves the issue where students did not see the unread notification count badge on the bell icon, nor the unread notification indicators in the inbox.
+- Files or modules changed: `index.css`.
+
+Changed files:
+
+- `frontend/src/index.css`
+
+Technical summary:
+
+- Defined `--color-brand` as `#1d4ed8` in `@theme` and `:root` configurations.
+- Defined `--color-brand` as `#60a5fa` in the dark theme `[data-theme="dark"]` configuration.
+- This ensures classes like `bg-brand`, `text-brand`, `border-brand/20`, and `ring-brand/10` resolve to the brand's blue highlight color, making the notification badge count and unread dots visible.
+
+Validation:
+
+- Frontend builds successfully (`npm run build`).
+
+---
+
 ## Feature: Teacher Dashboard Layout & Sidebar Redesign
 
 Date: 2026-06-25

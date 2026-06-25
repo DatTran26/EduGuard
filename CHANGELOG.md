@@ -59,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed missing brand color variables in `index.css` so that the notification unread count badge, unread dot indicators, and status badges render with the correct colors instead of default/transparent styles.
 - Fixed syntax errors and leftover mock logic in `dashboardApi.js`, cleanly implementing `buildStudentDashboardDataFromRealApis()` and `getStudentDashboard()`.
 - Fixed layout compliance by replacing mock-like hardcoded CSS in dashboard cards with standard theme variables (`bg-surface-sunken`/`bg-surface`).
 - Implemented a dynamic SignalR connection state indicator for the health system check in the Admin Dashboard, which monitors the real connection status of the notification hub.
