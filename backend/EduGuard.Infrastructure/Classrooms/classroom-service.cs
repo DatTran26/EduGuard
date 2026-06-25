@@ -34,7 +34,7 @@ public class ClassroomService : IClassroomService
 
     public async Task<ClassroomDto> CreateAsync(
         CreateClassroomRequest request,
-        int teacherId,
+        string teacherId,
         CancellationToken ct = default)
     {
         await _createValidator.ValidateAndThrowAsync(request, ct);
@@ -61,10 +61,17 @@ public class ClassroomService : IClassroomService
     }
 
     public async Task<IReadOnlyList<ClassroomDto>> GetMyClassroomsAsync(
-        int userId,
+        string userId,
         IReadOnlyList<string> roles,
         CancellationToken ct = default)
     {
+        if (roles.Contains("Admin"))
+        {
+            return (await _classroomRepository.GetAllAsync(ct))
+                .Select(MapClassroom)
+                .ToList();
+        }
+
         var classrooms = new List<Classroom>();
 
         if (roles.Contains("Teacher"))
@@ -83,7 +90,7 @@ public class ClassroomService : IClassroomService
 
     public async Task<ClassroomDto> JoinAsync(
         JoinClassroomRequest request,
-        int studentId,
+        string studentId,
         CancellationToken ct = default)
     {
         await _joinValidator.ValidateAndThrowAsync(request, ct);
@@ -121,7 +128,7 @@ public class ClassroomService : IClassroomService
 
     public async Task<ClassroomDto> GetByIdAsync(
         int classroomId,
-        int userId,
+        string userId,
         IReadOnlyList<string> roles,
         CancellationToken ct = default)
     {
@@ -142,7 +149,7 @@ public class ClassroomService : IClassroomService
     public async Task<ClassroomDto> UpdateAsync(
         int classroomId,
         UpdateClassroomRequest request,
-        int teacherId,
+        string teacherId,
         CancellationToken ct = default)
     {
         await _updateValidator.ValidateAndThrowAsync(request, ct);
@@ -167,7 +174,7 @@ public class ClassroomService : IClassroomService
     public async Task<ClassroomDto> PatchAsync(
         int classroomId,
         PatchClassroomRequest request,
-        int teacherId,
+        string teacherId,
         CancellationToken ct = default)
     {
         await _patchValidator.ValidateAndThrowAsync(request, ct);
@@ -194,7 +201,7 @@ public class ClassroomService : IClassroomService
         return MapClassroom(classroom);
     }
 
-    public async Task DeleteAsync(int classroomId, int teacherId, CancellationToken ct = default)
+    public async Task DeleteAsync(int classroomId, string teacherId, CancellationToken ct = default)
     {
         var classroom = await _classroomRepository.GetByIdAsync(classroomId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy lớp học.");
@@ -208,7 +215,8 @@ public class ClassroomService : IClassroomService
 
     public async Task<IReadOnlyList<ClassroomMemberDto>> GetMembersAsync(
         int classroomId,
-        int userId,
+        string userId,
+        IReadOnlyList<string> roles,
         CancellationToken ct = default)
     {
         var classroom = await _classroomRepository.GetByIdAsync(classroomId, ct)
@@ -217,8 +225,9 @@ public class ClassroomService : IClassroomService
         var isTeacher = classroom.TeacherId == userId;
         var membership = await _classroomRepository.GetMemberAsync(classroomId, userId, ct);
         var isActiveStudent = membership?.Status == ClassroomMemberStatus.Active;
+        var isAdmin = roles.Contains("Admin");
 
-        if (!isTeacher && !isActiveStudent)
+        if (!isAdmin && !isTeacher && !isActiveStudent)
             throw new UnauthorizedAccessException("Bạn không có quyền xem thành viên lớp này.");
 
         var members = await _classroomRepository.GetActiveMembersAsync(classroomId, ct);
@@ -227,8 +236,8 @@ public class ClassroomService : IClassroomService
 
     public async Task RemoveMemberAsync(
         int classroomId,
-        int studentId,
-        int teacherId,
+        string studentId,
+        string teacherId,
         CancellationToken ct = default)
     {
         var classroom = await _classroomRepository.GetByIdAsync(classroomId, ct)

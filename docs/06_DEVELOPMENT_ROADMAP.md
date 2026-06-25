@@ -62,7 +62,7 @@ Mục tiêu:
 Entity nên làm trước:
 
 ```txt
-ApplicationUser (IdentityUser<int>)
+ApplicationUser (IdentityUser, string GUID key)
 RefreshToken
 Classroom
 ClassroomMember
@@ -71,11 +71,11 @@ ClassroomMember
 Checklist:
 
 ```txt
-[x] Tạo ApplicationUser kế thừa IdentityUser<int>
+[x] Tạo ApplicationUser kế thừa IdentityUser
 [x] Tạo entity RefreshToken
 [x] Tạo entity Classroom
 [x] Tạo entity ClassroomMember
-[x] AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
+[x] AppDbContext : IdentityDbContext<ApplicationUser>
 [x] Seed roles Admin, Teacher, Student
 [x] Cấu hình SQL Server connection string (DefaultConnection)
 [x] Add-Migration InitialIdentityAndClassroom
@@ -315,12 +315,12 @@ Mục tiêu:
 Checklist:
 
 ```txt
-[ ] Tạo NotificationHub
-[ ] Tạo ExamMonitoringHub
-[ ] Frontend kết nối SignalR
-[ ] Backend gửi notification
-[ ] Backend gửi anti-cheat warning
-[ ] Teacher dashboard nhận cảnh báo realtime
+[x] Tạo NotificationHub
+[x] Tạo ExamMonitoringHub
+[x] Frontend kết nối SignalR
+[x] Backend gửi notification
+[x] Backend gửi anti-cheat warning
+[x] Teacher dashboard nhận cảnh báo realtime
 ```
 
 Kết quả cần đạt:
@@ -383,7 +383,7 @@ Checklist:
 [ ] Thống kê bài tập
 [ ] Thống kê điểm thi
 [ ] Thống kê cheating score
-[ ] Frontend biểu đồ dashboard
+[x] Frontend biểu đồ dashboard (Recharts: Classroom performance & Anti-cheat breakdown)
 ```
 
 Kết quả cần đạt:

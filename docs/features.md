@@ -72,7 +72,7 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 
 | ID | Feature | Layer | Role | MVP |
 |----|---------|-------|------|-----|
-| F-DB-01 | Entity `ApplicationUser` (`IdentityUser<int>`) | DB | System | ✓ |
+| F-DB-01 | Entity `ApplicationUser` (`IdentityUser`, string GUID key) | DB | System | ✓ |
 | F-DB-02 | Entity `RefreshToken` | DB | System | ✓ |
 | F-DB-03 | Entity `Classroom` | DB | System | ✓ |
 | F-DB-04 | Entity `ClassroomMember` | DB | System | ✓ |
@@ -270,6 +270,9 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 | F-EXM-16 | Bật/tắt anti-cheat trên đề | BE | Teacher | ✓ |
 | F-EXM-17 | FE UI tạo & quản lý đề thi | FE | Teacher | ✓ |
 | F-EXM-18 | FE UI quản lý câu hỏi & đáp án | FE | Teacher | ✓ |
+| F-EXM-19 | `POST /api/exams/{id}/questions/import` - import `single_choice`, `multiple_choice`, `true_false`, `short_answer` từ file chuẩn | BE | Teacher/Admin | ✓ |
+| F-EXM-21 | `GET /api/exams/question-import/templates` và download file mẫu import theo whitelist | BE | Teacher/Admin | ✓ |
+| F-EXM-20 | FE UI upload file chuẩn tạo câu hỏi bài kiểm tra | FE | Teacher/Admin | |
 
 - [ ] F-EXM-01 Entities
 - [ ] F-EXM-02 Migration
@@ -289,6 +292,9 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 - [ ] F-EXM-16 Anti-cheat toggle
 - [ ] F-EXM-17 FE exam builder
 - [ ] F-EXM-18 FE question editor
+- [x] F-EXM-19 BE standard-file question import including short answer
+- [x] F-EXM-21 BE question import template listing and download
+- [ ] F-EXM-20 FE standard-file objective question import UI
 
 ---
 
@@ -412,10 +418,10 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 - [ ] F-DASH-03 Student dashboard API
 - [ ] F-DASH-04 Class/exam stats
 - [ ] F-DASH-05 Score stats
-- [ ] F-DASH-06 Cheating stats
-- [ ] F-DASH-07 FE Admin
-- [ ] F-DASH-08 FE Teacher
-- [ ] F-DASH-09 FE Student
+- [x] F-DASH-06 Cheating stats
+- [x] F-DASH-07 FE Admin
+- [x] F-DASH-08 FE Teacher
+- [x] F-DASH-09 FE Student
 - [ ] F-DASH-10 Export report
 
 ---
@@ -433,14 +439,16 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 | F-SR-07 | Event `ReceiveNotification` | BE/FE | All | |
 | F-SR-08 | Event `ReceiveAntiCheatWarning` | BE/FE | Teacher | ✓ |
 
-- [ ] F-SR-01 NotificationHub
-- [ ] F-SR-02 ExamMonitoringHub
-- [ ] F-SR-03 FE notification connection
-- [ ] F-SR-04 FE monitoring connection
-- [ ] F-SR-05 Push notification
-- [ ] F-SR-06 Push anti-cheat warning
-- [ ] F-SR-07 ReceiveNotification
-- [ ] F-SR-08 ReceiveAntiCheatWarning
+- [x] F-SR-01 NotificationHub
+- [x] F-SR-02 ExamMonitoringHub
+- [x] F-SR-03 FE notification connection
+- [x] F-SR-04 FE monitoring connection
+- [x] F-SR-05 Push notification
+- [x] F-SR-06 Push anti-cheat warning
+- [x] F-SR-07 ReceiveNotification
+- [x] F-SR-08 ReceiveAntiCheatWarning
+
+> Ghi chú: push notification realtime hiện là `NotificationHub` + notifier + frontend listener. Entity/API lưu thông báo (`NotificationsController`) vẫn thuộc feature Notification System riêng và chưa triển khai.
 
 ---
 
@@ -512,7 +520,7 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 
 | ID | Feature | Ghi chú |
 |----|---------|---------|
-| F-FUT-01 | AI Proctoring | Camera / ML |
+| F-FUT-01 | AI Proctoring | Camera / ML — **v1 Live Control Room** (branch `feat/live-proctoring-control-room`) |
 | F-FUT-02 | Facial Recognition | Nhận diện khuôn mặt |
 | F-FUT-03 | AI Auto Grading | Tự luận / short answer |
 | F-FUT-04 | Mobile App | React Native / Flutter |
@@ -520,7 +528,7 @@ Tick checkbox khi feature **đã chạy được end-to-end** (hoặc đủ tiê
 | F-FUT-06 | Advanced Learning Analytics | Học tập nâng cao |
 | F-FUT-07 | Cloud Deployment | Azure / AWS / VPS |
 
-- [ ] F-FUT-01 AI Proctoring
+- [x] F-FUT-01 AI Proctoring *(v1: lobby, WebRTC live, control room, evidence, YOLO proxy, admin AI thresholds — E2E production hardening còn lại)*
 - [ ] F-FUT-02 Facial Recognition
 - [ ] F-FUT-03 AI Auto Grading
 - [ ] F-FUT-04 Mobile App

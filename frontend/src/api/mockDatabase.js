@@ -1,4 +1,10 @@
 import { getStoredRefreshToken, getStoredUser } from "../utils/tokenStorage";
+import { areUserIdsEqual } from "./apiHelpers";
+
+// MOCK STATUS:
+// - Đây là mock database trung tâm của frontend, đang lưu toàn bộ dữ liệu bằng localStorage.
+// - Dashboard, user/profile mock và các seed dữ liệu demo hiện vẫn đọc/ghi qua file này.
+// - Auth đã đi backend thật, nhưng session backend vẫn được bridge sang mock DB để các module chưa nối API tiếp tục chạy.
 
 const MOCK_DATABASE_STORAGE_KEY = "eduguard_mock_database";
 const MOCK_DATABASE_VERSION = 4;
@@ -688,7 +694,79 @@ export function toUserDto(user) {
   };
 }
 
-// Hàm này lấy user đang đăng nhập từ session localStorage để mô phỏng backend đọc JWT.
+// Hàm này tạo user cầu nối trong mock DB khi frontend đã đăng nhập bằng backend thật nhưng chưa có dữ liệu mock tương ứng.
+function buildShadowUserFromSession(database, storedUser) {
+  const normalizedEmail = normalizeEmail(storedUser.email ?? "");
+  const preferredUserId = Number(storedUser.id) || getNextNumericId(database.users);
+  const nextUserId = database.users.some((user) => areUserIdsEqual(user.id, preferredUserId))
+    ? getNextNumericId(database.users)
+    : preferredUserId;
+
+  return {
+    id: nextUserId,
+    fullName: storedUser.fullName?.trim() || normalizedEmail || "Người dùng EduGuard",
+    avatarUrl: storedUser.avatarUrl?.trim?.() || "",
+    isActive: storedUser.isActive ?? true,
+    createdAt: storedUser.createdAt || getNowIsoString(),
+    updatedAt: storedUser.updatedAt ?? null,
+    email: normalizedEmail,
+    userName: normalizedEmail,
+    role: storedUser.role || "Student",
+    password: "",
+  };
+}
+
+// Hàm này áp role và thông tin mới nhất từ session backend vào user mock đã có cùng id/email.
+function applyStoredUserSnapshot(targetUser, storedUser) {
+  targetUser.fullName = storedUser.fullName?.trim() || targetUser.fullName;
+  targetUser.avatarUrl = storedUser.avatarUrl?.trim?.() || targetUser.avatarUrl;
+  targetUser.isActive = storedUser.isActive ?? targetUser.isActive;
+  targetUser.role = storedUser.role || targetUser.role;
+  targetUser.updatedAt = getNowIsoString();
+
+  if (storedUser.email) {
+    const normalizedEmail = normalizeEmail(storedUser.email);
+    targetUser.email = normalizedEmail;
+    targetUser.userName = normalizedEmail;
+  }
+
+  return targetUser;
+}
+
+// Hàm này đồng bộ user trong session sang mock DB để các module chưa nối backend vẫn dùng tiếp được.
+function syncStoredUserIntoMockDatabase(database, storedUser) {
+  const matchedById = database.users.find((user) => areUserIdsEqual(user.id, storedUser.id));
+
+  if (matchedById) {
+    applyStoredUserSnapshot(matchedById, storedUser);
+    writeMockDatabase(database);
+
+    return matchedById;
+  }
+
+  const normalizedEmail = storedUser.email ? normalizeEmail(storedUser.email) : "";
+
+  if (normalizedEmail) {
+    const matchedByEmail = database.users.find(
+      (user) => normalizeEmail(user.email) === normalizedEmail,
+    );
+
+    if (matchedByEmail) {
+      applyStoredUserSnapshot(matchedByEmail, storedUser);
+      writeMockDatabase(database);
+
+      return matchedByEmail;
+    }
+  }
+
+  const shadowUser = buildShadowUserFromSession(database, storedUser);
+  database.users.push(shadowUser);
+  writeMockDatabase(database);
+
+  return shadowUser;
+}
+
+// Hàm này lấy user đang đăng nhập từ session localStorage và tự nối sang mock DB khi cần.
 export function getCurrentStoredUser(database) {
   const storedUser = getStoredUser();
 
@@ -696,7 +774,7 @@ export function getCurrentStoredUser(database) {
     return null;
   }
 
-  return database.users.find((user) => user.id === storedUser.id) ?? null;
+  return syncStoredUserIntoMockDatabase(database, storedUser);
 }
 
 // Hàm này chặn mọi request protected khi session hiện tại không còn hợp lệ.
@@ -795,11 +873,11 @@ export function revokeRefreshToken(database, refreshToken) {
 
 // Hàm này gộp teacher và student thành danh sách thành viên mà UI có thể hiển thị trực tiếp.
 export function buildClassroomMembers(classroom, database) {
-  const teacher = database.users.find((user) => user.id === classroom.teacherId);
+  const teacher = database.users.find((user) => areUserIdsEqual(user.id, classroom.teacherId));
   const activeMembers = database.classroomMembers
     .filter((member) => member.classroomId === classroom.id && member.status === "Active")
     .map((member) => {
-      const student = database.users.find((user) => user.id === member.studentId);
+      const student = database.users.find((user) => areUserIdsEqual(user.id, member.studentId));
 
       if (!student) {
         return null;
@@ -845,27 +923,27 @@ export function canUserViewClassroom(currentUser, classroom, database) {
   }
 
   if (currentUser.role === "Teacher") {
-    return classroom.teacherId === currentUser.id;
+    return areUserIdsEqual(classroom.teacherId, currentUser.id);
   }
 
   return database.classroomMembers.some(
     (member) =>
       member.classroomId === classroom.id &&
-      member.studentId === currentUser.id &&
+      areUserIdsEqual(member.studentId, currentUser.id) &&
       member.status === "Active",
   );
 }
 
 // Hàm này dựng DTO classroom để page chỉ việc render mà không phải tự nối quan hệ thủ công.
 export function toClassroomDto(classroom, database, currentUser) {
-  const teacher = database.users.find((user) => user.id === classroom.teacherId);
+  const teacher = database.users.find((user) => areUserIdsEqual(user.id, classroom.teacherId));
   const members = buildClassroomMembers(classroom, database);
   const isJoined =
     currentUser?.role === "Student"
       ? database.classroomMembers.some(
           (member) =>
             member.classroomId === classroom.id &&
-            member.studentId === currentUser.id &&
+            areUserIdsEqual(member.studentId, currentUser.id) &&
             member.status === "Active",
         )
       : false;
@@ -882,8 +960,8 @@ export function toClassroomDto(classroom, database, currentUser) {
     memberCount: members.length,
     members,
     isJoined,
-    canEdit: currentUser?.role === "Teacher" && currentUser.id === classroom.teacherId,
-    canDelete: currentUser?.role === "Teacher" && currentUser.id === classroom.teacherId,
+    canEdit: currentUser?.role === "Teacher" && areUserIdsEqual(currentUser.id, classroom.teacherId),
+    canDelete: currentUser?.role === "Teacher" && areUserIdsEqual(currentUser.id, classroom.teacherId),
   };
 }
 
@@ -940,7 +1018,7 @@ export function rotateRefreshToken(database, currentRefreshToken) {
 export function buildRefreshResponse(database, currentRefreshToken) {
   const nextRefreshToken = rotateRefreshToken(database, currentRefreshToken);
   const tokenRecord = database.refreshTokens.find((tokenItem) => tokenItem.token === nextRefreshToken);
-  const user = database.users.find((userItem) => userItem.id === tokenRecord?.userId);
+  const user = database.users.find((userItem) => areUserIdsEqual(userItem.id, tokenRecord?.userId));
 
   if (!user) {
     throw createApiError("Không tìm thấy người dùng của refresh token.", 404);

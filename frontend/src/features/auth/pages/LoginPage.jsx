@@ -2,43 +2,52 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import Button from "../../../components/common/Button";
+import FormErrorSummary from "../../../components/forms/FormErrorSummary";
 import TextInput from "../../../components/forms/TextInput";
-import GoogleAuthButton from "../components/GoogleAuthButton";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { getDefaultPathByRole } from "../../../routes/roleRoutes";
 import { routeConfig } from "../../../routes/routeConfig";
+import {
+  getFirstValidationError,
+  hasValidationErrors,
+  validateEmailAddress,
+  validateRequiredText,
+} from "../../../utils/formValidation";
+// import GoogleAuthButton from "../components/GoogleAuthButton";
 
-const DEMO_ACCOUNT_OPTIONS = [
-  {
-    label: "Giảng viên",
-    email: "teacher@eduguard.local",
-    password: "12345678",
-  },
-  {
-    label: "Sinh viên",
-    email: "student@eduguard.local",
-    password: "12345678",
-  },
-  {
-    label: "Quản trị viên",
-    email: "admin@eduguard.local",
-    password: "12345678",
-  },
-];
+const INVALID_CREDENTIALS_MESSAGE = "Bạn đã nhập sai tài khoản hoặc mật khẩu";
 
-// Trang này dùng mock auth API để đăng nhập thật giả lập bằng các tài khoản seed trong localStorage.
+// Hàm này gom lỗi đăng nhập để sai tài khoản/mật khẩu luôn hiển thị cùng một câu rõ ràng.
+function buildLoginErrorMessage(error) {
+  const normalizedMessage = error?.message?.toLowerCase?.() ?? "";
+
+  if (
+    [400, 401, 403].includes(error?.status) ||
+    normalizedMessage.includes("invalid") ||
+    normalizedMessage.includes("password") ||
+    normalizedMessage.includes("mật khẩu") ||
+    normalizedMessage.includes("email")
+  ) {
+    return INVALID_CREDENTIALS_MESSAGE;
+  }
+
+  return error?.message || "Không thể đăng nhập. Bạn thử lại giúp mình nhé.";
+}
+
+// Trang này gọi API đăng nhập thật của backend theo contract auth trong docs.
 export default function LoginPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { login, loginWithGoogle } = useAuth();
+  const { login } = useAuth();
   const { showToast } = useToast();
   const [formValues, setFormValues] = useState({
-    email: "teacher@eduguard.local",
-    password: "12345678",
+    email: "",
+    password: "",
   });
+  const [loginErrorMessage, setLoginErrorMessage] = useState("");
+  const [validationErrors, setValidationErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeMethod, setActiveMethod] = useState("");
 
   // Hàm này lấy route cần quay lại sau khi login xong, giống lúc route guard redirect user.
   function getRedirectPath(role) {
@@ -47,24 +56,49 @@ export default function LoginPage() {
 
   // Hàm này cập nhật state form theo từng field để phần submit phía dưới gọn hơn.
   function handleFieldChange(fieldName, value) {
+    setLoginErrorMessage("");
+    setValidationErrors((previousErrors) => ({
+      ...previousErrors,
+      [fieldName]: "",
+    }));
     setFormValues((previousValues) => ({
       ...previousValues,
       [fieldName]: value,
     }));
   }
 
-  // Hàm này đổ sẵn thông tin tài khoản seed vào form để test role nhanh hơn.
-  function handleFillDemoAccount(account) {
-    setFormValues({
-      email: account.email,
-      password: account.password,
+  function validateFormValues() {
+    return {
+      email: validateEmailAddress(formValues.email),
+      password: validateRequiredText(
+        formValues.password,
+        "Mật khẩu không được để trống.",
+      ),
+    };
+  }
+
+  // Hàm này giữ chỗ cho luồng quên mật khẩu trước khi backend thực sự cung cấp endpoint tương ứng.
+  function handleForgotPasswordClick() {
+    showToast({
+      tone: "info",
+      title: "Quên mật khẩu",
+      message:
+        "Tính năng khôi phục mật khẩu đang được hoàn thiện trong EduGuard.",
     });
   }
 
-  // Hàm này xử lý submit form đăng nhập theo flow authApi.login.
+  // Hàm này xử lý submit form đăng nhập theo đúng endpoint `/api/auth/login`.
   async function handleSubmit(event) {
     event.preventDefault();
-    setActiveMethod("local");
+    const nextValidationErrors = validateFormValues();
+
+    setValidationErrors(nextValidationErrors);
+    setLoginErrorMessage("");
+
+    if (hasValidationErrors(nextValidationErrors)) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -76,104 +110,106 @@ export default function LoginPage() {
       });
       navigate(getRedirectPath(session.user.role), { replace: true });
     } catch (error) {
-      showToast({
-        tone: "danger",
-        title: "Đăng nhập thất bại",
-        message: error.message || "Không thể đăng nhập. Bạn thử lại giúp mình nhé.",
-      });
+      const nextErrorMessage = buildLoginErrorMessage(error);
+      setLoginErrorMessage(nextErrorMessage);
+
+      if (nextErrorMessage !== INVALID_CREDENTIALS_MESSAGE) {
+        showToast({
+          tone: "danger",
+          title: "Đăng nhập thất bại",
+          message: nextErrorMessage,
+        });
+      }
     } finally {
       setIsSubmitting(false);
-      setActiveMethod("");
     }
   }
 
-  // Hàm này mô phỏng nút Google OAuth để user có thể vào nhanh bằng profile Google demo.
-  async function handleGoogleLogin() {
-    setActiveMethod("google");
-    setIsSubmitting(true);
-
-    try {
-      const session = await loginWithGoogle();
-      showToast({
-        tone: "success",
-        title: "Đăng nhập Google thành công",
-        message: `Đã kết nối tài khoản ${session.user.email}.`,
-      });
-      navigate(getRedirectPath(session.user.role), { replace: true });
-    } catch (error) {
-      showToast({
-        tone: "danger",
-        title: "Google chưa đăng nhập được",
-        message: error.message || "Không thể tiếp tục với Google lúc này.",
-      });
-    } finally {
-      setIsSubmitting(false);
-      setActiveMethod("");
-    }
-  }
+  const formErrorMessage =
+    loginErrorMessage || getFirstValidationError(validationErrors);
 
   return (
     <AuthLayout
-      title="Đăng nhập"
-      description="Tiếp tục vào không gian làm việc của bạn."
+      title="Chào mừng trở lại"
       footerText="Chưa có tài khoản?"
       footerLinkLabel="Đăng ký ngay"
       footerLinkTo={routeConfig.register}
     >
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <GoogleAuthButton
-          disabled={isSubmitting}
-          isLoading={isSubmitting && activeMethod === "google"}
-          onClick={handleGoogleLogin}
-        />
+      <div className="space-y-5">
+        {/* Google sign-in */}
+        {/* <GoogleAuthButton /> */}
 
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-secondary">hoặc</span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
+        {/* Divider */}
+        {/* <div className="eg-auth-divider" aria-hidden="true">
+          hoặc đăng nhập bằng email
+        </div> */}
 
-        <div className="space-y-2">
-          <label className="eg-label">Tài khoản mẫu</label>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {DEMO_ACCOUNT_OPTIONS.map((account) => (
-              <Button
-                key={account.email}
-                onClick={() => handleFillDemoAccount(account)}
-                type="button"
-                variant="secondary"
-              >
-                {account.label}
-              </Button>
-            ))}
+        {/* Email + Password form */}
+        <form className="space-y-4" noValidate onSubmit={handleSubmit}>
+          {loginErrorMessage ? null : (
+            <FormErrorSummary message={formErrorMessage} />
+          )}
+
+          {loginErrorMessage ? (
+            <div className="eg-auth-inline-alert" role="alert">
+              {loginErrorMessage}
+            </div>
+          ) : null}
+
+          <TextInput
+            autoComplete="email"
+            className="eg-auth-input"
+            error={validationErrors.email}
+            id="login-email"
+            label="Email"
+            onChange={(event) => handleFieldChange("email", event.target.value)}
+            placeholder="student@gmail.com"
+            required
+            type="email"
+            value={formValues.email}
+          />
+          <TextInput
+            autoComplete="current-password"
+            className="eg-auth-input"
+            error={validationErrors.password}
+            id="login-password"
+            label="Mật khẩu"
+            onChange={(event) =>
+              handleFieldChange("password", event.target.value)
+            }
+            placeholder="Nhập mật khẩu"
+            required
+            type="password"
+            value={formValues.password}
+          />
+
+          <div className="eg-auth-checkbox-row">
+            <label className="eg-auth-checkbox">
+              <input
+                className="eg-auth-checkbox-input"
+                name="remember-session"
+                type="checkbox"
+              />
+              Ghi nhớ đăng nhập
+            </label>
+            <button
+              className="eg-auth-inline-link text-sm"
+              type="button"
+              onClick={handleForgotPasswordClick}
+            >
+              Quên mật khẩu?
+            </button>
           </div>
-        </div>
 
-        <TextInput
-          autoComplete="email"
-          id="login-email"
-          label="Email"
-          onChange={(event) => handleFieldChange("email", event.target.value)}
-          placeholder="teacher@eduguard.local"
-          required
-          type="email"
-          value={formValues.email}
-        />
-        <TextInput
-          autoComplete="current-password"
-          id="login-password"
-          label="Mật khẩu"
-          onChange={(event) => handleFieldChange("password", event.target.value)}
-          placeholder="Nhập mật khẩu"
-          required
-          type="password"
-          value={formValues.password}
-        />
-
-        <Button className="w-full" disabled={isSubmitting} type="submit">
-          {isSubmitting && activeMethod === "local" ? "Đang đăng nhập..." : "Đăng nhập"}
-        </Button>
-      </form>
+          <Button
+            className="eg-auth-primary-button"
+            disabled={isSubmitting}
+            type="submit"
+          >
+            {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
+          </Button>
+        </form>
+      </div>
     </AuthLayout>
   );
 }

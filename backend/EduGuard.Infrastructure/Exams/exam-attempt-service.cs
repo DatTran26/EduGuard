@@ -24,7 +24,7 @@ public class ExamAttemptService : IExamAttemptService
         _saveAnswerValidator = saveAnswerValidator;
     }
 
-    public async Task<StartExamResponse> StartAsync(int examId, int studentId, CancellationToken ct = default)
+    public async Task<StartExamResponse> StartAsync(int examId, string studentId, CancellationToken ct = default)
     {
         var exam = await _examRepository.GetByIdWithDetailsAsync(examId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
@@ -61,7 +61,7 @@ public class ExamAttemptService : IExamAttemptService
     }
 
     public async Task<ExamAttemptDetailDto> GetAttemptAsync(
-        int attemptId, int userId, IReadOnlyList<string> roles, CancellationToken ct = default)
+        int attemptId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
     {
         var attempt = await RequireAttemptAccessAsync(attemptId, userId, roles, ct);
         var exam = attempt.Exam;
@@ -82,7 +82,7 @@ public class ExamAttemptService : IExamAttemptService
         };
     }
 
-    public async Task SaveAnswerAsync(int attemptId, SaveStudentAnswerRequest request, int studentId, CancellationToken ct = default)
+    public async Task SaveAnswerAsync(int attemptId, SaveStudentAnswerRequest request, string studentId, CancellationToken ct = default)
     {
         await _saveAnswerValidator.ValidateAndThrowAsync(request, ct);
 
@@ -100,11 +100,12 @@ public class ExamAttemptService : IExamAttemptService
         _examRepository.RemoveStudentAnswers(existing);
 
         var newAnswers = BuildStudentAnswerRows(attempt.Id, question, request);
-        await _examRepository.AddStudentAnswersAsync(newAnswers, ct);
+        if (newAnswers.Count > 0)
+            await _examRepository.AddStudentAnswersAsync(newAnswers, ct);
         await _examRepository.SaveChangesAsync(ct);
     }
 
-    public async Task<ExamResultDto> SubmitAsync(int attemptId, int studentId, CancellationToken ct = default)
+    public async Task<ExamResultDto> SubmitAsync(int attemptId, string studentId, CancellationToken ct = default)
     {
         var attempt = await _examRepository.GetAttemptWithAnswersAsync(attemptId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy lượt thi.");
@@ -121,7 +122,7 @@ public class ExamAttemptService : IExamAttemptService
     }
 
     public async Task<ExamResultDto> GetResultAsync(
-        int attemptId, int userId, IReadOnlyList<string> roles, CancellationToken ct = default)
+        int attemptId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
     {
         var attempt = await RequireAttemptAccessAsync(attemptId, userId, roles, ct);
         if (attempt.Status != ExamAttemptStatus.Submitted)
@@ -134,18 +135,23 @@ public class ExamAttemptService : IExamAttemptService
         return BuildResult(attempt, showDetails);
     }
 
-    public async Task<IReadOnlyList<ExamAttemptDto>> GetAttemptsByExamAsync(int examId, int teacherId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ExamAttemptDto>> GetAttemptsByExamAsync(
+        int examId,
+        string userId,
+        IReadOnlyList<string> roles,
+        CancellationToken ct = default)
     {
         var exam = await _examRepository.GetByIdAsync(examId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
-        if (exam.TeacherId != teacherId)
+
+        if (!roles.Contains("Admin") && exam.TeacherId != userId)
             throw new UnauthorizedAccessException("Chỉ giáo viên tạo đề mới được xem lượt thi.");
 
         var attempts = await _examRepository.GetAttemptsByExamIdAsync(examId, ct);
         return attempts.Select(ExamMapper.MapAttempt).ToList();
     }
 
-    private async Task EnsureStudentCanTakeExamAsync(Exam exam, int studentId, CancellationToken ct)
+    private async Task EnsureStudentCanTakeExamAsync(Exam exam, string studentId, CancellationToken ct)
     {
         if (!exam.IsPublished)
             throw new InvalidOperationException("Đề thi chưa được publish.");
@@ -153,18 +159,24 @@ public class ExamAttemptService : IExamAttemptService
         var membership = await _classroomRepository.GetMemberAsync(exam.ClassroomId, studentId, ct);
         if (membership?.Status != ClassroomMemberStatus.Active)
             throw new UnauthorizedAccessException("Bạn chưa tham gia lớp học này.");
+
+        if (exam.Questions.Count == 0)
+            throw new InvalidOperationException("Đề thi chưa có câu hỏi.");
     }
 
     private static void EnsureExamWindowOpen(Exam exam)
     {
         var now = DateTime.UtcNow;
-        if (exam.StartTime.HasValue && now < exam.StartTime.Value)
+        var startTime = ExamDateTimeHelper.MarkNullableAsUtc(exam.StartTime);
+        var endTime = ExamDateTimeHelper.MarkNullableAsUtc(exam.EndTime);
+
+        if (startTime.HasValue && now < startTime.Value)
             throw new InvalidOperationException("Đề thi chưa mở.");
-        if (exam.EndTime.HasValue && now > exam.EndTime.Value)
+        if (endTime.HasValue && now > endTime.Value)
             throw new InvalidOperationException("Đề thi đã đóng.");
     }
 
-    private static void EnsureInProgressOwnedByStudent(ExamAttempt attempt, int studentId)
+    private static void EnsureInProgressOwnedByStudent(ExamAttempt attempt, string studentId)
     {
         if (attempt.StudentId != studentId)
             throw new UnauthorizedAccessException("Bạn không có quyền thao tác lượt thi này.");
@@ -173,7 +185,7 @@ public class ExamAttemptService : IExamAttemptService
     }
 
     private async Task<ExamAttempt> RequireAttemptAccessAsync(
-        int attemptId, int userId, IReadOnlyList<string> roles, CancellationToken ct)
+        int attemptId, string userId, IReadOnlyList<string> roles, CancellationToken ct)
     {
         var attempt = await _examRepository.GetAttemptWithAnswersAsync(attemptId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy lượt thi.");
@@ -195,13 +207,11 @@ public class ExamAttemptService : IExamAttemptService
     {
         if (question.QuestionType == QuestionType.ShortAnswer)
         {
-            if (string.IsNullOrWhiteSpace(request.TextAnswer))
-                throw new InvalidOperationException("Cần nhập câu trả lời.");
             return;
         }
 
         if (request.AnswerIds.Count == 0)
-            throw new InvalidOperationException("Cần chọn ít nhất một đáp án.");
+            return;
 
         var validIds = question.Answers.Select(x => x.Id).ToHashSet();
         if (request.AnswerIds.Any(id => !validIds.Contains(id)))
@@ -216,6 +226,9 @@ public class ExamAttemptService : IExamAttemptService
     {
         if (question.QuestionType == QuestionType.ShortAnswer)
         {
+            if (string.IsNullOrWhiteSpace(request.TextAnswer))
+                return [];
+
             return
             [
                 new StudentAnswer
@@ -226,6 +239,9 @@ public class ExamAttemptService : IExamAttemptService
                 }
             ];
         }
+
+        if (request.AnswerIds.Count == 0)
+            return [];
 
         return request.AnswerIds
             .Distinct()

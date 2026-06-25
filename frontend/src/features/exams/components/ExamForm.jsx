@@ -1,30 +1,31 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
-import CheckboxField from "../../../components/forms/CheckboxField";
-import Select from "../../../components/forms/Select";
-import TextInput from "../../../components/forms/TextInput";
-import { toDateTimeLocalInputValue } from "../examHelpers";
+import FormErrorSummary from "../../../components/forms/FormErrorSummary";
+import { getFirstValidationError } from "../../../utils/formValidation";
+import ExamFormBasicSection from "./exam-form-basic-section";
+import ExamFormConfigSection from "./exam-form-config-section";
+import ExamFormMonitoringSection from "./exam-form-monitoring-section";
+import ExamFormScheduleSection from "./exam-form-schedule-section";
+import {
+  buildExamFormValues,
+  buildSubmitPayload,
+  calculateEndTimeInputValue,
+  hasCustomEndTimeForExam,
+  validateExamFormValues,
+} from "./exam-form-helpers";
 
-// Hàm này dựng state form từ exam hiện tại hoặc từ classroom mặc định khi teacher đang tạo đề mới.
-function buildExamFormValues(exam, defaultClassroomId = "") {
-  return {
-    classroomId: exam?.classroomId ? String(exam.classroomId) : String(defaultClassroomId || ""),
-    description: exam?.description ?? "",
-    durationMinutes: exam?.durationMinutes ? String(exam.durationMinutes) : "30",
-    enableAntiCheat: Boolean(exam?.enableAntiCheat),
-    endTime: toDateTimeLocalInputValue(exam?.endTime),
-    isPublished: Boolean(exam?.isPublished),
-    settings: {
-      maxAttempts: exam?.settings?.maxAttempts ? String(exam.settings.maxAttempts) : "1",
-      requireFullscreen: Boolean(exam?.settings?.requireFullscreen),
-      showResultAfterSubmit: Boolean(exam?.settings?.showResultAfterSubmit),
-      shuffleAnswers: Boolean(exam?.settings?.shuffleAnswers),
-      shuffleQuestions: Boolean(exam?.settings?.shuffleQuestions),
-    },
-    startTime: toDateTimeLocalInputValue(exam?.startTime),
-    title: exam?.title ?? "",
-  };
+function clearErrorField(previousErrors, ...fieldNames) {
+  if (!previousErrors || Object.keys(previousErrors).length === 0) {
+    return previousErrors;
+  }
+
+  const nextErrors = { ...previousErrors };
+  fieldNames.forEach((fieldName) => {
+    delete nextErrors[fieldName];
+  });
+
+  return nextErrors;
 }
 
 // Form này dùng chung cho tạo và sửa đề thi để phần CRUD exam không bị lặp code quá nhiều.
@@ -32,62 +33,155 @@ export default function ExamForm({
   classroomOptions = [],
   defaultClassroomId = "",
   exam = null,
+  formId = undefined,
+  hideSubmitButton = false,
+  initialFormValues = null,
   isSubmitting = false,
+  onFormValuesChange = null,
+  onRegisterSubmit = null,
   onSubmitExam,
+  showDescriptions = true,
   submitLabel = "Lưu bài kiểm tra",
   title = "Thông tin bài kiểm tra",
 }) {
-  const [formValues, setFormValues] = useState(() => buildExamFormValues(exam, defaultClassroomId));
+  const initialValues = initialFormValues ?? buildExamFormValues(exam, defaultClassroomId);
+  const [formValues, setFormValues] = useState(() => initialValues);
+  const [isEndTimeManuallyEdited, setIsEndTimeManuallyEdited] = useState(() => {
+    if (exam) {
+      return hasCustomEndTimeForExam(exam);
+    }
 
-  // Hàm này cập nhật một field đơn giản trong form để code phần JSX gọn hơn.
-  function handleFieldChange(fieldName, value) {
-    setFormValues((previousValues) => ({
-      ...previousValues,
-      [fieldName]: value,
-    }));
+    if (!initialValues.endTime) {
+      return false;
+    }
+
+    return (
+      initialValues.endTime !==
+      calculateEndTimeInputValue(initialValues.startTime, initialValues.durationMinutes)
+    );
+  });
+  const [validationErrors, setValidationErrors] = useState({});
+  const submitExamRef = useRef(null);
+  const isEditingExam = Boolean(exam);
+  const expectedEndTimeValue = calculateEndTimeInputValue(formValues.startTime, formValues.durationMinutes);
+
+  useEffect(() => {
+    onFormValuesChange?.(formValues);
+  }, [formValues, onFormValuesChange]);
+
+  useEffect(() => {
+    submitExamRef.current = submitExam;
+  });
+
+  useEffect(() => {
+    onRegisterSubmit?.(() => submitExamRef.current?.());
+
+    return () => {
+      onRegisterSubmit?.(null);
+    };
+  }, [onRegisterSubmit]);
+
+  function updateFormValues(nextValues) {
+    setFormValues(nextValues);
   }
 
-  // Hàm này cập nhật nhóm setting boolean/number của exam mà không làm mất các field khác.
+  function handleFieldChange(fieldName, value) {
+    const nextValues = {
+      ...formValues,
+      [fieldName]: value,
+    };
+
+    updateFormValues(nextValues);
+    setValidationErrors((previousErrors) => clearErrorField(previousErrors, fieldName));
+  }
+
+  function handleDurationChange(value) {
+    const nextValues = {
+      ...formValues,
+      durationMinutes: value,
+    };
+
+    if (!isEndTimeManuallyEdited) {
+      nextValues.endTime = calculateEndTimeInputValue(nextValues.startTime, nextValues.durationMinutes);
+    }
+
+    updateFormValues(nextValues);
+    setValidationErrors((previousErrors) =>
+      clearErrorField(previousErrors, "durationMinutes", "endTime"),
+    );
+  }
+
+  function handleStartTimeChange(value) {
+    const nextValues = {
+      ...formValues,
+      startTime: value,
+    };
+
+    if (!isEndTimeManuallyEdited) {
+      nextValues.endTime = calculateEndTimeInputValue(nextValues.startTime, nextValues.durationMinutes);
+    }
+
+    updateFormValues(nextValues);
+    setValidationErrors((previousErrors) => clearErrorField(previousErrors, "endTime"));
+  }
+
+  function handleEndTimeChange(value) {
+    if (!value) {
+      const nextValues = {
+        ...formValues,
+        endTime: calculateEndTimeInputValue(formValues.startTime, formValues.durationMinutes),
+      };
+
+      setIsEndTimeManuallyEdited(false);
+      updateFormValues(nextValues);
+      setValidationErrors((previousErrors) => clearErrorField(previousErrors, "endTime"));
+      return;
+    }
+
+    setIsEndTimeManuallyEdited(value !== expectedEndTimeValue);
+    handleFieldChange("endTime", value);
+  }
+
   function handleSettingChange(settingName, value) {
-    setFormValues((previousValues) => ({
-      ...previousValues,
+    const nextValues = {
+      ...formValues,
       settings: {
-        ...previousValues.settings,
+        ...formValues.settings,
         [settingName]: value,
       },
-    }));
-  }
-
-  // Hàm này gom dữ liệu hiện tại về shape mà examApi đang mong đợi.
-  function buildSubmitPayload() {
-    return {
-      classroomId: Number(formValues.classroomId),
-      description: formValues.description.trim(),
-      durationMinutes: Number(formValues.durationMinutes),
-      enableAntiCheat: Boolean(formValues.enableAntiCheat),
-      endTime: formValues.endTime ? new Date(formValues.endTime).toISOString() : null,
-      isPublished: Boolean(formValues.isPublished),
-      settings: {
-        maxAttempts: Number(formValues.settings.maxAttempts),
-        requireFullscreen: Boolean(formValues.settings.requireFullscreen),
-        showResultAfterSubmit: Boolean(formValues.settings.showResultAfterSubmit),
-        shuffleAnswers: Boolean(formValues.settings.shuffleAnswers),
-        shuffleQuestions: Boolean(formValues.settings.shuffleQuestions),
-      },
-      startTime: formValues.startTime ? new Date(formValues.startTime).toISOString() : null,
-      title: formValues.title.trim(),
     };
+
+    updateFormValues(nextValues);
+    setValidationErrors((previousErrors) => {
+      if (settingName === "maxAttempts") {
+        return clearErrorField(previousErrors, "maxAttempts");
+      }
+
+      return previousErrors;
+    });
   }
 
-  // Hàm này submit dữ liệu exam lên page cha để page tự quyết định create hay update.
-  async function handleSubmit(event) {
-    event.preventDefault();
+  async function submitExam() {
+    const nextErrors = validateExamFormValues(formValues);
+    setValidationErrors(nextErrors);
 
-    const shouldReset = await onSubmitExam(buildSubmitPayload());
+    if (Object.keys(nextErrors).length > 0) {
+      return false;
+    }
+
+    const shouldReset = await onSubmitExam(buildSubmitPayload(formValues));
 
     if (shouldReset && !exam) {
-      setFormValues(buildExamFormValues(null, defaultClassroomId));
+      setIsEndTimeManuallyEdited(false);
+      setValidationErrors({});
+      updateFormValues(buildExamFormValues(null, defaultClassroomId));
     }
+
+    return shouldReset;
+  }
+  async function handleSubmit(event) {
+    event.preventDefault();
+    await submitExam();
   }
 
   const selectOptions = [
@@ -98,137 +192,65 @@ export default function ExamForm({
     })),
   ];
 
+  const footerNote = showDescriptions
+    ? isEditingExam
+      ? exam?.isPublished
+        ? "Đề này đã publish. Hãy lưu thay đổi cấu hình trước khi tiếp tục theo dõi phòng thi."
+        : "Đề đang ở trạng thái nháp. Sau khi thêm đủ câu hỏi hợp lệ, bạn có thể publish từ trang chi tiết."
+      : "Đề mới sẽ được lưu ở trạng thái nháp để bạn tiếp tục hoàn thiện câu hỏi và cấu hình trước khi publish."
+    : "";
+
   return (
     <Card className="space-y-5">
-      <div className="space-y-1">
-        <h3 className="text-lg font-semibold text-primary">{title}</h3>
-        <p className="text-sm text-secondary">Tiêu đề, lịch mở đề, anti-cheat và các cấu hình cơ bản.</p>
-      </div>
+      <h3 className="text-lg font-semibold text-primary">{title}</h3>
 
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <Select
-          id="exam-classroom-id"
-          label="Lớp học"
-          onChange={(event) => handleFieldChange("classroomId", event.target.value)}
-          options={selectOptions}
-          required
-          value={formValues.classroomId}
+      <form className="space-y-5" id={formId} noValidate onSubmit={handleSubmit}>
+        <FormErrorSummary message={getFirstValidationError(validationErrors)} />
+
+        <ExamFormBasicSection
+          errors={validationErrors}
+          formValues={formValues}
+          isEditingExam={isEditingExam}
+          onFieldChange={handleFieldChange}
+          selectOptions={selectOptions}
+          showDescriptions={showDescriptions}
         />
 
-        <TextInput
-          id="exam-title"
-          label="Tiêu đề bài kiểm tra"
-          onChange={(event) => handleFieldChange("title", event.target.value)}
-          placeholder="Ví dụ: Kiểm tra giữa kỳ UI"
-          required
-          value={formValues.title}
+        <ExamFormScheduleSection
+          errors={validationErrors}
+          expectedEndTimeValue={expectedEndTimeValue}
+          formValues={formValues}
+          isEndTimeManuallyEdited={isEndTimeManuallyEdited}
+          onDurationChange={handleDurationChange}
+          onEndTimeChange={handleEndTimeChange}
+          onStartTimeChange={handleStartTimeChange}
+          showDescriptions={showDescriptions}
         />
 
-        <TextInput
-          as="textarea"
-          id="exam-description"
-          label="Mô tả"
-          onChange={(event) => handleFieldChange("description", event.target.value)}
-          placeholder="Mô tả ngắn về nội dung đề thi"
-          value={formValues.description}
+        <ExamFormConfigSection
+          errors={validationErrors}
+          formValues={formValues}
+          onSettingChange={handleSettingChange}
+          showDescriptions={showDescriptions}
         />
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <TextInput
-            id="exam-duration"
-            label="Thời gian làm bài (phút)"
-            min="1"
-            onChange={(event) => handleFieldChange("durationMinutes", event.target.value)}
-            required
-            type="number"
-            value={formValues.durationMinutes}
-          />
-          <TextInput
-            id="exam-start-time"
-            label="Thời gian mở đề"
-            onChange={(event) => handleFieldChange("startTime", event.target.value)}
-            type="datetime-local"
-            value={formValues.startTime}
-          />
-          <TextInput
-            id="exam-end-time"
-            label="Thời gian đóng đề"
-            onChange={(event) => handleFieldChange("endTime", event.target.value)}
-            type="datetime-local"
-            value={formValues.endTime}
-          />
-        </div>
+        <ExamFormMonitoringSection
+          formValues={formValues}
+          onFieldChange={handleFieldChange}
+          onSettingChange={handleSettingChange}
+          showDescriptions={showDescriptions}
+        />
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <TextInput
-            id="exam-max-attempts"
-            label="Số lần làm tối đa"
-            min="1"
-            onChange={(event) => handleSettingChange("maxAttempts", event.target.value)}
-            required
-            type="number"
-            value={formValues.settings.maxAttempts}
-          />
-          <div className="rounded-[16px] border border-border bg-neutral px-4 py-4">
-            <p className="text-sm font-semibold text-primary">Trạng thái hiển thị</p>
-            <p className="mt-1 text-sm text-secondary">
-              Bạn có thể bật publish ngay lúc tạo hoặc để ở dạng nháp.
-            </p>
-            <div className="mt-3">
-              <CheckboxField
-                checked={formValues.isPublished}
-                id="exam-is-published"
-                label="Publish ngay sau khi lưu"
-                onChange={(event) => handleFieldChange("isPublished", event.target.checked)}
-              />
-            </div>
+        {footerNote || !hideSubmitButton ? (
+          <div className="pt-2">
+            {footerNote ? <p className="mb-3 text-sm leading-6 text-secondary">{footerNote}</p> : null}
+            {!hideSubmitButton ? (
+              <Button className="w-full sm:w-auto" disabled={isSubmitting} type="submit">
+                {isSubmitting ? "Đang lưu..." : submitLabel}
+              </Button>
+            ) : null}
           </div>
-        </div>
-
-        <div className="space-y-3">
-          <p className="text-sm font-semibold text-primary">Cấu hình đề thi</p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <CheckboxField
-              checked={formValues.enableAntiCheat}
-              helperText="Ghi nhận các hành vi bất thường trong lúc làm bài."
-              id="exam-enable-anti-cheat"
-              label="Bật anti-cheat"
-              onChange={(event) => handleFieldChange("enableAntiCheat", event.target.checked)}
-            />
-            <CheckboxField
-              checked={formValues.settings.requireFullscreen}
-              helperText="Yêu cầu người làm bài bật fullscreen."
-              id="exam-require-fullscreen"
-              label="Yêu cầu fullscreen"
-              onChange={(event) => handleSettingChange("requireFullscreen", event.target.checked)}
-            />
-            <CheckboxField
-              checked={formValues.settings.shuffleQuestions}
-              helperText="Đảo thứ tự câu hỏi giữa các lượt làm bài."
-              id="exam-shuffle-questions"
-              label="Random câu hỏi"
-              onChange={(event) => handleSettingChange("shuffleQuestions", event.target.checked)}
-            />
-            <CheckboxField
-              checked={formValues.settings.shuffleAnswers}
-              helperText="Đảo thứ tự đáp án với câu trắc nghiệm."
-              id="exam-shuffle-answers"
-              label="Random đáp án"
-              onChange={(event) => handleSettingChange("shuffleAnswers", event.target.checked)}
-            />
-            <CheckboxField
-              checked={formValues.settings.showResultAfterSubmit}
-              helperText="Cho phép sinh viên xem điểm ngay sau khi nộp."
-              id="exam-show-result"
-              label="Hiển thị kết quả sau khi nộp"
-              onChange={(event) => handleSettingChange("showResultAfterSubmit", event.target.checked)}
-            />
-          </div>
-        </div>
-
-        <Button className="w-full sm:w-auto" disabled={isSubmitting} type="submit">
-          {isSubmitting ? "Đang lưu..." : submitLabel}
-        </Button>
+        ) : null}
       </form>
     </Card>
   );

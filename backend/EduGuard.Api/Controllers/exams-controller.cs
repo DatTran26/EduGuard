@@ -1,9 +1,12 @@
 using System.Security.Claims;
+using System.Text;
+using EduGuard.Api.Contracts.Exams;
 using EduGuard.Application.DTOs.Common;
 using EduGuard.Application.DTOs.Exams;
 using EduGuard.Application.Services.Interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduGuard.Api.Controllers;
@@ -12,9 +15,47 @@ namespace EduGuard.Api.Controllers;
 [Authorize]
 public class ExamsController : ControllerBase
 {
-    private readonly IExamService _examService;
+    private const string StandardQuestionImportFileName = "Dinh_dang_chuan_de_import_file.md";
+    private const string QuestionImportPromptFileName = "Prompt_Chuyen_Doi_De_Import.txt";
 
-    public ExamsController(IExamService examService) => _examService = examService;
+    private static readonly QuestionImportTemplateMetadata StandardQuestionImportTemplate = new(
+        StandardQuestionImportFileName,
+        "standard",
+        "md",
+        "Định dạng chuẩn để import file đề (MD)",
+        "text/markdown");
+
+    private static readonly IReadOnlyList<QuestionImportTemplateKind> QuestionImportTemplateKinds =
+    [
+        new("01", "single_choice", "Trac nghiem mot dap an", "Trac_Nghiem_Mot_Dap_An"),
+        new("02", "multiple_choice", "Trac nghiem nhieu dap an", "Trac_Nghiem_Nhieu_Dap_An"),
+        new("03", "true_false", "Dung/Sai", "Dung_Sai"),
+        new("04", "short_answer", "Tra loi ngan", "Tra_Loi_Ngan")
+    ];
+
+    private static readonly IReadOnlyList<QuestionImportTemplateFormat> QuestionImportTemplateFormats =
+    [
+        new("CSV", "csv", "text/csv"),
+        new("XLSX", "xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        new("TXT", "txt", "text/plain"),
+        new("DOCX", "docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        new("PDF", "pdf", "application/pdf")
+    ];
+
+    private static readonly IReadOnlyList<QuestionImportTemplateMetadata> QuestionImportTemplateDefinitions =
+        BuildQuestionImportTemplateDefinitions();
+
+    private static readonly IReadOnlyDictionary<string, QuestionImportTemplateMetadata> QuestionImportTemplateLookup =
+        QuestionImportTemplateDefinitions.ToDictionary(x => x.FileName, StringComparer.OrdinalIgnoreCase);
+
+    private readonly IExamService _examService;
+    private readonly IWebHostEnvironment _environment;
+
+    public ExamsController(IExamService examService, IWebHostEnvironment environment)
+    {
+        _examService = examService;
+        _environment = environment;
+    }
 
     [HttpGet("api/classrooms/{classroomId:int}/exams")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ExamDto>>>> GetByClassroom(int classroomId, CancellationToken ct)
@@ -46,7 +87,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.CreateAsync(classroomId, request, userId.Value, ct);
+            var data = await _examService.CreateAsync(classroomId, request, userId, ct);
             return Ok(ApiResponse<ExamDto>.CreateSuccess(data, "Tạo đề thi thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<ExamDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -55,6 +96,7 @@ public class ExamsController : ControllerBase
         {
             return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<ExamDto>.CreateFailure(ex.Message));
         }
+        catch (InvalidOperationException ex) { return BadRequest(ApiResponse<ExamDto>.CreateFailure(ex.Message)); }
     }
 
     [HttpGet("api/exams/{id:int}")]
@@ -86,7 +128,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.UpdateAsync(id, request, userId.Value, ct);
+            var data = await _examService.UpdateAsync(id, request, userId, ct);
             return Ok(ApiResponse<ExamDto>.CreateSuccess(data, "Cập nhật đề thi thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<ExamDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -108,7 +150,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.PatchAsync(id, request, userId.Value, ct);
+            var data = await _examService.PatchAsync(id, request, userId, ct);
             return Ok(ApiResponse<ExamDto>.CreateSuccess(data, "Cập nhật đề thi thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<ExamDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -130,7 +172,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            await _examService.DeleteAsync(id, userId.Value, ct);
+            await _examService.DeleteAsync(id, userId, ct);
             return Ok(ApiResponse<object>.CreateSuccess(new { }, "Xóa đề thi thành công."));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<object>.CreateFailure(ex.Message)); }
@@ -150,7 +192,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.PublishAsync(id, userId.Value, ct);
+            var data = await _examService.PublishAsync(id, userId, ct);
             return Ok(ApiResponse<ExamDto>.CreateSuccess(data, "Publish đề thi thành công."));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<ExamDto>.CreateFailure(ex.Message)); }
@@ -180,6 +222,54 @@ public class ExamsController : ControllerBase
         }
     }
 
+    [HttpGet("api/exams/question-import/templates")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public ActionResult<ApiResponse<IReadOnlyList<QuestionImportTemplateDto>>> GetQuestionImportTemplates()
+    {
+        var data = BuildQuestionImportTemplateDtos();
+        return Ok(ApiResponse<IReadOnlyList<QuestionImportTemplateDto>>.CreateSuccess(data, "Tai danh sach file mau import thanh cong."));
+    }
+
+    [HttpGet("api/exams/question-import/templates/{fileName}")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public IActionResult DownloadQuestionImportTemplate(string fileName)
+    {
+        var safeFileName = Path.GetFileName(fileName);
+        if (!QuestionImportTemplateLookup.TryGetValue(safeFileName, out var metadata))
+        {
+            return NotFound(ApiResponse<object>.CreateFailure("Khong tim thay file mau import."));
+        }
+
+        var filePath = Path.Combine(GetQuestionImportTemplateDirectory(), metadata.FileName);
+        if (!System.IO.File.Exists(filePath))
+        {
+            return NotFound(ApiResponse<object>.CreateFailure("File mau import chua duoc cau hinh tren server."));
+        }
+
+        return PhysicalFile(filePath, metadata.ContentType, metadata.FileName);
+    }
+
+    [HttpGet("api/exams/question-import/prompt")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<ActionResult<ApiResponse<QuestionImportPromptDto>>> GetQuestionImportPrompt(CancellationToken ct)
+    {
+        var filePath = Path.Combine(GetQuestionImportTemplateDirectory(), QuestionImportPromptFileName);
+        if (!System.IO.File.Exists(filePath))
+        {
+            return NotFound(ApiResponse<QuestionImportPromptDto>.CreateFailure("Prompt import chua duoc cau hinh tren server."));
+        }
+
+        var content = await System.IO.File.ReadAllTextAsync(filePath, Encoding.UTF8, ct);
+        var data = new QuestionImportPromptDto
+        {
+            FileName = QuestionImportPromptFileName,
+            DisplayName = "Prompt chuyển đổi đề import",
+            Content = content
+        };
+
+        return Ok(ApiResponse<QuestionImportPromptDto>.CreateSuccess(data, "Tai prompt import thanh cong."));
+    }
+
     [HttpPost("api/exams/{id:int}/questions")]
     [Authorize(Roles = "Teacher")]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> AddQuestion(
@@ -191,7 +281,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.AddQuestionAsync(id, request, userId.Value, ct);
+            var data = await _examService.AddQuestionAsync(id, request, userId, ct);
             return Ok(ApiResponse<QuestionDto>.CreateSuccess(data, "Thêm câu hỏi thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<QuestionDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -201,6 +291,96 @@ public class ExamsController : ControllerBase
             return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<QuestionDto>.CreateFailure(ex.Message));
         }
         catch (InvalidOperationException ex) { return BadRequest(ApiResponse<QuestionDto>.CreateFailure(ex.Message)); }
+    }
+
+    [HttpPost("api/questions/import/preview")]
+    [Authorize(Roles = "Teacher,Admin")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<ActionResult<ApiResponse<QuestionImportResultDto>>> PreviewQuestionsImport(
+        [FromForm] ImportQuestionsFormRequest request,
+        CancellationToken ct)
+    {
+        var file = request.File;
+
+        if (file is null)
+            return BadRequest(ApiResponse<QuestionImportResultDto>.CreateFailure("Vui long chon file import."));
+
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            var data = await _examService.PreviewQuestionImportAsync(
+                stream,
+                file.FileName,
+                file.ContentType,
+                file.Length,
+                ct);
+
+            if (data.Errors.Count > 0)
+            {
+                return BadRequest(new ApiResponse<QuestionImportResultDto>
+                {
+                    Success = false,
+                    Message = "File import co loi. Khong co cau hoi nao duoc dua vao ban nhap.",
+                    Data = data
+                });
+            }
+
+            return Ok(ApiResponse<QuestionImportResultDto>.CreateSuccess(data, "Review file import thanh cong."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<QuestionImportResultDto>.CreateFailure(ex.Message));
+        }
+    }
+
+    [HttpPost("api/exams/{id:int}/questions/import")]
+    [Authorize(Roles = "Teacher,Admin")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<ActionResult<ApiResponse<QuestionImportResultDto>>> ImportQuestions(
+        int id,
+        [FromForm] ImportQuestionsFormRequest request,
+        CancellationToken ct)
+    {
+        var user = GetCurrentUser();
+        if (user is null)
+            return Unauthorized(ApiResponse<QuestionImportResultDto>.CreateFailure("Token khong hop le."));
+
+        var file = request.File;
+        if (file is null)
+            return BadRequest(ApiResponse<QuestionImportResultDto>.CreateFailure("Vui long chon file import."));
+
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            var data = await _examService.ImportQuestionsAsync(
+                id,
+                stream,
+                file.FileName,
+                file.ContentType,
+                file.Length,
+                user.Value.userId,
+                user.Value.roles,
+                ct);
+
+            if (data.Errors.Count > 0)
+            {
+                return BadRequest(new ApiResponse<QuestionImportResultDto>
+                {
+                    Success = false,
+                    Message = "File import co loi. Khong co cau hoi nao duoc luu.",
+                    Data = data
+                });
+            }
+
+            return Ok(ApiResponse<QuestionImportResultDto>.CreateSuccess(data, "Import cau hoi thanh cong."));
+        }
+        catch (KeyNotFoundException ex) { return NotFound(ApiResponse<QuestionImportResultDto>.CreateFailure(ex.Message)); }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<QuestionImportResultDto>.CreateFailure(ex.Message));
+        }
     }
 
     [HttpPut("api/questions/{id:int}")]
@@ -214,7 +394,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.UpdateQuestionAsync(id, request, userId.Value, ct);
+            var data = await _examService.UpdateQuestionAsync(id, request, userId, ct);
             return Ok(ApiResponse<QuestionDto>.CreateSuccess(data, "Cập nhật câu hỏi thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<QuestionDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -237,7 +417,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.PatchQuestionAsync(id, request, userId.Value, ct);
+            var data = await _examService.PatchQuestionAsync(id, request, userId, ct);
             return Ok(ApiResponse<QuestionDto>.CreateSuccess(data, "Cập nhật câu hỏi thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<QuestionDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -259,7 +439,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            await _examService.DeleteQuestionAsync(id, userId.Value, ct);
+            await _examService.DeleteQuestionAsync(id, userId, ct);
             return Ok(ApiResponse<object>.CreateSuccess(new { }, "Xóa câu hỏi thành công."));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<object>.CreateFailure(ex.Message)); }
@@ -280,7 +460,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.AddAnswerAsync(id, request, userId.Value, ct);
+            var data = await _examService.AddAnswerAsync(id, request, userId, ct);
             return Ok(ApiResponse<AnswerDto>.CreateSuccess(data, "Thêm đáp án thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<AnswerDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -303,7 +483,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.UpdateAnswerAsync(id, request, userId.Value, ct);
+            var data = await _examService.UpdateAnswerAsync(id, request, userId, ct);
             return Ok(ApiResponse<AnswerDto>.CreateSuccess(data, "Cập nhật đáp án thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<AnswerDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -325,7 +505,7 @@ public class ExamsController : ControllerBase
 
         try
         {
-            var data = await _examService.PatchAnswerAsync(id, request, userId.Value, ct);
+            var data = await _examService.PatchAnswerAsync(id, request, userId, ct);
             return Ok(ApiResponse<AnswerDto>.CreateSuccess(data, "Cập nhật đáp án thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<AnswerDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -336,19 +516,84 @@ public class ExamsController : ControllerBase
         }
     }
 
-    private int? GetCurrentUserId()
+    private static IReadOnlyList<QuestionImportTemplateMetadata> BuildQuestionImportTemplateDefinitions()
     {
-        var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return int.TryParse(id, out var userId) ? userId : null;
+        var data = QuestionImportTemplateFormats
+            .SelectMany(format => QuestionImportTemplateKinds.Select(kind => new QuestionImportTemplateMetadata(
+                FileName: $"Mau_De_Thi_{kind.FileNameSegment}.{format.Extension}",
+                QuestionType: kind.QuestionType,
+                Format: format.Extension,
+                DisplayName: $"Mau de thi {kind.Code} - {kind.DisplayName} ({format.Extension.ToUpperInvariant()})",
+                ContentType: format.ContentType)))
+            .ToList();
+
+        data.Insert(0, StandardQuestionImportTemplate);
+        return data;
     }
 
-    private (int userId, List<string> roles)? GetCurrentUser()
+    private IReadOnlyList<QuestionImportTemplateDto> BuildQuestionImportTemplateDtos()
+    {
+        var templateDirectory = GetQuestionImportTemplateDirectory();
+        var data = new List<QuestionImportTemplateDto>();
+
+        foreach (var metadata in QuestionImportTemplateDefinitions)
+        {
+            var filePath = Path.Combine(templateDirectory, metadata.FileName);
+            if (!System.IO.File.Exists(filePath))
+                continue;
+
+            var fileInfo = new FileInfo(filePath);
+            data.Add(new QuestionImportTemplateDto
+            {
+                FileName = metadata.FileName,
+                QuestionType = metadata.QuestionType,
+                Format = metadata.Format,
+                DisplayName = metadata.DisplayName,
+                ContentType = metadata.ContentType,
+                DownloadUrl = $"/api/exams/question-import/templates/{Uri.EscapeDataString(metadata.FileName)}",
+                FileSizeBytes = fileInfo.Length
+            });
+        }
+
+        return data;
+    }
+
+    private string GetQuestionImportTemplateDirectory() =>
+        Path.Combine(_environment.ContentRootPath, "Resources", "QuestionImportTemplates");
+
+    private sealed record QuestionImportTemplateKind(
+        string Code,
+        string QuestionType,
+        string DisplayName,
+        string FileNameSegment);
+
+    private sealed record QuestionImportTemplateFormat(string Prefix, string Extension, string ContentType);
+
+    private sealed record QuestionImportTemplateMetadata(
+        string FileName,
+        string QuestionType,
+        string Format,
+        string DisplayName,
+        string ContentType);
+
+    public sealed class QuestionImportUploadForm
+    {
+        public IFormFile? File { get; set; }
+    }
+
+    private string? GetCurrentUserId()
+    {
+        var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return string.IsNullOrWhiteSpace(id) ? null : id;
+    }
+
+    private (string userId, List<string> roles)? GetCurrentUser()
     {
         var userId = GetCurrentUserId();
         if (userId is null)
             return null;
 
         var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-        return (userId.Value, roles);
+        return (userId, roles);
     }
 }

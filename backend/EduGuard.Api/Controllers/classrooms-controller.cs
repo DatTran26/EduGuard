@@ -32,7 +32,7 @@ public class ClassroomsController : ControllerBase
 
         try
         {
-            var data = await _classroomService.CreateAsync(request, userId.Value, ct);
+            var data = await _classroomService.CreateAsync(request, userId, ct);
             return Ok(ApiResponse<ClassroomDto>.CreateSuccess(data, "Tạo lớp học thành công."));
         }
         catch (ValidationException ex)
@@ -56,7 +56,7 @@ public class ClassroomsController : ControllerBase
 
         try
         {
-            var data = await _classroomService.GetByIdAsync(id, userId.Value, roles, ct);
+            var data = await _classroomService.GetByIdAsync(id, userId, roles, ct);
             return Ok(ApiResponse<ClassroomDto>.CreateSuccess(data));
         }
         catch (KeyNotFoundException ex)
@@ -77,7 +77,7 @@ public class ClassroomsController : ControllerBase
             return Unauthorized(ApiResponse<IReadOnlyList<ClassroomDto>>.CreateFailure("Token không hợp lệ."));
 
         var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-        var data = await _classroomService.GetMyClassroomsAsync(userId.Value, roles, ct);
+        var data = await _classroomService.GetMyClassroomsAsync(userId, roles, ct);
         return Ok(ApiResponse<IReadOnlyList<ClassroomDto>>.CreateSuccess(data));
     }
 
@@ -93,7 +93,7 @@ public class ClassroomsController : ControllerBase
 
         try
         {
-            var data = await _classroomService.JoinAsync(request, userId.Value, ct);
+            var data = await _classroomService.JoinAsync(request, userId, ct);
             return Ok(ApiResponse<ClassroomDto>.CreateSuccess(data, "Tham gia lớp thành công."));
         }
         catch (ValidationException ex)
@@ -123,7 +123,7 @@ public class ClassroomsController : ControllerBase
 
         try
         {
-            var data = await _classroomService.UpdateAsync(id, request, userId.Value, ct);
+            var data = await _classroomService.UpdateAsync(id, request, userId, ct);
             return Ok(ApiResponse<ClassroomDto>.CreateSuccess(data, "Cập nhật lớp học thành công."));
         }
         catch (ValidationException ex)
@@ -153,7 +153,7 @@ public class ClassroomsController : ControllerBase
 
         try
         {
-            var data = await _classroomService.PatchAsync(id, request, userId.Value, ct);
+            var data = await _classroomService.PatchAsync(id, request, userId, ct);
             return Ok(ApiResponse<ClassroomDto>.CreateSuccess(data, "Cập nhật lớp học thành công."));
         }
         catch (ValidationException ex)
@@ -180,7 +180,7 @@ public class ClassroomsController : ControllerBase
 
         try
         {
-            await _classroomService.DeleteAsync(id, userId.Value, ct);
+            await _classroomService.DeleteAsync(id, userId, ct);
             return Ok(ApiResponse<object>.CreateSuccess(new { }, "Xóa lớp học thành công."));
         }
         catch (KeyNotFoundException ex)
@@ -202,9 +202,11 @@ public class ClassroomsController : ControllerBase
         if (userId is null)
             return Unauthorized(ApiResponse<IReadOnlyList<ClassroomMemberDto>>.CreateFailure("Token không hợp lệ."));
 
+        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
         try
         {
-            var data = await _classroomService.GetMembersAsync(id, userId.Value, ct);
+            var data = await _classroomService.GetMembersAsync(id, userId, roles, ct);
             return Ok(ApiResponse<IReadOnlyList<ClassroomMemberDto>>.CreateSuccess(data));
         }
         catch (KeyNotFoundException ex)
@@ -219,11 +221,11 @@ public class ClassroomsController : ControllerBase
         }
     }
 
-    [HttpDelete("{id:int}/members/{studentId:int}")]
+    [HttpDelete("{id:int}/members/{studentId}")]
     [Authorize(Roles = "Teacher")]
     public async Task<ActionResult<ApiResponse<object>>> RemoveMember(
         int id,
-        int studentId,
+        string studentId,
         CancellationToken ct)
     {
         var userId = GetCurrentUserId();
@@ -232,7 +234,7 @@ public class ClassroomsController : ControllerBase
 
         try
         {
-            await _classroomService.RemoveMemberAsync(id, studentId, userId.Value, ct);
+            await _classroomService.RemoveMemberAsync(id, studentId, userId, ct);
             return Ok(ApiResponse<object>.CreateSuccess(new { }, "Xóa học sinh khỏi lớp thành công."));
         }
         catch (KeyNotFoundException ex)
@@ -245,9 +247,9 @@ public class ClassroomsController : ControllerBase
         }
     }
 
-    private int? GetCurrentUserId()
+    private string? GetCurrentUserId()
     {
         var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return int.TryParse(id, out var userId) ? userId : null;
+        return string.IsNullOrWhiteSpace(id) ? null : id;
     }
 }

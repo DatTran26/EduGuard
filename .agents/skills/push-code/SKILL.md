@@ -28,7 +28,8 @@ không merge `release`, không mở PR `main`.
 | User nói | Dùng skill |
 |----------|------------|
 | `ship` / `ship code` / `release` / `cut version` | `ship-code` |
-| `push code` + "release" / "lên main" / "production" | Hỏi lại ý user |
+| `merge to release`, `merge vào release`, sync release về dev | `merge-release` |
+| `push code` + "lên main" / "production" / `ship` | `ship-code` hoặc hỏi lại ý user |
 
 ---
 

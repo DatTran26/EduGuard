@@ -4,7 +4,7 @@ public class ExamDto
 {
     public int Id { get; set; }
     public int ClassroomId { get; set; }
-    public int TeacherId { get; set; }
+    public string TeacherId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public int DurationMinutes { get; set; }

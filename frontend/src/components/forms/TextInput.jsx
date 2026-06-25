@@ -1,8 +1,9 @@
+import { forwardRef } from "react";
 import FormField from "./FormField";
 import Input from "../common/Input";
 
 // Component này nối FormField với Input để code ở page gọn hơn và dễ đọc hơn.
-export default function TextInput({
+const TextInput = forwardRef(function TextInput({
   id,
   label,
   helperText,
@@ -10,7 +11,7 @@ export default function TextInput({
   required = false,
   as = "input",
   ...props
-}) {
+}, ref) {
   return (
     <FormField
       id={id}
@@ -21,6 +22,7 @@ export default function TextInput({
     >
       {({ describedBy }) => (
         <Input
+          ref={ref}
           id={id}
           as={as}
           aria-invalid={Boolean(error)}
@@ -30,4 +32,6 @@ export default function TextInput({
       )}
     </FormField>
   );
-}
+});
+
+export default TextInput;

@@ -51,7 +51,7 @@ public class AssignmentsController : ControllerBase
 
         try
         {
-            var data = await _assignmentService.CreateAsync(classroomId, request, userId.Value, ct);
+            var data = await _assignmentService.CreateAsync(classroomId, request, userId, ct);
             return Ok(ApiResponse<AssignmentDto>.CreateSuccess(data, "Tạo bài tập thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<AssignmentDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -94,7 +94,7 @@ public class AssignmentsController : ControllerBase
 
         try
         {
-            var data = await _assignmentService.UpdateAsync(id, request, userId.Value, ct);
+            var data = await _assignmentService.UpdateAsync(id, request, userId, ct);
             return Ok(ApiResponse<AssignmentDto>.CreateSuccess(data, "Cập nhật bài tập thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<AssignmentDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -119,7 +119,7 @@ public class AssignmentsController : ControllerBase
 
         try
         {
-            var data = await _assignmentService.PatchAsync(id, request, userId.Value, ct);
+            var data = await _assignmentService.PatchAsync(id, request, userId, ct);
             return Ok(ApiResponse<AssignmentDto>.CreateSuccess(data, "Cập nhật bài tập thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<AssignmentDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -141,7 +141,7 @@ public class AssignmentsController : ControllerBase
 
         try
         {
-            await _assignmentService.DeleteAsync(id, userId.Value, ct);
+            await _assignmentService.DeleteAsync(id, userId, ct);
             return Ok(ApiResponse<object>.CreateSuccess(new { }, "Xóa bài tập thành công."));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<object>.CreateFailure(ex.Message)); }
@@ -164,7 +164,7 @@ public class AssignmentsController : ControllerBase
 
         try
         {
-            var data = await _assignmentService.SubmitAsync(id, request, userId.Value, ct);
+            var data = await _assignmentService.SubmitAsync(id, request, userId, ct);
             return Ok(ApiResponse<SubmissionDto>.CreateSuccess(data, "Nộp bài thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<SubmissionDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -186,7 +186,7 @@ public class AssignmentsController : ControllerBase
 
         try
         {
-            var data = await _assignmentService.GetSubmissionsAsync(id, userId.Value, ct);
+            var data = await _assignmentService.GetSubmissionsAsync(id, userId, ct);
             return Ok(ApiResponse<IReadOnlyList<SubmissionDto>>.CreateSuccess(data));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<IReadOnlyList<SubmissionDto>>.CreateFailure(ex.Message)); }
@@ -209,7 +209,7 @@ public class AssignmentsController : ControllerBase
 
         try
         {
-            var data = await _assignmentService.GradeAsync(id, request, userId.Value, ct);
+            var data = await _assignmentService.GradeAsync(id, request, userId, ct);
             return Ok(ApiResponse<SubmissionDto>.CreateSuccess(data, "Chấm điểm thành công."));
         }
         catch (ValidationException ex) { return BadRequest(ApiResponse<SubmissionDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
@@ -221,19 +221,19 @@ public class AssignmentsController : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(ApiResponse<SubmissionDto>.CreateFailure(ex.Message)); }
     }
 
-    private int? GetCurrentUserId()
+    private string? GetCurrentUserId()
     {
         var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return int.TryParse(id, out var userId) ? userId : null;
+        return string.IsNullOrWhiteSpace(id) ? null : id;
     }
 
-    private (int userId, List<string> roles)? GetCurrentUser()
+    private (string userId, List<string> roles)? GetCurrentUser()
     {
         var userId = GetCurrentUserId();
         if (userId is null)
             return null;
 
         var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-        return (userId.Value, roles);
+        return (userId, roles);
     }
 }

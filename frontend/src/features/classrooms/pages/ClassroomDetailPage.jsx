@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { areUserIdsEqual } from "../../../api/apiHelpers";
 import { classroomApi } from "../../../api/classroomApi";
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
@@ -8,25 +9,30 @@ import EmptyState from "../../../components/common/EmptyState";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
-import {
-  getExamListPathByRole,
-  getClassroomListPathByRole,
-  getProfilePathByRole,
-} from "../../../routes/routeConfig";
+import { getClassroomListPathByRole } from "../../../routes/routeConfig";
 import { formatShortDate, formatShortDateTime } from "../../../utils/formatDate";
+import AssignmentSection from "../../assignments/components/AssignmentSection";
 import CreateClassroomForm from "../components/CreateClassroomForm";
+import Skeleton, { SkeletonText } from "../../../components/common/Skeleton";
+import TeacherClassroomWorkspace from "../components/TeacherClassroomWorkspace";
+import {
+  TEACHER_CLASSROOM_TABS,
+  normalizeTeacherClassroomTab,
+} from "../components/teacher-classroom-tabs";
 
-// Hàm này tạo nhóm thông tin ngắn để card overview của classroom detail gọn hơn.
 function buildQuickInfoItems(classroom) {
   return [
     { label: "Mã lớp", value: classroom.joinCode },
     { label: "Giảng viên", value: classroom.teacherName },
-    { label: "Thành viên", value: `${classroom.memberCount} người` },
+    {
+      label: "Thành viên",
+      value:
+        typeof classroom.memberCount === "number" ? `${classroom.memberCount} người` : "Chưa có số liệu",
+    },
     { label: "Ngày tạo", value: formatShortDate(classroom.createdAt) },
   ];
 }
 
-// Hàm này trả nhãn badge đầu trang tùy theo cách user hiện tại truy cập vào classroom này.
 function getAccessBadgeLabel(classroom, role) {
   if (classroom.canEdit) {
     return "Bạn đang quản lý lớp này";
@@ -39,10 +45,73 @@ function getAccessBadgeLabel(classroom, role) {
   return "Bạn đang tham gia lớp này";
 }
 
-// Trang này hiển thị đầy đủ thông tin classroom, thành viên và khu vực teacher chỉnh sửa lớp học.
+function getMemberBadgeVariant(member) {
+  if (member.role === "Giảng viên" || member.status === "Owner") {
+    return "info";
+  }
+
+  if (member.status === "Active") {
+    return "success";
+  }
+
+  return "neutral";
+}
+
+function buildVisibleMembers(classroom, members, currentUser) {
+  const normalizedMembers = Array.isArray(members)
+    ? members.map((member) => ({
+        ...member,
+        isCurrentUser:
+          currentUser?.role === "Student" &&
+          (areUserIdsEqual(member.studentId, currentUser.id) ||
+            (currentUser.email &&
+              member.email &&
+              currentUser.email.toLowerCase() === member.email.toLowerCase())),
+      }))
+    : [];
+
+  const hasTeacherEntry = normalizedMembers.some((member) =>
+    areUserIdsEqual(member.studentId, classroom.teacherId),
+  );
+  const hasCurrentStudentEntry = normalizedMembers.some((member) => member.isCurrentUser);
+
+  const teacherEntry = hasTeacherEntry
+    ? null
+    : {
+        id: `teacher-${classroom.teacherId || classroom.id}`,
+        studentId: classroom.teacherId,
+        fullName: classroom.teacherName || "Giảng viên chưa xác định",
+        email: "",
+        joinedAt: classroom.createdAt ?? null,
+        role: "Giảng viên",
+        status: "Owner",
+        statusLabel: "Quản lý lớp",
+        isCurrentUser:
+          currentUser?.role === "Teacher" && areUserIdsEqual(currentUser.id, classroom.teacherId),
+      };
+
+  const currentStudentEntry =
+    currentUser?.role === "Student" && !hasCurrentStudentEntry
+      ? {
+          id: `self-${currentUser.id}`,
+          studentId: currentUser.id,
+          fullName: currentUser.fullName || "Bạn",
+          email: currentUser.email || "",
+          joinedAt: classroom.joinedAt ?? null,
+          role: "Sinh viên",
+          status: "Active",
+          statusLabel: "Đang tham gia",
+          isCurrentUser: true,
+        }
+      : null;
+
+  return [teacherEntry, currentStudentEntry, ...normalizedMembers].filter(Boolean);
+}
+
 export default function ClassroomDetailPage() {
   const navigate = useNavigate();
   const { classroomId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { showToast } = useToast();
   const [classroom, setClassroom] = useState(null);
@@ -50,8 +119,12 @@ export default function ClassroomDetailPage() {
   const [loadErrorMessage, setLoadErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditClassroomFormVisible, setIsEditClassroomFormVisible] = useState(false);
+  const visibleMembers = classroom ? buildVisibleMembers(classroom, members, user) : [];
+  const shouldShowTeacherWorkspace = user?.role === "Teacher" && Boolean(classroom?.canEdit);
+  const activeTeacherTab = normalizeTeacherClassroomTab(searchParams.get("tab"));
+  const highlightedStudentId = searchParams.get("studentId") || "";
 
-  // Hàm này tải classroom detail và member list từ hai endpoint mock riêng để bám sát tài liệu API.
   async function loadClassroomDetail() {
     setIsLoading(true);
 
@@ -62,7 +135,7 @@ export default function ClassroomDetailPage() {
       ]);
 
       setClassroom(classroomResponse.data);
-      setMembers(memberResponse.data);
+      setMembers(memberResponse?.data ?? []);
       setLoadErrorMessage("");
     } catch (error) {
       setClassroom(null);
@@ -82,7 +155,6 @@ export default function ClassroomDetailPage() {
   useEffect(() => {
     let isMounted = true;
 
-    // Hàm này tải dữ liệu lần đầu hoặc khi đổi classroom id, giữ cho detail page đúng nội dung.
     async function loadInitialDetail() {
       try {
         const [classroomResponse, memberResponse] = await Promise.all([
@@ -95,7 +167,7 @@ export default function ClassroomDetailPage() {
         }
 
         setClassroom(classroomResponse.data);
-        setMembers(memberResponse.data);
+        setMembers(memberResponse?.data ?? []);
         setLoadErrorMessage("");
       } catch (error) {
         if (!isMounted) {
@@ -123,30 +195,38 @@ export default function ClassroomDetailPage() {
     return () => {
       isMounted = false;
     };
-  }, [classroomId, showToast]);
+  }, [classroomId, showToast, user?.role]);
 
-  // Hàm này xin mã lớp mới cho form chỉnh sửa nếu giảng viên muốn random lại join code.
-  async function handleGenerateJoinCode() {
-    try {
-      const response = await classroomApi.generateJoinCode();
-      return response.data.joinCode;
-    } catch (error) {
-      showToast({
-        tone: "danger",
-        title: "Không tạo được mã lớp",
-        message: error.message || "Không thể tạo mã lớp mới.",
-      });
-      return "";
+  useEffect(() => {
+    if (!shouldShowTeacherWorkspace) {
+      return;
     }
-  }
 
-  // Hàm này lưu chỉnh sửa classroom dành cho giảng viên rồi tải lại detail để đồng bộ dữ liệu.
+    const requestedTab = searchParams.get("tab");
+    const normalizedTab = normalizeTeacherClassroomTab(requestedTab);
+
+    if (!requestedTab || requestedTab === normalizedTab) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (normalizedTab === "overview") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", normalizedTab);
+    }
+
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams, shouldShowTeacherWorkspace]);
+
   async function handleUpdateClassroom(payload) {
     setIsSaving(true);
 
     try {
       const response = await classroomApi.update(classroomId, payload);
       await loadClassroomDetail();
+      setIsEditClassroomFormVisible(false);
       showToast({
         tone: "success",
         title: "Đã cập nhật lớp học",
@@ -165,7 +245,6 @@ export default function ClassroomDetailPage() {
     }
   }
 
-  // Hàm này xóa classroom hiện tại sau khi teacher xác nhận, rồi đưa người dùng về classroom list.
   async function handleDeleteClassroom() {
     const hasConfirmed = window.confirm("Bạn có chắc muốn xóa lớp học này không?");
 
@@ -192,7 +271,6 @@ export default function ClassroomDetailPage() {
     }
   }
 
-  // Hàm này copy mã lớp ở màn hình detail để teacher khỏi phải quay về list page.
   async function handleCopyJoinCode() {
     if (!classroom) {
       return;
@@ -214,10 +292,155 @@ export default function ClassroomDetailPage() {
     }
   }
 
+  function handleTeacherTabChange(tabId) {
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (tabId === "overview") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", tabId);
+    }
+
+    if (tabId !== "members") {
+      nextParams.delete("studentId");
+    }
+
+    setSearchParams(nextParams);
+  }
+
+  function renderQuickInfoCard(item) {
+    if (item.label === "Mã lớp") {
+      return (
+        <button
+          key={item.label}
+          type="button"
+          onClick={handleCopyJoinCode}
+          className="rounded-[16px] border border-border bg-surface p-4 text-left transition-colors duration-200 hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-tertiary/18"
+          title="Sao chép mã lớp"
+        >
+          <p className="text-sm font-semibold text-primary">{item.label}</p>
+          <p className="mt-2 font-mono text-sm leading-6 text-primary">{item.value}</p>
+          <p className="mt-2 text-xs text-secondary">Nhấn để sao chép</p>
+        </button>
+      );
+    }
+
+    return (
+      <div key={item.label} className="rounded-[16px] border border-border bg-surface-sunken p-4">
+        <p className="text-sm font-semibold text-primary">{item.label}</p>
+        <p className="mt-2 text-sm leading-6 text-secondary">{item.value}</p>
+      </div>
+    );
+  }
+
+  function renderMemberListCard({ condensed = false }) {
+    const membersToRender = condensed ? visibleMembers.slice(0, 4) : visibleMembers;
+
+    return (
+      <Card className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-primary">Thành viên lớp học</h3>
+            {condensed ? (
+              <p className="mt-1 text-sm text-secondary">
+                Xem nhanh danh sách trước khi chuyển sang tab thành viên đầy đủ.
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm text-secondary">{visibleMembers.length} thành viên</span>
+            {condensed && shouldShowTeacherWorkspace ? (
+              <Button variant="ghost" onClick={() => handleTeacherTabChange("members")}>
+                Xem tất cả
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        {membersToRender.length > 0 ? (
+          <div className="space-y-3">
+            {membersToRender.map((member) => (
+              <div
+                key={member.id}
+                className={`rounded-[16px] border border-border bg-surface-sunken p-4 ${
+                  String(member.studentId || "") === highlightedStudentId ? "ring-2 ring-tertiary/30" : ""
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-primary">{member.fullName}</p>
+                      {member.isCurrentUser ? <Badge variant="info">Bạn</Badge> : null}
+                      {member.role === "Giảng viên" ? <Badge variant="caution">Giảng viên</Badge> : null}
+                    </div>
+                    <p className="mt-1 text-sm text-secondary">
+                      {member.email || (member.role === "Giảng viên" ? "Giảng viên phụ trách lớp" : "")}
+                    </p>
+                  </div>
+                  <Badge variant={getMemberBadgeVariant(member)}>{member.statusLabel}</Badge>
+                </div>
+                <p className="mt-2 text-sm text-secondary">
+                  {member.role === "Giảng viên" ? "Bắt đầu quản lý" : "Tham gia"}:{" "}
+                  {formatShortDateTime(member.joinedAt)}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-secondary">Lớp học này hiện chưa có thành viên nào.</p>
+        )}
+
+        {condensed && visibleMembers.length > membersToRender.length ? (
+          <p className="text-sm text-secondary">
+            + {visibleMembers.length - membersToRender.length} thành viên khác đang được ẩn bớt.
+          </p>
+        ) : null}
+      </Card>
+    );
+  }
+
   if (isLoading) {
     return (
-      <div className="rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
-        Đang tải chi tiết lớp học...
+      <div className="space-y-6">
+        <PageHeader eyebrow="Lớp học" title="Đang tải thông tin..." />
+
+        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-6">
+            <div className="eg-card space-y-5">
+              <Skeleton className="h-6 w-1/4 rounded-full" />
+              <div className="grid gap-4 md:grid-cols-2">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </div>
+
+            <div className="eg-card space-y-4">
+              <Skeleton className="h-6 w-1/3" />
+              <SkeletonText lines={4} />
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="eg-card space-y-4">
+              <Skeleton className="h-6 w-1/3" />
+              <div className="space-y-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            </div>
+            <div className="eg-card space-y-3">
+              <Skeleton className="h-6 w-1/3" />
+              <div className="flex gap-3">
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-10 w-24" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -226,7 +449,7 @@ export default function ClassroomDetailPage() {
     return (
       <EmptyState
         title="Không tìm thấy lớp học."
-        description={loadErrorMessage || "Lớp học này hiện không tồn tại hoặc bạn không có quyền xem."}
+        description={loadErrorMessage}
         action={
           <Link className="eg-button eg-button-primary" to={getClassroomListPathByRole(user?.role)}>
             Quay lại danh sách lớp
@@ -238,20 +461,36 @@ export default function ClassroomDetailPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="Chi tiết lớp học"
-        title={classroom.name}
-        description={classroom.description || "Chưa có mô tả cho lớp học này."}
-        actions={
-          user?.role !== "Student" ? (
-            <Button onClick={handleCopyJoinCode} variant="secondary">
-              Sao chép mã lớp
-            </Button>
-          ) : null
-        }
-      />
+      <div className="eg-page-hero">
+        <div className="space-y-3">
+          <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-[2.4rem] lg:text-[2.8rem]">
+            {classroom.name}
+          </h1>
+        </div>
+      </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      {shouldShowTeacherWorkspace ? (
+        <div className="rounded-[24px] border border-border bg-surface p-3">
+          <div className="flex flex-wrap gap-2">
+            {TEACHER_CLASSROOM_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTeacherTabChange(tab.id)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+                  activeTeacherTab === tab.id
+                    ? "bg-primary text-white"
+                    : "text-secondary hover:bg-surface-sunken hover:text-primary"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {shouldShowTeacherWorkspace && activeTeacherTab === "overview" ? (
         <div className="space-y-6">
           <Card className="space-y-5">
             <div className="flex flex-wrap items-center gap-3">
@@ -262,93 +501,105 @@ export default function ClassroomDetailPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              {buildQuickInfoItems(classroom).map((item) => (
-                <div key={item.label} className="rounded-[16px] border border-border bg-neutral p-4">
-                  <p className="text-sm font-semibold text-primary">{item.label}</p>
-                  <p className="mt-2 text-sm leading-6 text-secondary">{item.value}</p>
-                </div>
-              ))}
+              {buildQuickInfoItems(classroom).map(renderQuickInfoCard)}
             </div>
 
-            <div className="rounded-[16px] border border-border bg-neutral p-4 text-sm text-secondary">
-              Cập nhật gần nhất: {formatShortDateTime(classroom.updatedAt || classroom.createdAt)}
-            </div>
+            {classroom.description ? (
+              <div className="rounded-[18px] border border-border bg-surface-sunken px-4 py-4">
+                <p className="text-sm font-semibold text-primary">Mô tả lớp</p>
+                <p className="mt-2 text-sm leading-6 text-secondary">{classroom.description}</p>
+              </div>
+            ) : null}
           </Card>
 
-          {classroom.canEdit ? (
-            <div className="space-y-4">
-              <CreateClassroomForm
-                key={`${classroom.id}-${classroom.updatedAt || classroom.createdAt}`}
-                classroom={classroom}
-                isSubmitting={isSaving}
-                onGenerateJoinCode={handleGenerateJoinCode}
-                onSubmitClassroom={handleUpdateClassroom}
-                submitLabel="Lưu thay đổi"
-                title="Chỉnh sửa lớp học"
-              />
-              <Card className="space-y-4">
-                <h3 className="text-lg font-semibold text-primary">Nguy hiểm</h3>
-                <p className="text-sm leading-6 text-secondary">
-                  Xóa lớp học sẽ làm mất luôn danh sách thành viên của lớp này trong mock database.
-                </p>
-                <Button disabled={isSaving} onClick={handleDeleteClassroom} variant="danger">
-                  {isSaving ? "Đang xử lý..." : "Xóa lớp học"}
-                </Button>
-              </Card>
-            </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button
+              className="w-full"
+              onClick={() => setIsEditClassroomFormVisible(true)}
+              variant="secondary"
+            >
+              Chỉnh sửa lớp học
+            </Button>
+            <Button
+              className="w-full"
+              disabled={isSaving}
+              onClick={handleDeleteClassroom}
+              variant="danger"
+            >
+              {isSaving ? "Đang xử lý..." : "Xoá lớp học"}
+            </Button>
+          </div>
+
+          {isEditClassroomFormVisible ? (
+            <CreateClassroomForm
+              key={`${classroom.id}-${classroom.updatedAt || classroom.createdAt}`}
+              classroom={classroom}
+              isSubmitting={isSaving}
+              onSubmitClassroom={handleUpdateClassroom}
+              submitLabel="Lưu thay đổi"
+              title="Chỉnh sửa lớp học"
+            />
           ) : null}
         </div>
+      ) : null}
 
-        <div className="space-y-6">
-          <Card className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-primary">Thành viên lớp học</h3>
-              <span className="text-sm text-secondary">{members.length} người</span>
-            </div>
+      {shouldShowTeacherWorkspace && activeTeacherTab === "members" ? (
+        <div className="space-y-6">{renderMemberListCard({ condensed: false })}</div>
+      ) : null}
 
-            {members.length > 0 ? (
-              <div className="space-y-3">
-                {members.map((member) => (
-                  <div key={member.id} className="rounded-[16px] border border-border bg-neutral p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-primary">{member.fullName}</p>
-                        <p className="mt-1 text-sm text-secondary">{member.email}</p>
-                      </div>
-                      <Badge variant={member.role === "Giáo viên" ? "info" : "neutral"}>
-                        {member.role}
-                      </Badge>
-                    </div>
-                    <p className="mt-2 text-sm text-secondary">
-                      Tham gia: {formatShortDateTime(member.joinedAt)}
-                    </p>
+      {shouldShowTeacherWorkspace && activeTeacherTab === "overview" ? (
+        <TeacherClassroomWorkspace
+          activeTab={activeTeacherTab}
+          classroom={classroom}
+          highlightedStudentId={highlightedStudentId}
+          members={members}
+          showToast={showToast}
+          user={user}
+        />
+      ) : null}
+
+      {shouldShowTeacherWorkspace && !["overview", "members"].includes(activeTeacherTab) ? (
+        <TeacherClassroomWorkspace
+          activeTab={activeTeacherTab}
+          classroom={classroom}
+          highlightedStudentId={highlightedStudentId}
+          members={members}
+          showToast={showToast}
+          user={user}
+        />
+      ) : null}
+
+      {!shouldShowTeacherWorkspace ? (
+        <>
+          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-6">
+              <Card className="space-y-5">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge variant={classroom.canEdit ? "success" : "info"}>
+                    {getAccessBadgeLabel(classroom, user?.role)}
+                  </Badge>
+                  <Badge variant="neutral">Mã lớp {classroom.joinCode}</Badge>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  {buildQuickInfoItems(classroom).map(renderQuickInfoCard)}
+                </div>
+
+                {classroom.description ? (
+                  <div className="rounded-[18px] border border-border bg-surface-sunken px-4 py-4">
+                    <p className="text-sm font-semibold text-primary">Mô tả lớp</p>
+                    <p className="mt-2 text-sm leading-6 text-secondary">{classroom.description}</p>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-secondary">Lớp học này hiện chưa có thành viên nào.</p>
-            )}
-          </Card>
-
-          <Card className="space-y-3">
-            <h3 className="text-lg font-semibold text-primary">Liên kết nhanh</h3>
-            <div className="flex flex-wrap gap-3">
-              <Link className="eg-button eg-button-secondary" to={getClassroomListPathByRole(user?.role)}>
-                Danh sách lớp
-              </Link>
-              <Link
-                className="eg-button eg-button-ghost"
-                to={`${getExamListPathByRole(user?.role)}?classroomId=${classroom.id}`}
-              >
-                Bài kiểm tra của lớp
-              </Link>
-              <Link className="eg-button eg-button-ghost" to={getProfilePathByRole(user?.role)}>
-                Hồ sơ cá nhân
-              </Link>
+                ) : null}
+              </Card>
             </div>
-          </Card>
-        </div>
-      </div>
+
+            <div className="space-y-6">{renderMemberListCard({ condensed: false })}</div>
+          </div>
+
+          <AssignmentSection classroom={classroom} showToast={showToast} user={user} />
+        </>
+      ) : null}
     </div>
   );
 }

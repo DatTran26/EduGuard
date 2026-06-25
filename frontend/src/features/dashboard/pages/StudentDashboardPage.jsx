@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
+import { FiBookOpen, FiClipboard, FiAlertTriangle, FiCalendar } from "react-icons/fi";
 import { dashboardApi } from "../../../api/dashboardApi";
-import Badge from "../../../components/common/Badge";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
 import MetricBarList from "../../../components/dashboard/MetricBarList";
 import StatCard from "../../../components/dashboard/StatCard";
 import TimelineList from "../../../components/dashboard/TimelineList";
-import PageHeader from "../../../components/layout/PageHeader";
 import { useToast } from "../../../hooks/useToast";
 import { formatShortDateTime } from "../../../utils/formatDate";
 
@@ -14,10 +13,8 @@ import { formatShortDateTime } from "../../../utils/formatDate";
 function buildUpcomingItems(upcomingItems) {
   return upcomingItems.map((item) => ({
     id: item.id,
-    title: item.title,
-    subtitle: item.classroomName,
+    title: `${item.title} • ${item.classroomName}`,
     meta: formatShortDateTime(item.date),
-    description: item.type,
   }));
 }
 
@@ -25,10 +22,8 @@ function buildUpcomingItems(upcomingItems) {
 function buildRecentResultItems(recentResults) {
   return recentResults.map((item) => ({
     id: item.id,
-    title: item.title,
-    subtitle: item.classroomName,
-    meta: `${item.score} điểm`,
-    description: `Nộp lúc ${formatShortDateTime(item.submittedAt)} • Suspicion ${item.suspicionScore}`,
+    title: `${item.title} • ${item.classroomName}`,
+    meta: `${item.score} điểm • Suspicion ${item.suspicionScore}`,
   }));
 }
 
@@ -36,10 +31,8 @@ function buildRecentResultItems(recentResults) {
 function buildNotificationItems(notifications) {
   return notifications.map((notification) => ({
     id: notification.id,
-    title: notification.title,
-    subtitle: notification.type,
+    title: `${notification.title} • ${notification.type}`,
     meta: formatShortDateTime(notification.createdAt),
-    description: notification.message,
   }));
 }
 
@@ -48,7 +41,6 @@ function buildClassProgressBars(classProgress) {
   return classProgress.map((item) => ({
     label: item.name,
     value: `${item.submissionProgress}%`,
-    helperText: `${item.submissionCount}/${item.assignmentCount} bài tập đã nộp`,
     percentage: item.submissionProgress,
   }));
 }
@@ -102,7 +94,7 @@ export default function StudentDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="rounded-[20px] border border-border bg-surface p-6 text-sm text-secondary">
+      <div className="eg-feedback-panel">
         Đang tải dashboard sinh viên...
       </div>
     );
@@ -112,7 +104,7 @@ export default function StudentDashboardPage() {
     return (
       <EmptyState
         title="Chưa tải được dashboard sinh viên."
-        description={loadErrorMessage || "Hiện chưa có dữ liệu dashboard sinh viên để hiển thị."}
+        description={loadErrorMessage}
       />
     );
   }
@@ -121,33 +113,64 @@ export default function StudentDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="Sinh viên"
-        title="Dashboard cá nhân"
-        description="Theo dõi bài tập, lịch sắp tới, kết quả thi và các nhắc việc liên quan đến lớp học."
-      />
+      {/* ── Hero Header ── */}
+      <div className="eg-page-hero">
+        <div
+          className="absolute -right-8 -top-8 h-40 w-40 rounded-full blur-3xl"
+          style={{ background: "rgb(34 197 94 / 8%)" }}
+          aria-hidden="true"
+        />
+        <div className="relative space-y-3">
+          <p className="inline-flex rounded-full border border-success/20 bg-success-muted px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-success">
+            Sinh viên
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-primary sm:text-3xl">
+            Dashboard cá nhân
+          </h1>
+          <p className="max-w-xl text-sm leading-6 text-secondary">
+            Theo dõi tiến độ học tập, bài tập sắp đến hạn và kết quả thi của bạn.
+          </p>
+        </div>
+      </div>
 
+      {/* ── Stat Cards ── */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Lớp đã tham gia" value={summary.joinedClassrooms} helperText="Số lớp học bạn đang tham gia" tone="info" />
-        <StatCard label="Bài chưa nộp" value={summary.pendingAssignments} helperText={`${summary.completedAssignments} bài đã hoàn thành`} tone="caution" />
-        <StatCard label="Cảnh báo cao" value={summary.warningCount} helperText="Số lượt làm bài cần chú ý thêm" tone="success" />
-        <StatCard label="Việc sắp tới" value={summary.upcomingItems} helperText="Bao gồm bài tập và bài kiểm tra gần hạn" tone="neutral" />
+        <StatCard
+          label="Lớp đã tham gia"
+          value={summary.joinedClassrooms}
+          tone="info"
+          icon={<FiBookOpen className="h-5 w-5" />}
+        />
+        <StatCard
+          label="Bài chưa nộp"
+          value={summary.pendingAssignments}
+          tone="caution"
+          icon={<FiClipboard className="h-5 w-5" />}
+        />
+        <StatCard
+          label="Cảnh báo cao"
+          value={summary.warningCount}
+          tone="danger"
+          icon={<FiAlertTriangle className="h-5 w-5" />}
+        />
+        <StatCard
+          label="Việc sắp tới"
+          value={summary.upcomingItems}
+          tone="neutral"
+          icon={<FiCalendar className="h-5 w-5" />}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <Card className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-primary">Tiến độ theo lớp</h3>
-            <Badge variant="info">Theo bài tập</Badge>
-          </div>
+          <h3 className="eg-section-title">Tiến độ theo lớp</h3>
           <MetricBarList
             items={buildClassProgressBars(classProgress)}
             emptyMessage="Bạn chưa tham gia lớp nào."
           />
         </Card>
-
         <Card className="space-y-4">
-          <h3 className="text-lg font-semibold text-primary">Việc sắp tới</h3>
+          <h3 className="eg-section-title">Việc sắp tới</h3>
           <TimelineList
             items={buildUpcomingItems(upcomingItems)}
             emptyMessage="Hiện chưa có lịch bài tập hay bài kiểm tra nào gần hạn."
@@ -157,15 +180,14 @@ export default function StudentDashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <Card className="space-y-4">
-          <h3 className="text-lg font-semibold text-primary">Kết quả gần đây</h3>
+          <h3 className="eg-section-title">Kết quả gần đây</h3>
           <TimelineList
             items={buildRecentResultItems(recentResults)}
             emptyMessage="Bạn chưa có kết quả bài kiểm tra nào."
           />
         </Card>
-
         <Card className="space-y-4">
-          <h3 className="text-lg font-semibold text-primary">Thông báo gần đây</h3>
+          <h3 className="eg-section-title">Thông báo gần đây</h3>
           <TimelineList
             items={buildNotificationItems(notifications)}
             emptyMessage="Hiện chưa có thông báo mới."

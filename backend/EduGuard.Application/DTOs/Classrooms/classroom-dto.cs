@@ -6,7 +6,7 @@ public class ClassroomDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string JoinCode { get; set; } = string.Empty;
-    public int TeacherId { get; set; }
+    public string TeacherId { get; set; } = string.Empty;
     public string TeacherName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 }

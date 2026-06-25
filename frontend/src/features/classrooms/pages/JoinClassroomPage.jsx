@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FiUsers } from "react-icons/fi";
 import { classroomApi } from "../../../api/classroomApi";
-import Card from "../../../components/common/Card";
-import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { buildClassroomDetailPathByRole } from "../../../routes/routeConfig";
 import JoinClassroomForm from "../components/JoinClassroomForm";
 
-// Trang này phụ trách flow student nhập mã lớp và join classroom bằng mock API.
+// Trang này phụ trách flow student nhập mã lớp và gọi backend thật để tham gia classroom.
 export default function JoinClassroomPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -46,23 +45,33 @@ export default function JoinClassroomPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="Sinh viên"
-        title="Tham gia lớp học"
-        description="Nhập mã lớp để vào đúng lớp giảng viên đã tạo."
-      />
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-        <JoinClassroomForm isSubmitting={isSubmitting} onJoinClassroom={handleJoinClassroom} />
-
-        <Card className="space-y-4">
-          <h3 className="text-lg font-semibold text-primary">Lưu ý nhanh</h3>
-          <div className="space-y-3 text-sm leading-6 text-secondary">
-            <p>Mã lớp phải trùng với mã mà giảng viên cung cấp.</p>
-            <p>Sau khi tham gia thành công, bạn sẽ xem được danh sách thành viên của lớp đó.</p>
-            <p>Mock API hiện đang lưu dữ liệu bằng localStorage để mô phỏng database thật.</p>
+      <div className="eg-page-hero">
+        <div
+          className="absolute -right-8 -top-8 h-40 w-40 rounded-full blur-3xl"
+          style={{ background: "rgb(59 130 246 / 8%)" }}
+          aria-hidden="true"
+        />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-2">
+            <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-info">
+              Tham gia lớp học
+            </p>
+            <h1 className="text-3xl font-bold tracking-tight text-primary">
+              Tham gia lớp học mới
+            </h1>
+            <p className="text-sm text-secondary max-w-2xl">
+              Nhập mã lớp được giảng viên cung cấp để tham gia vào lớp học và truy cập các bài thi, tài liệu học tập.
+            </p>
           </div>
-        </Card>
+          <div className="flex items-center gap-3 rounded-full border border-border bg-surface px-4 py-2 text-xs font-semibold text-secondary">
+            <FiUsers className="h-4 w-4 text-info" />
+            <span>Sinh viên</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-3xl">
+        <JoinClassroomForm isSubmitting={isSubmitting} onJoinClassroom={handleJoinClassroom} />
       </div>
     </div>
   );

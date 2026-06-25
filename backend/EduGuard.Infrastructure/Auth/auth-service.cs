@@ -104,9 +104,9 @@ public class AuthService : IAuthService
         await _db.SaveChangesAsync(ct);
     }
 
-    public async Task<UserDto> GetMeAsync(int userId, CancellationToken ct = default)
+    public async Task<UserDto> GetMeAsync(string userId, CancellationToken ct = default)
     {
-        var user = await _userManager.FindByIdAsync(userId.ToString());
+        var user = await _userManager.FindByIdAsync(userId);
         if (user is null || !user.IsActive)
             throw new UnauthorizedAccessException("Không tìm thấy user.");
 
@@ -128,7 +128,7 @@ public class AuthService : IAuthService
         };
     }
 
-    private async Task<string> CreateRefreshTokenAsync(int userId, CancellationToken ct)
+    private async Task<string> CreateRefreshTokenAsync(string userId, CancellationToken ct)
     {
         var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 
@@ -149,6 +149,10 @@ public class AuthService : IAuthService
         Id = user.Id,
         FullName = user.FullName,
         Email = user.Email ?? string.Empty,
+        AvatarUrl = user.AvatarUrl,
+        IsActive = user.IsActive,
+        CreatedAt = user.CreatedAt,
+        UpdatedAt = user.UpdatedAt,
         Roles = roles
     };
 }

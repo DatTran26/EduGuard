@@ -5,17 +5,18 @@ export default function TimelineList({ items = [], emptyMessage = "Chưa có d�
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {items.map((item) => (
-        <div key={item.id} className="rounded-[16px] border border-border bg-neutral p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-primary">{item.title}</p>
-              {item.subtitle ? <p className="mt-1 text-sm text-secondary">{item.subtitle}</p> : null}
+        <div key={item.id} className="eg-timeline-item">
+          <span className="eg-timeline-dot" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <p className="text-sm font-semibold text-primary leading-snug">{item.title}</p>
+              {item.meta ? (
+                <p className="shrink-0 text-xs text-secondary whitespace-nowrap">{item.meta}</p>
+              ) : null}
             </div>
-            {item.meta ? <p className="text-sm text-secondary">{item.meta}</p> : null}
           </div>
-          {item.description ? <p className="mt-3 text-sm leading-6 text-secondary">{item.description}</p> : null}
         </div>
       ))}
     </div>

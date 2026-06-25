@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import LoadingScreen from "../common/LoadingScreen";
 import { getDefaultPathByRole } from "../../routes/roleRoutes";
 
 // Component này giữ cho màn login/register chỉ hiện khi người dùng chưa có phiên đăng nhập.
@@ -8,11 +9,10 @@ export default function PublicRoute() {
 
   if (isHydrating) {
     return (
-      <div className="min-h-screen bg-neutral px-4 py-8">
-        <div className="mx-auto max-w-xl rounded-[24px] border border-border bg-surface p-6 text-sm text-secondary">
-          Đang kiểm tra phiên đăng nhập...
-        </div>
-      </div>
+      <LoadingScreen
+        title="Đang kiểm tra phiên đăng nhập"
+        message="Chỉ một chút nữa thôi, sắp xong rồi…"
+      />
     );
   }
 

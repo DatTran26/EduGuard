@@ -1,7 +1,22 @@
 import { Link } from "react-router-dom";
-import Card from "../../../components/common/Card";
+import { FiShield, FiBarChart2, FiBook } from "react-icons/fi";
 
-// Layout này dùng chung cho login và register để giao diện xác thực nhìn gọn và nhất quán hơn.
+const BRAND_FEATURES = [
+  {
+    icon: <FiShield size={16} />,
+    text: "Giám sát chống gian lận thời gian thực",
+  },
+  {
+    icon: <FiBarChart2 size={16} />,
+    text: "Phân tích kết quả và hành vi học tập",
+  },
+  {
+    icon: <FiBook size={16} />,
+    text: "Quản lý lớp học và bài thi dễ dàng",
+  },
+];
+
+// Layout này dùng chung cho login và register để giao diện xác thực nhìn gọn, đồng bộ và dễ đọc trên mobile.
 export default function AuthLayout({
   title,
   description,
@@ -11,82 +26,81 @@ export default function AuthLayout({
   children,
 }) {
   return (
-    <div className="min-h-screen bg-neutral px-4 py-4 md:px-6 lg:px-8">
-      <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-[1180px] gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-[28px] border border-primary bg-primary px-6 py-6 text-white md:px-8 md:py-8">
-          <div className="flex h-full flex-col justify-between gap-10">
-            <div className="space-y-10">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[0.82rem] font-semibold uppercase tracking-[0.16em] text-white/65">
-                    EduGuard
-                  </p>
-                  <p className="mt-2 text-sm text-white/70">Lớp học • Bài thi • Giám sát</p>
-                </div>
-                <span className="rounded-full border border-white/15 px-3 py-1 text-xs font-semibold text-white/75">
-                  Bản demo
-                </span>
+    <div className="eg-auth-shell">
+      <div className="eg-auth-grid">
+        {/* ── Left: Branding Panel ── */}
+        <section aria-label="Nhận diện thương hiệu EduGuard" className="eg-auth-hero">
+          <div className="eg-auth-hero-content">
+            <div className="eg-auth-brand">
+              {/* Logo */}
+              <div className="eg-auth-brand-mark">
+                <img
+                  alt="Logo EduGuard"
+                  className="eg-auth-brand-logo"
+                  src="/logo-transparent.png"
+                />
               </div>
 
-              <div className="space-y-4">
-                <h1 className="max-w-lg text-[2.7rem] font-semibold leading-tight tracking-tight">
-                  Không gian học tập và thi trực tuyến.
-                </h1>
-                <p className="max-w-md text-sm leading-7 text-white/72">
-                  Tiếp tục vào lớp học, bài thi và phần theo dõi của bạn.
-                </p>
-              </div>
+              {/* Copy */}
+              <div className="eg-auth-brand-copy">
+                <p className="eg-auth-brand-title">EduGuard</p>
 
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-[20px] border border-white/10 bg-white/5 p-4">
-                  <p className="text-[0.82rem] font-medium text-white/65">Lớp học</p>
-                  <p className="mt-2 text-lg font-semibold">Gọn gàng</p>
+                <div className="eg-auth-tagline">
+                  <p className="eg-auth-tagline-line">Học tập an toàn.</p>
+                  <p className="eg-auth-tagline-line">Thi trực tuyến minh bạch.</p>
                 </div>
-                <div className="rounded-[20px] border border-white/10 bg-white/5 p-4">
-                  <p className="text-[0.82rem] font-medium text-white/65">Bài thi</p>
-                  <p className="mt-2 text-lg font-semibold">Rõ tiến độ</p>
-                </div>
-                <div className="rounded-[20px] border border-white/10 bg-white/5 p-4">
-                  <p className="text-[0.82rem] font-medium text-white/65">Giám sát</p>
-                  <p className="mt-2 text-lg font-semibold">Ít nhiễu mắt</p>
-                </div>
-              </div>
-            </div>
 
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-white/10 px-3 py-1 text-sm text-white/72">
-                Giáo viên
-              </span>
-              <span className="rounded-full border border-white/10 px-3 py-1 text-sm text-white/72">
-                Học sinh
-              </span>
-              <span className="rounded-full border border-white/10 px-3 py-1 text-sm text-white/72">
-                Quản trị viên
-              </span>
+                {/* <p
+                  style={{
+                    margin: 0,
+                    fontSize: "14px",
+                    lineHeight: "1.7",
+                    color: "rgb(148 163 184 / 90%)",
+                    maxWidth: "32ch",
+                  }}
+                >
+                  Nền tảng lớp học và thi trực tuyến tích hợp giám sát chống gian lận.
+                </p> */}
+
+                {/* Feature list */}
+                <ul className="eg-auth-feature-list" aria-label="Tính năng nổi bật">
+                  {BRAND_FEATURES.map((feature) => (
+                    <li key={feature.text} className="eg-auth-feature-item">
+                      <span className="eg-auth-feature-icon" aria-hidden="true">
+                        {feature.icon}
+                      </span>
+                      {feature.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
         </section>
 
-        <Card className="flex items-center rounded-[28px] p-6 md:p-8">
-          <div className="mx-auto w-full max-w-[440px] space-y-6">
-            <div className="space-y-2">
-              <p className="text-[0.82rem] font-semibold uppercase tracking-[0.12em] text-secondary">
-                Xác thực
+        {/* ── Right: Auth Card ── */}
+        <section className="eg-auth-panel-wrap">
+          <div className="eg-auth-panel eg-auth-card-enter">
+            <div className="eg-auth-panel-inner">
+              <div className="eg-auth-panel-copy">
+                <p className="eg-auth-panel-kicker">Xác thực tài khoản</p>
+                <h1 className="eg-auth-panel-title">{title}</h1>
+                {description ? (
+                  <p className="eg-auth-panel-description">{description}</p>
+                ) : null}
+              </div>
+
+              {children}
+
+              <p className="eg-auth-footer">
+                {footerText}{" "}
+                <Link className="eg-auth-inline-link" to={footerLinkTo}>
+                  {footerLinkLabel}
+                </Link>
               </p>
-              <h2 className="text-[2rem] font-semibold leading-tight text-primary">{title}</h2>
-              <p className="text-sm leading-6 text-secondary">{description}</p>
             </div>
-
-            {children}
-
-            <p className="text-sm text-secondary">
-              {footerText}{" "}
-              <Link className="font-semibold text-link hover:underline" to={footerLinkTo}>
-                {footerLinkLabel}
-              </Link>
-            </p>
           </div>
-        </Card>
+        </section>
       </div>
     </div>
   );

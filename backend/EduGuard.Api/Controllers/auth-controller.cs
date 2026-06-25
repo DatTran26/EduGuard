@@ -1,4 +1,4 @@
-using System.Security.Claims;
+        using System.Security.Claims;
 using EduGuard.Application.DTOs.Auth;
 using EduGuard.Application.DTOs.Common;
 using EduGuard.Application.Services.Interfaces;
@@ -98,7 +98,7 @@ public class AuthController : ControllerBase
 
         try
         {
-            var data = await _authService.GetMeAsync(int.Parse(userId), ct);
+            var data = await _authService.GetMeAsync(userId, ct);
             return Ok(ApiResponse<UserDto>.CreateSuccess(data));
         }
         catch (UnauthorizedAccessException ex)
