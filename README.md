@@ -94,7 +94,7 @@ Tài liệu sâu: [`docs/03_BACKEND_ARCHITECTURE.md`](docs/03_BACKEND_ARCHITECTU
 - [.NET 8 SDK](https://dotnet.microsoft.com/download)
 - [Node.js](https://nodejs.org/) 18+ (frontend + Husky)
 - [Git](https://git-scm.com/)
-- **SQL Server** (LocalDB / Express / instance riêng) — chỉnh `ConnectionStrings:DefaultConnection` trong `backend/EduGuard.Api/appsettings.json`
+- **SQL Server** (LocalDB / Express / instance riêng) — tạo `backend/EduGuard.Api/appsettings.Development.json` từ file mẫu rồi chỉnh `ConnectionStrings:DefaultConnection` cho máy local
 - Visual Studio 2022 hoặc VS Code *(khuyến nghị)*
 
 *Redis và Docker Compose — tùy chọn cho cache và triển khai tập trung; xem [`docs/02_SETUP_AND_PROJECT_STRUCTURE.md`](docs/02_SETUP_AND_PROJECT_STRUCTURE.md).*

@@ -1,5 +1,380 @@
 # Project Changelog
 
+## Feature: Redesign Student Task Center (Bài tập / Bài thi)
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Redesign Student Task Center (Bài tập / Bài thi).
+- Purpose and user/business impact: Make the student task page easier to scan and less ambiguous by separating assignments and exams into distinct tabs, showing only one list at a time, and switching from the older long list/expand pattern to compact responsive cards.
+- Files or modules changed: `ExamListPage.jsx`, `TopBar.jsx`, `StudentTaskTabs.jsx`, `StudentTaskToolbar.jsx`, `StudentTaskGrid.jsx`, `StudentAssignmentCard.jsx`, `StudentExamCard.jsx`.
+
+Changed files:
+
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/features/exams/components/StudentTaskTabs.jsx`
+- `frontend/src/features/exams/components/StudentTaskToolbar.jsx`
+- `frontend/src/features/exams/components/StudentTaskGrid.jsx`
+- `frontend/src/features/exams/components/StudentAssignmentCard.jsx`
+- `frontend/src/features/exams/components/StudentExamCard.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Replaced the student page header in `ExamListPage.jsx` with a compact `StudentTaskTabs` block showing the fixed title `Bài tập / Bài thi`, a `Sinh viên` role label, and a clear segmented switch for `Bài thi` / `Bài tập`.
+- Added `StudentTaskToolbar` with only the required filters: classroom select, `Tìm theo tên...` search input, and the existing exam status filter when the exams tab is active.
+- Stopped rendering both datasets in the same page state. The assignments tab now renders only `StudentAssignmentCard` items, while the exams tab renders only `StudentExamCard` items.
+- Rebuilt both student card types into compact white cards with responsive 1/2/3-column grid layout, concise metadata, small status badges, and action links pointing to the existing classroom-detail or exam-detail routes.
+- Kept the existing API logic intact by preserving the shared exam list fetch and the in-memory student assignment aggregation flow.
+- Added a breadcrumb label override in `TopBar.jsx` so the Student list route displays `Trang chủ > Bài kiểm tra` instead of the generic exams label.
+
+Validation:
+
+- Frontend build passes (`npm run build`).
+
+Known risks / rollback / follow-up:
+
+- The current student exam list API still does not expose student-specific attempt/result metadata. The redesigned exam cards therefore prioritize schedule state (`Sắp mở`, `Đang mở`, `Hết hạn`) and route users into the existing exam detail flow instead of fabricating per-student result data.
+
+---
+
+## Feature: Redesign Student Classrooms Page (Lớp của tôi)
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Redesign Student Classrooms Page.
+- Purpose and user/business impact: Simplify and clean the student's "My Classrooms" interface. Wires dynamic pending tasks calculation, a 2-kpi card row, inline search and filtering toolbar, and compact responsive grid cards.
+- Files or modules changed: `ClassroomListPage.jsx`, `StudentClassroomCard.jsx` (New), `StudentClassroomSummary.jsx` (New), `StudentClassroomToolbar.jsx` (New).
+
+Changed files:
+
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/components/StudentClassroomCard.jsx`
+- `frontend/src/features/classrooms/components/StudentClassroomSummary.jsx`
+- `frontend/src/features/classrooms/components/StudentClassroomToolbar.jsx`
+
+Technical summary:
+
+- Replaced the old bulky student hero block with a simple flex header row containing only the title "Lớp của tôi" and "Tham gia lớp" button.
+- Created `StudentClassroomSummary` displaying total joined classrooms and active pending assignments/exams.
+- Implemented parallel loading of assignments and exams for all student classrooms to calculate the pending tasks count in real-time.
+- Created `StudentClassroomToolbar` featuring search input ("Tìm lớp theo tên hoặc mã lớp...") and simple status filtering dropdown ("Tất cả trạng thái", "Đang học", "Đã kết thúc").
+- Created `StudentClassroomCard` with clean white border, subtle shadow, open/closed status badge, and clear "Vào lớp" CTA button.
+- Updated skeleton loaders and default empty states for the student view.
+- Removed charts, notifications feeds, and side listing panels from student view.
+
+Validation:
+
+- Frontend builds successfully (`npm run build`).
+
+---
+
+## Feature: Redesign Teacher Classroom Detail Layout & Actions
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Redesign Teacher Classroom Detail Layout & Actions.
+- Purpose and user/business impact: Streamline classroom details workspace for teachers. Displays title header with action buttons, 5 KPI cards for key metrics, a 2-column overview panel featuring "Việc cần xử lý" (Pending Tasks), recent timeline activities, learning progress, and a quick action drawer. Wires query parameters for auto-opening forms and expanding specific cards.
+- Files or modules changed: `ClassroomDetailPage.jsx`, `ClassDetailHeader.jsx` (New), `ClassQuickStats.jsx` (New), `ClassOverviewPanel.jsx` (New), `CreateClassroomForm.jsx`, `TeacherClassroomWorkspace.jsx`, `AssignmentSection.jsx`, `TeacherNotificationTab.jsx`.
+
+Changed files:
+
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/classrooms/components/ClassDetailHeader.jsx`
+- `frontend/src/features/classrooms/components/ClassQuickStats.jsx`
+- `frontend/src/features/classrooms/components/ClassOverviewPanel.jsx`
+- `frontend/src/features/classrooms/components/CreateClassroomForm.jsx`
+- `frontend/src/features/classrooms/components/TeacherClassroomWorkspace.jsx`
+- `frontend/src/features/assignments/components/AssignmentSection.jsx`
+- `frontend/src/features/classrooms/components/TeacherNotificationTab.jsx`
+
+Technical summary:
+
+- Lifted statistics and resource loading (exams, assignments, submissions, attempts, alerts, notifications) to the parent `ClassroomDetailPage.jsx` page.
+- Created `ClassDetailHeader` presenting title, status badge, copyable join code badge, and right-hand buttons row (`Tạo bài tập`, `Tạo bài thi`, `Gửi thông báo`).
+- Created `ClassQuickStats` rendering members count, assignments, exams, submission rate, and warnings.
+- Created `ClassOverviewPanel` with 2-column layout. Implemented pending tasks logic grouping ungraded assignments, upcoming exams, missing submissions, and anti-cheat anomalies.
+- Implemented segmented sticky tab bar with backdrop blur.
+- Implemented query string triggers (`tab=assignments&create=1` and `tab=notifications&create=1` to auto-open forms; `assignmentId={id}` to auto-expand and scroll to specific assignment cards).
+- Standardized empty states and added form cancel option in classroom edit form.
+
+Validation:
+
+- Frontend builds successfully (`npm run build`).
+
+---
+
+## Feature: Redesign Teacher Classrooms Layout & Filter Toolbar
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Redesign Teacher Classrooms Layout & Filter Toolbar.
+- Purpose and user/business impact: Improve classrooms management UX for teachers. Provides real-time stats count summary (students, assignments, exams, anomalies), instant filtering by search term and status, and compact cards with shortcuts like Xem lớp and Gửi thông báo.
+- Files or modules changed: `ClassroomListPage.jsx`, `ClassroomSummary.jsx` (New), `ClassroomToolbar.jsx` (New), `TeacherClassroomCard.jsx` (New).
+
+Changed files:
+
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/components/ClassroomSummary.jsx`
+- `frontend/src/features/classrooms/components/ClassroomToolbar.jsx`
+- `frontend/src/features/classrooms/components/TeacherClassroomCard.jsx`
+
+Technical summary:
+
+- Replaced hero section for teachers with a compact title + primary button row.
+- Built a metrics enrichment engine inside the classrooms list page, fetching exams, assignments, and attempts in parallel to aggregate metrics per classroom.
+- Created `ClassroomSummary` displaying managed classrooms, student enrollments, open assignments, and active exams.
+- Created `ClassroomToolbar` featuring inline search (name or join code), status dropdowns (Tất cả, Đang mở, Đã đóng), and sort order selectors (Mới nhất, Tên A-Z, Nhiều sinh viên nhất).
+- Created `TeacherClassroomCard` styled with clean borders, hover elevations, copyable mono-styled join codes, compact stats, open/closed status badges, and quick links to details and notification tab.
+
+Validation:
+
+- Frontend builds successfully (`npm run build`).
+
+---
+
+## Fix: Define Missing Brand Color Variables for Notification UI
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Define Missing Brand Color Variables for Notification UI.
+- Purpose and user/business impact: Resolves the issue where students did not see the unread notification count badge on the bell icon, nor the unread notification indicators in the inbox.
+- Files or modules changed: `index.css`.
+
+Changed files:
+
+- `frontend/src/index.css`
+
+Technical summary:
+
+- Defined `--color-brand` as `#1d4ed8` in `@theme` and `:root` configurations.
+- Defined `--color-brand` as `#60a5fa` in the dark theme `[data-theme="dark"]` configuration.
+- This ensures classes like `bg-brand`, `text-brand`, `border-brand/20`, and `ring-brand/10` resolve to the brand's blue highlight color, making the notification badge count and unread dots visible.
+
+Validation:
+
+- Frontend builds successfully (`npm run build`).
+
+---
+
+## Feature: Teacher Dashboard Layout & Sidebar Redesign
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Teacher Dashboard Layout & Sidebar Redesign.
+- Purpose and user/business impact: Improve usability, readability, and speed of access to vital teacher metrics and actions. Placing the activity chart at the top lets teachers see student engagement immediately, and the lighter navy sidebar combined with clearer active state highlights improves navigation flow.
+- Files or modules changed: `TeacherDashboardPage.jsx`, `index.css`.
+
+Changed files:
+
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/index.css`
+
+Technical summary:
+
+- Changed sidebar color variable `--color-obsidian` from `#0b1120` to `#1E293B`.
+- Updated `.eg-sidebar-link-active` background to `#243b55` and replaced the blue gradient with a subtle white border/inset shadow.
+- Replaced the large page hero with a header row featuring "Dashboard giảng viên" title and quick action buttons for `Tạo bài tập`, `Tạo đề thi`, and `Gửi thông báo`.
+- Mapped and reordered 6 KPI cards (`Lớp`, `Sinh viên`, `Bài kiểm tra`, `Bài tập`, `Tỉ lệ nộp bài`, `Cảnh báo bất thường`) in a single responsive row, ensuring no text wrapping via CSS `whitespace-nowrap truncate min-w-0`.
+- Moved the "Hoạt động 7 ngày gần nhất" line chart up to sit side-by-side with "Cơ cấu trạng thái bài kiểm tra".
+- Stripped all subheadings and descriptive helper text from dashboard cards to maintain a clean title-only presentation.
+- Synchronized loading skeletons to match the new structure.
+
+Validation:
+
+- Frontend builds successfully (`npm run build`).
+- Visual check passes: layout fits laptop screens without vertical bloat, navigation items are highly visible.
+
+---
+
+## Fix: Student Notifications Bell Count & Navigation Updates
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Student notifications bell count and navigation updates.
+- Purpose and user/business impact: Resolves the issue where students did not see their unread count badge update immediately after a teacher published a notification. Added a "Xem thông báo" sidebar item for students, and cleaned up unused "Thông báo" and "Giám sát thi" items from the Teacher sidebar.
+- Files or modules changed: `NotificationService.cs`, `roleRoutes.js`, `Sidebar.jsx`.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/Notifications/notification-service.cs`
+- `frontend/src/routes/roleRoutes.js`
+- `frontend/src/components/layout/Sidebar.jsx`
+
+Technical summary:
+
+- Injected `INotificationNotifier` into `NotificationService` and invoked `SendToUserAsync` for every active student in the classroom when a notification is created.
+- Added "Xem thông báo" for role Student pointing to `/notifications`.
+- Removed "Thông báo" and "Giám sát thi" from `ROLE_NAVIGATION_ITEMS.Teacher`.
+- Mapped "Xem thông báo" to the `FiBell` icon in the sidebar.
+
+Validation:
+
+- Backend compiles successfully (`dotnet build`).
+- Frontend builds successfully (`npm run build`).
+
+---
+
+## Feature: System Classroom Notifications
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: System Classroom Notifications.
+- Purpose and user/business impact: Enables teachers to send notifications to their students within classrooms they manage. Students receive these notifications, see unread counts on the header bell icon, and can mark notifications as read individually or all at once.
+- Files or modules changed: Backend entities (Notification, UserNotification, ApplicationUser, Classroom), EF Core configurations, DTOs, INotificationService, NotificationService, NotificationsController, frontend api (notificationApi.js), AppRoutes, teacher workspace tabs, TeacherNotificationTab, TeacherClassroomWorkspace, NotificationsPage, TopBar.
+
+Changed files:
+
+- `backend/EduGuard.Domain/Entities/Notification.cs`
+- `backend/EduGuard.Domain/Entities/UserNotification.cs`
+- `backend/EduGuard.Domain/Entities/ApplicationUser.cs`
+- `backend/EduGuard.Domain/Entities/Classroom.cs`
+- `backend/EduGuard.Infrastructure/Data/Configurations/notification-configuration.cs`
+- `backend/EduGuard.Infrastructure/Data/Configurations/user-notification-configuration.cs`
+- `backend/EduGuard.Infrastructure/Data/app-db-context.cs`
+- `backend/EduGuard.Application/DTOs/Notifications/CreateNotificationRequest.cs`
+- `backend/EduGuard.Application/DTOs/Notifications/NotificationDto.cs`
+- `backend/EduGuard.Application/DTOs/Notifications/ClassroomNotificationDto.cs`
+- `backend/EduGuard.Application/DTOs/Notifications/UnreadCountDto.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-notification-service.cs`
+- `backend/EduGuard.Infrastructure/Notifications/notification-service.cs`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `backend/EduGuard.Api/Controllers/notifications-controller.cs`
+- `backend/EduGuard.Infrastructure/Assignments/assignment-service.cs`
+- `frontend/src/api/notificationApi.js`
+- `frontend/src/routes/routeConfig.js`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/features/classrooms/components/teacher-classroom-tabs.js`
+- `frontend/src/features/classrooms/components/TeacherNotificationTab.jsx`
+- `frontend/src/features/classrooms/components/TeacherClassroomWorkspace.jsx`
+- `frontend/src/features/notifications/pages/NotificationsPage.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Designed `Notification` and `UserNotification` EF core schemas with Cascade deletes for UserNotifications on Notification/User deletes, and Restrict deletes on Sender.
+- Implemented `NotificationService` for managing and delivering classroom-targeted notifications, checking permissions, querying active members, counting unread statuses, and batch database modifications. Added query support for fetching notifications sent to a specific classroom (`GetClassroomNotificationsAsync`).
+- Exposed JWT secured endpoints under `NotificationsController` mapping to the notification service operations, including `GET /api/notifications/classroom/{classroomId}`.
+- Added `notificationApi.js` in frontend for Axios interactions with backend API endpoints.
+- Re-architected `TeacherNotificationTab` UI: it now displays the list of notifications sent inside the classroom. Clicking a new "Tạo thông báo" button toggles a form card to create notifications, which closes and refreshes the list on success.
+- Added `NotificationsPage` for students displaying notifications list with relative dates and reading status.
+- Updated `TopBar` bell icon badge count, listing the latest 5 unread alerts, and managing read updates. Removed verbose descriptions in empty state and dropdown headers.
+
+Validation:
+
+- Ran backend build successfully via `dotnet build`.
+- Migration created and database updated successfully using local `dotnet-ef` 8.0.0 tool.
+
+Known risks / rollback / follow-up:
+
+- Normalizing user primary keys as `string` to match the project's default ASP.NET Core Identity configuration, rather than using `int` as initially specified.
+- Rollback: Revert database migration `AddNotificationEntities` and remove the added file changes.
+
+## Feature: Teacher exam create CTA native form submit
+
+Date: 2026-06-21
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Teacher exam create CTA native form submit.
+- Purpose and user/business impact: Prevent teachers from hitting a dead-looking footer `Tạo đề` button in the exam create flow by wiring the primary CTA directly to the form submission lifecycle.
+- Files or modules changed: teacher exam list/create flow page, main changelog, and project changelog.
+
+Changed files:
+
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Removed the callback-ref submit bridge (`createExamSubmitRef` / `onRegisterSubmit`) from the Teacher exam create flow page.
+- Assigned a stable `formId` to `ExamForm` in `ExamListPage.jsx` and switched the footer CTA to native HTML form submission with `type="submit"` and `form={createExamFormId}`.
+- Kept the existing disabled-state guards (`isSubmitting`, `isQuestionSubmitting`, `isImportSubmitting`) intact, so only the submit trigger path changed.
+
+Validation:
+
+- Ran `npm run build -- --outDir temp-build-exam-create-check` inside `frontend/` - passed.
+- Ran `npm run build` inside `frontend/` - failed to write the default `dist/` output because `public/capybara-avatar.svg -> dist/capybara-avatar.svg` returned `EPERM`; the alternate outDir build above completed successfully.
+
+Known risks / rollback / follow-up:
+
+- This fix addresses the Teacher exam list/create flow CTA specifically. Any future external submit buttons should use the same native `form` binding pattern instead of recreating a callback-ref bridge.
+- Rollback: revert `frontend/src/features/exams/pages/ExamListPage.jsx` to restore the previous callback-ref submit wiring.
+## Feature: Student assignment submission state consistency across views
+
+Date: 2026-06-21
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Student assignment submission state consistency across classroom detail and the `Bài kiểm tra -> Bài tập` view.
+- Purpose and user/business impact: Prevent students from seeing `Chưa nộp` after they have already submitted an assignment that the teacher can see and grade. This keeps the assignment journey trustworthy across both student entry points.
+- Files or modules changed: Assignment submission resolver helper (`assignmentHelpers.js`), classroom assignment view (`AssignmentSection.jsx`), student exam/assignment switcher page (`ExamListPage.jsx`), main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `frontend/src/features/assignments/assignmentHelpers.js`
+- `frontend/src/features/assignments/components/AssignmentSection.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Added `resolveAssignmentSubmission()` to centralize assignment submission resolution, with backend `mySubmission` taking precedence and local cached submissions used only as a fallback when student lists refresh on another screen before the next classroom reload.
+- Fixed `AssignmentSection.jsx` to restore a valid `classroomId`-based loader, update the local student submission map during async loads instead of inside a synchronous effect, and write successful submissions back into both the cache and current assignment card state.
+- Updated the student assignment tab inside `ExamListPage.jsx` to reuse the same submission resolver and shared assignment status/deadline badges, eliminating the mismatch where teachers could already see the submission but students still saw `Chưa nộp`.
+
+Validation:
+
+- Ran `npm run build` inside `frontend/` - passed.
+- Ran `npx eslint src/features/assignments/assignmentHelpers.js src/features/assignments/components/AssignmentSection.jsx src/features/exams/pages/ExamListPage.jsx` inside `frontend/` - passed.
+
+Known risks / rollback / follow-up:
+
+- The local cache is now intentionally a fallback only. Backend `mySubmission` remains the primary source of truth, so any future submission payload changes must keep that DTO populated consistently.
+
 ## Feature: Proctoring ops — WebRTC NAT + AI Docker
 
 Date: 2026-06-25
@@ -57,6 +432,83 @@ Unresolved questions:
 - Merge/rebase onto `devD` / `devB` per `docs/proctoring-devB-integration.md`.
 
 ---
+
+## Feature: Student assignment sub-navigation tab and details visualizer
+
+Date: 2026-06-21
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Student assignment sub-navigation tab and details visualizer.
+- Purpose and user/business impact: Allows students under the "Bài kiểm tra" (Exams) navigation tab to switch to an "Assignments" (Bài tập) list. This contains a dedicated search filter and classroom filter, letting students quickly search for their classroom tasks, expand details, and view their graded scores and feedback from teachers.
+- Files or modules changed: Student exam page (`ExamListPage.jsx`), classroom assignment details view (`AssignmentSection.jsx`), assignment API model (`assignmentApi.js`), project changelog, and main changelog.
+
+Changed files:
+
+- `frontend/src/api/assignmentApi.js`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/features/assignments/components/AssignmentSection.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Updated `normalizeAssignmentDto` in `assignmentApi.js` to normalize the `mySubmission` object (if present), mapping score and feedback fields so that React can query the student's submission state.
+- Added states for `studentSubTab` (exams vs assignments), classroom assignment records, searching text, loading indicators, and active expanded assignment card to `ExamListPage.jsx`.
+- Aggregated classroom assignments for the active student in parallel under the initial data load and filter refresh logic of the page.
+- Implemented a centered pill-shaped sub-navigation bar below the page hero header for students to toggle between assignments and exams.
+- Added a conditional grid cell layout in the filter card: shows the exam schedule status dropdown when on "exams", and displays the text search query input when on "assignments".
+- Formatted deadlines using `formatShortDateTime` and conditional status badges (Chưa nộp, Đã nộp (Chờ chấm), Đã chấm: X/Y điểm) depending on the presence of student submission and graded score.
+- Provided an inline expandable card layout detailing the assignment's description, maximum score, submitted date, achieved points, and teacher's written comments.
+- Updated `AssignmentSection.jsx` expanded student view block to show the real graded score, teacher feedback comments, and status badge when the student views their submission.
+
+Validation:
+
+- Verified that all edited files compile and conform to the ESLint configuration of the frontend workspace.
+- Backend database maps the student's authenticated submission DTO to `MySubmission` on assignments queries.
+
+Known risks / rollback / follow-up:
+
+- None. The feature leverages the authenticated student session to query student-scoped assignment lists and submission properties cleanly.
+
+## Feature: Full Role-Based Dashboard Redesign and Real-Data API Integration
+
+Date: 2026-06-20
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Full Role-Based Dashboard Redesign and Real-Data API Integration.
+- Purpose and user/business impact: Replace all remaining mocked dashboard and monitoring data with real-time statistics aggregated from live backend APIs for Admin, Teacher, and Student roles. Modernize the dashboard visual interfaces to feel premium, responsive, and provide transparency on backend capabilities with loaders, skeletons, and retry actions.
+- Files or modules changed: API aggregation layer (`dashboardApi.js`), Admin control center page (`AdminDashboardPage.jsx`), Admin monitoring page (`AdminMonitoringPage.jsx`), Teacher workspace page (`TeacherDashboardPage.jsx`), and Student learning progress page (`StudentDashboardPage.jsx`).
+
+Changed files:
+
+- `frontend/src/api/dashboardApi.js`
+- `frontend/src/features/dashboard/pages/AdminDashboardPage.jsx`
+- `frontend/src/features/admin/pages/AdminMonitoringPage.jsx`
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/features/dashboard/pages/StudentDashboardPage.jsx`
+
+Technical summary:
+
+- Restructured the front-end API layer in `dashboardApi.js` to dynamically fetch and aggregate data from live backend REST endpoints (`userApi`, `classroomApi`, `examApi`, `examAttemptApi`, `antiCheatApi`, `assignmentApi`) for all roles, removing syntax errors and mock leftovers.
+- Redesigned `AdminDashboardPage.jsx` and `AdminMonitoringPage.jsx` to show live statistics, system health statuses, recent activities, and high-risk logs. Added a live SignalR hub health check hook that dynamically updates the indicator based on active hub connections.
+- Cleaned up the Teacher dashboard `bg-neutral` styles, replacing them with standard theme-compliant variables (`bg-surface-sunken`/`bg-surface`).
+- Redesigned `StudentDashboardPage.jsx` to load joined classrooms and upcoming exams from live APIs. For unsupported backend statistics (attempt history, global submissions, warning counts), added clear disclosure alerts and badges (`Thiếu API` / `Yêu cầu API Backend`) explaining the missing backend capabilities.
+- Added animated loading skeletons and error alert states with retry actions across all dashboard pages to provide a fluid, robust user experience.
+
+Validation:
+
+- Ran production build check `npm run build` inside `frontend/` - completed successfully with zero errors.
+- Ran backend and pre-commit tests `npm test` - completed successfully.
+
+Known risks / rollback / follow-up:
+
+- Student notifications and attempts are marked as pending backend API availability. Once the backend introduces these APIs, the frontend adapters should be updated to query them directly.
 
 ## Feature: System-wide UX/UI Redesign and Design System Standardization
 
@@ -2757,3 +3209,6 @@ Validation:
 Unresolved questions:
 
 - None.
+
+
+

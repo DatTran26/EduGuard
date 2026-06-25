@@ -4,8 +4,11 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD` / `devH` / `devB` (nhánh dev theo feature)
-**Cập nhật:** 2026-06-25 (ship **v1.2.0** → `main` via PR #22; `release` @ `bb45b10` — Live Proctoring v1 + evidence auth + TURN/AI Docker docs; devD/devB/feat đã sync)
+**Cập nhật:** 2026-06-25 (ship **v1.2.0** → `main` via PR #22; `release` @ `bb45b10` — Live Proctoring v1 + evidence auth + TURN/AI Docker docs; devH merge PR #21 — notifications + UI redesign đang xử lý conflict)
+**Ghi chú devH:** 2026-06-25 (thiết kế lại trang Student `Bài tập / Bài thi`, dashboard/sidebar giáo viên, classrooms, notifications realtime; đang merge `release` v1.2.0)
+**Ghi chú devB:** 2026-06-20 (đã thêm file chuẩn import `.md` và prompt chuyển đổi vào backend resource; Teacher/Admin có thể tải file chuẩn trong question workspace, xem prompt thu gọn/mở rộng và copy toàn bộ prompt bằng nút ở góc phải.)
 **Ghi chú devB:** 2026-06-15 (backend cấu hình bài kiểm tra UTC, validation publish trắc nghiệm MVP; Phase 8 SignalR xong; Phase 9 Redis — kế hoạch chi tiết)
+**Ghi chú devH:** 2026-06-20 (đã chặn trường hợp `POST /api/auth/login` trả `401` làm trang đăng nhập refresh và mất form; đồng thời sửa các blocker compile của luồng import câu hỏi đề thi ở backend để build kiểm tra lại qua output tạm pass sạch. Luồng upload đề thi của Teacher nay kiểm tra định dạng file ở frontend, gọi backend preview ngay khi file hợp lệ, hiển thị câu hỏi + đáp án để review trước khi commit, và đẩy nút `Lưu đề` xuống bước cuối của create flow. Vừa bổ sung thêm fix cho create flow: lần lưu đầu sẽ gom cả câu hỏi soạn tay + câu hỏi đang preview, nếu tổng số câu > 0 thì tự publish ngay, còn nếu vẫn chưa có câu hỏi thì lưu ở trạng thái nháp. Sau đó tiếp tục vá lỗi `400` ở API tạo đề bằng cách không gửi các `answer.id` tạm kiểu string của draft/preview lên backend, đồng thời rút gọn card CTA cuối chỉ còn nút và bỏ message in-page "backend đã phân tích..." sau khi import preview thành công. Mới nhất đã bỏ hẳn submit DOM của nút `Tạo đề`, chuyển sang gọi callback submit trực tiếp từ `ExamForm` để bấm được ổn định ở create flow; đồng thời cho phép chỉnh sửa trực tiếp câu hỏi trong màn review import và khi lưu/commit sẽ tạo câu hỏi thật từ state đã chỉnh sửa thay vì import lại file gốc. Trước đó create-flow đề thi của Teacher đã chuyển sang soạn nháp cục bộ ngay trên `ExamListPage` để nhập câu hỏi/import preview trước rồi mới lưu toàn bộ một lần; backend tạo đề nay nhận kèm danh sách câu hỏi ngay trong request đầu tiên, đồng thời thêm endpoint preview import để nháp local không còn phải có `examId` trước; cùng lượt đã tách `ExamDetailPage` thành chế độ xem/chỉnh sửa riêng, đưa metadata lớp/giảng viên/lịch thi vào tooltip `Thông tin thêm`, bổ sung refresh + empty-state rõ nghĩa hơn cho bài tập trong classroom detail, và vừa đồng bộ shell/UI Teacher theo `docs/ui_tech.md` với menu mới, top bar search + quick-create, route teacher cho bài tập/giám sát/kết quả/thông báo, cùng workspace tab cho classroom detail. Mới nhất classroom detail của Teacher đã bỏ 2 nút tạo bài tập/đề thi trên header, làm nổi bật lại CTA `Sao chép mã lớp`, dồn phần xem thành viên về tab `Thành viên`, và đổi panel phụ ở `Tổng quan` thành hai nút ngang `Chỉnh sửa lớp học` / `Xoá Lớp học`.)
 **Ghi chú devH:** 2026-06-17 (đã xử lý conflict khi pull từ `release` theo hướng giữ bản release; hoàn thiện FE cho cấu hình lịch thi UTC+7, chia nhóm form, bỏ checkbox publish, thêm checklist điều kiện publish và nút `Publish đề` gọi backend thật, đồng thời bổ sung hướng dẫn theo loại câu hỏi và thống kê đầy đủ các dạng câu ở trang chi tiết đề thi; khóa exact version dependency frontend, thêm `.npmrc` `save-exact` và chuẩn hóa `package-lock.json` để giảm conflict merge với `release`; làm mới UI đăng nhập theo layout 2 cột cân giữa màn hình với panel thương hiệu và login card riêng)
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
 
@@ -19,13 +22,13 @@
 | 1 | Database + Entity nền tảng | ✅ Hoàn thành |
 | 2 | Authentication & Authorization | 🟡 Backend auth + admin user CRUD xong, FE auth/user management thật xong; profile/avatar vẫn còn mock |
 | 3 | Classroom Management | 🟡 Backend xong (8/8 API), FE classroom thật xong cho teacher/student/admin; admin đã xem được toàn bộ classroom và member list theo dữ liệu backend |
-| 4 | Assignment Management | 🟡 Backend + FE core xong; classroom detail đã có refresh + empty-state rõ ngữ cảnh hơn, nhưng trạng thái bài nộp của student sau reload còn giới hạn do BE chưa có endpoint lấy bài nộp cá nhân |
+| 4 | Assignment Management | ✅ Hoàn thành |
 | 5 | Exam Management | 🟡 Backend/FE core xong; UI cấu hình UTC+7 + publish checklist/action đã nối backend, teacher question workspace 2 cột đã dùng chung cho detail + create flow trên list page, create-flow nay soạn nháp cục bộ và lưu đề một lần ở bước cuối, lần lưu đầu sẽ tự publish nếu đã có câu hỏi và giữ nháp nếu chưa có câu nào, upload/import file đã validate ở FE rồi gọi backend preview để hiện câu hỏi + đáp án review trước khi commit, exam detail đã tách rõ view/edit mode với tooltip thông tin thêm, còn backlog question bank dùng lại và tải file mẫu |
 | 6 | Online Testing / Exam Attempt | ✅ Backend + FE core xong (start/resume, save answer, timer, auto submit, result, teacher attempt monitor) |
 | 7 | Anti-cheat Monitoring | ✅ Backend + FE REST cơ bản xong; realtime warning đã xử lý ở Phase 8 |
 | 8 | SignalR Realtime | ✅ Hoàn thành |
 | 9 | Redis | 🟡 Backend + FE heartbeat xong; manual test Redis CLI còn lại |
-| 10 | Dashboard & Reporting | 🟡 Đang làm |
+| 10 | Dashboard & Reporting | 🟡 Đang làm (devH: redesign teacher dashboard + notifications UI) |
 | 11 | Docker Compose | ⬜ Chưa bắt đầu |
 | 12 | Live Proctoring Control Room | ✅ v1 hoàn thành trên `feat/live-proctoring-control-room`; E2E thật + merge dev còn backlog |
 | DOC | README giới thiệu hệ thống | ✅ Hoàn thành |
@@ -163,7 +166,7 @@
 
 - [x] Danh sách bài tập theo lớp *(đã gắn trực tiếp vào classroom detail cho Teacher / Student / Admin theo quyền hiện tại; có thêm nút làm mới và empty-state nêu rõ lớp hiện tại để phân biệt giữa backend rỗng và lỗi render dữ liệu)*
 - [x] Form tạo bài tập (Teacher) *(teacher tạo và sửa bài tập ngay trong classroom detail bằng API thật)*
-- [x] Form nộp bài (Student) *(student nộp bài ngay trong classroom detail; trạng thái đã nộp hiện được giữ ổn định trong local cache do BE chưa có endpoint lấy bài nộp cá nhân)*
+- [x] Form nộp bài (Student) *(student nộp bài ngay trong classroom detail; trạng thái đã nộp nay đồng bộ giữa backend `mySubmission` và fallback cache ở frontend để màn `Bài kiểm tra -> Bài tập` không còn báo nhầm `Chưa nộp`; điểm số và nhận xét chấm điểm của sinh viên cũng xem được trực tiếp trên tab bài tập và trong phần xem chi tiết bài nộp của lớp học)*
 - [x] Form chấm điểm (Teacher) *(teacher mở danh sách bài nộp, nhập điểm/nhận xét và lưu qua API thật)*
 
 **Tiêu chí hoàn thành:** Luồng giao bài tập và nộp bài chạy được.
@@ -193,7 +196,7 @@
 
 ### Frontend
 
-- [x] UI danh sách bài kiểm tra theo role *(đã gọi backend thật; FE gom đề thi bằng các classroom user đang truy cập được; với admin, danh sách đề thi nay bám toàn bộ classroom backend trả về thay vì hụt dữ liệu do giới hạn access cũ; card/list ưu tiên title + số liệu thay cho mô tả dài)*
+- [x] UI danh sách bài kiểm tra theo role *(đã gọi backend thật; FE gom đề thi bằng các classroom user đang truy cập được; với admin, danh sách đề thi nay bám toàn bộ classroom backend trả về thay vì hụt dữ liệu do giới hạn access cũ; card/list ưu tiên title + số liệu thay cho mô tả dài. Với Student, trang `Bài tập / Bài thi` nay dùng segmented switch rõ ràng, chỉ render đúng một danh sách theo tab active, có toolbar lọc tối giản và card grid responsive cho cả bài tập lẫn bài thi.)*
 - [x] UI tạo đề thi *(Teacher tạo đề ngay trên `ExamListPage`; có thể nhập câu hỏi hoặc review/import vào đề nháp cục bộ trước, rồi bấm lưu toàn bộ đề một lần để backend tạo exam kèm câu hỏi; sau khi lưu xong mới chuyển sang flow chỉnh sửa đề đã có `examId`; thời gian đóng đề vẫn tự tính theo thời gian mở + số phút làm bài và vẫn chỉnh tay được)*
 - [x] UI xem chi tiết đề thi *(mọi role theo quyền truy cập; teacher detail có thêm average score từ attempt API và anti-cheat summary khi bật giám sát; metadata lớp/giảng viên/lịch thi đã chuyển vào tooltip `Thông tin thêm`, còn form chỉnh sửa + workspace câu hỏi chỉ mở khi teacher bấm nút ở cột phải; workspace câu hỏi vẫn là block full-width riêng để list câu hỏi đọc thoáng hơn)*
 - [x] UI cập nhật / xóa đề thi *(Teacher, có xác nhận xóa 2 bước và publish qua endpoint riêng)*
@@ -581,11 +584,11 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 
 **Mục tiêu:** Trang tổng quan cho Admin, Teacher, Student.
 
-- [ ] API dashboard Admin
-- [ ] API dashboard Teacher
-- [ ] API dashboard Student
-- [ ] Thống kê số lớp, học sinh, bài tập, điểm thi
-- [ ] Thống kê cheating score
+- [x] API dashboard Admin *(Tổng hợp trực tiếp từ các API backend thật của user, classroom, exam, attempt, anti-cheat)*
+- [x] API dashboard Teacher *(Tổng hợp trực tiếp từ các API backend thật của classroom, assignment, exam, attempt, anti-cheat)*
+- [x] API dashboard Student *(Tổng hợp trực tiếp từ các API backend thật của classroom, exam, assignment)*
+- [x] Thống kê số lớp, học sinh, bài tập, điểm thi *(Đã kết nối dữ liệu thật)*
+- [x] Thống kê cheating score *(Đã kết nối dữ liệu thật)*
 - [x] Frontend dashboard Admin *(UI tổng quan người dùng, lớp học, activity, anti-cheat đã giữ nguyên bố cục title-only; dữ liệu dashboard admin hiện tổng hợp từ API backend thật của user/classroom/exam/attempt/anti-cheat thay cho mock, nên số liệu lớp học, bài kiểm tra và lượt làm cần chú ý đã khớp hơn với database; điều hướng `Giám sát` vẫn giữ nguyên)*
 - [x] Frontend dashboard Teacher *(đã có mock API + UI lớp quản lý, nộp bài, lịch thi, sinh viên rủi ro cao, proctoring streams placeholder; thiết kế thanh điều hướng Nav bar chuyên nghiệp; block stat/timeline/metric đã bỏ mô tả phụ)*
 - [x] Teacher shell + reporting workspace theo `docs/ui_tech.md` *(sidebar Teacher nay đủ `Dashboard / Lớp học / Bài tập / Đề thi / Giám sát thi / Kết quả / Thông báo / Hồ sơ`; top bar đã có search thật + quick-create; bổ sung các page teacher cho assignment center, exam monitoring, result reporting, notification list; classroom detail của Teacher đã có workspace tab `Tổng quan / Học sinh / Bài tập / Bài thi / Kết quả / Hoạt động`)*

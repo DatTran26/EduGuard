@@ -19,15 +19,14 @@ const ROLE_NAVIGATION_ITEMS = {
     { label: "Lớp học", path: routeConfig.teacherClassrooms },
     { label: "Bài tập", path: routeConfig.teacherAssignments },
     { label: "Đề thi", path: routeConfig.teacherExams },
-    { label: "Giám sát thi", path: routeConfig.teacherMonitoring },
     { label: "Kết quả", path: routeConfig.teacherResults },
-    { label: "Thông báo", path: routeConfig.teacherNotifications },
     { label: "Hồ sơ", path: routeConfig.teacherProfile },
   ],
   Student: [
     { label: "Lớp của tôi", path: routeConfig.studentClassrooms },
     { label: "Bài kiểm tra", path: routeConfig.studentExams },
     { label: "Tham gia lớp", path: routeConfig.studentJoinClassroom },
+    { label: "Xem thông báo", path: routeConfig.notifications },
     { label: "Hồ sơ", path: routeConfig.studentProfile },
   ],
 };

@@ -11,6 +11,7 @@
   --color-destructive: #dc2626;
   --color-muted-foreground: #64748b;
   --color-tertiary: #1d4ed8;
+  --color-brand: #1d4ed8;
   --color-tertiary-hover: #1e3a8a;
   --color-link: #1e40af;
   --color-neutral: #f8fafc;
@@ -19,7 +20,7 @@
   --color-border: #e2e8f0;
   --color-border-subtle: #f1f5f9;
   --color-on-primary: #ffffff;
-  --color-obsidian: #0b1120;
+  --color-obsidian: #1E293B;
   --color-success: #047857;
   --color-success-muted: #ecfdf5;
   --color-caution: #b45309;
@@ -40,6 +41,7 @@
   --color-primary: #0f172a;
   --color-secondary: #64748b;
   --color-tertiary: #1d4ed8;
+  --color-brand: #1d4ed8;
   --color-tertiary-hover: #1e3a8a;
   --color-link: #1e40af;
   --color-neutral: #f8fafc;
@@ -48,7 +50,7 @@
   --color-border: #e2e8f0;
   --color-border-subtle: #f1f5f9;
   --color-on-primary: #ffffff;
-  --color-obsidian: #0b1120;
+  --color-obsidian: #1E293B;
   --color-success: #047857;
   --color-success-muted: #ecfdf5;
   --color-caution: #b45309;
@@ -87,6 +89,7 @@
   --color-primary: #f8fafc;
   --color-secondary: #9aa6b2;
   --color-tertiary: #60a5fa;
+  --color-brand: #60a5fa;
   --color-tertiary-hover: #93c5fd;
   --color-link: #93c5fd;
   --color-neutral: #050608;
@@ -707,15 +710,9 @@ button {
 }
 
 .eg-sidebar-link-active {
-  background: linear-gradient(
-    135deg,
-    rgb(56 189 248 / 18%),
-    rgb(96 165 250 / 12%)
-  );
+  background: #243b55;
   color: #ffffff;
-  box-shadow:
-    inset 0 0 0 1px rgb(56 189 248 / 22%),
-    0 10px 30px rgb(2 6 23 / 24%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .eg-sidebar-link-idle {

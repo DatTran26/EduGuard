@@ -7,8 +7,9 @@ using EduGuard.Infrastructure.Assignments;
 using EduGuard.Infrastructure.Auth;
 using EduGuard.Infrastructure.Classrooms;
 using EduGuard.Infrastructure.Exams;
-using EduGuard.Infrastructure.Data;
 using EduGuard.Application.Options;
+using EduGuard.Infrastructure.Data;
+using EduGuard.Infrastructure.Notifications;
 using EduGuard.Infrastructure.Proctoring;
 using EduGuard.Infrastructure.Redis;
 using EduGuard.Infrastructure.Repositories;
@@ -23,6 +24,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace EduGuard.Infrastructure;
 
@@ -118,6 +120,7 @@ public static class DependencyInjection
         services.AddScoped<IWebRtcConfigService, WebRtcConfigService>();
         services.AddScoped<ICheatingLogRepository, CheatingLogRepository>();
         services.AddScoped<IAntiCheatService, AntiCheatService>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionName));
         services.Configure<WebRtcOptions>(configuration.GetSection(WebRtcOptions.SectionName));

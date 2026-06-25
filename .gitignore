@@ -311,8 +311,7 @@ plans/
 .cursor/    
 
 # ASP.NET Core local settings
+# Keep shared appsettings.json tracked; only local overrides stay untracked.
 **/appsettings.Development.json
 **/appsettings.Local.json
 **/appsettings.*.local.json
-
-appsettings.json

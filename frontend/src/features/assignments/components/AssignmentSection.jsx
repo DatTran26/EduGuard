@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { assignmentApi } from "../../../api/assignmentApi";
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
@@ -12,7 +13,7 @@ import {
   cacheSubmission,
   getAssignmentDeadlineMeta,
   getAssignmentStatusMeta,
-  getCachedSubmission,
+  resolveAssignmentSubmission,
   sortAssignmentsByDeadline,
 } from "../assignmentHelpers";
 
@@ -66,7 +67,27 @@ function buildAssignmentStatItems(assignment, localSubmission, isTeacherOwner) {
   ];
 }
 
-export default function AssignmentSection({ classroom, user, showToast }) {
+function buildStudentSubmissionsByAssignmentId(assignments, userId, previousValue = {}) {
+  return assignments.reduce((accumulator, assignment) => {
+    const submission = resolveAssignmentSubmission(
+      assignment,
+      userId,
+      previousValue[assignment.id] ?? null,
+    );
+
+    if (!submission) {
+      return accumulator;
+    }
+
+    return {
+      ...accumulator,
+      [assignment.id]: submission,
+    };
+  }, {});
+}
+
+export default function AssignmentSection({ classroom, user, showToast, onAssignmentCreated }) {
+  const classroomId = Number(classroom?.id) || 0;
   const isTeacherOwner = Boolean(classroom?.canEdit && user?.role === "Teacher");
   const isStudentView = user?.role === "Student";
   const isAdminView = user?.role === "Admin";
@@ -80,6 +101,30 @@ export default function AssignmentSection({ classroom, user, showToast }) {
   const [armedDeleteAssignmentId, setArmedDeleteAssignmentId] = useState(null);
   const [isCreateFormVisible, setIsCreateFormVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [searchParams] = useSearchParams();
+
+  // Listen to searchParams to auto-open creation form
+  const shouldAutoOpen = searchParams.get("tab") === "assignments" && searchParams.get("create") === "1";
+  useEffect(() => {
+    if (shouldAutoOpen) {
+      setIsCreateFormVisible(true);
+    }
+  }, [shouldAutoOpen]);
+
+  // Listen to searchParams to auto-expand an assignment
+  const queryAssignmentId = searchParams.get("assignmentId");
+  useEffect(() => {
+    if (queryAssignmentId) {
+      setExpandedAssignmentId(queryAssignmentId);
+      setTimeout(() => {
+        const element = document.getElementById(`assignment-card-${queryAssignmentId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 300);
+    }
+  }, [queryAssignmentId]);
   const [isSavingAssignment, setIsSavingAssignment] = useState(false);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
   const [submittingAssignmentId, setSubmittingAssignmentId] = useState(null);
@@ -98,100 +143,71 @@ export default function AssignmentSection({ classroom, user, showToast }) {
     ? loadErrorMessage
     : `Hệ thống hiện chưa ghi nhận bài tập nào cho lớp ${classroom?.name || "này"}.`;
 
-  async function loadAssignments() {
+  const isMountedRef = useRef(false);
+
+  const loadAssignments = useCallback(async () => {
+    if (!classroomId) {
+      setAssignments([]);
+      setStudentSubmissionsByAssignmentId({});
+      setLoadErrorMessage("");
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
+    setLoadErrorMessage("");
 
     try {
-      const response = await assignmentApi.getByClassroom(classroom.id);
-      const nextAssignments = response.data;
+      const response = await assignmentApi.getByClassroom(classroomId);
+      const nextAssignments = response.data ?? [];
 
-      setAssignments(nextAssignments);
-      setLoadErrorMessage("");
-
-      if (isStudentView) {
-        const nextCachedSubmissions = nextAssignments.reduce((accumulator, assignment) => {
-          const cachedSubmission = getCachedSubmission(user?.id, assignment.id);
-
-          if (!cachedSubmission) {
-            return accumulator;
-          }
-
-          return {
-            ...accumulator,
-            [assignment.id]: cachedSubmission,
-          };
-        }, {});
-
-        setStudentSubmissionsByAssignmentId(nextCachedSubmissions);
+      if (!isMountedRef.current) {
+        return;
       }
+
+      const normalizedAssignments = Array.isArray(nextAssignments) ? nextAssignments : [];
+
+      setAssignments(normalizedAssignments);
+      if (isStudentView) {
+        setStudentSubmissionsByAssignmentId((previousValue) =>
+          buildStudentSubmissionsByAssignmentId(normalizedAssignments, user?.id, previousValue),
+        );
+      }
+      setLoadErrorMessage("");
     } catch (error) {
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      const message = error?.message || "Không thể tải danh sách bài tập.";
+
       setAssignments([]);
-      setLoadErrorMessage(error.message || "Không thể tải danh sách bài tập.");
+      setStudentSubmissionsByAssignmentId({});
+      setLoadErrorMessage(message);
+
       showToast({
         tone: "danger",
         title: "Tải bài tập thất bại",
-        message: error.message || "Không thể tải danh sách bài tập.",
+        message,
       });
     } finally {
-      setIsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadInitialAssignments() {
-      try {
-        const response = await assignmentApi.getByClassroom(classroom.id);
-
-        if (!isMounted) {
-          return;
-        }
-
-        setAssignments(response.data);
-        setLoadErrorMessage("");
-
-        if (isStudentView) {
-          const nextCachedSubmissions = response.data.reduce((accumulator, assignment) => {
-            const cachedSubmission = getCachedSubmission(user?.id, assignment.id);
-
-            if (!cachedSubmission) {
-              return accumulator;
-            }
-
-            return {
-              ...accumulator,
-              [assignment.id]: cachedSubmission,
-            };
-          }, {});
-
-          setStudentSubmissionsByAssignmentId(nextCachedSubmissions);
-        }
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        setAssignments([]);
-        setLoadErrorMessage(error.message || "Không thể tải danh sách bài tập.");
-        showToast({
-          tone: "danger",
-          title: "Tải bài tập thất bại",
-          message: error.message || "Không thể tải danh sách bài tập.",
-        });
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+      if (isMountedRef.current) {
+        setIsLoading(false);
       }
     }
+  }, [classroomId, isStudentView, showToast, user?.id]);
 
-    loadInitialAssignments();
+  useEffect(() => {
+    isMountedRef.current = true;
+    const loadTimeoutId = window.setTimeout(() => {
+      void loadAssignments();
+    }, 0);
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
+      window.clearTimeout(loadTimeoutId);
     };
-  }, [classroom.id, isStudentView, showToast, user?.id]);
+  }, [loadAssignments]);
 
   async function loadAssignmentSubmissions(assignmentId) {
     setIsLoadingSubmissions(true);
@@ -230,6 +246,9 @@ export default function AssignmentSection({ classroom, user, showToast }) {
     try {
       const response = await assignmentApi.create(classroom.id, payload);
       await loadAssignments();
+      if (onAssignmentCreated) {
+        onAssignmentCreated();
+      }
       setIsCreateFormVisible(false);
       showToast({
         tone: "success",
@@ -255,6 +274,9 @@ export default function AssignmentSection({ classroom, user, showToast }) {
     try {
       const response = await assignmentApi.update(assignmentId, payload);
       await loadAssignments();
+      if (onAssignmentCreated) {
+        onAssignmentCreated();
+      }
       setEditingAssignmentId(null);
       setArmedDeleteAssignmentId(null);
       showToast({
@@ -287,6 +309,9 @@ export default function AssignmentSection({ classroom, user, showToast }) {
     try {
       const response = await assignmentApi.delete(assignmentId);
       await loadAssignments();
+      if (onAssignmentCreated) {
+        onAssignmentCreated();
+      }
       setArmedDeleteAssignmentId(null);
       setExpandedAssignmentId((previousValue) =>
         previousValue === assignmentId ? null : previousValue,
@@ -328,6 +353,8 @@ export default function AssignmentSection({ classroom, user, showToast }) {
 
   async function handleSubmitAssignment(assignment) {
     const draft = submissionDrafts[assignment.id] ?? buildStudentSubmissionDraft();
+    const hadSubmission = Boolean(studentSubmissionsByAssignmentId[assignment.id] ?? assignment.mySubmission);
+
     setSubmittingAssignmentId(assignment.id);
 
     try {
@@ -339,6 +366,21 @@ export default function AssignmentSection({ classroom, user, showToast }) {
         ...previousValue,
         [assignment.id]: nextSubmission,
       }));
+      setAssignments((previousValue) =>
+        previousValue.map((currentAssignment) => {
+          if (currentAssignment.id !== assignment.id) {
+            return currentAssignment;
+          }
+
+          return {
+            ...currentAssignment,
+            mySubmission: nextSubmission,
+            submissionCount: hadSubmission
+              ? Number(currentAssignment.submissionCount || 0)
+              : Number(currentAssignment.submissionCount || 0) + 1,
+          };
+        }),
+      );
       setSubmissionDrafts((previousValue) => ({
         ...previousValue,
         [assignment.id]: buildStudentSubmissionDraft(),
@@ -445,8 +487,8 @@ export default function AssignmentSection({ classroom, user, showToast }) {
 
       {sortedAssignments.length === 0 ? (
         <EmptyState
-          title={loadErrorMessage ? "Không thể tải bài tập." : "Chưa có bài tập nào cho lớp này."}
-          description={emptyAssignmentMessage}
+          title={isTeacherOwner ? "Lớp chưa có bài tập nào" : "Chưa có bài tập nào cho lớp này."}
+          description={loadErrorMessage ? emptyAssignmentMessage : ""}
           action={
             <div className="flex flex-wrap justify-center gap-3">
               <Button onClick={loadAssignments} variant="secondary">Làm mới danh sách</Button>
@@ -467,7 +509,7 @@ export default function AssignmentSection({ classroom, user, showToast }) {
             const assignmentSubmissions = submissionsByAssignmentId[assignment.id] ?? [];
 
             return (
-              <Card key={assignment.id} className="space-y-5">
+              <Card id={`assignment-card-${assignment.id}`} key={assignment.id} className="space-y-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
@@ -537,7 +579,7 @@ export default function AssignmentSection({ classroom, user, showToast }) {
 
                 {armedDeleteAssignmentId === assignment.id ? (
                   <p className="rounded-[16px] border border-danger/20 bg-danger-muted px-4 py-3 text-sm text-danger">
-                    Bam lai nut xoa de xac nhan thao tac.
+                    Bấm lại nút xóa để xác nhận thao tác.
                   </p>
                 ) : null}
 
@@ -660,16 +702,48 @@ export default function AssignmentSection({ classroom, user, showToast }) {
                   localSubmission ? (
                     <div className="space-y-4 rounded-[20px] border border-border bg-neutral p-5">
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <Badge variant="info">Đã nộp bài</Badge>
+                        <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
                         <p className="text-sm text-secondary">
                           {localSubmission.submittedAt
                             ? formatShortDateTime(localSubmission.submittedAt)
                             : "Đã ghi nhận trong phiên này"}
                         </p>
                       </div>
-                      <div className="rounded-[16px] border border-border bg-surface px-4 py-4 text-sm leading-6 text-primary">
-                        {localSubmission.content || "Nội dung bài nộp đã được lưu."}
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-secondary">
+                          Nội dung bài làm
+                        </h4>
+                        <div className="rounded-[16px] border border-border bg-surface px-4 py-4 text-sm leading-6 text-primary whitespace-pre-wrap">
+                          {localSubmission.content || "Nội dung bài nộp đã được lưu."}
+                        </div>
                       </div>
+                      {localSubmission.score !== null && typeof localSubmission.score === "number" ? (
+                        <div className="rounded-[16px] border border-border bg-surface-sunken p-4 space-y-3">
+                          <p className="text-base font-bold text-primary">
+                            Điểm đạt:{" "}
+                            <span className="text-success text-lg font-bold">
+                              {localSubmission.score}
+                            </span>{" "}
+                            / {assignment.maxScore} điểm
+                          </p>
+                          {localSubmission.feedback ? (
+                            <div className="rounded-[12px] bg-surface border border-border p-3">
+                              <p className="text-xs font-semibold text-secondary">
+                                Nhận xét của giảng viên:
+                              </p>
+                              <p className="text-sm text-primary italic mt-1 leading-relaxed">
+                                "{localSubmission.feedback}"
+                              </p>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
+                          <p className="text-sm text-secondary italic">
+                            Bài nộp đang chờ giảng viên chấm điểm.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-4 rounded-[20px] border border-border bg-neutral p-5">
