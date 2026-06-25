@@ -52,7 +52,7 @@ function getNavigationIconByLabel(label) {
   if (label === "Kết quả") {
     return FiBarChart2;
   }
-  if (label === "Thông báo") {
+  if (label === "Thông báo" || label === "Xem thông báo") {
     return FiBell;
   }
   if (label === "Hồ sơ" || label === "Hồ sơ cá nhân") {

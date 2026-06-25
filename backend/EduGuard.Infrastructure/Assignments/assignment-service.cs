@@ -207,8 +207,8 @@ public class AssignmentService : IAssignmentService
             _assignmentRepository.UpdateSubmission(existing);
             await _assignmentRepository.SaveChangesAsync(ct);
 
-            var saved = await _assignmentRepository.GetSubmissionByIdAsync(existing.Id, ct) ?? existing;
-            return MapSubmission(saved);
+            var savedExisting = await _assignmentRepository.GetSubmissionByIdAsync(existing.Id, ct) ?? existing;
+            return MapSubmission(savedExisting);
         }
 
         var submission = new Submission

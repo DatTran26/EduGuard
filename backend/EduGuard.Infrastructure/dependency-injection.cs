@@ -8,6 +8,7 @@ using EduGuard.Infrastructure.Auth;
 using EduGuard.Infrastructure.Classrooms;
 using EduGuard.Infrastructure.Exams;
 using EduGuard.Infrastructure.Data;
+using EduGuard.Infrastructure.Notifications;
 using EduGuard.Infrastructure.Repositories;
 using EduGuard.Infrastructure.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -18,6 +19,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace EduGuard.Infrastructure;
 
@@ -102,6 +104,7 @@ public static class DependencyInjection
         services.AddScoped<IExamMonitoringService, ExamMonitoringService>();
         services.AddScoped<ICheatingLogRepository, CheatingLogRepository>();
         services.AddScoped<IAntiCheatService, AntiCheatService>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         return services;
     }

@@ -9,12 +9,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { useToast } from "../../hooks/useToast";
 import { getProfileRouteByRole, getRoleLabel } from "../../routes/roleRoutes";
 import { routeConfig } from "../../routes/routeConfig";
-import {
-  readNotificationLastSeenAt,
-  readNotifications,
-  writeNotificationLastSeenAt,
-  writeNotifications,
-} from "../../features/notifications/notificationStorage";
+import { notificationApi } from "../../api/notificationApi";
 import TeacherQuickCreateButton from "./TeacherQuickCreateButton";
 import TeacherShellSearch from "./TeacherShellSearch";
 import {
@@ -186,8 +181,8 @@ export default function TopBar({
   const { showToast } = useToast();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [notificationItems, setNotificationItems] = useState(() => readNotifications());
-  const [lastSeenAt, setLastSeenAt] = useState(() => readNotificationLastSeenAt());
+  const [notificationItems, setNotificationItems] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [classroomBreadcrumbState, setClassroomBreadcrumbState] = useState({
     classroomId: "",
     label: "",
@@ -231,17 +226,32 @@ export default function TopBar({
     };
   }, [isUserMenuOpen, isNotificationOpen]);
 
-  useEffect(() => {
-    function handleIncomingNotification(event) {
-      const nextItem = event?.detail;
-      if (!nextItem?.id) {
-        return;
-      }
-      setNotificationItems((previousValue) => [nextItem, ...previousValue].slice(0, 30));
+  async function fetchNotifications() {
+    try {
+      const [countRes, listRes] = await Promise.all([
+        notificationApi.getUnreadCount(),
+        notificationApi.getMyNotifications()
+      ]);
+      setUnreadCount(countRes.data?.count ?? 0);
+      setNotificationItems((listRes.data || []).slice(0, 5));
+    } catch (error) {
+      console.error("Lỗi khi tải thông báo:", error);
     }
+  }
 
-    window.addEventListener("eduguard:notification", handleIncomingNotification);
-    return () => window.removeEventListener("eduguard:notification", handleIncomingNotification);
+  useEffect(() => {
+    fetchNotifications();
+
+    window.addEventListener("eduguard:notification-updated", fetchNotifications);
+    window.addEventListener("eduguard:notification", fetchNotifications);
+    
+    const interval = setInterval(fetchNotifications, 30000);
+
+    return () => {
+      window.removeEventListener("eduguard:notification-updated", fetchNotifications);
+      window.removeEventListener("eduguard:notification", fetchNotifications);
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -295,29 +305,34 @@ export default function TopBar({
 
   function toggleNotifications() {
     setIsUserMenuOpen(false);
-    setIsNotificationOpen((previousValue) => {
-      const nextValue = !previousValue;
-      if (nextValue) {
-        const nowIso = new Date().toISOString();
-        writeNotificationLastSeenAt(nowIso);
-        setLastSeenAt(nowIso);
-      }
-      return nextValue;
-    });
+    setIsNotificationOpen((previousValue) => !previousValue);
   }
 
-  function clearNotifications() {
-    const nextItems = [];
-    setNotificationItems(nextItems);
-    writeNotifications(nextItems);
-    const nowIso = new Date().toISOString();
-    writeNotificationLastSeenAt(nowIso);
-    setLastSeenAt(nowIso);
-    showToast({
-      tone: "success",
-      title: "Đã dọn thông báo",
-      message: "Danh sách thông báo đã được làm sạch.",
-    });
+  async function handleMarkAllAsRead() {
+    try {
+      await notificationApi.markAllAsRead();
+      fetchNotifications();
+      showToast({
+        tone: "success",
+        title: "Thành công",
+        message: "Đã đánh dấu đọc tất cả thông báo.",
+      });
+    } catch (error) {
+      console.error("Lỗi đánh dấu đọc tất cả:", error);
+    }
+  }
+
+  async function handleNotificationClick(item) {
+    if (!item.isRead) {
+      try {
+        await notificationApi.markAsRead(item.userNotificationId);
+        fetchNotifications();
+      } catch (error) {
+        console.error("Lỗi đánh dấu đọc thông báo:", error);
+      }
+    }
+    setIsNotificationOpen(false);
+    navigate(routeConfig.notifications);
   }
 
   // Hàm này đưa người dùng tới trang hồ sơ từ dropdown mà không đổi logic trang hồ sơ hiện tại.
@@ -374,13 +389,8 @@ export default function TopBar({
 
   function handleOpenNotificationsPage() {
     setIsNotificationOpen(false);
-
-    if (isTeacherView) {
-      navigate(routeConfig.teacherNotifications);
-    }
+    navigate(routeConfig.notifications);
   }
-
-  const unreadCount = notificationItems.filter((item) => item?.createdAt && item.createdAt > lastSeenAt).length;
   const roleLabel = getRoleLabel(user?.role);
   const classroomBreadcrumbLabel = classroomBreadcrumbId
     ? classroomBreadcrumbState.classroomId === classroomBreadcrumbId
@@ -504,27 +514,22 @@ export default function TopBar({
               <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
                 <div>
                   <p className="text-xs font-semibold text-primary">Thông báo</p>
-                  <p className="pt-0.5 text-[10px] text-secondary">
-                    {notificationItems.length > 0 ? "Cập nhật theo thời gian thực" : "Chưa có thông báo nào"}
-                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {isTeacherView ? (
-                    <button
-                      type="button"
-                      className="rounded-[12px] border border-border px-3 py-1.5 text-[11px] font-semibold text-secondary hover:bg-surface-sunken hover:text-primary transition-all duration-200"
-                      onClick={handleOpenNotificationsPage}
-                    >
-                      Xem tất cả
-                    </button>
-                  ) : null}
                   <button
                     type="button"
                     className="rounded-[12px] border border-border px-3 py-1.5 text-[11px] font-semibold text-secondary hover:bg-surface-sunken hover:text-primary transition-all duration-200"
-                    onClick={clearNotifications}
-                    disabled={notificationItems.length === 0}
+                    onClick={handleOpenNotificationsPage}
                   >
-                    Dọn
+                    Xem tất cả
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-[12px] border border-border px-3 py-1.5 text-[11px] font-semibold text-secondary hover:bg-surface-sunken hover:text-primary transition-all duration-200"
+                    onClick={handleMarkAllAsRead}
+                    disabled={unreadCount === 0}
+                  >
+                    Đọc hết
                   </button>
                 </div>
               </div>
@@ -534,25 +539,30 @@ export default function TopBar({
                   <div className="space-y-1">
                     {notificationItems.map((item) => (
                       <div
-                        key={item.id}
-                        className="rounded-[16px] border border-border bg-surface px-3 py-2.5"
+                        key={item.userNotificationId}
+                        onClick={() => handleNotificationClick(item)}
+                        className={`cursor-pointer rounded-[16px] border p-3 text-left transition-all hover:bg-surface-sunken ${
+                          !item.isRead ? "border-brand/20 bg-brand/5" : "border-border bg-surface"
+                        }`}
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-xs font-semibold text-primary">
+                          <div className="min-w-0 flex-1">
+                            <p className={`truncate text-xs font-semibold ${!item.isRead ? "text-brand" : "text-primary"}`}>
                               {item.title || "Thông báo"}
                             </p>
-                            <p className="pt-1 text-[11px] leading-relaxed text-secondary">
-                              {item.message || "Bạn có thông báo mới."}
+                            <p className="pt-1 text-[11px] leading-relaxed text-secondary truncate">
+                              {item.content || "Bạn có thông báo mới."}
                             </p>
                           </div>
                           <span
-                            className={`mt-0.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${
-                              item.tone === "danger"
-                                ? "bg-rose-500"
-                                : item.tone === "success"
-                                  ? "bg-emerald-500"
-                                  : "bg-sky-500"
+                            className={`mt-1 inline-flex h-2 w-2 shrink-0 rounded-full ${
+                              !item.isRead
+                                ? "bg-brand ring-4 ring-brand/10"
+                                : item.type === "Warning"
+                                  ? "bg-rose-500"
+                                  : item.type === "Success"
+                                    ? "bg-emerald-500"
+                                    : "bg-sky-500"
                             }`}
                             aria-hidden="true"
                           />
@@ -568,9 +578,6 @@ export default function TopBar({
                 ) : (
                   <div className="px-3 py-8">
                     <p className="text-xs font-semibold text-primary">Không có thông báo mới.</p>
-                    <p className="pt-1 text-[11px] text-secondary">
-                      Khi hệ thống đẩy cảnh báo/nhắc nhở, chúng sẽ xuất hiện ở đây.
-                    </p>
                   </div>
                 )}
               </div>

@@ -27,6 +27,7 @@ import { formatShortDateTime } from "../../../utils/formatDate";
 import AssignmentSection from "../../assignments/components/AssignmentSection";
 import { getExamStatusVariant } from "../../exams/examHelpers";
 import { normalizeTeacherClassroomTab } from "./teacher-classroom-tabs";
+import TeacherNotificationTab from "./TeacherNotificationTab";
 
 const OVERVIEW_BAR_COLORS = {
   assignments: "#1D4ED8",
@@ -492,6 +493,10 @@ export default function TeacherClassroomWorkspace({
           showToast={showToast}
           user={user}
         />
+      ) : null}
+
+      {resolvedActiveTab === "notifications" ? (
+        <TeacherNotificationTab classroom={classroom} />
       ) : null}
 
       {resolvedActiveTab === "exams" ? (

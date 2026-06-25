@@ -3,6 +3,7 @@ export const routeConfig = {
   root: "/",
   login: "/login",
   register: "/register",
+  notifications: "/notifications",
   adminDashboard: "/admin/dashboard",
   adminClassrooms: "/admin/classrooms",
   adminClassroomDetail: "/admin/classrooms/:classroomId",

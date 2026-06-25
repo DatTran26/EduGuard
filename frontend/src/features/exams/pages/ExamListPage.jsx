@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { classroomApi } from "../../../api/classroomApi";
 import { examApi } from "../../../api/examApi";
@@ -115,7 +115,6 @@ export default function ExamListPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const createExamSubmitRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [classrooms, setClassrooms] = useState([]);
   const [exams, setExams] = useState([]);
@@ -159,6 +158,7 @@ export default function ExamListPage() {
     : pageCopy.title;
   const canCreateExam = isTeacherView && classrooms.length > 0;
   const isCreateFlowDraftMode = isCreateFormVisible && !activeCreateExam;
+  const createExamFormId = "teacher-exam-create-flow-form";
   const visibleExams = isStudentView
     ? filterExamsByScheduleStatus(exams, selectedScheduleStatus)
     : exams;
@@ -408,9 +408,6 @@ export default function ExamListPage() {
     setSearchParams(nextParams);
   }
 
-  function handleRequestCreateExamSubmit() {
-    void createExamSubmitRef.current?.();
-  }
 
   // Hàm này đổi filter lớp học trên URL để user refresh trang vẫn giữ được ngữ cảnh hiện tại.
   function updateExamListSearchParams(nextClassroomId, nextScheduleStatus) {
@@ -1152,14 +1149,12 @@ export default function ExamListPage() {
                 classroomOptions={classrooms}
                 defaultClassroomId={defaultCreateClassroomId}
                 exam={activeCreateExam}
+                formId={createExamFormId}
                 hideSubmitButton
                 initialFormValues={activeCreateExam ? null : createDraftExamValues}
                 isSubmitting={isSubmitting}
                 key={createFormKey}
                 onFormValuesChange={activeCreateExam ? null : setCreateDraftExamValues}
-                onRegisterSubmit={(submitHandler) => {
-                  createExamSubmitRef.current = submitHandler;
-                }}
                 onSubmitExam={activeCreateExam ? handleUpdateCreateFlowExam : handleCreateExam}
                 showDescriptions={false}
                 submitLabel={activeCreateExam ? "Lưu thay đổi" : "Lưu toàn bộ đề thi"}
@@ -1214,8 +1209,8 @@ export default function ExamListPage() {
                   <Button
                     className="w-full sm:w-auto"
                     disabled={isSubmitting || isQuestionSubmitting || isImportSubmitting}
-                    onClick={handleRequestCreateExamSubmit}
-                    type="button"
+                    form={createExamFormId}
+                    type="submit"
                   >
                     {isSubmitting
                       ? "Đang lưu..."

@@ -54,7 +54,7 @@ export function normalizeAntiCheatEventType(type) {
       ANTI_CHEAT_EVENT_TYPES.copyPaste,
       ANTI_CHEAT_EVENT_TYPES.exitFullscreen,
       ANTI_CHEAT_EVENT_TYPES.pageReload,
-      ANTI_CHEAT_EVENT_TYPES.disconnected,
+      ANTI_CHEAT_EVENT_TYPES.disconnected,  
       ANTI_CHEAT_EVENT_TYPES.webcamOff,
     ];
 

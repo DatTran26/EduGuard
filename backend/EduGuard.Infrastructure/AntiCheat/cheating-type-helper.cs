@@ -26,7 +26,7 @@ public static class CheatingTypeHelper
         CheatingType.ExitFullscreen => "EXIT_FULLSCREEN",
         CheatingType.PageReload => "PAGE_RELOAD",
         CheatingType.Disconnected => "DISCONNECTED",
-        CheatingType.WebcamOff => "WEBCAM_OFF",
+        CheatingType.WebcamOff => "WEBCAM_OFF", 
         _ => type.ToString().ToUpperInvariant()
     };
 
