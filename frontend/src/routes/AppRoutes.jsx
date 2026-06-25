@@ -8,6 +8,7 @@ import ClassroomDetailPage from "../features/classrooms/pages/ClassroomDetailPag
 import ClassroomListPage from "../features/classrooms/pages/ClassroomListPage";
 import JoinClassroomPage from "../features/classrooms/pages/JoinClassroomPage";
 import AdminMonitoringPage from "../features/admin/pages/AdminMonitoringPage";
+import AdminProctoringAiSettingsPage from "../features/admin/pages/AdminProctoringAiSettingsPage";
 import TeacherMonitoringPage from "../features/anti-cheat/pages/TeacherMonitoringPage";
 import TeacherAssignmentListPage from "../features/assignments/pages/TeacherAssignmentListPage";
 import AdminDashboardPage from "../features/dashboard/pages/AdminDashboardPage";
@@ -16,6 +17,7 @@ import ExamAttemptPage from "../features/exam-attempts/pages/ExamAttemptPage";
 import ExamLobbyPage from "../features/proctoring/pages/ExamLobbyPage";
 import ExamPausedPage from "../features/proctoring/pages/ExamPausedPage";
 import StudentDeviceCheckPage from "../features/proctoring/pages/StudentDeviceCheckPage";
+import TeacherProctoringRoomPage from "../features/proctoring/pages/TeacherProctoringRoomPage";
 import ExamDetailPage from "../features/exams/pages/ExamDetailPage";
 import ExamListPage from "../features/exams/pages/ExamListPage";
 import TeacherNotificationsPage from "../features/notifications/pages/TeacherNotificationsPage";
@@ -83,6 +85,10 @@ export default function AppRoutes() {
               path={routeConfig.adminMonitoring}
             />
             <Route
+              element={<AdminProctoringAiSettingsPage />}
+              path={routeConfig.adminProctoringAi}
+            />
+            <Route
               element={<UserManagementPage />}
               path={routeConfig.adminUsers}
             />
@@ -114,6 +120,10 @@ export default function AppRoutes() {
             <Route
               element={<TeacherMonitoringPage />}
               path={routeConfig.teacherMonitoring}
+            />
+            <Route
+              element={<TeacherProctoringRoomPage />}
+              path={routeConfig.teacherProctoring}
             />
             <Route
               element={<TeacherResultsPage />}

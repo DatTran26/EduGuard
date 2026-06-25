@@ -9,6 +9,7 @@ export const routeConfig = {
   adminExams: "/admin/exams",
   adminExamDetail: "/admin/exams/:examId",
   adminMonitoring: "/admin/monitoring",
+  adminProctoringAi: "/admin/proctoring-ai",
   adminUsers: "/admin/users",
   adminProfile: "/admin/profile",
   teacherDashboard: "/teacher/dashboard",
@@ -18,6 +19,7 @@ export const routeConfig = {
   teacherExams: "/teacher/exams",
   teacherExamDetail: "/teacher/exams/:examId",
   teacherMonitoring: "/teacher/monitoring",
+  teacherProctoring: "/teacher/exams/:examId/proctoring",
   teacherResults: "/teacher/results",
   teacherNotifications: "/teacher/notifications",
   teacherProfile: "/teacher/profile",
@@ -102,6 +104,10 @@ export function buildStudentExamPausedPath(attemptId) {
 
 export function buildStudentExamDetailPath(examId) {
   return `/student/exams/${examId}`;
+}
+
+export function buildTeacherProctoringPath(examId) {
+  return `/teacher/exams/${examId}/proctoring`;
 }
 
 // Hàm này trả về route profile phù hợp với từng vai trò trong app.
