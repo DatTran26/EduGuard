@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { notificationApi } from "../../../api/notificationApi";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
@@ -7,11 +8,21 @@ import { useToast } from "../../../hooks/useToast";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import { FiPlus, FiCornerDownLeft, FiBell } from "react-icons/fi";
 
-export default function TeacherNotificationTab({ classroom }) {
+export default function TeacherNotificationTab({ classroom, onNotificationCreated }) {
   const { showToast } = useToast();
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
+
+  const [searchParams] = useSearchParams();
+
+  // Listen to searchParams to auto-open creation form
+  const shouldAutoOpen = searchParams.get("tab") === "notifications" && searchParams.get("create") === "1";
+  useEffect(() => {
+    if (shouldAutoOpen) {
+      setIsFormOpen(true);
+    }
+  }, [shouldAutoOpen]);
 
   // Form states
   const [title, setTitle] = useState("");
@@ -81,6 +92,9 @@ export default function TeacherNotificationTab({ classroom }) {
       setType("Info");
       setIsFormOpen(false);
       loadClassroomNotifications();
+      if (onNotificationCreated) {
+        onNotificationCreated();
+      }
     } catch (error) {
       showToast({
         tone: "danger",
@@ -207,8 +221,16 @@ export default function TeacherNotificationTab({ classroom }) {
         </div>
       ) : notifications.length === 0 ? (
         <EmptyState
-          title="Chưa có thông báo nào được gửi"
+          title="Chưa có thông báo nào"
           description=""
+          action={
+            <Button onClick={() => setIsFormOpen(true)}>
+              <span className="flex items-center gap-1.5">
+                <FiPlus className="h-4 w-4" />
+                <span>Gửi thông báo đầu tiên</span>
+              </span>
+            </Button>
+          }
         />
       ) : (
         <div className="space-y-4">

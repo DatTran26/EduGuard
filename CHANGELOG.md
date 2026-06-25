@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Frontend
 
+- Redesigned the Teacher's Classroom Detail (Chi tiết lớp học của giảng viên) page (`ClassroomDetailPage.jsx`):
+  - Created `ClassDetailHeader.jsx` replacing the hero banner with a compact layout displaying title, status badges, copyable join codes, and quick action shortcuts.
+  - Created `ClassQuickStats.jsx` with a 5-column grid for key metrics (members, assignments, exams, submission rate, alerts).
+  - Created `ClassOverviewPanel.jsx` in a 2-column layout introducing a dynamic "Việc cần xử lý" (Pending Tasks) system, recent activity timeline, assignment submission trackers, copyable info cards, and quick action toolbars.
+  - Lifted resource loading to the parent to fetch exams, attempts, assignments, submissions, and alerts in parallel.
+  - Implemented query string triggers (`tab=assignments&create=1`, `tab=notifications&create=1`, `assignmentId={id}`) for automatic form opening and card auto-expanding/scrolling.
+  - Added a Cancel button to the classroom edit form and updated empty states for tab views.
 - Redesigned the Teacher's Classrooms (Lớp học của giảng viên) page (`ClassroomListPage.jsx`):
   - Removed the bulky hero banner and replaced it with a clean, compact header title and a "Tạo lớp học" button.
   - Implemented `ClassroomSummary.jsx` displaying 4 key classroom metrics: total classrooms, total students, open assignments, and active exams.

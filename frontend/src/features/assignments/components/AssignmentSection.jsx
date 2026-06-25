@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { assignmentApi } from "../../../api/assignmentApi";
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
@@ -85,7 +86,7 @@ function buildStudentSubmissionsByAssignmentId(assignments, userId, previousValu
   }, {});
 }
 
-export default function AssignmentSection({ classroom, user, showToast }) {
+export default function AssignmentSection({ classroom, user, showToast, onAssignmentCreated }) {
   const classroomId = Number(classroom?.id) || 0;
   const isTeacherOwner = Boolean(classroom?.canEdit && user?.role === "Teacher");
   const isStudentView = user?.role === "Student";
@@ -100,6 +101,30 @@ export default function AssignmentSection({ classroom, user, showToast }) {
   const [armedDeleteAssignmentId, setArmedDeleteAssignmentId] = useState(null);
   const [isCreateFormVisible, setIsCreateFormVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [searchParams] = useSearchParams();
+
+  // Listen to searchParams to auto-open creation form
+  const shouldAutoOpen = searchParams.get("tab") === "assignments" && searchParams.get("create") === "1";
+  useEffect(() => {
+    if (shouldAutoOpen) {
+      setIsCreateFormVisible(true);
+    }
+  }, [shouldAutoOpen]);
+
+  // Listen to searchParams to auto-expand an assignment
+  const queryAssignmentId = searchParams.get("assignmentId");
+  useEffect(() => {
+    if (queryAssignmentId) {
+      setExpandedAssignmentId(queryAssignmentId);
+      setTimeout(() => {
+        const element = document.getElementById(`assignment-card-${queryAssignmentId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 300);
+    }
+  }, [queryAssignmentId]);
   const [isSavingAssignment, setIsSavingAssignment] = useState(false);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
   const [submittingAssignmentId, setSubmittingAssignmentId] = useState(null);
@@ -221,6 +246,9 @@ export default function AssignmentSection({ classroom, user, showToast }) {
     try {
       const response = await assignmentApi.create(classroom.id, payload);
       await loadAssignments();
+      if (onAssignmentCreated) {
+        onAssignmentCreated();
+      }
       setIsCreateFormVisible(false);
       showToast({
         tone: "success",
@@ -246,6 +274,9 @@ export default function AssignmentSection({ classroom, user, showToast }) {
     try {
       const response = await assignmentApi.update(assignmentId, payload);
       await loadAssignments();
+      if (onAssignmentCreated) {
+        onAssignmentCreated();
+      }
       setEditingAssignmentId(null);
       setArmedDeleteAssignmentId(null);
       showToast({
@@ -278,6 +309,9 @@ export default function AssignmentSection({ classroom, user, showToast }) {
     try {
       const response = await assignmentApi.delete(assignmentId);
       await loadAssignments();
+      if (onAssignmentCreated) {
+        onAssignmentCreated();
+      }
       setArmedDeleteAssignmentId(null);
       setExpandedAssignmentId((previousValue) =>
         previousValue === assignmentId ? null : previousValue,
@@ -453,8 +487,8 @@ export default function AssignmentSection({ classroom, user, showToast }) {
 
       {sortedAssignments.length === 0 ? (
         <EmptyState
-          title={loadErrorMessage ? "Không thể tải bài tập." : "Chưa có bài tập nào cho lớp này."}
-          description={emptyAssignmentMessage}
+          title={isTeacherOwner ? "Lớp chưa có bài tập nào" : "Chưa có bài tập nào cho lớp này."}
+          description={loadErrorMessage ? emptyAssignmentMessage : ""}
           action={
             <div className="flex flex-wrap justify-center gap-3">
               <Button onClick={loadAssignments} variant="secondary">Làm mới danh sách</Button>
@@ -475,7 +509,7 @@ export default function AssignmentSection({ classroom, user, showToast }) {
             const assignmentSubmissions = submissionsByAssignmentId[assignment.id] ?? [];
 
             return (
-              <Card key={assignment.id} className="space-y-5">
+              <Card id={`assignment-card-${assignment.id}`} key={assignment.id} className="space-y-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">

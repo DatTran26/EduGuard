@@ -1,5 +1,44 @@
 # Project Changelog
 
+## Feature: Redesign Teacher Classroom Detail Layout & Actions
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Redesign Teacher Classroom Detail Layout & Actions.
+- Purpose and user/business impact: Streamline classroom details workspace for teachers. Displays title header with action buttons, 5 KPI cards for key metrics, a 2-column overview panel featuring "Việc cần xử lý" (Pending Tasks), recent timeline activities, learning progress, and a quick action drawer. Wires query parameters for auto-opening forms and expanding specific cards.
+- Files or modules changed: `ClassroomDetailPage.jsx`, `ClassDetailHeader.jsx` (New), `ClassQuickStats.jsx` (New), `ClassOverviewPanel.jsx` (New), `CreateClassroomForm.jsx`, `TeacherClassroomWorkspace.jsx`, `AssignmentSection.jsx`, `TeacherNotificationTab.jsx`.
+
+Changed files:
+
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/classrooms/components/ClassDetailHeader.jsx`
+- `frontend/src/features/classrooms/components/ClassQuickStats.jsx`
+- `frontend/src/features/classrooms/components/ClassOverviewPanel.jsx`
+- `frontend/src/features/classrooms/components/CreateClassroomForm.jsx`
+- `frontend/src/features/classrooms/components/TeacherClassroomWorkspace.jsx`
+- `frontend/src/features/assignments/components/AssignmentSection.jsx`
+- `frontend/src/features/classrooms/components/TeacherNotificationTab.jsx`
+
+Technical summary:
+
+- Lifted statistics and resource loading (exams, assignments, submissions, attempts, alerts, notifications) to the parent `ClassroomDetailPage.jsx` page.
+- Created `ClassDetailHeader` presenting title, status badge, copyable join code badge, and right-hand buttons row (`Tạo bài tập`, `Tạo bài thi`, `Gửi thông báo`).
+- Created `ClassQuickStats` rendering members count, assignments, exams, submission rate, and warnings.
+- Created `ClassOverviewPanel` with 2-column layout. Implemented pending tasks logic grouping ungraded assignments, upcoming exams, missing submissions, and anti-cheat anomalies.
+- Implemented segmented sticky tab bar with backdrop blur.
+- Implemented query string triggers (`tab=assignments&create=1` and `tab=notifications&create=1` to auto-open forms; `assignmentId={id}` to auto-expand and scroll to specific assignment cards).
+- Standardized empty states and added form cancel option in classroom edit form.
+
+Validation:
+
+- Frontend builds successfully (`npm run build`).
+
+---
+
 ## Feature: Redesign Teacher Classrooms Layout & Filter Toolbar
 
 Date: 2026-06-25

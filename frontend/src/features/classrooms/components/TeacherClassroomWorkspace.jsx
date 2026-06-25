@@ -193,18 +193,42 @@ export default function TeacherClassroomWorkspace({
   members,
   showToast,
   user,
+  // Lifted props
+  assignments: propAssignments,
+  submissionsByAssignmentId: propSubmissionsByAssignmentId,
+  exams: propExams,
+  attempts: propAttempts,
+  warningCountByExamId: propWarningCountByExamId,
+  notifications: propNotifications,
+  isLoading: propIsLoading,
+  onNotificationCreated,
+  onAssignmentCreated,
 }) {
-  const [assignments, setAssignments] = useState([]);
+  const [assignments, setAssignments] = useState(propAssignments || []);
   const [submissionsByAssignmentId, setSubmissionsByAssignmentId] = useState(
-    {},
+    propSubmissionsByAssignmentId || {},
   );
-  const [exams, setExams] = useState([]);
-  const [attempts, setAttempts] = useState([]);
-  const [warningCountByExamId, setWarningCountByExamId] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [exams, setExams] = useState(propExams || []);
+  const [attempts, setAttempts] = useState(propAttempts || []);
+  const [warningCountByExamId, setWarningCountByExamId] = useState(
+    propWarningCountByExamId || {},
+  );
+  const [isLoading, setIsLoading] = useState(
+    propIsLoading !== undefined ? propIsLoading : true,
+  );
   const resolvedActiveTab = normalizeTeacherClassroomTab(activeTab);
 
   useEffect(() => {
+    if (propAssignments !== undefined) {
+      setAssignments(propAssignments);
+      setSubmissionsByAssignmentId(propSubmissionsByAssignmentId || {});
+      setExams(propExams || []);
+      setAttempts(propAttempts || []);
+      setWarningCountByExamId(propWarningCountByExamId || {});
+      setIsLoading(propIsLoading !== undefined ? propIsLoading : false);
+      return;
+    }
+
     let isMounted = true;
 
     async function loadWorkspaceData() {
@@ -295,7 +319,7 @@ export default function TeacherClassroomWorkspace({
     return () => {
       isMounted = false;
     };
-  }, [classroom.id, showToast]);
+  }, [classroom.id, showToast, propAssignments, propSubmissionsByAssignmentId, propExams, propAttempts, propWarningCountByExamId, propIsLoading]);
 
   const studentRows = useMemo(
     () => buildStudentSummaryRows(members, submissionsByAssignmentId, attempts),
@@ -492,11 +516,15 @@ export default function TeacherClassroomWorkspace({
           classroom={classroom}
           showToast={showToast}
           user={user}
+          onAssignmentCreated={onAssignmentCreated}
         />
       ) : null}
 
       {resolvedActiveTab === "notifications" ? (
-        <TeacherNotificationTab classroom={classroom} />
+        <TeacherNotificationTab 
+          classroom={classroom} 
+          onNotificationCreated={onNotificationCreated}
+        />
       ) : null}
 
       {resolvedActiveTab === "exams" ? (
@@ -519,7 +547,17 @@ export default function TeacherClassroomWorkspace({
           <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
             <div>
               {exams.length === 0 ? (
-                <EmptyState title="Chưa có bài thi nào cho lớp học này." />
+                <EmptyState 
+                  title="Lớp chưa có bài thi nào"
+                  action={
+                    <Link
+                      className="eg-button eg-button-primary"
+                      to={`${routeConfig.teacherExams}?create=1&classroomId=${classroom.id}`}
+                    >
+                      Tạo bài thi
+                    </Link>
+                  }
+                />
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {exams.map((exam) => (
