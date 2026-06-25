@@ -8,13 +8,18 @@ export const routeConfig = {
   adminClassroomDetail: "/admin/classrooms/:classroomId",
   adminExams: "/admin/exams",
   adminExamDetail: "/admin/exams/:examId",
+  adminMonitoring: "/admin/monitoring",
   adminUsers: "/admin/users",
   adminProfile: "/admin/profile",
   teacherDashboard: "/teacher/dashboard",
   teacherClassrooms: "/teacher/classrooms",
   teacherClassroomDetail: "/teacher/classrooms/:classroomId",
+  teacherAssignments: "/teacher/assignments",
   teacherExams: "/teacher/exams",
   teacherExamDetail: "/teacher/exams/:examId",
+  teacherMonitoring: "/teacher/monitoring",
+  teacherResults: "/teacher/results",
+  teacherNotifications: "/teacher/notifications",
   teacherProfile: "/teacher/profile",
   studentDashboard: "/student/dashboard",
   studentClassrooms: "/student/classrooms",
@@ -22,6 +27,10 @@ export const routeConfig = {
   studentClassroomDetail: "/student/classrooms/:classroomId",
   studentExams: "/student/exams",
   studentExamDetail: "/student/exams/:examId",
+  studentExamLobby: "/student/exams/:examId/lobby",
+  studentExamDeviceCheck: "/student/exams/:examId/device-check",
+  studentExamAttempt: "/student/attempts/:attemptId",
+  studentExamPaused: "/student/attempts/:attemptId/paused",
   studentProfile: "/student/profile",
 };
 
@@ -72,6 +81,27 @@ export function getExamListPathByRole(role) {
 // Hàm này tạo route chi tiết đề thi đúng theo role hiện tại để điều hướng không bị sai path.
 export function buildExamDetailPathByRole(role, examId) {
   return `${getExamListPathByRole(role)}/${examId}`;
+}
+
+// Ham nay tao route phong lam bai cua student tu attempt id de flow bat dau / tiep tuc thong nhat.
+export function buildStudentExamAttemptPath(attemptId) {
+  return `/student/attempts/${attemptId}`;
+}
+
+export function buildStudentExamLobbyPath(examId) {
+  return `/student/exams/${examId}/lobby`;
+}
+
+export function buildStudentDeviceCheckPath(examId) {
+  return `/student/exams/${examId}/device-check`;
+}
+
+export function buildStudentExamPausedPath(attemptId) {
+  return `/student/attempts/${attemptId}/paused`;
+}
+
+export function buildStudentExamDetailPath(examId) {
+  return `/student/exams/${examId}`;
 }
 
 // Hàm này trả về route profile phù hợp với từng vai trò trong app.
