@@ -11,11 +11,16 @@ namespace EduGuard.Infrastructure.Proctoring;
 public class StudentProctoringService : IStudentProctoringService
 {
     private readonly AppDbContext _db;
+    private readonly IProctoringPolicyService _proctoringPolicyService;
     private readonly IProctoringRepository _proctoringRepository;
 
-    public StudentProctoringService(AppDbContext db, IProctoringRepository proctoringRepository)
+    public StudentProctoringService(
+        AppDbContext db,
+        IProctoringPolicyService proctoringPolicyService,
+        IProctoringRepository proctoringRepository)
     {
         _db = db;
+        _proctoringPolicyService = proctoringPolicyService;
         _proctoringRepository = proctoringRepository;
     }
 
@@ -56,9 +61,10 @@ public class StudentProctoringService : IStudentProctoringService
         state.FullscreenStatus = string.IsNullOrWhiteSpace(request.FullscreenStatus) ? state.FullscreenStatus : request.FullscreenStatus.Trim();
         state.ConnectionStatus = string.IsNullOrWhiteSpace(request.ConnectionStatus) ? "Online" : request.ConnectionStatus.Trim();
         state.EnvironmentStatus = attempt.Status == ExamAttemptStatus.PausedByProctor ? "PausedByTeacher" : "Normal";
-        state.SuspicionScore = attempt.SuspicionScore;
-        state.RiskLevel = ProctoringRiskHelper.GetRiskLevel(attempt.SuspicionScore);
-        state.LastHeartbeatAt = DateTime.UtcNow;
+
+        state = await _proctoringPolicyService.ApplyHeartbeatPolicyAsync(attempt, state, request, ct);
+        attempt.SuspicionScore = state.SuspicionScore;
+        await _db.SaveChangesAsync(ct);
 
         var saved = await _proctoringRepository.UpsertStateAsync(state, ct);
         return new ProctoringStateDto

@@ -1,3 +1,4 @@
+using EduGuard.Application.DTOs.Proctoring;
 using EduGuard.Application.Repositories.Interfaces;
 using EduGuard.Application.Services.Interfaces;
 using EduGuard.Domain.Entities;
@@ -10,15 +11,18 @@ namespace EduGuard.Infrastructure.Proctoring;
 public class ProctoringActionService : IProctoringActionService
 {
     private readonly AppDbContext _db;
+    private readonly IExamMonitoringNotifier _examMonitoringNotifier;
     private readonly IExamMonitoringService _examMonitoringService;
     private readonly IProctoringRepository _proctoringRepository;
 
     public ProctoringActionService(
         AppDbContext db,
+        IExamMonitoringNotifier examMonitoringNotifier,
         IExamMonitoringService examMonitoringService,
         IProctoringRepository proctoringRepository)
     {
         _db = db;
+        _examMonitoringNotifier = examMonitoringNotifier;
         _examMonitoringService = examMonitoringService;
         _proctoringRepository = proctoringRepository;
     }
@@ -65,8 +69,24 @@ public class ProctoringActionService : IProctoringActionService
 
     public async Task WarnStudentAsync(int attemptId, string teacherId, IReadOnlyList<string> roles, string reason, CancellationToken ct = default)
     {
-        await GetAttemptForTeacherActionAsync(attemptId, teacherId, roles, ct);
+        var attempt = await GetAttemptForTeacherActionAsync(attemptId, teacherId, roles, ct);
         await LogActionAsync(attemptId, teacherId, "WARN_STUDENT", reason, ct);
+
+        var state = await _proctoringRepository.GetStateByAttemptIdAsync(attemptId, ct);
+        if (state is not null)
+        {
+            state.WarningCount += 1;
+            state.LatestWarningAt = DateTime.UtcNow;
+            await _proctoringRepository.UpsertStateAsync(state, ct);
+        }
+
+        await _examMonitoringNotifier.SendProctoringWarningAsync(new ProctoringWarningDto
+        {
+            ExamId = attempt.ExamId,
+            AttemptId = attemptId,
+            Message = string.IsNullOrWhiteSpace(reason) ? "Giáo viên nhắc nhở bạn tập trung làm bài." : reason.Trim(),
+            SentAt = DateTime.UtcNow
+        }, ct);
     }
 
     private async Task<ExamAttempt> GetAttemptForTeacherActionAsync(int attemptId, string teacherId, IReadOnlyList<string> roles, CancellationToken ct)

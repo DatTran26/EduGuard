@@ -19,6 +19,7 @@ import CameraPreview from "../../proctoring/components/CameraPreview";
 import ExamWatermark from "../../proctoring/components/ExamWatermark";
 import { useCameraStream } from "../../proctoring/hooks/useCameraStream";
 import { useStudentWebRtcPublisher } from "../../proctoring/hooks/useStudentWebRtcPublisher";
+import { useStudentProctoringEvents } from "../../proctoring/hooks/useStudentProctoringEvents";
 import {
   getProctoringHeartbeatIntervalMs,
   isProctoringRequired,
@@ -219,6 +220,10 @@ export default function ExamAttemptPage() {
     attemptId,
     enabled: proctoringEnabled,
     mediaStream: streamRef,
+  });
+  useStudentProctoringEvents({
+    attemptId,
+    enabled: proctoringEnabled,
   });
   const orderedResultQuestions = useMemo(() => {
     if (!Array.isArray(result?.questions) || result.questions.length === 0) {

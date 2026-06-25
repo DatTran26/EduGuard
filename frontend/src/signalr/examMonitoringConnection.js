@@ -2,6 +2,7 @@ import { createSignalRConnection } from "./signalrConnection";
 
 export const EXAM_MONITORING_EVENTS = {
   receiveAntiCheatWarning: "ReceiveAntiCheatWarning",
+  receiveProctoringWarning: "ReceiveProctoringWarning",
   teacherRequestedWatch: "TeacherRequestedWatch",
   teacherStoppedWatch: "TeacherStoppedWatch",
   receiveWebRtcOffer: "ReceiveWebRtcOffer",
