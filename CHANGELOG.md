@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Backend
 
+- Fixed real-time notifications for students by broadcasting classroom notifications via `INotificationNotifier` on creation.
+- Added `Notification` and `UserNotification` tables to SQL Server database with cascading delete rules for user notifications.
+- Implemented `NotificationService` that handles classroom notifications creation for teachers, fetching announcements of a classroom, and get/mark-as-read/mark-all-as-read API operations.
+- Registered `INotificationService` in DI container and exposed endpoints under `NotificationsController` protected by JWT role authorization, including `GET /api/notifications/classroom/{classroomId}`.
 - Added `POST /api/exams/{id}/questions/import` for Teacher/Admin question import from `.csv`, `.xlsx`, `.txt`, `.docx`, and text-based `.pdf` files.
 - Added all-or-nothing import validation for file size, supported extension, content type, required columns, `question_type`, `correct_answer`, and `score` before saving questions.
 - Added official Teacher/Admin import template listing and download APIs: `GET /api/exams/question-import/templates` and `GET /api/exams/question-import/templates/{fileName}`.
@@ -18,6 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Frontend
 
+- Redesigned the Teacher Dashboard to be lighter, more compact, and cleaner:
+  - Replaced the large Hero section with a clean title and quick action buttons row (`Tạo bài tập`, `Tạo đề thi`, `Gửi thông báo`).
+  - Arranged the 6 KPI cards (`Lớp`, `Sinh viên`, `Bài kiểm tra`, `Bài tập`, `Tỉ lệ nộp bài`, `Cảnh báo bất thường`) in a single row without text wrapping.
+  - Relocated the "Hoạt động 7 ngày gần nhất" line chart to the top (immediately below the title) side-by-side with "Cơ cấu trạng thái bài kiểm tra".
+  - Removed all card sub-descriptions to simplify the user interface.
+  - Updated sidebar color `--color-obsidian` to `#1E293B` and active items to use background `#243B55` with a subtle white border/inset shadow.
+- Added "Xem thông báo" link to Student sidebar navigation pointing to `/notifications` with the `FiBell` icon.
+- Removed "Thông báo" and "Giám sát thi" from Teacher sidebar navigation.
+- Added `notificationApi.js` supporting classroom notifications creation, fetching classroom announcements, user notifications, unread count, and mark-as-read/mark-all-as-read actions.
+- Added route `/notifications` and built `NotificationsPage.jsx` displaying a clean notifications inbox with relative dates and reading status.
+- Integrated a notification tab in the teacher's classroom view (`TeacherNotificationTab.jsx`) displaying sent announcements, with a "Tạo thông báo" button to toggle the form.
+- Updated `TopBar.jsx` header bell and dropdown to call live backend notification APIs, update unread count dynamically, and support read updates. Removed unnecessary detail descriptions from the UI.
 - Added a centered sub-navigation bar (tab switcher) to the Student "Bài kiểm tra" page, allowing students to switch between "Bài thi" (Exams) and "Bài tập" (Assignments) with custom page title updates.
 - Integrated classroom assignment data for students by fetching and mapping them in memory, supporting search filtering by name/description alongside classroom filters.
 - Created an expandable assignment details card visualizer that displays grading score, teacher feedback, maximum points, and submission/grading dates.
@@ -53,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed the Teacher exam create payload so draft/preview answer IDs are no longer sent as non-numeric temporary strings, preventing `POST /api/classrooms/{id}/exams` from failing with `400` during the first save; also trimmed the final create CTA UI and removed the extra in-page import success explanation.
 - Fixed the Teacher create CTA so the final `Tạo đề` button now submits the exam form explicitly via `requestSubmit()`, and removed the redundant `Thêm vào đề nháp` action from draft file-import flow because previewed questions are already saved together with the exam.
 - Fixed the Teacher create/import workspace so the final `Tạo đề` action now calls the shared exam submit callback directly, imported review questions can be edited before save/commit, and edited review items are persisted as real questions instead of re-importing the original file.
+- Fixed a follow-up regression in the Teacher exam create flow so the footer `Tạo đề` / `Lưu thay đổi đề` action now binds directly to the HTML form via the `form` attribute, preventing missed submits caused by the callback-ref bridge.
 - Fixed backend exam import build blockers by replacing the ambiguous preview-question mapper method group and removing a duplicate `file` local declaration in `ExamsController`.
 - Fixed Swagger/OpenAPI generation for multipart question import by binding the uploaded file through a form model.
 - Fixed tabular import parsing for CSV/XLSX templates that contain title or instruction rows before the real header row, and ignored trailing note rows.
@@ -110,3 +127,5 @@ Stable release promoted from `v1.1.0-rc.1` after RC validation (auth + classroom
 - Backend scaffold: `EduGuard.Api`, `Domain`, `Application`, and `Infrastructure` projects (.NET 8)
 - Frontend folder structure for auth, exams, classrooms, assignments, anti-cheat, and notifications
 - Project documentation suite (`docs/01`–`08`), design tokens (`design.md`), and UI guidelines
+
+

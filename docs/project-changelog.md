@@ -1,5 +1,165 @@
 # Project Changelog
 
+## Feature: Teacher Dashboard Layout & Sidebar Redesign
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Teacher Dashboard Layout & Sidebar Redesign.
+- Purpose and user/business impact: Improve usability, readability, and speed of access to vital teacher metrics and actions. Placing the activity chart at the top lets teachers see student engagement immediately, and the lighter navy sidebar combined with clearer active state highlights improves navigation flow.
+- Files or modules changed: `TeacherDashboardPage.jsx`, `index.css`.
+
+Changed files:
+
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/index.css`
+
+Technical summary:
+
+- Changed sidebar color variable `--color-obsidian` from `#0b1120` to `#1E293B`.
+- Updated `.eg-sidebar-link-active` background to `#243b55` and replaced the blue gradient with a subtle white border/inset shadow.
+- Replaced the large page hero with a header row featuring "Dashboard giảng viên" title and quick action buttons for `Tạo bài tập`, `Tạo đề thi`, and `Gửi thông báo`.
+- Mapped and reordered 6 KPI cards (`Lớp`, `Sinh viên`, `Bài kiểm tra`, `Bài tập`, `Tỉ lệ nộp bài`, `Cảnh báo bất thường`) in a single responsive row, ensuring no text wrapping via CSS `whitespace-nowrap truncate min-w-0`.
+- Moved the "Hoạt động 7 ngày gần nhất" line chart up to sit side-by-side with "Cơ cấu trạng thái bài kiểm tra".
+- Stripped all subheadings and descriptive helper text from dashboard cards to maintain a clean title-only presentation.
+- Synchronized loading skeletons to match the new structure.
+
+Validation:
+
+- Frontend builds successfully (`npm run build`).
+- Visual check passes: layout fits laptop screens without vertical bloat, navigation items are highly visible.
+
+---
+
+## Fix: Student Notifications Bell Count & Navigation Updates
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Student notifications bell count and navigation updates.
+- Purpose and user/business impact: Resolves the issue where students did not see their unread count badge update immediately after a teacher published a notification. Added a "Xem thông báo" sidebar item for students, and cleaned up unused "Thông báo" and "Giám sát thi" items from the Teacher sidebar.
+- Files or modules changed: `NotificationService.cs`, `roleRoutes.js`, `Sidebar.jsx`.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/Notifications/notification-service.cs`
+- `frontend/src/routes/roleRoutes.js`
+- `frontend/src/components/layout/Sidebar.jsx`
+
+Technical summary:
+
+- Injected `INotificationNotifier` into `NotificationService` and invoked `SendToUserAsync` for every active student in the classroom when a notification is created.
+- Added "Xem thông báo" for role Student pointing to `/notifications`.
+- Removed "Thông báo" and "Giám sát thi" from `ROLE_NAVIGATION_ITEMS.Teacher`.
+- Mapped "Xem thông báo" to the `FiBell` icon in the sidebar.
+
+Validation:
+
+- Backend compiles successfully (`dotnet build`).
+- Frontend builds successfully (`npm run build`).
+
+---
+
+## Feature: System Classroom Notifications
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: System Classroom Notifications.
+- Purpose and user/business impact: Enables teachers to send notifications to their students within classrooms they manage. Students receive these notifications, see unread counts on the header bell icon, and can mark notifications as read individually or all at once.
+- Files or modules changed: Backend entities (Notification, UserNotification, ApplicationUser, Classroom), EF Core configurations, DTOs, INotificationService, NotificationService, NotificationsController, frontend api (notificationApi.js), AppRoutes, teacher workspace tabs, TeacherNotificationTab, TeacherClassroomWorkspace, NotificationsPage, TopBar.
+
+Changed files:
+
+- `backend/EduGuard.Domain/Entities/Notification.cs`
+- `backend/EduGuard.Domain/Entities/UserNotification.cs`
+- `backend/EduGuard.Domain/Entities/ApplicationUser.cs`
+- `backend/EduGuard.Domain/Entities/Classroom.cs`
+- `backend/EduGuard.Infrastructure/Data/Configurations/notification-configuration.cs`
+- `backend/EduGuard.Infrastructure/Data/Configurations/user-notification-configuration.cs`
+- `backend/EduGuard.Infrastructure/Data/app-db-context.cs`
+- `backend/EduGuard.Application/DTOs/Notifications/CreateNotificationRequest.cs`
+- `backend/EduGuard.Application/DTOs/Notifications/NotificationDto.cs`
+- `backend/EduGuard.Application/DTOs/Notifications/ClassroomNotificationDto.cs`
+- `backend/EduGuard.Application/DTOs/Notifications/UnreadCountDto.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-notification-service.cs`
+- `backend/EduGuard.Infrastructure/Notifications/notification-service.cs`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `backend/EduGuard.Api/Controllers/notifications-controller.cs`
+- `backend/EduGuard.Infrastructure/Assignments/assignment-service.cs`
+- `frontend/src/api/notificationApi.js`
+- `frontend/src/routes/routeConfig.js`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/features/classrooms/components/teacher-classroom-tabs.js`
+- `frontend/src/features/classrooms/components/TeacherNotificationTab.jsx`
+- `frontend/src/features/classrooms/components/TeacherClassroomWorkspace.jsx`
+- `frontend/src/features/notifications/pages/NotificationsPage.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Designed `Notification` and `UserNotification` EF core schemas with Cascade deletes for UserNotifications on Notification/User deletes, and Restrict deletes on Sender.
+- Implemented `NotificationService` for managing and delivering classroom-targeted notifications, checking permissions, querying active members, counting unread statuses, and batch database modifications. Added query support for fetching notifications sent to a specific classroom (`GetClassroomNotificationsAsync`).
+- Exposed JWT secured endpoints under `NotificationsController` mapping to the notification service operations, including `GET /api/notifications/classroom/{classroomId}`.
+- Added `notificationApi.js` in frontend for Axios interactions with backend API endpoints.
+- Re-architected `TeacherNotificationTab` UI: it now displays the list of notifications sent inside the classroom. Clicking a new "Tạo thông báo" button toggles a form card to create notifications, which closes and refreshes the list on success.
+- Added `NotificationsPage` for students displaying notifications list with relative dates and reading status.
+- Updated `TopBar` bell icon badge count, listing the latest 5 unread alerts, and managing read updates. Removed verbose descriptions in empty state and dropdown headers.
+
+Validation:
+
+- Ran backend build successfully via `dotnet build`.
+- Migration created and database updated successfully using local `dotnet-ef` 8.0.0 tool.
+
+Known risks / rollback / follow-up:
+
+- Normalizing user primary keys as `string` to match the project's default ASP.NET Core Identity configuration, rather than using `int` as initially specified.
+- Rollback: Revert database migration `AddNotificationEntities` and remove the added file changes.
+
+## Feature: Teacher exam create CTA native form submit
+
+Date: 2026-06-21
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Teacher exam create CTA native form submit.
+- Purpose and user/business impact: Prevent teachers from hitting a dead-looking footer `Tạo đề` button in the exam create flow by wiring the primary CTA directly to the form submission lifecycle.
+- Files or modules changed: teacher exam list/create flow page, main changelog, and project changelog.
+
+Changed files:
+
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Removed the callback-ref submit bridge (`createExamSubmitRef` / `onRegisterSubmit`) from the Teacher exam create flow page.
+- Assigned a stable `formId` to `ExamForm` in `ExamListPage.jsx` and switched the footer CTA to native HTML form submission with `type="submit"` and `form={createExamFormId}`.
+- Kept the existing disabled-state guards (`isSubmitting`, `isQuestionSubmitting`, `isImportSubmitting`) intact, so only the submit trigger path changed.
+
+Validation:
+
+- Ran `npm run build -- --outDir temp-build-exam-create-check` inside `frontend/` - passed.
+- Ran `npm run build` inside `frontend/` - failed to write the default `dist/` output because `public/capybara-avatar.svg -> dist/capybara-avatar.svg` returned `EPERM`; the alternate outDir build above completed successfully.
+
+Known risks / rollback / follow-up:
+
+- This fix addresses the Teacher exam list/create flow CTA specifically. Any future external submit buttons should use the same native `form` binding pattern instead of recreating a callback-ref bridge.
+- Rollback: revert `frontend/src/features/exams/pages/ExamListPage.jsx` to restore the previous callback-ref submit wiring.
 ## Feature: Student assignment submission state consistency across views
 
 Date: 2026-06-21
@@ -2822,3 +2982,6 @@ Validation:
 Unresolved questions:
 
 - None.
+
+
+
