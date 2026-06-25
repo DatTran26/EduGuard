@@ -9,6 +9,7 @@ using EduGuard.Infrastructure.Classrooms;
 using EduGuard.Infrastructure.Exams;
 using EduGuard.Infrastructure.Data;
 using EduGuard.Application.Options;
+using EduGuard.Infrastructure.Proctoring;
 using EduGuard.Infrastructure.Redis;
 using EduGuard.Infrastructure.Repositories;
 using EduGuard.Infrastructure.Users;
@@ -104,10 +105,23 @@ public static class DependencyInjection
         services.AddScoped<IExamService, ExamService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
         services.AddScoped<IExamMonitoringService, ExamMonitoringService>();
+        services.AddScoped<IProctoringRepository, ProctoringRepository>();
+        services.AddScoped<IProctoringService, ProctoringService>();
+        services.AddScoped<IExamLobbyService, ExamLobbyService>();
+        services.AddScoped<IStudentProctoringService, StudentProctoringService>();
+        services.AddScoped<ILiveProctoringService, LiveProctoringService>();
+        services.AddScoped<IProctoringActionService, ProctoringActionService>();
+        services.AddScoped<IProctoringEvidenceService, ProctoringEvidenceService>();
+        services.AddScoped<IProctoringPolicyService, ProctoringPolicyService>();
+        services.AddScoped<IProctoringDetectionService, ProctoringDetectionService>();
+        services.AddScoped<IProctoringSignalingService, ProctoringSignalingService>();
+        services.AddScoped<IWebRtcConfigService, WebRtcConfigService>();
         services.AddScoped<ICheatingLogRepository, CheatingLogRepository>();
         services.AddScoped<IAntiCheatService, AntiCheatService>();
 
         services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionName));
+        services.Configure<WebRtcOptions>(configuration.GetSection(WebRtcOptions.SectionName));
+        services.Configure<ProctoringOptions>(configuration.GetSection(ProctoringOptions.SectionName));
         var redisOptions = configuration.GetSection(RedisOptions.SectionName).Get<RedisOptions>() ?? new RedisOptions();
 
         if (redisOptions.Enabled)
@@ -132,6 +146,7 @@ public static class DependencyInjection
         }
 
         services.AddScoped<IExamCacheInvalidator, ExamCacheInvalidator>();
+        services.AddHttpClient("ProctoringAi");
 
         return services;
     }

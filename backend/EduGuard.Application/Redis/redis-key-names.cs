@@ -16,4 +16,13 @@ public static class RedisKeyNames
 
     public static string ExamPresenceIndex(string instanceName, int examId) =>
         $"{Prefix(instanceName)}exam:{examId}:presence:attempts";
+
+    public static string ExamLobbyStudent(string instanceName, int examId, string studentId) =>
+        $"{Prefix(instanceName)}exam:{examId}:lobby:{studentId}";
+
+    public static string ExamLobbyIndex(string instanceName, int examId) =>
+        $"{Prefix(instanceName)}exam:{examId}:lobby:students";
+
+    public static string ProctoringWatchLock(string instanceName, int attemptId) =>
+        $"{Prefix(instanceName)}proctoring:watch-lock:{attemptId}";
 }

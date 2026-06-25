@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { antiCheatApi } from "../../../api/antiCheatApi";
 import { examApi } from "../../../api/examApi";
 import { examAttemptApi } from "../../../api/examAttemptApi";
@@ -12,8 +12,20 @@ import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import {
   buildExamDetailPathByRole,
+  buildStudentExamPausedPath,
   getExamListPathByRole,
 } from "../../../routes/routeConfig";
+import CameraPreview from "../../proctoring/components/CameraPreview";
+import ExamWatermark from "../../proctoring/components/ExamWatermark";
+import { useCameraStream } from "../../proctoring/hooks/useCameraStream";
+import { useProctoringAutoDetection } from "../../proctoring/hooks/useProctoringAutoDetection";
+import { useProctoringHeartbeat } from "../../proctoring/hooks/useProctoringHeartbeat";
+import { useStudentWebRtcPublisher } from "../../proctoring/hooks/useStudentWebRtcPublisher";
+import { useStudentProctoringEvents } from "../../proctoring/hooks/useStudentProctoringEvents";
+import {
+  getProctoringHeartbeatIntervalMs,
+  isProctoringRequired,
+} from "../../proctoring/utils/proctoringRouting";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import { getStoredAccessToken } from "../../../utils/tokenStorage";
 import {
@@ -142,6 +154,7 @@ function formatResultAnswerSummary(questionResult) {
 
 export default function ExamAttemptPage() {
   const { attemptId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
   const [attempt, setAttempt] = useState(null);
@@ -194,6 +207,34 @@ export default function ExamAttemptPage() {
   const suspicionMeta = getSuspicionScoreMeta(attempt?.suspicionScore ?? 0);
   const latestWarningMeta = getAntiCheatEventMeta(lastWarning?.type);
   const attemptSettingItems = useMemo(() => buildAttemptSettingItems(exam), [exam]);
+  const proctoringEnabled =
+    attempt?.status === "InProgress" && isProctoringRequired(exam);
+  const { videoRef, status: cameraStatus, streamRef } = useCameraStream({ enabled: proctoringEnabled });
+  useProctoringHeartbeat({
+    attemptId,
+    enabled: proctoringEnabled,
+    intervalMs: getProctoringHeartbeatIntervalMs(exam),
+    cameraStatus: cameraStatus === "ready" ? "On" : "Off",
+    fullscreenStatus: isFullscreen ? "On" : "Off",
+    connectionStatus: isOnline ? "Online" : "Offline",
+    videoRef,
+  });
+  useProctoringAutoDetection({
+    attemptId,
+    enabled: proctoringEnabled && Boolean(exam?.settings?.enableExternalDeviceDetection),
+    intervalMs: 4000,
+    videoRef,
+  });
+  useStudentWebRtcPublisher({
+    attemptId,
+    enabled: proctoringEnabled,
+    mediaStream: streamRef,
+  });
+  useStudentProctoringEvents({
+    attemptId,
+    examId: exam?.id,
+    enabled: proctoringEnabled,
+  });
   const orderedResultQuestions = useMemo(() => {
     if (!Array.isArray(result?.questions) || result.questions.length === 0) {
       return [];
@@ -495,6 +536,12 @@ export default function ExamAttemptPage() {
         }
 
         const attemptData = attemptResponse.data;
+
+        if (attemptData.status === "PausedByProctor") {
+          navigate(buildStudentExamPausedPath(attemptId), { replace: true });
+          return;
+        }
+
         const examResponse = await examApi.getById(attemptData.examId);
 
         if (!isMounted) {
@@ -548,7 +595,34 @@ export default function ExamAttemptPage() {
     return () => {
       isMounted = false;
     };
-  }, [attemptId, showToast]);
+  }, [attemptId, navigate, showToast]);
+
+  useEffect(() => {
+    if (attempt?.status !== "InProgress" || !attemptId) {
+      return undefined;
+    }
+
+    let isMounted = true;
+    const intervalId = window.setInterval(async () => {
+      try {
+        const response = await examAttemptApi.getById(attemptId);
+        if (!isMounted) {
+          return;
+        }
+
+        if (response.data.status === "PausedByProctor") {
+          navigate(buildStudentExamPausedPath(attemptId), { replace: true });
+        }
+      } catch {
+        // Ignore transient polling errors.
+      }
+    }, 10000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, [attempt?.status, attemptId, navigate]);
 
   useEffect(() => {
     if (attempt?.status !== "InProgress") {
@@ -931,6 +1005,10 @@ export default function ExamAttemptPage() {
       </div>
 
       <div className="mx-auto max-w-[1360px] px-4 py-6 md:px-6 lg:px-8">
+        <div className="relative">
+          {proctoringEnabled ? (
+            <ExamWatermark attemptId={attempt.id} examId={exam.id} />
+          ) : null}
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-6">
             {lastWarning ? (
@@ -1167,7 +1245,19 @@ export default function ExamAttemptPage() {
             </Card>
           </aside>
         </div>
+        </div>
       </div>
+
+      {proctoringEnabled ? (
+        <div className="fixed bottom-4 right-4 z-40 w-[240px] rounded-[16px] border border-border bg-surface p-3 shadow-lg">
+          <CameraPreview
+            errorMessage=""
+            label="Camera giám sát"
+            status={cameraStatus}
+            videoRef={videoRef}
+          />
+        </div>
+      ) : null}
 
       {exam.settings.requireFullscreen && !isFullscreen ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/58 px-4">

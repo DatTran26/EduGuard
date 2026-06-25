@@ -15,7 +15,11 @@ import { useToast } from "../../../hooks/useToast";
 import {
   getExamListPathByRole,
   buildStudentExamAttemptPath,
+  buildStudentDeviceCheckPath,
+  buildStudentExamLobbyPath,
+  buildTeacherProctoringPath,
 } from "../../../routes/routeConfig";
+import { isExamLobbyRequired, isProctoringRequired } from "../../proctoring/utils/proctoringRouting";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import AttemptMonitorPanel from "../../anti-cheat/components/AttemptMonitorPanel";
 import ExamForm from "../components/ExamForm";
@@ -721,6 +725,16 @@ export default function ExamDetailPage() {
     setIsStartingAttempt(true);
 
     try {
+      if (isExamLobbyRequired(exam)) {
+        navigate(buildStudentExamLobbyPath(examId));
+        return;
+      }
+
+      if (isProctoringRequired(exam)) {
+        navigate(buildStudentDeviceCheckPath(examId));
+        return;
+      }
+
       const response = await examAttemptApi.start(examId);
       navigate(buildStudentExamAttemptPath(response.data.attempt.id));
     } catch (error) {
@@ -896,6 +910,10 @@ export default function ExamDetailPage() {
           user?.role === "Student" ? (
             <Button disabled={isStartingAttempt} onClick={handleStartAttempt}>
               {isStartingAttempt ? "Đang vào phòng thi..." : "Bắt đầu làm bài"}
+            </Button>
+          ) : exam.settings?.enableLiveProctoring ? (
+            <Button as={Link} to={buildTeacherProctoringPath(exam.id)} variant="secondary">
+              Mở phòng giám sát live
             </Button>
           ) : null
         }
