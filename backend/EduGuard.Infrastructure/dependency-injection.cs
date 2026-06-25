@@ -111,6 +111,9 @@ public static class DependencyInjection
         services.AddScoped<IStudentProctoringService, StudentProctoringService>();
         services.AddScoped<ILiveProctoringService, LiveProctoringService>();
         services.AddScoped<IProctoringActionService, ProctoringActionService>();
+        services.AddScoped<IProctoringEvidenceService, ProctoringEvidenceService>();
+        services.AddScoped<IProctoringPolicyService, ProctoringPolicyService>();
+        services.AddScoped<IProctoringDetectionService, ProctoringDetectionService>();
         services.AddScoped<IProctoringSignalingService, ProctoringSignalingService>();
         services.AddScoped<IWebRtcConfigService, WebRtcConfigService>();
         services.AddScoped<ICheatingLogRepository, CheatingLogRepository>();
@@ -118,6 +121,7 @@ public static class DependencyInjection
 
         services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionName));
         services.Configure<WebRtcOptions>(configuration.GetSection(WebRtcOptions.SectionName));
+        services.Configure<ProctoringOptions>(configuration.GetSection(ProctoringOptions.SectionName));
         var redisOptions = configuration.GetSection(RedisOptions.SectionName).Get<RedisOptions>() ?? new RedisOptions();
 
         if (redisOptions.Enabled)
@@ -142,6 +146,7 @@ public static class DependencyInjection
         }
 
         services.AddScoped<IExamCacheInvalidator, ExamCacheInvalidator>();
+        services.AddHttpClient("ProctoringAi");
 
         return services;
     }

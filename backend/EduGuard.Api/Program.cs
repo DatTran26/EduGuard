@@ -1,6 +1,9 @@
 using EduGuard.Api.Authorization;
+using EduGuard.Api.Hubs;
+using EduGuard.Api.Realtime;
 using EduGuard.Api.Swagger;
 using EduGuard.Application.DTOs.Common;
+using EduGuard.Application.Services.Interfaces;
 using EduGuard.Application.Validators;
 using EduGuard.Infrastructure;
 using FluentValidation;
@@ -8,6 +11,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Avoid the Windows EventLog provider breaking local API requests when the
+// current user cannot write to the .NET Runtime event log source.
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -17,10 +26,14 @@ builder.Services.AddControllers()
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApiAuthorizationResponses();
+builder.Services.AddSignalR();
+builder.Services.AddScoped<IExamMonitoringNotifier, SignalRExamMonitoringNotifier>();
+builder.Services.AddScoped<INotificationNotifier, SignalRNotificationNotifier>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SchemaFilter<OptionalOpenApiSchemaFilter>();
+    options.OperationFilter<FormFileOperationFilter>();
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -48,7 +61,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? new[] { "http://localhost:5173" };
+    ?? new[] { "http://localhost:5173", "http://127.0.0.1:5173" };
 
 builder.Services.AddCors(options =>
 {
@@ -56,7 +69,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(corsOrigins)
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -68,12 +82,20 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("FrontendPolicy");
+
+app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NotificationHub>("/hubs/notifications");
+app.MapHub<ExamMonitoringHub>("/hubs/exam-monitoring");
 
 app.Run();

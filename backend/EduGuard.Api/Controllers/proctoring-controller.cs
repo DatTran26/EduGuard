@@ -16,6 +16,8 @@ public class ProctoringController : ControllerBase
     private readonly IStudentProctoringService _studentProctoringService;
     private readonly ILiveProctoringService _liveProctoringService;
     private readonly IProctoringActionService _proctoringActionService;
+    private readonly IProctoringEvidenceService _proctoringEvidenceService;
+    private readonly IProctoringDetectionService _proctoringDetectionService;
     private readonly IWebRtcConfigService _webRtcConfigService;
 
     public ProctoringController(
@@ -24,6 +26,8 @@ public class ProctoringController : ControllerBase
         IStudentProctoringService studentProctoringService,
         ILiveProctoringService liveProctoringService,
         IProctoringActionService proctoringActionService,
+        IProctoringEvidenceService proctoringEvidenceService,
+        IProctoringDetectionService proctoringDetectionService,
         IWebRtcConfigService webRtcConfigService)
     {
         _proctoringService = proctoringService;
@@ -31,6 +35,8 @@ public class ProctoringController : ControllerBase
         _studentProctoringService = studentProctoringService;
         _liveProctoringService = liveProctoringService;
         _proctoringActionService = proctoringActionService;
+        _proctoringEvidenceService = proctoringEvidenceService;
+        _proctoringDetectionService = proctoringDetectionService;
         _webRtcConfigService = webRtcConfigService;
     }
 
@@ -181,6 +187,52 @@ public class ProctoringController : ControllerBase
         {
             await _proctoringActionService.TerminateAttemptAsync(attemptId, GetUserId()!, GetRoles(), request.Reason, ct);
             return ApiResponse<object>.CreateSuccess(null!, "Đã kết thúc bài làm.");
+        });
+
+    [HttpPost("api/attempts/{attemptId:int}/proctoring/evidence")]
+    [Authorize(Roles = "Teacher,Admin")]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<ApiResponse<ProctoringEvidenceDto>>> UploadEvidence(
+        int attemptId,
+        IFormFile file,
+        [FromForm] string evidenceType,
+        [FromForm] string captureSource,
+        [FromForm] string? triggerEventType,
+        CancellationToken ct) =>
+        await ExecuteTeacherAsync(async () =>
+        {
+            await using var stream = file.OpenReadStream();
+            return await _proctoringEvidenceService.SaveEvidenceAsync(
+                attemptId,
+                GetUserId()!,
+                GetRoles(),
+                stream,
+                file.FileName,
+                file.ContentType,
+                evidenceType,
+                captureSource,
+                triggerEventType,
+                ct);
+        });
+
+    [HttpPost("api/attempts/{attemptId:int}/proctoring/detect")]
+    [Authorize(Roles = "Teacher,Admin,Student")]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<ApiResponse<ProctoringDetectionResultDto>>> Detect(
+        int attemptId,
+        IFormFile file,
+        CancellationToken ct) =>
+        await ExecuteAsync(async () =>
+        {
+            await using var stream = file.OpenReadStream();
+            return await _proctoringDetectionService.DetectAsync(
+                attemptId,
+                GetUserId()!,
+                GetRoles(),
+                stream,
+                file.FileName,
+                file.ContentType,
+                ct);
         });
 
     [HttpGet("api/exams/{examId:int}/proctors")]
