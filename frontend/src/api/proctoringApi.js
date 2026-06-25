@@ -75,4 +75,14 @@ export const proctoringApi = {
     );
     return { ...apiResponse, data: normalizeProctoringState(apiResponse.data) };
   },
+
+  async getWebRtcConfig() {
+    const apiResponse = await requestApi(() => axiosClient.get("/proctoring/webrtc-config"));
+    return {
+      ...apiResponse,
+      data: {
+        iceServers: apiResponse.data?.iceServers ?? [{ urls: "stun:stun.l.google.com:19302" }],
+      },
+    };
+  },
 };

@@ -16,19 +16,32 @@ public class ProctoringController : ControllerBase
     private readonly IStudentProctoringService _studentProctoringService;
     private readonly ILiveProctoringService _liveProctoringService;
     private readonly IProctoringActionService _proctoringActionService;
+    private readonly IWebRtcConfigService _webRtcConfigService;
 
     public ProctoringController(
         IProctoringService proctoringService,
         IExamLobbyService examLobbyService,
         IStudentProctoringService studentProctoringService,
         ILiveProctoringService liveProctoringService,
-        IProctoringActionService proctoringActionService)
+        IProctoringActionService proctoringActionService,
+        IWebRtcConfigService webRtcConfigService)
     {
         _proctoringService = proctoringService;
         _examLobbyService = examLobbyService;
         _studentProctoringService = studentProctoringService;
         _liveProctoringService = liveProctoringService;
         _proctoringActionService = proctoringActionService;
+        _webRtcConfigService = webRtcConfigService;
+    }
+
+    [HttpGet("api/proctoring/webrtc-config")]
+    [Authorize(Roles = "Teacher,Student,Admin")]
+    public ActionResult<ApiResponse<object>> GetWebRtcConfig()
+    {
+        return Ok(ApiResponse<object>.CreateSuccess(new
+        {
+            iceServers = _webRtcConfigService.GetIceServers()
+        }));
     }
 
     [HttpGet("api/exams/{examId:int}/proctoring/room")]

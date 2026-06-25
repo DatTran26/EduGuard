@@ -18,7 +18,7 @@ import {
 import CameraPreview from "../../proctoring/components/CameraPreview";
 import ExamWatermark from "../../proctoring/components/ExamWatermark";
 import { useCameraStream } from "../../proctoring/hooks/useCameraStream";
-import { useProctoringHeartbeat } from "../../proctoring/hooks/useProctoringHeartbeat";
+import { useStudentWebRtcPublisher } from "../../proctoring/hooks/useStudentWebRtcPublisher";
 import {
   getProctoringHeartbeatIntervalMs,
   isProctoringRequired,
@@ -206,7 +206,7 @@ export default function ExamAttemptPage() {
   const attemptSettingItems = useMemo(() => buildAttemptSettingItems(exam), [exam]);
   const proctoringEnabled =
     attempt?.status === "InProgress" && isProctoringRequired(exam);
-  const { videoRef, status: cameraStatus } = useCameraStream({ enabled: proctoringEnabled });
+  const { videoRef, status: cameraStatus, streamRef } = useCameraStream({ enabled: proctoringEnabled });
   useProctoringHeartbeat({
     attemptId,
     enabled: proctoringEnabled,
@@ -214,6 +214,11 @@ export default function ExamAttemptPage() {
     cameraStatus: cameraStatus === "ready" ? "On" : "Off",
     fullscreenStatus: isFullscreen ? "On" : "Off",
     connectionStatus: isOnline ? "Online" : "Offline",
+  });
+  useStudentWebRtcPublisher({
+    attemptId,
+    enabled: proctoringEnabled,
+    mediaStream: streamRef,
   });
   const orderedResultQuestions = useMemo(() => {
     if (!Array.isArray(result?.questions) || result.questions.length === 0) {
