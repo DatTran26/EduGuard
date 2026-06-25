@@ -4,7 +4,7 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD` / `devH` / `devB` (nhánh dev theo feature)
-**Cập nhật:** 2026-06-25 (merge `feat/live-proctoring-control-room` → `release`: Live Proctoring Control Room v1 — backend entities/API/SignalR/WebRTC, student lobby+camera, teacher control room, evidence upload, YOLO proxy, admin AI settings, tile live preview, manual clip, CheatingLog; còn E2E WebRTC thật, cài Ultralytics production, responsive polish, merge devB/devD)
+**Cập nhật:** 2026-06-25 (ship **v1.2.0** → `main` via PR #22; `release` @ `bb45b10` — Live Proctoring v1 + evidence auth + TURN/AI Docker docs; devD/devB/feat đã sync)
 **Ghi chú devB:** 2026-06-15 (backend cấu hình bài kiểm tra UTC, validation publish trắc nghiệm MVP; Phase 8 SignalR xong; Phase 9 Redis — kế hoạch chi tiết)
 **Ghi chú devH:** 2026-06-17 (đã xử lý conflict khi pull từ `release` theo hướng giữ bản release; hoàn thiện FE cho cấu hình lịch thi UTC+7, chia nhóm form, bỏ checkbox publish, thêm checklist điều kiện publish và nút `Publish đề` gọi backend thật, đồng thời bổ sung hướng dẫn theo loại câu hỏi và thống kê đầy đủ các dạng câu ở trang chi tiết đề thi; khóa exact version dependency frontend, thêm `.npmrc` `save-exact` và chuẩn hóa `package-lock.json` để giảm conflict merge với `release`; làm mới UI đăng nhập theo layout 2 cột cân giữa màn hình với panel thương hiệu và login card riêng)
 **Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
