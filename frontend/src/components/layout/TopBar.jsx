@@ -240,16 +240,21 @@ export default function TopBar({
   }
 
   useEffect(() => {
-    fetchNotifications();
+    function handleNotificationRefresh() {
+      void fetchNotifications();
+    }
 
-    window.addEventListener("eduguard:notification-updated", fetchNotifications);
-    window.addEventListener("eduguard:notification", fetchNotifications);
+    const initialFetchTimeout = window.setTimeout(handleNotificationRefresh, 0);
+
+    window.addEventListener("eduguard:notification-updated", handleNotificationRefresh);
+    window.addEventListener("eduguard:notification", handleNotificationRefresh);
     
-    const interval = setInterval(fetchNotifications, 30000);
+    const interval = setInterval(handleNotificationRefresh, 30000);
 
     return () => {
-      window.removeEventListener("eduguard:notification-updated", fetchNotifications);
-      window.removeEventListener("eduguard:notification", fetchNotifications);
+      window.clearTimeout(initialFetchTimeout);
+      window.removeEventListener("eduguard:notification-updated", handleNotificationRefresh);
+      window.removeEventListener("eduguard:notification", handleNotificationRefresh);
       clearInterval(interval);
     };
   }, []);
@@ -397,11 +402,15 @@ export default function TopBar({
       ? classroomBreadcrumbState.label
       : "Đang tải lớp..."
     : "";
+  const breadcrumbLabelOverrides = {
+    ...(user?.role === "Student" ? { [routeConfig.studentExams]: "Bài kiểm tra" } : {}),
+    ...(classroomBreadcrumbPath && classroomBreadcrumbLabel
+      ? { [classroomBreadcrumbPath]: classroomBreadcrumbLabel }
+      : {}),
+  };
   const breadcrumbItems = buildBreadcrumbTrail(
     location?.pathname,
-    classroomBreadcrumbPath && classroomBreadcrumbLabel
-      ? { [classroomBreadcrumbPath]: classroomBreadcrumbLabel }
-      : {},
+    breadcrumbLabelOverrides,
   );
   const shouldCondenseSearch = classroomBreadcrumbLabel.length > 18;
 

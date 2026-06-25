@@ -3,9 +3,6 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { classroomApi } from "../../../api/classroomApi";
 import { examApi } from "../../../api/examApi";
 import { assignmentApi } from "../../../api/assignmentApi";
-import Badge from "../../../components/common/Badge";
-import TextInput from "../../../components/forms/TextInput";
-import { formatShortDateTime } from "../../../utils/formatDate";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
@@ -23,11 +20,14 @@ import { buildExamFormValues } from "../components/exam-form-helpers";
 import { validateQuestionImportFile } from "../components/teacher-question-workspace-helpers";
 import { buildDraftQuestion, resequenceDraftQuestions } from "./exam-create-draft-helpers";
 import {
-  getAssignmentDeadlineMeta,
-  getAssignmentStatusMeta,
   resolveAssignmentSubmission,
   sortAssignmentsByDeadline,
 } from "../../assignments/assignmentHelpers";
+import StudentTaskTabs from "../components/StudentTaskTabs";
+import StudentAssignmentCard from "../components/StudentAssignmentCard";
+import StudentExamCard from "../components/StudentExamCard";
+import StudentTaskGrid from "../components/StudentTaskGrid";
+import StudentTaskToolbar from "../components/StudentTaskToolbar";
 
 // Hàm này tính vài con số nhanh cho đầu trang danh sách đề thi để màn hình bớt khô hơn.
 function buildSummaryItems(exams, role) {
@@ -109,6 +109,21 @@ function buildStudentAssignmentCard(assignment, classroomName, userId) {
   };
 }
 
+async function loadStudentAssignmentsByClassrooms(classrooms = [], userId) {
+  const assignmentPromises = classrooms.map((classroom) =>
+    assignmentApi.getByClassroom(classroom.id)
+      .then((response) =>
+        (response.data ?? []).map((assignment) => ({
+          ...buildStudentAssignmentCard(assignment, classroom.name, userId),
+        })),
+      )
+      .catch(() => []),
+  );
+
+  const allAssignments = await Promise.all(assignmentPromises);
+  return allAssignments.flat();
+}
+
 // Trang này là trung tâm CRUD đề thi cho Teacher và là trang xem danh sách cho Admin/Student.
 export default function ExamListPage() {
   const { user } = useAuth();
@@ -121,8 +136,7 @@ export default function ExamListPage() {
   const [studentSubTab, setStudentSubTab] = useState("exams");
   const [assignments, setAssignments] = useState([]);
   const [isAssignmentsLoading, setIsAssignmentsLoading] = useState(false);
-  const [assignmentSearchQuery, setAssignmentSearchQuery] = useState("");
-  const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
+  const [studentSearchQuery, setStudentSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingExamId, setDeletingExamId] = useState(null);
@@ -153,9 +167,6 @@ export default function ExamListPage() {
   const pageCopy = getPageCopyByRole(user?.role);
   const isTeacherView = user?.role === "Teacher";
   const isStudentView = user?.role === "Student";
-  const pageTitle = isStudentView
-    ? (studentSubTab === "assignments" ? "Bài tập của bạn" : "Bài thi của bạn")
-    : pageCopy.title;
   const canCreateExam = isTeacherView && classrooms.length > 0;
   const isCreateFlowDraftMode = isCreateFormVisible && !activeCreateExam;
   const createExamFormId = "teacher-exam-create-flow-form";
@@ -216,18 +227,11 @@ export default function ExamListPage() {
 
       if (user?.role === "Student") {
         setIsAssignmentsLoading(true);
-        const classroomsList = classroomResponse.data;
-        const assignmentPromises = classroomsList.map((classroom) =>
-          assignmentApi.getByClassroom(classroom.id)
-            .then((res) =>
-              res.data.map((assign) => ({
-                ...buildStudentAssignmentCard(assign, classroom.name, user?.id),
-              }))
-            )
-            .catch(() => [])
+        const nextAssignments = await loadStudentAssignmentsByClassrooms(
+          classroomResponse.data,
+          user?.id,
         );
-        const allAssignmentsNested = await Promise.all(assignmentPromises);
-        setAssignments(allAssignmentsNested.flat());
+        setAssignments(nextAssignments);
       }
     } catch (error) {
       const nextMessage = error.message || "Không thể tải danh sách bài kiểm tra.";
@@ -265,21 +269,16 @@ export default function ExamListPage() {
 
         if (user?.role === "Student") {
           setIsAssignmentsLoading(true);
-          const classroomsList = classroomResponse.data;
-          const assignmentPromises = classroomsList.map((classroom) =>
-            assignmentApi.getByClassroom(classroom.id)
-              .then((res) =>
-                res.data.map((assign) => ({
-                  ...buildStudentAssignmentCard(assign, classroom.name, user?.id),
-                }))
-              )
-              .catch(() => [])
+          const nextAssignments = await loadStudentAssignmentsByClassrooms(
+            classroomResponse.data,
+            user?.id,
           );
-          const allAssignmentsNested = await Promise.all(assignmentPromises);
+
           if (!isMounted) {
             return;
           }
-          setAssignments(allAssignmentsNested.flat());
+
+          setAssignments(nextAssignments);
         }
       } catch (error) {
         if (!isMounted) {
@@ -434,6 +433,8 @@ export default function ExamListPage() {
   }
 
   function handleResetStudentFilters() {
+    setStudentSearchQuery("");
+
     if (selectedClassroomId) {
       setIsLoading(true);
     }
@@ -1008,6 +1009,36 @@ export default function ExamListPage() {
     { label: "Đang diễn ra", value: "open" },
     { label: "Đã đóng", value: "closed" },
   ];
+  const normalizedStudentSearchQuery = studentSearchQuery.trim().toLowerCase();
+  const filteredAssignments = isStudentView
+    ? sortAssignmentsByDeadline(
+      (selectedClassroomId
+        ? assignments.filter((assignment) => String(assignment.classroomId) === String(selectedClassroomId))
+        : assignments
+      ).filter((assignment) =>
+        [assignment.title, assignment.classroomName].some((value) =>
+          String(value || "").toLowerCase().includes(normalizedStudentSearchQuery),
+        ),
+      ),
+    )
+    : [];
+  const filteredStudentExams = isStudentView
+    ? filterExamsByScheduleStatus(
+      (selectedClassroomId
+        ? exams.filter((exam) => String(exam.classroomId) === String(selectedClassroomId))
+        : exams
+      ).filter((exam) =>
+        [exam.title, exam.classroomName].some((value) =>
+          String(value || "").toLowerCase().includes(normalizedStudentSearchQuery),
+        ),
+      ),
+      selectedScheduleStatus,
+    )
+    : [];
+  const studentSectionTitle = studentSubTab === "assignments" ? "Danh sách bài tập" : "Danh sách bài thi";
+  const studentVisibleCount = studentSubTab === "assignments"
+    ? filteredAssignments.length
+    : filteredStudentExams.length;
 
   return (
     <div className="space-y-6">
@@ -1032,16 +1063,7 @@ export default function ExamListPage() {
           ) : null}
         </div>
       ) : isStudentView ? (
-        <div className="flex flex-col gap-4 rounded-[24px] border border-border bg-surface p-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-3">
-            <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-4 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-info">
-              {getRoleLabel(user?.role)}
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-[2.2rem]">
-              {pageTitle}
-            </h1>
-          </div>
-        </div>
+        <StudentTaskTabs activeTab={studentSubTab} onTabChange={setStudentSubTab} />
       ) : (
         <PageHeader
           actions={
@@ -1057,41 +1079,6 @@ export default function ExamListPage() {
           title={pageCopy.title}
         />
       )}
-
-      {isStudentView ? (
-        <div className="flex justify-center">
-          <div className="rounded-[24px] border border-border bg-surface p-1.5 inline-flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setStudentSubTab("exams");
-                setExpandedAssignmentId(null);
-              }}
-              className={`rounded-full px-6 py-2 text-sm font-semibold transition-all duration-200 ${
-                studentSubTab === "exams"
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-secondary hover:bg-surface-sunken hover:text-primary"
-              }`}
-            >
-              Bài thi
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setStudentSubTab("assignments");
-                setExpandedAssignmentId(null);
-              }}
-              className={`rounded-full px-6 py-2 text-sm font-semibold transition-all duration-200 ${
-                studentSubTab === "assignments"
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-secondary hover:bg-surface-sunken hover:text-primary"
-              }`}
-            >
-              Bài tập
-            </button>
-          </div>
-        </div>
-      ) : null}
 
       {!isStudentView ? (
         <div
@@ -1109,37 +1096,43 @@ export default function ExamListPage() {
         </div>
       ) : null}
 
-      <Card className="space-y-4">
-        <h3 className="text-lg font-semibold text-primary">Bộ lọc</h3>
-        <div className={`grid gap-4 ${isStudentView ? "lg:grid-cols-2" : "max-w-md"}`}>
-          <Select
-            id="exam-list-classroom-filter"
-            label="Lớp học"
-            onChange={(event) => handleClassroomFilterChange(event.target.value)}
-            options={filterOptions}
-            value={selectedClassroomId}
-          />
-          {isStudentView ? (
-            studentSubTab === "exams" ? (
-              <Select
-                id="exam-list-schedule-status-filter"
-                label="Trạng thái lịch thi"
-                onChange={(event) => handleScheduleStatusFilterChange(event.target.value)}
-                options={scheduleFilterOptions}
-                value={selectedScheduleStatus}
-              />
-            ) : (
-              <TextInput
-                id="student-assignment-search"
-                label="Tìm kiếm bài tập"
-                value={assignmentSearchQuery}
-                onChange={(event) => setAssignmentSearchQuery(event.target.value)}
-                placeholder="Tên bài tập hoặc mô tả..."
-              />
-            )
-          ) : null}
+      {isStudentView ? (
+        <StudentTaskToolbar
+          classrooms={classrooms}
+          onClassroomChange={handleClassroomFilterChange}
+          onReset={handleResetStudentFilters}
+          onSearchChange={setStudentSearchQuery}
+          onStatusChange={handleScheduleStatusFilterChange}
+          searchTerm={studentSearchQuery}
+          selectedClassroomId={selectedClassroomId}
+          selectedStatus={studentSubTab === "exams" ? selectedScheduleStatus : ""}
+          statusOptions={studentSubTab === "exams" ? scheduleFilterOptions : []}
+        />
+      ) : (
+        <Card className="space-y-4">
+          <h3 className="text-lg font-semibold text-primary">Bộ lọc</h3>
+          <div className="max-w-md">
+            <Select
+              id="exam-list-classroom-filter"
+              label="Lớp học"
+              onChange={(event) => handleClassroomFilterChange(event.target.value)}
+              options={filterOptions}
+              value={selectedClassroomId}
+            />
+          </div>
+        </Card>
+      )}
+
+      {isStudentView ? (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-primary">{studentSectionTitle}</h2>
+          </div>
+          <p className="text-sm font-medium text-secondary">
+            {studentVisibleCount} mục
+          </p>
         </div>
-      </Card>
+      ) : null}
 
       {isTeacherView ? (
         classrooms.length > 0 ? (
@@ -1234,174 +1227,56 @@ export default function ExamListPage() {
         )
       ) : null}
 
-      {isStudentView && studentSubTab === "assignments" ? (
-        isAssignmentsLoading ? (
-          <div className="grid gap-6">
-            <SkeletonExamCard />
-            <SkeletonExamCard />
-            <SkeletonExamCard />
-          </div>
-        ) : (() => {
-          const normalizedSearchQuery = assignmentSearchQuery.trim().toLowerCase();
-          const filteredAssignments = sortAssignmentsByDeadline(
-            (selectedClassroomId
-              ? assignments.filter((a) => String(a.classroomId) === String(selectedClassroomId))
-              : assignments
-            ).filter((a) =>
-              [a.title, a.description, a.classroomName].some((value) =>
-                String(value || "").toLowerCase().includes(normalizedSearchQuery),
-              )
-            ),
-          );
-
-          if (filteredAssignments.length > 0) {
-            return (
-              <div className="grid gap-6">
-                {filteredAssignments.map((assignment) => {
-                  const isExpanded = expandedAssignmentId === assignment.id;
-                  const submission = resolveAssignmentSubmission(assignment, user?.id);
-                  const statusMeta = getAssignmentStatusMeta(assignment, submission);
-                  const deadlineMeta = getAssignmentDeadlineMeta(assignment);
-                  return (
-                    <Card
-                      key={assignment.id}
-                      className="space-y-4 transition-all duration-200 hover:shadow-md"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
-                          <Badge variant={deadlineMeta.variant}>{deadlineMeta.label}</Badge>
-                          <span className="text-xs text-secondary font-medium">
-                            Hạn nộp: {assignment.deadline ? formatShortDateTime(assignment.deadline) : "Không có"}
-                          </span>
-                        </div>
-                        <span className="text-sm font-semibold text-secondary">
-                          {assignment.classroomName}
-                        </span>
-                      </div>
-
-                      <div
-                        className="cursor-pointer group space-y-2"
-                        onClick={() => setExpandedAssignmentId(isExpanded ? null : assignment.id)}
-                      >
-                        <h3 className="text-xl font-bold text-primary group-hover:text-blue-600 transition-colors">
-                          {assignment.title}
-                        </h3>
-                        {!isExpanded && assignment.description ? (
-                          <p className="text-sm text-secondary line-clamp-2 leading-relaxed">
-                            {assignment.description}
-                          </p>
-                        ) : null}
-                      </div>
-
-                      {isExpanded ? (
-                        <div className="mt-4 pt-4 border-t border-border space-y-4">
-                          {assignment.description ? (
-                            <div className="space-y-1">
-                              <h4 className="text-xs font-bold uppercase tracking-wider text-secondary">
-                                Mô tả chi tiết
-                              </h4>
-                              <p className="text-sm text-primary whitespace-pre-wrap leading-relaxed">
-                                {assignment.description}
-                              </p>
-                            </div>
-                          ) : null}
-
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="rounded-[16px] border border-border bg-surface-sunken p-4">
-                              <h4 className="text-xs font-bold uppercase tracking-wider text-secondary mb-1">
-                                Thang điểm tối đa
-                              </h4>
-                              <p className="text-lg font-bold text-primary">
-                                {assignment.maxScore} điểm
-                              </p>
-                            </div>
-
-                            <div className="rounded-[16px] border border-border bg-surface-sunken p-4 space-y-2">
-                              <h4 className="text-xs font-bold uppercase tracking-wider text-secondary">
-                                Trạng thái & Kết quả chấm
-                              </h4>
-                              {submission ? (
-                                <div className="space-y-2">
-                                  <p className="text-sm font-semibold text-success">
-                                    Đã nộp lúc: {submission.submittedAt ? formatShortDateTime(submission.submittedAt) : "Đã ghi nhận trong phiên này"}
-                                  </p>
-                                  {submission.score !== null && typeof submission.score === "number" ? (
-                                    <div className="space-y-2">
-                                      <p className="text-base font-bold text-primary">
-                                        Điểm đạt:{" "}
-                                        <span className="text-success text-lg">
-                                          {submission.score}
-                                        </span>{" "}
-                                        / {assignment.maxScore}
-                                      </p>
-                                      {submission.feedback ? (
-                                        <div className="rounded-[12px] bg-surface border border-border p-3">
-                                          <p className="text-xs font-semibold text-secondary">
-                                            Nhận xét của giảng viên:
-                                          </p>
-                                          <p className="text-sm text-primary italic mt-1 leading-relaxed">
-                                            "{submission.feedback}"
-                                          </p>
-                                        </div>
-                                      ) : null}
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm text-secondary italic">
-                                      Bài nộp đang chờ giảng viên chấm điểm.
-                                    </p>
-                                  )}
-                                </div>
-                              ) : (
-                                <p className="text-sm font-semibold text-danger">Chưa nộp bài</p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex justify-end">
-                            <button
-                              type="button"
-                              onClick={() => setExpandedAssignmentId(null)}
-                              className="text-xs font-semibold text-secondary hover:text-primary transition-colors"
-                            >
-                              Thu gọn
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </Card>
-                  );
-                })}
-              </div>
-            );
-          }
-
-          return (
+      {isStudentView ? (
+        studentSubTab === "assignments" ? (
+          isAssignmentsLoading ? (
+            <StudentTaskGrid>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <SkeletonExamCard key={`student-assignment-skeleton-${index}`} />
+              ))}
+            </StudentTaskGrid>
+          ) : filteredAssignments.length > 0 ? (
+            <StudentTaskGrid>
+              {filteredAssignments.map((assignment) => (
+                <StudentAssignmentCard key={assignment.id} assignment={assignment} />
+              ))}
+            </StudentTaskGrid>
+          ) : (
             <EmptyState
-              title={
-                assignments.length > 0
-                  ? "Không tìm thấy bài tập phù hợp với bộ lọc."
-                  : "Chưa có bài tập nào."
-              }
+              title={assignments.length > 0 ? "Không tìm thấy bài tập phù hợp" : "Chưa có bài tập nào"}
               action={
                 assignments.length > 0 ? (
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      setAssignmentSearchQuery("");
-                      if (selectedClassroomId) {
-                        setIsLoading(true);
-                      }
-                      updateExamListSearchParams("", "");
-                    }}
-                  >
+                  <Button variant="secondary" onClick={handleResetStudentFilters}>
                     Xóa bộ lọc
                   </Button>
                 ) : null
               }
             />
-          );
-        })()
+          )
+        ) : isLoading ? (
+          <StudentTaskGrid>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <SkeletonExamCard key={`student-exam-skeleton-${index}`} />
+            ))}
+          </StudentTaskGrid>
+        ) : filteredStudentExams.length > 0 ? (
+          <StudentTaskGrid>
+            {filteredStudentExams.map((exam) => (
+              <StudentExamCard key={exam.id} exam={exam} />
+            ))}
+          </StudentTaskGrid>
+        ) : (
+          <EmptyState
+            title={exams.length > 0 ? "Không tìm thấy bài thi phù hợp" : "Chưa có bài thi nào"}
+            action={
+              exams.length > 0 ? (
+                <Button variant="secondary" onClick={handleResetStudentFilters}>
+                  Xóa bộ lọc
+                </Button>
+              ) : null
+            }
+          />
+        )
       ) : isLoading ? (
         <div className="grid gap-6">
           <SkeletonExamCard />
@@ -1419,15 +1294,6 @@ export default function ExamListPage() {
             />
           ))}
         </div>
-      ) : isStudentView && exams.length > 0 ? (
-        <EmptyState
-          title="Không có bài kiểm tra phù hợp với bộ lọc."
-          action={
-            <Button variant="secondary" onClick={handleResetStudentFilters}>
-              Xóa bộ lọc
-            </Button>
-          }
-        />
       ) : (
         <EmptyState title="Chưa có bài kiểm tra nào." />
       )}

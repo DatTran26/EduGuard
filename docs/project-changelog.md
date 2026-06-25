@@ -1,5 +1,84 @@
 # Project Changelog
 
+## Feature: Redesign Student Task Center (Bài tập / Bài thi)
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Redesign Student Task Center (Bài tập / Bài thi).
+- Purpose and user/business impact: Make the student task page easier to scan and less ambiguous by separating assignments and exams into distinct tabs, showing only one list at a time, and switching from the older long list/expand pattern to compact responsive cards.
+- Files or modules changed: `ExamListPage.jsx`, `TopBar.jsx`, `StudentTaskTabs.jsx`, `StudentTaskToolbar.jsx`, `StudentTaskGrid.jsx`, `StudentAssignmentCard.jsx`, `StudentExamCard.jsx`.
+
+Changed files:
+
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/features/exams/components/StudentTaskTabs.jsx`
+- `frontend/src/features/exams/components/StudentTaskToolbar.jsx`
+- `frontend/src/features/exams/components/StudentTaskGrid.jsx`
+- `frontend/src/features/exams/components/StudentAssignmentCard.jsx`
+- `frontend/src/features/exams/components/StudentExamCard.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Replaced the student page header in `ExamListPage.jsx` with a compact `StudentTaskTabs` block showing the fixed title `Bài tập / Bài thi`, a `Sinh viên` role label, and a clear segmented switch for `Bài thi` / `Bài tập`.
+- Added `StudentTaskToolbar` with only the required filters: classroom select, `Tìm theo tên...` search input, and the existing exam status filter when the exams tab is active.
+- Stopped rendering both datasets in the same page state. The assignments tab now renders only `StudentAssignmentCard` items, while the exams tab renders only `StudentExamCard` items.
+- Rebuilt both student card types into compact white cards with responsive 1/2/3-column grid layout, concise metadata, small status badges, and action links pointing to the existing classroom-detail or exam-detail routes.
+- Kept the existing API logic intact by preserving the shared exam list fetch and the in-memory student assignment aggregation flow.
+- Added a breadcrumb label override in `TopBar.jsx` so the Student list route displays `Trang chủ > Bài kiểm tra` instead of the generic exams label.
+
+Validation:
+
+- Frontend build passes (`npm run build`).
+
+Known risks / rollback / follow-up:
+
+- The current student exam list API still does not expose student-specific attempt/result metadata. The redesigned exam cards therefore prioritize schedule state (`Sắp mở`, `Đang mở`, `Hết hạn`) and route users into the existing exam detail flow instead of fabricating per-student result data.
+
+---
+
+## Feature: Redesign Student Classrooms Page (Lớp của tôi)
+
+Date: 2026-06-25
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Redesign Student Classrooms Page.
+- Purpose and user/business impact: Simplify and clean the student's "My Classrooms" interface. Wires dynamic pending tasks calculation, a 2-kpi card row, inline search and filtering toolbar, and compact responsive grid cards.
+- Files or modules changed: `ClassroomListPage.jsx`, `StudentClassroomCard.jsx` (New), `StudentClassroomSummary.jsx` (New), `StudentClassroomToolbar.jsx` (New).
+
+Changed files:
+
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `frontend/src/features/classrooms/components/StudentClassroomCard.jsx`
+- `frontend/src/features/classrooms/components/StudentClassroomSummary.jsx`
+- `frontend/src/features/classrooms/components/StudentClassroomToolbar.jsx`
+
+Technical summary:
+
+- Replaced the old bulky student hero block with a simple flex header row containing only the title "Lớp của tôi" and "Tham gia lớp" button.
+- Created `StudentClassroomSummary` displaying total joined classrooms and active pending assignments/exams.
+- Implemented parallel loading of assignments and exams for all student classrooms to calculate the pending tasks count in real-time.
+- Created `StudentClassroomToolbar` featuring search input ("Tìm lớp theo tên hoặc mã lớp...") and simple status filtering dropdown ("Tất cả trạng thái", "Đang học", "Đã kết thúc").
+- Created `StudentClassroomCard` with clean white border, subtle shadow, open/closed status badge, and clear "Vào lớp" CTA button.
+- Updated skeleton loaders and default empty states for the student view.
+- Removed charts, notifications feeds, and side listing panels from student view.
+
+Validation:
+
+- Frontend builds successfully (`npm run build`).
+
+---
+
 ## Feature: Redesign Teacher Classroom Detail Layout & Actions
 
 Date: 2026-06-25

@@ -22,6 +22,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Frontend
 
+- Redesigned the Student's "Bài tập / Bài thi" page (`ExamListPage.jsx`):
+  - Replaced the mixed student list view with a compact page header titled "Bài tập / Bài thi" and a clear segmented switch for `Bài thi` / `Bài tập`.
+  - Rebuilt `StudentTaskTabs.jsx`, `StudentTaskToolbar.jsx`, `StudentTaskGrid.jsx`, `StudentAssignmentCard.jsx`, and `StudentExamCard.jsx` into a responsive card-grid flow with separate loading and empty states per tab.
+  - Student now sees exactly one dataset at a time: the assignments tab renders only assignments, and the exams tab renders only exams.
+  - Kept the existing API/routing flow intact by continuing to fetch exams from the current list API and aggregate assignments from the joined classrooms list, then filtering the visible data by the active tab.
+  - Updated the student breadcrumb label in `TopBar.jsx` so `/student/exams` displays `Trang chủ > Bài kiểm tra`.
+- Redesigned the Student's "Lớp của tôi" (My Classrooms) list page (`ClassroomListPage.jsx`):
+  - Created `StudentClassroomCard.jsx` rendering compact, white-background classroom cards with hover elevations, green status badges, mono join codes, and a prominent "Vào lớp" button.
+  - Created `StudentClassroomSummary.jsx` displaying exactly 2 clean metrics: total joined classrooms and active pending assignments/exams.
+  - Created `StudentClassroomToolbar.jsx` supporting search (by name or join code) and simple status filtering (Tất cả, Đang học, Đã kết thúc).
+  - Integrated the redesigned components in `ClassroomListPage.jsx` for `isStudentView`.
+  - Replaced the bulky student hero block with a simple flex header row containing only the title "Lớp của tôi" and "Tham gia lớp" action button.
+  - Implemented parallel loading of assignments and exams for all student classrooms to calculate the pending tasks count in real-time.
+  - Removed charts, notification widgets, and side lists to keep the view focused and simple.
 - Redesigned the Teacher's Classroom Detail (Chi tiết lớp học của giảng viên) page (`ClassroomDetailPage.jsx`):
   - Created `ClassDetailHeader.jsx` replacing the hero banner with a compact layout displaying title, status badges, copyable join codes, and quick action shortcuts.
   - Created `ClassQuickStats.jsx` with a 5-column grid for key metrics (members, assignments, exams, submission rate, alerts).

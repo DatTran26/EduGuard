@@ -23,6 +23,9 @@ import { examAttemptApi } from "../../../api/examAttemptApi";
 import ClassroomSummary from "../components/ClassroomSummary";
 import ClassroomToolbar from "../components/ClassroomToolbar";
 import TeacherClassroomCard from "../components/TeacherClassroomCard";
+import StudentClassroomCard from "../components/StudentClassroomCard";
+import StudentClassroomSummary from "../components/StudentClassroomSummary";
+import StudentClassroomToolbar from "../components/StudentClassroomToolbar";
 
 async function enrichClassroomsForTeacher(classroomsList) {
   if (!classroomsList || classroomsList.length === 0) {
@@ -96,6 +99,57 @@ async function enrichClassroomsForTeacher(classroomsList) {
   }
 }
 
+async function fetchStudentPendingTasksCount(classroomsList) {
+  if (!classroomsList || classroomsList.length === 0) {
+    return 0;
+  }
+  try {
+    const assignmentPromises = classroomsList.map(async (cls) => {
+      try {
+        const res = await assignmentApi.getByClassroom(cls.id);
+        return res.data || [];
+      } catch {
+        return [];
+      }
+    });
+
+    const examPromise = (async () => {
+      try {
+        const res = await examApi.getAll();
+        return res.data || [];
+      } catch {
+        return [];
+      }
+    })();
+
+    const [assignmentLists, exams] = await Promise.all([
+      Promise.all(assignmentPromises),
+      examPromise,
+    ]);
+
+    const allAssignments = assignmentLists.flat();
+    const now = new Date();
+
+    const pendingAssignments = allAssignments.filter((assignment) => {
+      const hasSubmitted = Boolean(assignment.mySubmission);
+      const isOverdue = assignment.deadline ? new Date(assignment.deadline) < now : false;
+      return !hasSubmitted && !isOverdue;
+    });
+
+    const pendingExams = exams.filter((exam) => {
+      const hasAttempted = (exam.attemptCount || 0) > 0;
+      const isPublished = exam.isPublished;
+      const isClosed = exam.endTime ? new Date(exam.endTime) < now : false;
+      return !hasAttempted && isPublished && !isClosed;
+    });
+
+    return pendingAssignments.length + pendingExams.length;
+  } catch (error) {
+    console.error("Lỗi khi tính số lượng bài cần làm:", error);
+    return 0;
+  }
+}
+
 export default function ClassroomListPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -111,6 +165,9 @@ export default function ClassroomListPage() {
   const [teacherSearchTerm, setTeacherSearchTerm] = useState("");
   const [teacherStatusFilter, setTeacherStatusFilter] = useState("all");
   const [teacherSortOption, setTeacherSortOption] = useState("newest");
+  const [pendingTasksCount, setPendingTasksCount] = useState(0);
+  const [studentSearchTerm, setStudentSearchTerm] = useState("");
+  const [studentStatusFilter, setStudentStatusFilter] = useState("all");
   const isCreateFormVisible = searchParams.get("create") === "1";
   const pageCopy = getPageCopyByRole(user?.role);
   const summaryItems = buildSummaryItems(classrooms);
@@ -122,7 +179,9 @@ export default function ClassroomListPage() {
     value: classrooms.length,
   };
   const isCompactGridView = isTeacherView || isStudentView;
-  const classroomGridClassName = isTeacherView
+  const classroomGridClassName = isStudentView
+    ? "grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+    : isTeacherView
     ? "grid gap-6 md:grid-cols-2"
     : isCompactGridView
     ? "grid gap-4 md:grid-cols-2 xl:grid-cols-4"
@@ -152,10 +211,31 @@ export default function ClassroomListPage() {
     return result;
   };
 
+  const getVisibleStudentClassrooms = () => {
+    let result = [...classrooms];
+    if (studentSearchTerm.trim()) {
+      const term = studentSearchTerm.toLowerCase().trim();
+      result = result.filter(
+        (cls) =>
+          cls.name.toLowerCase().includes(term) ||
+          (cls.joinCode && cls.joinCode.toLowerCase().includes(term))
+      );
+    }
+    if (studentStatusFilter !== "all") {
+      result = result.filter((cls) => {
+        const status = cls.status ?? "active";
+        return status === studentStatusFilter;
+      });
+    }
+    return result;
+  };
+
   const visibleClassrooms = isAdminView
     ? filterAndSortAdminClassrooms(classrooms, adminSearchTerm, adminSortOption)
     : isTeacherView
     ? getVisibleTeacherClassrooms()
+    : isStudentView
+    ? getVisibleStudentClassrooms()
     : classrooms;
 
   useEffect(() => {
@@ -196,6 +276,9 @@ export default function ClassroomListPage() {
       let enrichedData = response.data || [];
       if (user?.role === "Teacher") {
         enrichedData = await enrichClassroomsForTeacher(enrichedData);
+      } else if (user?.role === "Student") {
+        const count = await fetchStudentPendingTasksCount(enrichedData);
+        setPendingTasksCount(count);
       }
       setClassrooms(enrichedData);
       setLoadErrorMessage("");
@@ -221,6 +304,9 @@ export default function ClassroomListPage() {
         let enrichedData = response.data || [];
         if (user?.role === "Teacher") {
           enrichedData = await enrichClassroomsForTeacher(enrichedData);
+        } else if (user?.role === "Student") {
+          const count = await fetchStudentPendingTasksCount(enrichedData);
+          if (isMounted) setPendingTasksCount(count);
         }
         setClassrooms(enrichedData);
         setLoadErrorMessage("");
@@ -301,7 +387,7 @@ export default function ClassroomListPage() {
     if (user?.role === "Student") {
       return (
         <EmptyState
-          title="Bạn chưa tham gia lớp học nào."
+          title="Bạn chưa tham gia lớp học nào"
           action={
             <Link className="eg-button eg-button-primary" to={routeConfig.studentJoinClassroom}>
               Tham gia lớp
@@ -325,21 +411,13 @@ export default function ClassroomListPage() {
           </Button>
         </div>
       ) : isStudentView ? (
-        <div className="eg-page-hero flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-3">
-            <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-4 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-info">
-              {getRoleLabel(user?.role)}
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-[2.2rem]">
-              {pageCopy.title}
-            </h1>
-          </div>
-
-          {pageCopy.actionLabel ? (
-            <Link className="eg-button eg-button-primary" to={routeConfig.studentJoinClassroom}>
-              {pageCopy.actionLabel}
-            </Link>
-          ) : null}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
+          <h1 className="text-2xl font-bold text-[#0F172A]">
+            Lớp của tôi
+          </h1>
+          <Link className="eg-button eg-button-primary" to={routeConfig.studentJoinClassroom}>
+            Tham gia lớp
+          </Link>
         </div>
       ) : (
         <PageHeader
@@ -373,6 +451,22 @@ export default function ClassroomListPage() {
         </>
       ) : null}
 
+      {isStudentView ? (
+        <>
+          <StudentClassroomSummary
+            joinedClassroomsCount={classrooms.length}
+            pendingTasksCount={pendingTasksCount}
+            isLoading={isLoading}
+          />
+          <StudentClassroomToolbar
+            searchTerm={studentSearchTerm}
+            onSearchChange={setStudentSearchTerm}
+            statusFilter={studentStatusFilter}
+            onStatusFilterChange={setStudentStatusFilter}
+          />
+        </>
+      ) : null}
+
       {isAdminView ? (
         <ClassroomListAdminFilters
           searchTerm={adminSearchTerm}
@@ -400,22 +494,33 @@ export default function ClassroomListPage() {
         </div>
       ) : visibleClassrooms.length > 0 ? (
         <div className={classroomGridClassName}>
-          {visibleClassrooms.map((classroom) => (
-            isTeacherView ? (
-              <TeacherClassroomCard
-                key={classroom.id}
-                classroom={classroom}
-                onCopyCode={handleCopyCode}
-              />
-            ) : (
+          {visibleClassrooms.map((classroom) => {
+            if (isTeacherView) {
+              return (
+                <TeacherClassroomCard
+                  key={classroom.id}
+                  classroom={classroom}
+                  onCopyCode={handleCopyCode}
+                />
+              );
+            }
+            if (isStudentView) {
+              return (
+                <StudentClassroomCard
+                  key={classroom.id}
+                  classroom={classroom}
+                />
+              );
+            }
+            return (
               <ClassroomCard
                 key={classroom.id}
                 classroom={classroom}
                 layout={classroomCardLayout}
                 onCopyCode={handleCopyCode}
               />
-            )
-          ))}
+            );
+          })}
         </div>
       ) : isAdminView && classrooms.length > 0 ? (
         <EmptyState
@@ -436,6 +541,21 @@ export default function ClassroomListPage() {
                 setTeacherSearchTerm("");
                 setTeacherStatusFilter("all");
                 setTeacherSortOption("newest");
+              }}
+            >
+              Xóa bộ lọc
+            </Button>
+          }
+        />
+      ) : isStudentView && classrooms.length > 0 ? (
+        <EmptyState
+          title="Không tìm thấy lớp học phù hợp."
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setStudentSearchTerm("");
+                setStudentStatusFilter("all");
               }}
             >
               Xóa bộ lọc
