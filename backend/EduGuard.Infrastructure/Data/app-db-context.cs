@@ -1,3 +1,4 @@
+using EduGuard.Domain.Constants;
 using EduGuard.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -5,8 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EduGuard.Infrastructure.Data;
 
-public class AppDbContext
-    : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
+public class AppDbContext : IdentityDbContext<ApplicationUser>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
@@ -25,18 +25,24 @@ public class AppDbContext
     public DbSet<ExamAttempt> ExamAttempts => Set<ExamAttempt>();
     public DbSet<StudentAnswer> StudentAnswers => Set<StudentAnswer>();
     public DbSet<CheatingLog> CheatingLogs => Set<CheatingLog>();
+    public DbSet<LiveProctoringSession> LiveProctoringSessions => Set<LiveProctoringSession>();
+    public DbSet<ProctoringEvidence> ProctoringEvidences => Set<ProctoringEvidence>();
+    public DbSet<ProctoringState> ProctoringStates => Set<ProctoringState>();
+    public DbSet<ProctorAction> ProctorActions => Set<ProctorAction>();
+    public DbSet<ExamProctorAssignment> ExamProctorAssignments => Set<ExamProctorAssignment>();
+    public DbSet<ProctoringAiSettings> ProctoringAiSettings => Set<ProctoringAiSettings>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
         builder.Entity<ApplicationUser>().ToTable("Users");
-        builder.Entity<IdentityRole<int>>().ToTable("Roles");
-        builder.Entity<IdentityUserRole<int>>().ToTable("UserRoles");
-        builder.Entity<IdentityUserClaim<int>>().ToTable("UserClaims");
-        builder.Entity<IdentityUserLogin<int>>().ToTable("UserLogins");
-        builder.Entity<IdentityUserToken<int>>().ToTable("UserTokens");
-        builder.Entity<IdentityRoleClaim<int>>().ToTable("RoleClaims");
+        builder.Entity<IdentityRole>().ToTable("Roles");
+        builder.Entity<IdentityUserRole<string>>().ToTable("UserRoles");
+        builder.Entity<IdentityUserClaim<string>>().ToTable("UserClaims");
+        builder.Entity<IdentityUserLogin<string>>().ToTable("UserLogins");
+        builder.Entity<IdentityUserToken<string>>().ToTable("UserTokens");
+        builder.Entity<IdentityRoleClaim<string>>().ToTable("RoleClaims");
 
         builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
@@ -45,10 +51,10 @@ public class AppDbContext
 
     private static void SeedRoles(ModelBuilder builder)
     {
-        builder.Entity<IdentityRole<int>>().HasData(
-            new IdentityRole<int> { Id = 1, Name = "Admin", NormalizedName = "ADMIN", ConcurrencyStamp = "role-admin-v1" },
-            new IdentityRole<int> { Id = 2, Name = "Teacher", NormalizedName = "TEACHER", ConcurrencyStamp = "role-teacher-v1" },
-            new IdentityRole<int> { Id = 3, Name = "Student", NormalizedName = "STUDENT", ConcurrencyStamp = "role-student-v1" }
+        builder.Entity<IdentityRole>().HasData(
+            new IdentityRole { Id = RoleIds.Admin, Name = "Admin", NormalizedName = "ADMIN", ConcurrencyStamp = "role-admin-v1" },
+            new IdentityRole { Id = RoleIds.Teacher, Name = "Teacher", NormalizedName = "TEACHER", ConcurrencyStamp = "role-teacher-v1" },
+            new IdentityRole { Id = RoleIds.Student, Name = "Student", NormalizedName = "STUDENT", ConcurrencyStamp = "role-student-v1" }
         );
     }
 }

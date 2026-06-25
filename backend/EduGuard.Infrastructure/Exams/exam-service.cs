@@ -1,14 +1,62 @@
 using EduGuard.Application.DTOs.Exams;
+using EduGuard.Application.Options;
+using EduGuard.Application.Redis;
 using EduGuard.Application.Repositories.Interfaces;
 using EduGuard.Application.Services.Interfaces;
 using EduGuard.Domain.Entities;
+using EduGuard.Domain.Enums;
 using EduGuard.Infrastructure.Common;
 using FluentValidation;
+using Microsoft.Extensions.Options;
 
 namespace EduGuard.Infrastructure.Exams;
 
 public class ExamService : IExamService
 {
+    private const long MaxQuestionImportFileBytes = 5 * 1024 * 1024;
+
+    private static readonly HashSet<string> SupportedQuestionImportExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".csv",
+        ".xlsx",
+        ".txt",
+        ".docx",
+        ".pdf"
+    };
+
+    private static readonly Dictionary<string, HashSet<string>> AllowedQuestionImportContentTypesByExtension = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".csv"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "text/csv",
+            "application/csv",
+            "application/vnd.ms-excel",
+            "application/octet-stream"
+        },
+        [".xlsx"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/octet-stream",
+            "application/zip"
+        },
+        [".txt"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "text/plain",
+            "application/octet-stream"
+        },
+        [".docx"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/octet-stream",
+            "application/zip"
+        },
+        [".pdf"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "application/pdf",
+            "application/octet-stream"
+        }
+    };
+
     private readonly IExamRepository _examRepository;
     private readonly IClassroomRepository _classroomRepository;
     private readonly IValidator<CreateExamRequest> _createValidator;
@@ -20,6 +68,9 @@ public class ExamService : IExamService
     private readonly IValidator<CreateAnswerRequest> _createAnswerValidator;
     private readonly IValidator<UpdateAnswerRequest> _updateAnswerValidator;
     private readonly IValidator<PatchAnswerRequest> _patchAnswerValidator;
+    private readonly ICacheService _cacheService;
+    private readonly IExamCacheInvalidator _cacheInvalidator;
+    private readonly RedisOptions _redisOptions;
 
     public ExamService(
         IExamRepository examRepository,
@@ -32,7 +83,10 @@ public class ExamService : IExamService
         IValidator<PatchQuestionRequest> patchQuestionValidator,
         IValidator<CreateAnswerRequest> createAnswerValidator,
         IValidator<UpdateAnswerRequest> updateAnswerValidator,
-        IValidator<PatchAnswerRequest> patchAnswerValidator)
+        IValidator<PatchAnswerRequest> patchAnswerValidator,
+        ICacheService cacheService,
+        IExamCacheInvalidator cacheInvalidator,
+        IOptions<RedisOptions> redisOptions)
     {
         _examRepository = examRepository;
         _classroomRepository = classroomRepository;
@@ -45,13 +99,24 @@ public class ExamService : IExamService
         _createAnswerValidator = createAnswerValidator;
         _updateAnswerValidator = updateAnswerValidator;
         _patchAnswerValidator = patchAnswerValidator;
+        _cacheService = cacheService;
+        _cacheInvalidator = cacheInvalidator;
+        _redisOptions = redisOptions.Value;
     }
 
-    public async Task<ExamDto> CreateAsync(int classroomId, CreateExamRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<ExamDto> CreateAsync(int classroomId, CreateExamRequest request, string teacherId, CancellationToken ct = default)
     {
         await _createValidator.ValidateAndThrowAsync(request, ct);
         var classroom = await ClassroomAccessHelper.RequireClassroomAsync(_classroomRepository, classroomId, ct);
         ClassroomAccessHelper.EnsureTeacherOwnsClassroom(classroom, teacherId);
+
+        var questions = request.Questions ?? [];
+        var preparedQuestions = new List<Question>();
+
+        for (var index = 0; index < questions.Count; index++)
+            preparedQuestions.Add(await BuildQuestionEntityFromRequestAsync(questions[index], index, "Câu hỏi nháp", ct));
+
+        ExamQuestionOrderHelper.Renumber(preparedQuestions);
 
         var exam = new Exam
         {
@@ -60,11 +125,12 @@ public class ExamService : IExamService
             Title = request.Title.Trim(),
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             DurationMinutes = request.DurationMinutes,
-            StartTime = request.StartTime?.ToUniversalTime(),
-            EndTime = request.EndTime?.ToUniversalTime(),
+            StartTime = ExamDateTimeHelper.NormalizeNullableUtc(request.StartTime),
+            EndTime = ExamDateTimeHelper.NormalizeNullableUtc(request.EndTime),
             EnableAntiCheat = request.EnableAntiCheat,
             CreatedAt = DateTime.UtcNow,
-            Setting = BuildSetting(request.Settings)
+            Setting = BuildSetting(request.Settings),
+            Questions = preparedQuestions
         };
 
         await _examRepository.AddAsync(exam, ct);
@@ -73,7 +139,7 @@ public class ExamService : IExamService
     }
 
     public async Task<IReadOnlyList<ExamDto>> GetByClassroomAsync(
-        int classroomId, int userId, IReadOnlyList<string> roles, CancellationToken ct = default)
+        int classroomId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
     {
         var classroom = await ClassroomAccessHelper.RequireClassroomAsync(_classroomRepository, classroomId, ct);
         await ClassroomAccessHelper.EnsureCanAccessClassroomAsync(_classroomRepository, classroom, userId, roles, ct);
@@ -87,13 +153,13 @@ public class ExamService : IExamService
             .ToList();
     }
 
-    public async Task<ExamDto> GetByIdAsync(int examId, int userId, IReadOnlyList<string> roles, CancellationToken ct = default)
+    public async Task<ExamDto> GetByIdAsync(int examId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
     {
         var exam = await RequireAccessibleExamAsync(examId, userId, roles, ct);
         return ExamMapper.MapExam(exam);
     }
 
-    public async Task<ExamDto> UpdateAsync(int examId, UpdateExamRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<ExamDto> UpdateAsync(int examId, UpdateExamRequest request, string teacherId, CancellationToken ct = default)
     {
         await _updateValidator.ValidateAndThrowAsync(request, ct);
         var exam = await RequireTeacherOwnedExamAsync(examId, teacherId, ct);
@@ -102,10 +168,11 @@ public class ExamService : IExamService
         UpsertSetting(exam, request.Settings);
         _examRepository.Update(exam);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(examId, ct);
         return ExamMapper.MapExam(exam);
     }
 
-    public async Task<ExamDto> PatchAsync(int examId, PatchExamRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<ExamDto> PatchAsync(int examId, PatchExamRequest request, string teacherId, CancellationToken ct = default)
     {
         await _patchValidator.ValidateAndThrowAsync(request, ct);
         var exam = await RequireTeacherOwnedExamAsync(examId, teacherId, ct);
@@ -124,10 +191,10 @@ public class ExamService : IExamService
             exam.DurationMinutes = request.DurationMinutes.Value;
 
         if (request.StartTime.IsSpecified)
-            exam.StartTime = request.StartTime.Value?.ToUniversalTime();
+            exam.StartTime = ExamDateTimeHelper.NormalizeNullableUtc(request.StartTime.Value);
 
         if (request.EndTime.IsSpecified)
-            exam.EndTime = request.EndTime.Value?.ToUniversalTime();
+            exam.EndTime = ExamDateTimeHelper.NormalizeNullableUtc(request.EndTime.Value);
 
         if (request.EnableAntiCheat.IsSpecified)
             exam.EnableAntiCheat = request.EnableAntiCheat.Value;
@@ -140,38 +207,128 @@ public class ExamService : IExamService
         exam.UpdatedAt = DateTime.UtcNow;
         _examRepository.Update(exam);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(examId, ct);
         return ExamMapper.MapExam(exam);
     }
 
-    public async Task DeleteAsync(int examId, int teacherId, CancellationToken ct = default)
+    public async Task DeleteAsync(int examId, string teacherId, CancellationToken ct = default)
     {
         var exam = await RequireTeacherOwnedExamAsync(examId, teacherId, ct);
         _examRepository.Remove(exam);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamAsync(examId, ct);
     }
 
-    public async Task<ExamDto> PublishAsync(int examId, int teacherId, CancellationToken ct = default)
+    public async Task<ExamDto> PublishAsync(int examId, string teacherId, CancellationToken ct = default)
     {
         var exam = await RequireTeacherOwnedExamAsync(examId, teacherId, ct);
-        if (exam.Questions.Count == 0)
-            throw new InvalidOperationException("Đề thi cần ít nhất một câu hỏi trước khi publish.");
+        EnsureCanPublishExam(exam);
 
         exam.IsPublished = true;
         exam.UpdatedAt = DateTime.UtcNow;
         _examRepository.Update(exam);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(examId, ct);
         return ExamMapper.MapExam(exam);
     }
 
-    public async Task<IReadOnlyList<QuestionDto>> GetQuestionsAsync(
-        int examId, int userId, IReadOnlyList<string> roles, CancellationToken ct = default)
+    public async Task<QuestionImportResultDto> PreviewQuestionImportAsync(
+        Stream fileStream,
+        string fileName,
+        string contentType,
+        long fileLength,
+        CancellationToken ct = default) =>
+        await ReviewQuestionImportAsync(fileStream, fileName, contentType, fileLength, ct);
+
+    public async Task<QuestionImportResultDto> ImportQuestionsAsync(
+        int examId,
+        Stream fileStream,
+        string fileName,
+        string contentType,
+        long fileLength,
+        string userId,
+        IReadOnlyList<string> roles,
+        CancellationToken ct = default)
     {
-        var exam = await RequireAccessibleExamAsync(examId, userId, roles, ct);
-        EnsureQuestionBankAccess(exam, userId, roles);
-        return exam.Questions.OrderBy(x => x.OrderIndex).ThenBy(x => x.Id).Select(x => ExamMapper.MapQuestion(x)).ToList();
+        var exam = await RequireQuestionImportExamAsync(examId, userId, roles, ct);
+        var result = await ReviewQuestionImportAsync(fileStream, fileName, contentType, fileLength, ct);
+        if (result.Errors.Count > 0)
+            return result;
+
+        var nextOrderIndex = exam.Questions.Count == 0
+            ? 1
+            : exam.Questions.Max(x => x.OrderIndex) + 1;
+        var importedQuestions = result.Questions
+            .OrderBy(x => x.OrderIndex)
+            .ThenBy(x => x.Id)
+            .Select(questionDto => new Question
+            {
+                ExamId = exam.Id,
+                Content = questionDto.Content.Trim(),
+                QuestionType = questionDto.QuestionType,
+                Score = questionDto.Score,
+                OrderIndex = nextOrderIndex++,
+                CreatedAt = DateTime.UtcNow,
+                Answers = questionDto.Answers.Select((answer, index) => new Answer
+                {
+                    Content = answer.Content,
+                    IsCorrect = answer.IsCorrect,
+                    OrderIndex = index + 1
+                }).ToList()
+            })
+            .ToList();
+
+        foreach (var question in importedQuestions)
+            await _examRepository.AddQuestionAsync(question, ct);
+
+        exam.UpdatedAt = DateTime.UtcNow;
+        _examRepository.Update(exam);
+        await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(examId, ct);
+
+        result.ImportedCount = importedQuestions.Count;
+        result.Questions = importedQuestions
+            .OrderBy(x => x.OrderIndex)
+            .ThenBy(x => x.Id)
+            .Select(x => ExamMapper.MapQuestion(x))
+            .ToList();
+
+        return result;
     }
 
-    public async Task<QuestionDto> AddQuestionAsync(int examId, CreateQuestionRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<QuestionDto>> GetQuestionsAsync(
+        int examId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
+    {
+        var exam = await _examRepository.GetByIdAsync(examId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
+
+        await EnsureAccessibleExamAsync(exam, userId, roles, ct);
+        EnsureQuestionBankAccess(exam, userId, roles);
+
+        var cacheKey = RedisKeyNames.ExamQuestions(_redisOptions.InstanceName, examId);
+        var cached = await _cacheService.GetAsync<List<QuestionDto>>(cacheKey, ct);
+        if (cached is not null)
+            return cached;
+
+        var examWithQuestions = await _examRepository.GetByIdWithDetailsAsync(examId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
+
+        var questions = examWithQuestions.Questions
+            .OrderBy(x => x.OrderIndex)
+            .ThenBy(x => x.Id)
+            .Select(x => ExamMapper.MapQuestion(x))
+            .ToList();
+
+        await _cacheService.SetAsync(
+            cacheKey,
+            questions,
+            TimeSpan.FromMinutes(_redisOptions.QuestionCacheMinutes),
+            ct);
+
+        return questions;
+    }
+
+    public async Task<QuestionDto> AddQuestionAsync(int examId, CreateQuestionRequest request, string teacherId, CancellationToken ct = default)
     {
         await _createQuestionValidator.ValidateAndThrowAsync(request, ct);
         var exam = await RequireTeacherOwnedExamWithQuestionsAsync(examId, teacherId, ct);
@@ -201,12 +358,13 @@ public class ExamService : IExamService
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
         ExamQuestionOrderHelper.Resequence(examWithQuestions.Questions.ToList(), question.Id, request.OrderIndex);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(examId, ct);
 
         var saved = await _examRepository.GetQuestionByIdAsync(question.Id, ct) ?? question;
         return ExamMapper.MapQuestion(saved);
     }
 
-    public async Task<QuestionDto> UpdateQuestionAsync(int questionId, UpdateQuestionRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<QuestionDto> UpdateQuestionAsync(int questionId, UpdateQuestionRequest request, string teacherId, CancellationToken ct = default)
     {
         await _updateQuestionValidator.ValidateAndThrowAsync(request, ct);
         var question = await RequireTeacherOwnedQuestionAsync(questionId, teacherId, ct);
@@ -232,13 +390,14 @@ public class ExamService : IExamService
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
         ExamQuestionOrderHelper.Resequence(exam.Questions.ToList(), question.Id, request.OrderIndex);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(question.ExamId, ct);
 
         var saved = await _examRepository.GetQuestionByIdAsync(question.Id, ct) ?? question;
         return ExamMapper.MapQuestion(saved);
     }
 
     public async Task<QuestionDto> PatchQuestionAsync(
-        int questionId, PatchQuestionRequest request, int teacherId, CancellationToken ct = default)
+        int questionId, PatchQuestionRequest request, string teacherId, CancellationToken ct = default)
     {
         await _patchQuestionValidator.ValidateAndThrowAsync(request, ct);
         var question = await RequireTeacherOwnedQuestionAsync(questionId, teacherId, ct);
@@ -263,11 +422,13 @@ public class ExamService : IExamService
             await _examRepository.SaveChangesAsync(ct);
         }
 
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(question.ExamId, ct);
+
         var saved = await _examRepository.GetQuestionByIdAsync(question.Id, ct) ?? question;
         return ExamMapper.MapQuestion(saved);
     }
 
-    public async Task DeleteQuestionAsync(int questionId, int teacherId, CancellationToken ct = default)
+    public async Task DeleteQuestionAsync(int questionId, string teacherId, CancellationToken ct = default)
     {
         var question = await RequireTeacherOwnedQuestionAsync(questionId, teacherId, ct);
         var exam = await _examRepository.GetByIdWithDetailsAsync(question.ExamId, ct)
@@ -277,9 +438,10 @@ public class ExamService : IExamService
         _examRepository.RemoveQuestion(question);
         ExamQuestionOrderHelper.Renumber(exam.Questions.Where(x => x.Id != question.Id).ToList());
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(question.ExamId, ct);
     }
 
-    public async Task<AnswerDto> AddAnswerAsync(int questionId, CreateAnswerRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<AnswerDto> AddAnswerAsync(int questionId, CreateAnswerRequest request, string teacherId, CancellationToken ct = default)
     {
         await _createAnswerValidator.ValidateAndThrowAsync(request, ct);
         var question = await RequireTeacherOwnedQuestionAsync(questionId, teacherId, ct);
@@ -296,10 +458,11 @@ public class ExamService : IExamService
 
         await _examRepository.AddAnswerAsync(answer, ct);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(question.ExamId, ct);
         return ExamMapper.MapAnswer(answer);
     }
 
-    public async Task<AnswerDto> UpdateAnswerAsync(int answerId, UpdateAnswerRequest request, int teacherId, CancellationToken ct = default)
+    public async Task<AnswerDto> UpdateAnswerAsync(int answerId, UpdateAnswerRequest request, string teacherId, CancellationToken ct = default)
     {
         await _updateAnswerValidator.ValidateAndThrowAsync(request, ct);
         var answer = await _examRepository.GetAnswerByIdAsync(answerId, ct)
@@ -313,11 +476,12 @@ public class ExamService : IExamService
         answer.OrderIndex = request.OrderIndex;
         _examRepository.UpdateAnswer(answer);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(answer.Question.ExamId, ct);
         return ExamMapper.MapAnswer(answer);
     }
 
     public async Task<AnswerDto> PatchAnswerAsync(
-        int answerId, PatchAnswerRequest request, int teacherId, CancellationToken ct = default)
+        int answerId, PatchAnswerRequest request, string teacherId, CancellationToken ct = default)
     {
         await _patchAnswerValidator.ValidateAndThrowAsync(request, ct);
         var answer = await _examRepository.GetAnswerByIdAsync(answerId, ct)
@@ -337,56 +501,213 @@ public class ExamService : IExamService
 
         _examRepository.UpdateAnswer(answer);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(answer.Question.ExamId, ct);
         return ExamMapper.MapAnswer(answer);
     }
 
-    private static ExamSetting BuildSetting(ExamSettingDto dto) => new()
+    private async Task<QuestionImportResultDto> ReviewQuestionImportAsync(
+        Stream fileStream,
+        string fileName,
+        string contentType,
+        long fileLength,
+        CancellationToken ct)
     {
-        ShuffleQuestions = dto.ShuffleQuestions,
-        ShuffleAnswers = dto.ShuffleAnswers,
-        MaxAttempts = dto.MaxAttempts,
-        ShowResultAfterSubmit = dto.ShowResultAfterSubmit,
-        RequireFullscreen = dto.RequireFullscreen
-    };
+        var result = new QuestionImportResultDto
+        {
+            FileName = Path.GetFileName(fileName)
+        };
+
+        AddQuestionImportFileErrors(result, fileName, contentType, fileLength);
+        if (result.Errors.Count > 0)
+        {
+            result.FailedCount = CountFailedRows(result.Errors);
+            return result;
+        }
+
+        if (fileStream.CanSeek)
+            fileStream.Position = 0;
+
+        var parsed = await QuestionImportParser.ParseAsync(fileStream, fileName, ct);
+        result.TotalRows = parsed.TotalRows;
+
+        if (parsed.Errors.Count > 0)
+        {
+            result.Errors.AddRange(parsed.Errors);
+            result.FailedCount = CountFailedRows(result.Errors);
+            return result;
+        }
+
+        if (parsed.Questions.Count == 0)
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 1,
+                FieldName = "file",
+                ErrorMessage = "Import file does not contain valid questions."
+            });
+            result.FailedCount = CountFailedRows(result.Errors);
+            return result;
+        }
+
+        var previewQuestions = new List<Question>();
+
+        for (var index = 0; index < parsed.Questions.Count; index++)
+            previewQuestions.Add(await BuildQuestionEntityFromRequestAsync(parsed.Questions[index], index, "Câu import", ct));
+
+        ExamQuestionOrderHelper.Renumber(previewQuestions);
+        result.Questions = previewQuestions.Select(question => ExamMapper.MapQuestion(question)).ToList();
+        result.ImportedCount = result.Questions.Count;
+        result.FailedCount = 0;
+        return result;
+    }
+
+    private async Task<Question> BuildQuestionEntityFromRequestAsync(
+        CreateQuestionRequest request,
+        int requestIndex,
+        string sourceLabel,
+        CancellationToken ct)
+    {
+        var validationResult = await _createQuestionValidator.ValidateAsync(request, ct);
+        if (!validationResult.IsValid)
+            throw new InvalidOperationException($"{sourceLabel} {requestIndex + 1} chưa hợp lệ: {validationResult.Errors.First().ErrorMessage}");
+
+        var normalizedAnswers = ExamQuestionValidator.NormalizeAnswers(request.QuestionType, request.Answers);
+
+        try
+        {
+            ExamQuestionValidator.ValidateQuestionInput(request.QuestionType, normalizedAnswers);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new InvalidOperationException($"{sourceLabel} {requestIndex + 1} chưa hợp lệ: {ex.Message}");
+        }
+
+        return new Question
+        {
+            Content = request.Content.Trim(),
+            QuestionType = request.QuestionType,
+            Score = request.Score,
+            OrderIndex = request.OrderIndex,
+            CreatedAt = DateTime.UtcNow,
+            Answers = normalizedAnswers.Select((answer, answerIndex) => new Answer
+            {
+                Content = answer.Content,
+                IsCorrect = answer.IsCorrect,
+                OrderIndex = answerIndex + 1
+            }).ToList()
+        };
+    }
+
+    private static void AddQuestionImportFileErrors(
+        QuestionImportResultDto result,
+        string fileName,
+        string contentType,
+        long fileLength)
+    {
+        var safeFileName = Path.GetFileName(fileName);
+        var extension = Path.GetExtension(safeFileName);
+        var normalizedContentType = contentType.Split(';', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim()
+            ?? string.Empty;
+
+        if (fileLength <= 0)
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "file",
+                ErrorMessage = "Import file is empty."
+            });
+        }
+
+        if (fileLength > MaxQuestionImportFileBytes)
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "file",
+                ErrorMessage = "Import file must not exceed 5 MB."
+            });
+        }
+
+        if (string.Equals(extension, ".doc", StringComparison.OrdinalIgnoreCase))
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "file",
+                ErrorMessage = "Legacy .doc files are not supported. Please convert the file to .docx and use the standard question template."
+            });
+        }
+        else if (string.Equals(extension, ".xls", StringComparison.OrdinalIgnoreCase))
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "file",
+                ErrorMessage = "Legacy .xls files are not supported. Please convert the file to .xlsx and use the standard question template."
+            });
+        }
+        else if (string.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "file",
+                ErrorMessage = ".zip media imports are not supported until image/file attachments are implemented."
+            });
+        }
+        else if (!SupportedQuestionImportExtensions.Contains(extension))
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "file",
+                ErrorMessage = "Question import supports .csv, .xlsx, .txt, .docx, and text-based .pdf files."
+            });
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedContentType)
+            && SupportedQuestionImportExtensions.Contains(extension)
+            && !IsAllowedQuestionImportContentType(extension, normalizedContentType))
+        {
+            result.Errors.Add(new QuestionImportErrorDto
+            {
+                RowNumber = 0,
+                FieldName = "contentType",
+                ErrorMessage = "Invalid content type for the selected question import file."
+            });
+        }
+    }
+
+    private static bool IsAllowedQuestionImportContentType(string extension, string contentType) =>
+        AllowedQuestionImportContentTypesByExtension.TryGetValue(extension, out var allowedContentTypes)
+        && allowedContentTypes.Contains(contentType);
+
+    private static int CountFailedRows(IEnumerable<QuestionImportErrorDto> errors) =>
+        errors.Select(x => x.RowNumber).Distinct().Count();
+
+    private static ExamSetting BuildSetting(ExamSettingDto dto) => ExamSettingMapper.BuildEntity(dto);
 
     private static void ApplyExamFields(Exam exam, UpdateExamRequest request)
     {
         exam.Title = request.Title.Trim();
         exam.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
         exam.DurationMinutes = request.DurationMinutes;
-        exam.StartTime = request.StartTime?.ToUniversalTime();
-        exam.EndTime = request.EndTime?.ToUniversalTime();
+        exam.StartTime = ExamDateTimeHelper.NormalizeNullableUtc(request.StartTime);
+        exam.EndTime = ExamDateTimeHelper.NormalizeNullableUtc(request.EndTime);
         exam.EnableAntiCheat = request.EnableAntiCheat;
     }
 
     private static void UpsertSetting(Exam exam, ExamSettingDto dto)
     {
         exam.Setting ??= new ExamSetting { ExamId = exam.Id };
-        exam.Setting.ShuffleQuestions = dto.ShuffleQuestions;
-        exam.Setting.ShuffleAnswers = dto.ShuffleAnswers;
-        exam.Setting.MaxAttempts = dto.MaxAttempts;
-        exam.Setting.ShowResultAfterSubmit = dto.ShowResultAfterSubmit;
-        exam.Setting.RequireFullscreen = dto.RequireFullscreen;
+        ExamSettingMapper.ApplyDto(exam.Setting, dto);
     }
 
     private static void PatchExamSetting(Exam exam, PatchExamSettingDto patch)
     {
         exam.Setting ??= new ExamSetting { ExamId = exam.Id };
-
-        if (patch.ShuffleQuestions.IsSpecified)
-            exam.Setting.ShuffleQuestions = patch.ShuffleQuestions.Value;
-
-        if (patch.ShuffleAnswers.IsSpecified)
-            exam.Setting.ShuffleAnswers = patch.ShuffleAnswers.Value;
-
-        if (patch.MaxAttempts.IsSpecified)
-            exam.Setting.MaxAttempts = patch.MaxAttempts.Value;
-
-        if (patch.ShowResultAfterSubmit.IsSpecified)
-            exam.Setting.ShowResultAfterSubmit = patch.ShowResultAfterSubmit.Value;
-
-        if (patch.RequireFullscreen.IsSpecified)
-            exam.Setting.RequireFullscreen = patch.RequireFullscreen.Value;
+        ExamSettingMapper.ApplyPatch(exam.Setting, patch);
     }
 
     private static void EnsureExamWindowValid(DateTime? startTime, DateTime? endTime)
@@ -395,23 +716,105 @@ public class ExamService : IExamService
             throw new InvalidOperationException("Thời gian đóng đề phải sau thời gian mở đề.");
     }
 
-    private async Task<Exam> RequireAccessibleExamAsync(int examId, int userId, IReadOnlyList<string> roles, CancellationToken ct)
+    private static void EnsureCanPublishExam(Exam exam)
     {
-        var exam = await _examRepository.GetByIdWithDetailsAsync(examId, ct)
-            ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
+        var errors = new List<string>();
 
+        if (exam.DurationMinutes <= 0)
+            errors.Add("Thời gian làm bài phải lớn hơn 0 phút.");
+
+        if ((exam.Setting?.MaxAttempts ?? 1) <= 0)
+            errors.Add("Số lần làm tối đa phải lớn hơn 0.");
+
+        if (exam.StartTime.HasValue && exam.EndTime.HasValue && exam.EndTime <= exam.StartTime)
+            errors.Add("Thời gian đóng đề phải sau thời gian mở đề.");
+
+        var questions = exam.Questions
+            .OrderBy(x => x.OrderIndex)
+            .ThenBy(x => x.Id)
+            .ToList();
+
+        if (questions.Count == 0)
+            errors.Add("Đề thi cần ít nhất một câu hỏi trước khi publish.");
+
+        foreach (var question in questions)
+            AddQuestionPublishErrors(question, errors);
+
+        if (errors.Count > 0)
+            throw new InvalidOperationException("Đề thi chưa đủ điều kiện publish: " + string.Join(" ", errors));
+    }
+
+    private static void AddQuestionPublishErrors(Question question, List<string> errors)
+    {
+        var label = $"Câu {question.OrderIndex}";
+        var answers = question.Answers
+            .Where(x => !string.IsNullOrWhiteSpace(x.Content))
+            .OrderBy(x => x.OrderIndex)
+            .ThenBy(x => x.Id)
+            .ToList();
+        var correctCount = answers.Count(x => x.IsCorrect);
+
+        if (string.IsNullOrWhiteSpace(question.Content))
+            errors.Add($"{label}: nội dung câu hỏi không được để trống.");
+
+        if (question.Score <= 0)
+            errors.Add($"{label}: điểm câu hỏi phải lớn hơn 0.");
+
+        switch (question.QuestionType)
+        {
+            case QuestionType.SingleChoice:
+                if (answers.Count < 2)
+                    errors.Add($"{label}: câu một đáp án cần ít nhất 2 lựa chọn.");
+                if (correctCount != 1)
+                    errors.Add($"{label}: câu một đáp án phải có đúng 1 đáp án đúng.");
+                break;
+
+            case QuestionType.MultipleChoice:
+                if (answers.Count < 2)
+                    errors.Add($"{label}: câu nhiều đáp án cần ít nhất 2 lựa chọn.");
+                if (correctCount == 0)
+                    errors.Add($"{label}: câu nhiều đáp án cần ít nhất 1 đáp án đúng.");
+                break;
+
+            case QuestionType.TrueFalse:
+                if (answers.Count != 2)
+                    errors.Add($"{label}: câu đúng/sai phải có đúng 2 lựa chọn Đúng và Sai.");
+                if (correctCount != 1)
+                    errors.Add($"{label}: câu đúng/sai phải có đúng 1 đáp án đúng.");
+                break;
+
+            case QuestionType.ShortAnswer:
+                if (answers.Count == 0)
+                    errors.Add($"{label}: câu tự luận ngắn cần ít nhất 1 đáp án mẫu.");
+                break;
+
+            default:
+                errors.Add($"{label}: loại câu hỏi chưa được hỗ trợ.");
+                break;
+        }
+    }
+
+    private async Task EnsureAccessibleExamAsync(Exam exam, string userId, IReadOnlyList<string> roles, CancellationToken ct)
+    {
         var classroom = await ClassroomAccessHelper.RequireClassroomAsync(_classroomRepository, exam.ClassroomId, ct);
         if (roles.Contains("Admin") || exam.TeacherId == userId)
-            return exam;
+            return;
 
         await ClassroomAccessHelper.EnsureCanAccessClassroomAsync(_classroomRepository, classroom, userId, roles, ct);
         if (!exam.IsPublished)
             throw new UnauthorizedAccessException("Bạn không có quyền xem đề thi này.");
+    }
 
+    private async Task<Exam> RequireAccessibleExamAsync(int examId, string userId, IReadOnlyList<string> roles, CancellationToken ct)
+    {
+        var exam = await _examRepository.GetByIdWithDetailsAsync(examId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
+
+        await EnsureAccessibleExamAsync(exam, userId, roles, ct);
         return exam;
     }
 
-    private async Task<Exam> RequireTeacherOwnedExamAsync(int examId, int teacherId, CancellationToken ct)
+    private async Task<Exam> RequireTeacherOwnedExamAsync(int examId, string teacherId, CancellationToken ct)
     {
         var exam = await _examRepository.GetByIdWithDetailsAsync(examId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
@@ -420,10 +823,28 @@ public class ExamService : IExamService
         return exam;
     }
 
-    private Task<Exam> RequireTeacherOwnedExamWithQuestionsAsync(int examId, int teacherId, CancellationToken ct) =>
+    private Task<Exam> RequireTeacherOwnedExamWithQuestionsAsync(int examId, string teacherId, CancellationToken ct) =>
         RequireTeacherOwnedExamAsync(examId, teacherId, ct);
 
-    private async Task<Question> RequireTeacherOwnedQuestionAsync(int questionId, int teacherId, CancellationToken ct)
+    private async Task<Exam> RequireQuestionImportExamAsync(
+        int examId,
+        string userId,
+        IReadOnlyList<string> roles,
+        CancellationToken ct)
+    {
+        var exam = await _examRepository.GetByIdWithDetailsAsync(examId, ct)
+            ?? throw new KeyNotFoundException("KhÃ´ng tÃ¬m tháº¥y Ä‘á» thi.");
+
+        if (roles.Contains("Admin"))
+            return exam;
+
+        if (roles.Contains("Teacher") && exam.TeacherId == userId)
+            return exam;
+
+        throw new UnauthorizedAccessException("Only the teacher who created the exam or an admin can import questions.");
+    }
+
+    private async Task<Question> RequireTeacherOwnedQuestionAsync(int questionId, string teacherId, CancellationToken ct)
     {
         var question = await _examRepository.GetQuestionByIdAsync(questionId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy câu hỏi.");
@@ -432,7 +853,7 @@ public class ExamService : IExamService
         return question;
     }
 
-    private static void EnsureQuestionBankAccess(Exam exam, int userId, IReadOnlyList<string> roles)
+    private static void EnsureQuestionBankAccess(Exam exam, string userId, IReadOnlyList<string> roles)
     {
         if (roles.Contains("Admin") || exam.TeacherId == userId)
             return;

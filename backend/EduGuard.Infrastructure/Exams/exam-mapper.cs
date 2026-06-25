@@ -16,25 +16,18 @@ public static class ExamMapper
             Title = exam.Title,
             Description = exam.Description,
             DurationMinutes = exam.DurationMinutes,
-            StartTime = exam.StartTime,
-            EndTime = exam.EndTime,
+            StartTime = ExamDateTimeHelper.MarkNullableAsUtc(exam.StartTime),
+            EndTime = ExamDateTimeHelper.MarkNullableAsUtc(exam.EndTime),
             IsPublished = exam.IsPublished,
             EnableAntiCheat = exam.EnableAntiCheat,
-            CreatedAt = exam.CreatedAt,
+            CreatedAt = ExamDateTimeHelper.MarkAsUtc(exam.CreatedAt),
             QuestionCount = exam.Questions?.Count ?? 0,
             AttemptCount = exam.Attempts?.Count ?? 0,
             Settings = MapSetting(setting)
         };
     }
 
-    public static ExamSettingDto MapSetting(ExamSetting? setting) => new()
-    {
-        ShuffleQuestions = setting?.ShuffleQuestions ?? false,
-        ShuffleAnswers = setting?.ShuffleAnswers ?? false,
-        MaxAttempts = setting?.MaxAttempts ?? 1,
-        ShowResultAfterSubmit = setting?.ShowResultAfterSubmit ?? false,
-        RequireFullscreen = setting?.RequireFullscreen ?? false
-    };
+    public static ExamSettingDto MapSetting(ExamSetting? setting) => ExamSettingMapper.MapDto(setting);
 
     public static QuestionDto MapQuestion(Question question, bool hideCorrectAnswers = false) => new()
     {
