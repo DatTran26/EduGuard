@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added **Live Proctoring Control Room** module: proctoring entities/migration, lobby, WebRTC signaling via `ExamMonitoringHub`, teacher room/states APIs, watch lock (Redis), pause/resume/warn/terminate (SignalR + reason dialog), co-proctor assignments, evidence upload to `wwwroot/uploads/proctoring`, heartbeat policy with auto-snapshot flag, YOLO detection proxy with optional Ultralytics inference, admin AI settings, tile live preview, manual clip recording, CheatingLog integration (camera off, fullscreen exit, disconnect, AI detect), and YOLO bounding-box metadata on evidence.
 - Added FastAPI stub service at `ai-services/proctoring-ai-service/` for local YOLO integration testing.
+- Added Docker Compose and production README for the proctoring AI service; `PROCTORING_MODEL` env for Ultralytics weights.
+- WebRTC ICE config omits empty TURN credentials; see `docs/proctoring-webrtc-nat.md` for STUN/TURN across NAT.
 - Added `POST /api/exams/{id}/questions/import` for Teacher/Admin question import from `.csv`, `.xlsx`, `.txt`, `.docx`, and text-based `.pdf` files.
 - Added all-or-nothing import validation for file size, supported extension, content type, required columns, `question_type`, `correct_answer`, and `score` before saving questions.
 - Added official Teacher/Admin import template listing and download APIs: `GET /api/exams/question-import/templates` and `GET /api/exams/question-import/templates/{fileName}`.

@@ -1,5 +1,25 @@
 # Project Changelog
 
+## Feature: Proctoring ops — WebRTC NAT + AI Docker
+
+Date: 2026-06-25
+
+Branch/source: `feat/live-proctoring-control-room` → `release`
+
+Description:
+
+- Purpose: Production readiness for live proctoring — TURN documentation, cleaner ICE server JSON, Dockerized YOLO service.
+- Files: `docs/proctoring-webrtc-nat.md`, `ai-services/proctoring-ai-service/Dockerfile`, `docker-compose.yml`, `web-rtc-config-service.cs`, `appsettings.Development.json`.
+
+Validation:
+
+- `dotnet build` — pending in merge commit
+- `docker compose config` — optional local
+
+Unresolved questions: None.
+
+---
+
 ## Feature: Live Proctoring Control Room v1
 
 Date: 2026-06-25

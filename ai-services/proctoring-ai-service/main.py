@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import io
+import os
 from typing import Any
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from PIL import Image
 
-app = FastAPI(title="EduGuard Proctoring AI Service", version="0.2.0")
+app = FastAPI(title="EduGuard Proctoring AI Service", version="0.3.0")
+
+MODEL_PATH = os.environ.get("PROCTORING_MODEL", "yolo11n.pt")
 
 try:
     from ultralytics import YOLO
 
-    MODEL = YOLO("yolo11n.pt")
+    MODEL = YOLO(MODEL_PATH)
     HAS_YOLO = True
 except Exception:
     MODEL = None

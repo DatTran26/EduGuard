@@ -13,11 +13,14 @@ public class WebRtcConfigService : IWebRtcConfigService
     public IReadOnlyList<object> GetIceServers() =>
         _options.IceServers
             .Where(server => server.Urls.Length > 0)
-            .Select(server => (object)new Dictionary<string, object?>
+            .Select(server =>
             {
-                ["urls"] = server.Urls,
-                ["username"] = server.Username,
-                ["credential"] = server.Credential
+                var ice = new Dictionary<string, object> { ["urls"] = server.Urls };
+                if (!string.IsNullOrWhiteSpace(server.Username))
+                    ice["username"] = server.Username;
+                if (!string.IsNullOrWhiteSpace(server.Credential))
+                    ice["credential"] = server.Credential;
+                return (object)ice;
             })
             .ToList();
 }
