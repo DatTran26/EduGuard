@@ -3,5 +3,6 @@ namespace EduGuard.Domain.Enums;
 public enum ExamAttemptStatus
 {
     InProgress = 1,
-    Submitted = 2
+    Submitted = 2,
+    PausedByProctor = 3
 }

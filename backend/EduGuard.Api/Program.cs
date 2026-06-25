@@ -12,6 +12,14 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (!builder.Environment.IsDevelopment()
+    && (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Contains("DEMO", StringComparison.OrdinalIgnoreCase)))
+{
+    throw new InvalidOperationException(
+        "Jwt:Key must be configured via environment or user secrets for non-Development environments.");
+}
+
 // Avoid the Windows EventLog provider breaking local API requests when the
 // current user cannot write to the .NET Runtime event log source.
 builder.Logging.ClearProviders();
@@ -33,6 +41,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SchemaFilter<OptionalOpenApiSchemaFilter>();
+    options.OperationFilter<FormFileOperationFilter>();
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -87,6 +96,10 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseCors("FrontendPolicy");
+
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments("/uploads/proctoring"),
+    branch => branch.UseStaticFiles());
 
 app.UseAuthentication();
 app.UseAuthorization();

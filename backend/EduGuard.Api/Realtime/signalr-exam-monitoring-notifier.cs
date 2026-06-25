@@ -1,5 +1,6 @@
 using EduGuard.Api.Hubs;
 using EduGuard.Application.DTOs.AntiCheat;
+using EduGuard.Application.DTOs.Proctoring;
 using EduGuard.Application.Services.Interfaces;
 using Microsoft.AspNetCore.SignalR;
 
@@ -8,6 +9,7 @@ namespace EduGuard.Api.Realtime;
 public class SignalRExamMonitoringNotifier : IExamMonitoringNotifier
 {
     private const string AntiCheatWarningEvent = "ReceiveAntiCheatWarning";
+    private const string ProctoringWarningEvent = "ReceiveProctoringWarning";
 
     private readonly IHubContext<ExamMonitoringHub> _hubContext;
 
@@ -18,4 +20,24 @@ public class SignalRExamMonitoringNotifier : IExamMonitoringNotifier
         _hubContext.Clients
             .Group(ExamMonitoringHub.GetExamGroupName(warning.ExamId))
             .SendAsync(AntiCheatWarningEvent, warning, ct);
+
+    public Task SendProctoringWarningAsync(ProctoringWarningDto warning, CancellationToken ct = default) =>
+        _hubContext.Clients
+            .Group(ExamMonitoringHub.GetAttemptGroupName(warning.AttemptId))
+            .SendAsync(ProctoringWarningEvent, warning, ct);
+
+    public Task SendProctoringControlAsync(ProctoringControlEventDto controlEvent, CancellationToken ct = default)
+    {
+        var eventName = controlEvent.ActionType switch
+        {
+            "PAUSED" => "StudentMovedToWaitingRoom",
+            "RESUMED" => "StudentAttemptResumed",
+            "TERMINATED" => "StudentAttemptTerminated",
+            _ => "StudentProctoringControl"
+        };
+
+        return _hubContext.Clients
+            .Group(ExamMonitoringHub.GetAttemptGroupName(controlEvent.AttemptId))
+            .SendAsync(eventName, controlEvent, ct);
+    }
 }

@@ -57,7 +57,7 @@ function AnswerEditor({ answers, questionType, onChange }) {
         ) : null}
       </div>
 
-      <div className="space-y-3">
+      <div className="grid gap-3 xl:grid-cols-2">
         {answers.map((answer, index) => (
           <div key={index} className="grid gap-3 rounded-[16px] border border-border bg-neutral p-3 md:grid-cols-[minmax(0,1fr)_112px_auto]">
             <TextInput
@@ -92,6 +92,7 @@ export default function BankQuestionForm({
   formValues,
   isDisabled = false,
   isSubmitting = false,
+  title,
   onChange,
   onReset,
   onSubmit,
@@ -111,7 +112,7 @@ export default function BankQuestionForm({
   return (
     <Card className="space-y-5">
       <h3 className="text-lg font-semibold text-primary">
-        {formValues.id ? "Sửa câu hỏi bank" : "Thêm câu hỏi vào bank"}
+        {title ?? (formValues.id ? "Sửa câu hỏi bank" : "Thêm câu hỏi vào bank")}
       </h3>
 
       <form className="space-y-4" onSubmit={onSubmit}>
@@ -125,7 +126,7 @@ export default function BankQuestionForm({
           value={formValues.content}
         />
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Select
             id="bank-question-type"
             label="Loại câu"

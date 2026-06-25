@@ -100,6 +100,24 @@ function normalizeBankQuestion(question) {
   };
 }
 
+function normalizeExamQuestionSnapshot(question) {
+  const answers = Array.isArray(question?.answers)
+    ? question.answers.map((answer) => normalizeBankAnswer(answer)).sort((first, second) => first.orderIndex - second.orderIndex)
+    : [];
+
+  return {
+    id: Number(question?.id) || 0,
+    examId: Number(question?.examId) || 0,
+    content: question?.content ?? "",
+    questionType: normalizeQuestionType(question?.questionType),
+    score: Number(question?.score) || 0,
+    orderIndex: Number(question?.orderIndex) || 1,
+    answerCount: answers.length,
+    correctAnswerCount: answers.filter((answer) => answer.isCorrect).length,
+    answers,
+  };
+}
+
 function normalizeQuestionBank(bank) {
   return {
     id: Number(bank?.id) || 0,
@@ -240,6 +258,15 @@ function buildCreateExamFromMatrixPayload(payload) {
   };
 }
 
+function buildSnapshotQuestionsPayload(payload) {
+  const startOrderIndex = Number(payload.startOrderIndex) || 0;
+
+  return {
+    bankQuestionIds: Array.isArray(payload.bankQuestionIds) ? payload.bankQuestionIds.map((id) => Number(id)).filter((id) => id > 0) : [],
+    startOrderIndex: startOrderIndex > 0 ? startOrderIndex : null,
+  };
+}
+
 export const questionBankApi = {
   async getBanks() {
     const apiResponse = await requestApi(() => axiosClient.get("/question-banks"));
@@ -354,6 +381,15 @@ export const questionBankApi = {
 
   async createExamFromMatrix(matrixId, payload) {
     return requestApi(() => axiosClient.post(`/exam-matrices/${matrixId}/create-exam`, buildCreateExamFromMatrixPayload(payload)));
+  },
+
+  async snapshotQuestionsToExam(examId, payload) {
+    const apiResponse = await requestApi(() => axiosClient.post(`/exams/${examId}/bank-questions`, buildSnapshotQuestionsPayload(payload)));
+
+    return {
+      ...apiResponse,
+      data: Array.isArray(apiResponse.data) ? apiResponse.data.map((question) => normalizeExamQuestionSnapshot(question)) : [],
+    };
   },
 };
 

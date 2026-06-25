@@ -168,6 +168,78 @@ export function getStatusBadgeVariant(value) {
   return "caution";
 }
 
+export function getDifficultyBadgeVariant(value) {
+  if (value === "Easy") {
+    return "success";
+  }
+
+  if (value === "Hard") {
+    return "danger";
+  }
+
+  return "caution";
+}
+
+export function getDifficultyBadgeMark(value) {
+  if (value === "Easy") {
+    return "+";
+  }
+
+  if (value === "Hard") {
+    return "!";
+  }
+
+  return "~";
+}
+
+export function getStatusBadgeMark(value) {
+  if (value === "Approved") {
+    return "✓";
+  }
+
+  if (value === "Reviewed") {
+    return "+";
+  }
+
+  if (value === "Archived") {
+    return "-";
+  }
+
+  return "!";
+}
+
+export function getQuestionTypeLabel(value) {
+  if (!value) {
+    return "Bất kỳ";
+  }
+
+  return QUESTION_TYPE_OPTIONS.find((option) => option.value === value)?.label ?? value;
+}
+
+export function formatMatrixIssueRequirement(issue = {}) {
+  const filters = [
+    issue.chapter ? `Chương: ${issue.chapter}` : null,
+    issue.lesson ? `Bài: ${issue.lesson}` : null,
+    issue.learningOutcome ? `Chuẩn đầu ra: ${issue.learningOutcome}` : null,
+    issue.questionType ? `Loại: ${getQuestionTypeLabel(issue.questionType)}` : null,
+    issue.difficulty ? `Độ khó: ${getDifficultyLabel(issue.difficulty)}` : null,
+  ].filter(Boolean);
+
+  return filters.length > 0 ? filters.join(" · ") : "Không giới hạn điều kiện lọc";
+}
+
+export function formatMatrixIssueShortfall(issue = {}) {
+  const required = Number(issue.required) || 0;
+  const available = Number(issue.available) || 0;
+  const missing = Math.max(required - available, 0);
+
+  return {
+    required,
+    available,
+    missing,
+  };
+}
+
 export function buildBankQuestionFilters(filters) {
   return {
     keyword: filters.keyword || undefined,

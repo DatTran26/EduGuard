@@ -14,6 +14,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Admin read access for exam matrix list/detail while keeping create/update/delete/preview/create-exam restricted to Teacher-owned resources.
 - Aligned matrix exam creation with the proctoring integration contract by wrapping exam creation, `ExamSetting`, question snapshots, and bank usage updates in a single transaction.
 - Added EF Core migration `AddQuestionBanksAndExamMatrices` for `QuestionBanks`, `BankQuestions`, `BankAnswers`, `ExamMatrices`, `ExamMatrixItems`, and `Questions.BankQuestionId/BankQuestionVersion` snapshot metadata.
+
+### Frontend
+
+- Added a Teacher `Ngân hàng câu hỏi` workspace for creating question banks, filtering bank questions, manually adding/editing/archiving questions, importing files into a bank, creating matrix rows, previewing matrix selections, and creating draft exams from a matrix.
+- Added frontend question bank and exam matrix API adapters with enum normalization for question type, difficulty, and bank question status.
+- Added the Teacher sidebar route `/teacher/question-banks` while keeping the existing exam create/detail flow intact.
+- Changed the Teacher question bank route to open on a bank list first; selecting a bank now enters the full edit workspace with a collapsible horizontal question form, full-width question list, clearer status/difficulty badges, matrix jump action, and a closable matrix-shortfall dialog that lists required versus available questions.
+- Added a `Ngân hàng` mode to the Teacher exam create workspace so approved bank questions can be selected into an unsaved draft or snapshotted into an already saved exam through `POST /api/exams/{examId}/bank-questions`.
+
+### Docs
+
+- Added `docs/apiList.md` registry entries for `API-QBK-*` and `API-MTX-*`, including non-conflicting Swagger/API groups for Question Bank and Exam Matrix.
+
+### Known risks
+
+- Matrix-generated exams are created as drafts; publishing still uses the existing exam detail publish checklist.
+
+## [1.2.0] - 2026-06-25
+
+### Security
+
+- Proctoring evidence is served only through authenticated `GET /api/attempts/{attemptId}/proctoring/evidence/{evidenceId}/file`; public static access to `/uploads/proctoring` is blocked.
+- Non-Development environments fail fast when `Jwt:Key` is missing or still contains the demo placeholder.
+
+### Backend
+
+- Added **Live Proctoring Control Room** module: proctoring entities/migration, lobby, WebRTC signaling via `ExamMonitoringHub`, teacher room/states APIs, watch lock (Redis), pause/resume/warn/terminate (SignalR + reason dialog), co-proctor assignments, evidence upload to `wwwroot/uploads/proctoring`, heartbeat policy with auto-snapshot flag, YOLO detection proxy with optional Ultralytics inference, admin AI settings, tile live preview, manual clip recording, CheatingLog integration (camera off, fullscreen exit, disconnect, AI detect), and YOLO bounding-box metadata on evidence.
+- Added FastAPI stub service at `ai-services/proctoring-ai-service/` for local YOLO integration testing.
+- Added Docker Compose and production README for the proctoring AI service; `PROCTORING_MODEL` env for Ultralytics weights.
+- WebRTC ICE config omits empty TURN credentials; see `docs/proctoring-webrtc-nat.md` for STUN/TURN across NAT.
 - Added `POST /api/exams/{id}/questions/import` for Teacher/Admin question import from `.csv`, `.xlsx`, `.txt`, `.docx`, and text-based `.pdf` files.
 - Added all-or-nothing import validation for file size, supported extension, content type, required columns, `question_type`, `correct_answer`, and `score` before saving questions.
 - Added official Teacher/Admin import template listing and download APIs: `GET /api/exams/question-import/templates` and `GET /api/exams/question-import/templates/{fileName}`.
@@ -23,9 +53,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Frontend
 
-- Added a Teacher `Ngân hàng câu hỏi` workspace for creating question banks, filtering bank questions, manually adding/editing/archiving questions, importing files into a bank, creating matrix rows, previewing matrix selections, and creating draft exams from a matrix.
-- Added frontend question bank and exam matrix API adapters with enum normalization for question type, difficulty, and bank question status.
-- Added the Teacher sidebar route `/teacher/question-banks` while keeping the existing exam create/detail flow intact.
+- Added teacher **Phòng giám sát bài thi** (`/teacher/exams/:examId/proctoring`) with risk-prioritized camera grid, live video on active tile + drawer, co-proctor panel, manual snapshot/clip/pause/warn/terminate controls, and link from Teacher Monitoring.
+- Added student proctoring lobby/device-check/paused flows, camera preview + watermark on attempt, WebRTC publisher, and realtime proctoring warning toasts.
+- Added admin **Cấu hình AI giám sát** page (`/admin/proctoring-ai`).
 - Redesigned the entire UX/UI across Admin, Student, and Teacher modules to use a premium, consistent design system (Outfit/Inter typography, radial gradients, glowing heroes, standardized `StatCard`, `MetricBarList`, `TimelineList` components, and support for light/dark themes).
 - Upgraded the Authentication flow with a 2-column branding layout and a new 4-step register wizard mockup.
 - Revamped Admin pages including Admin Dashboard (with real-time system health widgets), Admin Monitoring (risk cards, severity filters), and User Management.
@@ -41,7 +71,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Docs
 
-- Added `docs/apiList.md` registry entries for `API-QBK-*` and `API-MTX-*`, including non-conflicting Swagger/API groups for Question Bank and Exam Matrix.
 - Added teacher-facing question import template documentation and usage guidance under `docs/10_QUESTION_BANK_IMPORT_TEMPLATES.md` and `docs/11_QUESTION_IMPORT_TEMPLATE_USAGE.md`.
 - Added DOCX/PDF teacher import guide files with no-accent names under `docs/`.
 - Clarified that `CHANGELOG.md` is the main project changelog and `docs/project-changelog.md` remains the detailed feature history.
@@ -62,10 +91,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known risks
 
-- The new question bank workspace is a focused teacher workflow; a richer reusable bank picker inside the existing exam question workspace can be added later if teachers need in-place selection while editing a specific exam.
-- Matrix-generated exams are created as drafts; publishing still uses the existing exam detail publish checklist.
 - PDF import supports text-based PDFs only; scanned/image PDFs still require OCR and are not supported.
 - The frontend now exposes the standard markdown guide and prompt; full browsing of all 20 per-question-type template files remains API-only for now.
+- The production frontend upload UI for browsing templates and displaying row-level import errors is still pending.
 - Uploaded import file names do not need to match template names, but the extension must match the actual file format so the backend selects the correct parser.
 
 ## [1.1.0] - 2026-06-10

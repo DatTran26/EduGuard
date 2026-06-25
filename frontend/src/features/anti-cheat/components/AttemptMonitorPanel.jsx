@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { antiCheatApi } from "../../../api/antiCheatApi";
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
@@ -15,6 +16,7 @@ import {
   getSuspicionScoreMeta,
   normalizeAntiCheatEventType,
 } from "../antiCheatHelpers";
+import { buildTeacherProctoringPath } from "../../../routes/routeConfig";
 
 function buildAttemptSummaryItems(attempts = [], antiCheatSummary = null) {
   const submittedCount = attempts.filter((attempt) => attempt.status === "Submitted").length;
@@ -266,6 +268,11 @@ export default function AttemptMonitorPanel({
             )}
             {exam.enableAntiCheat ? (
               <Badge variant={realtimeStatusMeta.variant}>{realtimeStatusMeta.label}</Badge>
+            ) : null}
+            {exam.settings?.enableLiveProctoring ? (
+              <Button as={Link} to={buildTeacherProctoringPath(exam.id)} variant="secondary">
+                Mở phòng giám sát live
+              </Button>
             ) : null}
           </div>
         </div>

@@ -365,7 +365,26 @@ Không phải REST — kết nối WebSocket qua `@microsoft/signalr`.
 | API-SR-02 | `/hubs/exam-monitoring` | Bearer | Teacher | ✓ | F-SR-02 | `ReceiveAntiCheatWarning` |
 
 - [x] API-SR-01 NotificationHub
-- [x] API-SR-02 ExamMonitoringHub
+- [x] API-SR-02 ExamMonitoringHub (`ReceiveAntiCheatWarning`, `ReceiveProctoringWarning`, WebRTC signaling methods)
+
+---
+
+## 12. Live Proctoring
+
+| ID | Method | Path | Auth | Role | MVP | Mô tả |
+|----|--------|------|------|------|-----|-------|
+| API-PRO-01 | GET | `/api/proctoring/webrtc-config` | Bearer | Teacher, Student, Admin | ✓ | ICE servers |
+| API-PRO-02 | GET | `/api/exams/{examId}/proctoring/room` | Bearer | Teacher, Admin | ✓ | Teacher control room summary |
+| API-PRO-03 | GET | `/api/exams/{examId}/proctoring/states` | Bearer | Teacher, Admin | ✓ | Student tile states |
+| API-PRO-04 | GET | `/api/attempts/{attemptId}/proctoring/detail` | Bearer | Teacher, Admin, Student | ✓ | Attempt detail + evidence |
+| API-PRO-05 | POST | `/api/attempts/{attemptId}/proctoring/evidence` | Bearer | Teacher, Admin | ✓ | Upload snapshot/clip |
+| API-PRO-06 | POST | `/api/attempts/{attemptId}/proctoring/detect` | Bearer | Teacher, Admin, Student | | YOLO proxy |
+| API-PRO-07 | GET/PUT | `/api/admin/proctoring/ai-settings` | Bearer | Admin | | AI thresholds |
+
+Lobby + student heartbeat + live watch + pause/resume/warn/terminate + co-proctor CRUD: xem `ProctoringController`.
+
+- [x] API-PRO-01 … API-PRO-05 (core v1)
+- [ ] API-PRO-06 production YOLO validation
 
 ---
 
@@ -383,6 +402,7 @@ Không phải REST — kết nối WebSocket qua `@microsoft/signalr`.
 | `ExamMatricesController` | `/api/exam-matrices` | MTX (8/8) | ✓ |
 | `ExamAttemptsController` | `/api/attempts`, `/api/exams/{id}/start` | ATT (6/6) | ✓ |
 | `AntiCheatController` | `/api/anti-cheat` | AC (4/4) | ✓ |
+| `ProctoringController` | `/api/proctoring`, `/api/exams/*/proctoring`, `/api/attempts/*/proctoring` | PRO | ✓ |
 | `NotificationsController` | `/api/notifications` | NOT | — |
 | `DashboardController` | `/api/dashboard` | DASH | — |
 | `NotificationHub` | `/hubs/notifications` | SR | ✓ |

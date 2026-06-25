@@ -6,8 +6,15 @@ namespace EduGuard.Infrastructure.Exams;
 public class ExamMonitoringService : IExamMonitoringService
 {
     private readonly IExamRepository _examRepository;
+    private readonly IProctoringRepository _proctoringRepository;
 
-    public ExamMonitoringService(IExamRepository examRepository) => _examRepository = examRepository;
+    public ExamMonitoringService(
+        IExamRepository examRepository,
+        IProctoringRepository proctoringRepository)
+    {
+        _examRepository = examRepository;
+        _proctoringRepository = proctoringRepository;
+    }
 
     public async Task EnsureCanMonitorExamAsync(
         int examId,
@@ -24,6 +31,9 @@ public class ExamMonitoringService : IExamMonitoringService
         if (roles.Contains("Admin") || exam.TeacherId == userId)
             return;
 
-        throw new UnauthorizedAccessException("Chỉ giáo viên tạo đề mới được theo dõi phòng thi này.");
+        if (await _proctoringRepository.IsAssignedProctorAsync(examId, userId, ct))
+            return;
+
+        throw new UnauthorizedAccessException("Bạn không có quyền theo dõi phòng thi này.");
     }
 }
