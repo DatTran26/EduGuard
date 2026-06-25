@@ -22,6 +22,7 @@ import ExamDetailPage from "../features/exams/pages/ExamDetailPage";
 import ExamListPage from "../features/exams/pages/ExamListPage";
 import QuestionBankPage from "../features/question-banks/pages/QuestionBankPage";
 import TeacherNotificationsPage from "../features/notifications/pages/TeacherNotificationsPage";
+import NotificationsPage from "../features/notifications/pages/NotificationsPage";
 import TeacherResultsPage from "../features/results/pages/TeacherResultsPage";
 import ProfilePage from "../features/users/pages/ProfilePage";
 import UserManagementPage from "../features/users/pages/UserManagementPage";
@@ -61,6 +62,9 @@ export default function AppRoutes() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
+          {/* Route thông báo chung cho các role */}
+          <Route element={<NotificationsPage />} path={routeConfig.notifications} />
+
           <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
             <Route element={<AdminDashboardPage />} path={routeConfig.adminDashboard} />
             <Route element={<ClassroomListPage />} path={routeConfig.adminClassrooms} />

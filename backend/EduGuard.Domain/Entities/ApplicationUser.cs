@@ -13,4 +13,6 @@ public class ApplicationUser : IdentityUser
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<Classroom> OwnedClassrooms { get; set; } = [];
     public ICollection<ClassroomMember> ClassroomMemberships { get; set; } = [];
+    public ICollection<UserNotification> UserNotifications { get; set; } = [];
+    public ICollection<Notification> SentNotifications { get; set; } = [];
 }

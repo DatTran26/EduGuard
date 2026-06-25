@@ -43,6 +43,18 @@ export function cacheSubmission(userId, submission) {
   writeSubmissionCache(cache);
 }
 
+export function resolveAssignmentSubmission(assignment, userId, localSubmission = null) {
+  if (assignment?.mySubmission) {
+    return assignment.mySubmission;
+  }
+
+  if (localSubmission) {
+    return localSubmission;
+  }
+
+  return getCachedSubmission(userId, assignment?.id);
+}
+
 export function getAssignmentStatusMeta(assignment, localSubmission) {
   if (localSubmission?.score !== null && typeof localSubmission?.score === "number") {
     return {

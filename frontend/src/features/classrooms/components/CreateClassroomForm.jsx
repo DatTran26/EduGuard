@@ -16,14 +16,14 @@ function buildFormValues(classroom) {
     name: classroom?.name ?? "",
   };
 }
-
-// Form này dùng chung cho tạo và sửa lớp học để tránh viết hai bộ form gần như giống hệt nhau.
+// Form này dùng chung cho tạo và sửa lớp học để tránh viết hai bộ form gần như giống hệt nhau.
 export default function CreateClassroomForm({
   classroom = null,
   isSubmitting = false,
   onSubmitClassroom,
   submitLabel = "Lưu lớp học",
   title = "Thông tin lớp học",
+  onCancel = null,
 }) {
   const [formValues, setFormValues] = useState(() => buildFormValues(classroom));
   const [validationErrors, setValidationErrors] = useState({});
@@ -104,9 +104,22 @@ export default function CreateClassroomForm({
           value={formValues.description}
         />
 
-        <Button className="w-full sm:w-auto" disabled={isSubmitting} type="submit">
-          {isSubmitting ? "Đang lưu..." : submitLabel}
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button className="w-full sm:w-auto font-bold" disabled={isSubmitting} type="submit">
+            {isSubmitting ? "Đang lưu..." : submitLabel}
+          </Button>
+          {onCancel && (
+            <Button
+              className="w-full sm:w-auto font-bold"
+              variant="secondary"
+              disabled={isSubmitting}
+              onClick={onCancel}
+              type="button"
+            >
+              Hủy
+            </Button>
+          )}
+        </div>
       </form>
     </Card>
   );

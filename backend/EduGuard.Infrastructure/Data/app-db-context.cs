@@ -30,6 +30,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ExamAttempt> ExamAttempts => Set<ExamAttempt>();
     public DbSet<StudentAnswer> StudentAnswers => Set<StudentAnswer>();
     public DbSet<CheatingLog> CheatingLogs => Set<CheatingLog>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<LiveProctoringSession> LiveProctoringSessions => Set<LiveProctoringSession>();
     public DbSet<ProctoringEvidence> ProctoringEvidences => Set<ProctoringEvidence>();
     public DbSet<ProctoringState> ProctoringStates => Set<ProctoringState>();

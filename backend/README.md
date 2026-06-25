@@ -113,7 +113,7 @@ File: `EduGuard.Api/appsettings.json`
 | `Jwt:*` | Secret, issuer, audience, thời hạn token |
 | `Cors:AllowedOrigins` | Mặc định `http://localhost:5173` (Vite) |
 
-`appsettings.Development.json` có thể override cho máy local.
+`appsettings.Development.json` có thể override cho máy local và nên được tạo từ `appsettings.Development.example.json`.
 
 ---
 

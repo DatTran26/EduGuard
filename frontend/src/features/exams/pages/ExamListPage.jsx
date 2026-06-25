@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { classroomApi } from "../../../api/classroomApi";
 import { examApi } from "../../../api/examApi";
 import { questionBankApi } from "../../../api/questionBankApi";
+import { assignmentApi } from "../../../api/assignmentApi";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
@@ -19,6 +20,15 @@ import TeacherQuestionWorkspace from "../components/TeacherQuestionWorkspace";
 import { buildExamFormValues } from "../components/exam-form-helpers";
 import { validateQuestionImportFile } from "../components/teacher-question-workspace-helpers";
 import { buildDraftQuestion, resequenceDraftQuestions } from "./exam-create-draft-helpers";
+import {
+  resolveAssignmentSubmission,
+  sortAssignmentsByDeadline,
+} from "../../assignments/assignmentHelpers";
+import StudentTaskTabs from "../components/StudentTaskTabs";
+import StudentAssignmentCard from "../components/StudentAssignmentCard";
+import StudentExamCard from "../components/StudentExamCard";
+import StudentTaskGrid from "../components/StudentTaskGrid";
+import StudentTaskToolbar from "../components/StudentTaskToolbar";
 
 // Hàm này tính vài con số nhanh cho đầu trang danh sách đề thi để màn hình bớt khô hơn.
 function buildSummaryItems(exams, role) {
@@ -109,16 +119,44 @@ function buildDraftQuestionFromBankQuestion(question, orderIndex) {
   );
 }
 
+function buildStudentAssignmentCard(assignment, classroomName, userId) {
+  const submission = resolveAssignmentSubmission(assignment, userId);
+
+  return {
+    ...assignment,
+    classroomName,
+    mySubmission: submission,
+  };
+}
+
+async function loadStudentAssignmentsByClassrooms(classrooms = [], userId) {
+  const assignmentPromises = classrooms.map((classroom) =>
+    assignmentApi.getByClassroom(classroom.id)
+      .then((response) =>
+        (response.data ?? []).map((assignment) => ({
+          ...buildStudentAssignmentCard(assignment, classroom.name, userId),
+        })),
+      )
+      .catch(() => []),
+  );
+
+  const allAssignments = await Promise.all(assignmentPromises);
+  return allAssignments.flat();
+}
+
 // Trang này là trung tâm CRUD đề thi cho Teacher và là trang xem danh sách cho Admin/Student.
 export default function ExamListPage() {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const createExamSubmitRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [classrooms, setClassrooms] = useState([]);
   const [exams, setExams] = useState([]);
+  const [studentSubTab, setStudentSubTab] = useState("exams");
+  const [assignments, setAssignments] = useState([]);
+  const [isAssignmentsLoading, setIsAssignmentsLoading] = useState(false);
+  const [studentSearchQuery, setStudentSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingExamId, setDeletingExamId] = useState(null);
@@ -158,6 +196,7 @@ export default function ExamListPage() {
   const isStudentView = user?.role === "Student";
   const canCreateExam = isTeacherView && classrooms.length > 0;
   const isCreateFlowDraftMode = isCreateFormVisible && !activeCreateExam;
+  const createExamFormId = "teacher-exam-create-flow-form";
   const visibleExams = isStudentView
     ? filterExamsByScheduleStatus(exams, selectedScheduleStatus)
     : exams;
@@ -212,6 +251,15 @@ export default function ExamListPage() {
 
       setClassrooms(classroomResponse.data);
       setExams(examResponse.data);
+
+      if (user?.role === "Student") {
+        setIsAssignmentsLoading(true);
+        const nextAssignments = await loadStudentAssignmentsByClassrooms(
+          classroomResponse.data,
+          user?.id,
+        );
+        setAssignments(nextAssignments);
+      }
     } catch (error) {
       const nextMessage = error.message || "Không thể tải danh sách bài kiểm tra.";
       showToast({
@@ -223,6 +271,7 @@ export default function ExamListPage() {
       if (showPageLoader) {
         setIsLoading(false);
       }
+      setIsAssignmentsLoading(false);
     }
   }
 
@@ -244,6 +293,20 @@ export default function ExamListPage() {
 
         setClassrooms(classroomResponse.data);
         setExams(examResponse.data);
+
+        if (user?.role === "Student") {
+          setIsAssignmentsLoading(true);
+          const nextAssignments = await loadStudentAssignmentsByClassrooms(
+            classroomResponse.data,
+            user?.id,
+          );
+
+          if (!isMounted) {
+            return;
+          }
+
+          setAssignments(nextAssignments);
+        }
       } catch (error) {
         if (!isMounted) {
           return;
@@ -258,6 +321,7 @@ export default function ExamListPage() {
       } finally {
         if (isMounted) {
           setIsLoading(false);
+          setIsAssignmentsLoading(false);
         }
       }
     }
@@ -267,7 +331,7 @@ export default function ExamListPage() {
     return () => {
       isMounted = false;
     };
-  }, [selectedClassroomId, showToast]);
+  }, [selectedClassroomId, showToast, user?.id, user?.role]);
 
   useEffect(() => {
     if (!isTeacherView || !isCreateFormVisible) {
@@ -501,9 +565,6 @@ export default function ExamListPage() {
     setSearchParams(nextParams);
   }
 
-  function handleRequestCreateExamSubmit() {
-    void createExamSubmitRef.current?.();
-  }
 
   // Hàm này đổi filter lớp học trên URL để user refresh trang vẫn giữ được ngữ cảnh hiện tại.
   function updateExamListSearchParams(nextClassroomId, nextScheduleStatus) {
@@ -530,6 +591,8 @@ export default function ExamListPage() {
   }
 
   function handleResetStudentFilters() {
+    setStudentSearchQuery("");
+
     if (selectedClassroomId) {
       setIsLoading(true);
     }
@@ -1111,6 +1174,36 @@ export default function ExamListPage() {
     { label: "Đang diễn ra", value: "open" },
     { label: "Đã đóng", value: "closed" },
   ];
+  const normalizedStudentSearchQuery = studentSearchQuery.trim().toLowerCase();
+  const filteredAssignments = isStudentView
+    ? sortAssignmentsByDeadline(
+      (selectedClassroomId
+        ? assignments.filter((assignment) => String(assignment.classroomId) === String(selectedClassroomId))
+        : assignments
+      ).filter((assignment) =>
+        [assignment.title, assignment.classroomName].some((value) =>
+          String(value || "").toLowerCase().includes(normalizedStudentSearchQuery),
+        ),
+      ),
+    )
+    : [];
+  const filteredStudentExams = isStudentView
+    ? filterExamsByScheduleStatus(
+      (selectedClassroomId
+        ? exams.filter((exam) => String(exam.classroomId) === String(selectedClassroomId))
+        : exams
+      ).filter((exam) =>
+        [exam.title, exam.classroomName].some((value) =>
+          String(value || "").toLowerCase().includes(normalizedStudentSearchQuery),
+        ),
+      ),
+      selectedScheduleStatus,
+    )
+    : [];
+  const studentSectionTitle = studentSubTab === "assignments" ? "Danh sách bài tập" : "Danh sách bài thi";
+  const studentVisibleCount = studentSubTab === "assignments"
+    ? filteredAssignments.length
+    : filteredStudentExams.length;
 
   return (
     <div className="space-y-6">
@@ -1135,16 +1228,7 @@ export default function ExamListPage() {
           ) : null}
         </div>
       ) : isStudentView ? (
-        <div className="flex flex-col gap-4 rounded-[24px] border border-border bg-surface p-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-3">
-            <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-4 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-info">
-              {getRoleLabel(user?.role)}
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-[2.2rem]">
-              {pageCopy.title}
-            </h1>
-          </div>
-        </div>
+        <StudentTaskTabs activeTab={studentSubTab} onTabChange={setStudentSubTab} />
       ) : (
         <PageHeader
           actions={
@@ -1177,27 +1261,43 @@ export default function ExamListPage() {
         </div>
       ) : null}
 
-      <Card className="space-y-4">
-        <h3 className="text-lg font-semibold text-primary">Bộ lọc</h3>
-        <div className={`grid gap-4 ${isStudentView ? "lg:grid-cols-2" : "max-w-md"}`}>
-          <Select
-            id="exam-list-classroom-filter"
-            label="Lớp học"
-            onChange={(event) => handleClassroomFilterChange(event.target.value)}
-            options={filterOptions}
-            value={selectedClassroomId}
-          />
-          {isStudentView ? (
+      {isStudentView ? (
+        <StudentTaskToolbar
+          classrooms={classrooms}
+          onClassroomChange={handleClassroomFilterChange}
+          onReset={handleResetStudentFilters}
+          onSearchChange={setStudentSearchQuery}
+          onStatusChange={handleScheduleStatusFilterChange}
+          searchTerm={studentSearchQuery}
+          selectedClassroomId={selectedClassroomId}
+          selectedStatus={studentSubTab === "exams" ? selectedScheduleStatus : ""}
+          statusOptions={studentSubTab === "exams" ? scheduleFilterOptions : []}
+        />
+      ) : (
+        <Card className="space-y-4">
+          <h3 className="text-lg font-semibold text-primary">Bộ lọc</h3>
+          <div className="max-w-md">
             <Select
-              id="exam-list-schedule-status-filter"
-              label="Trạng thái lịch thi"
-              onChange={(event) => handleScheduleStatusFilterChange(event.target.value)}
-              options={scheduleFilterOptions}
-              value={selectedScheduleStatus}
+              id="exam-list-classroom-filter"
+              label="Lớp học"
+              onChange={(event) => handleClassroomFilterChange(event.target.value)}
+              options={filterOptions}
+              value={selectedClassroomId}
             />
-          ) : null}
+          </div>
+        </Card>
+      )}
+
+      {isStudentView ? (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-primary">{studentSectionTitle}</h2>
+          </div>
+          <p className="text-sm font-medium text-secondary">
+            {studentVisibleCount} mục
+          </p>
         </div>
-      </Card>
+      ) : null}
 
       {isTeacherView ? (
         classrooms.length > 0 ? (
@@ -1207,14 +1307,12 @@ export default function ExamListPage() {
                 classroomOptions={classrooms}
                 defaultClassroomId={defaultCreateClassroomId}
                 exam={activeCreateExam}
+                formId={createExamFormId}
                 hideSubmitButton
                 initialFormValues={activeCreateExam ? null : createDraftExamValues}
                 isSubmitting={isSubmitting}
                 key={createFormKey}
                 onFormValuesChange={activeCreateExam ? null : setCreateDraftExamValues}
-                onRegisterSubmit={(submitHandler) => {
-                  createExamSubmitRef.current = submitHandler;
-                }}
                 onSubmitExam={activeCreateExam ? handleUpdateCreateFlowExam : handleCreateExam}
                 showDescriptions={false}
                 submitLabel={activeCreateExam ? "Lưu thay đổi" : "Lưu toàn bộ đề thi"}
@@ -1280,8 +1378,8 @@ export default function ExamListPage() {
                   <Button
                     className="w-full sm:w-auto"
                     disabled={isSubmitting || isQuestionSubmitting || isImportSubmitting || isBankSubmitting}
-                    onClick={handleRequestCreateExamSubmit}
-                    type="button"
+                    form={createExamFormId}
+                    type="submit"
                   >
                     {isSubmitting
                       ? "Đang lưu..."
@@ -1305,7 +1403,57 @@ export default function ExamListPage() {
         )
       ) : null}
 
-      {isLoading ? (
+      {isStudentView ? (
+        studentSubTab === "assignments" ? (
+          isAssignmentsLoading ? (
+            <StudentTaskGrid>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <SkeletonExamCard key={`student-assignment-skeleton-${index}`} />
+              ))}
+            </StudentTaskGrid>
+          ) : filteredAssignments.length > 0 ? (
+            <StudentTaskGrid>
+              {filteredAssignments.map((assignment) => (
+                <StudentAssignmentCard key={assignment.id} assignment={assignment} />
+              ))}
+            </StudentTaskGrid>
+          ) : (
+            <EmptyState
+              title={assignments.length > 0 ? "Không tìm thấy bài tập phù hợp" : "Chưa có bài tập nào"}
+              action={
+                assignments.length > 0 ? (
+                  <Button variant="secondary" onClick={handleResetStudentFilters}>
+                    Xóa bộ lọc
+                  </Button>
+                ) : null
+              }
+            />
+          )
+        ) : isLoading ? (
+          <StudentTaskGrid>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <SkeletonExamCard key={`student-exam-skeleton-${index}`} />
+            ))}
+          </StudentTaskGrid>
+        ) : filteredStudentExams.length > 0 ? (
+          <StudentTaskGrid>
+            {filteredStudentExams.map((exam) => (
+              <StudentExamCard key={exam.id} exam={exam} />
+            ))}
+          </StudentTaskGrid>
+        ) : (
+          <EmptyState
+            title={exams.length > 0 ? "Không tìm thấy bài thi phù hợp" : "Chưa có bài thi nào"}
+            action={
+              exams.length > 0 ? (
+                <Button variant="secondary" onClick={handleResetStudentFilters}>
+                  Xóa bộ lọc
+                </Button>
+              ) : null
+            }
+          />
+        )
+      ) : isLoading ? (
         <div className="grid gap-6">
           <SkeletonExamCard />
           <SkeletonExamCard />
@@ -1322,15 +1470,6 @@ export default function ExamListPage() {
             />
           ))}
         </div>
-      ) : isStudentView && exams.length > 0 ? (
-        <EmptyState
-          title="Không có bài kiểm tra phù hợp với bộ lọc."
-          action={
-            <Button variant="secondary" onClick={handleResetStudentFilters}>
-              Xóa bộ lọc
-            </Button>
-          }
-        />
       ) : (
         <EmptyState title="Chưa có bài kiểm tra nào." />
       )}
