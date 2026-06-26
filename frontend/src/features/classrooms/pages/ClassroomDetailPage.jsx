@@ -492,6 +492,10 @@ export default function ClassroomDetailPage() {
       setSearchParams({ tab: "exams" });
     } else if (actionType === "monitor-exam") {
       navigate(`${routeConfig.teacherMonitoring}?examId=${targetId}`);
+    } else if (actionType === "edit-classroom") {
+      setIsEditClassroomFormVisible(true);
+    } else if (actionType === "delete-classroom") {
+      handleDeleteClassroom();
     }
   }
 
@@ -683,7 +687,7 @@ export default function ClassroomDetailPage() {
       ) : null}
 
       {shouldShowTeacherWorkspace ? (
-        <div className="sticky top-[64px] z-10 -mx-4 px-4 py-3 bg-[#F8FAFC]/80 backdrop-blur-md border-b border-border/50 transition-all duration-150">
+        <div className="py-3 flex justify-center border-b border-border/50">
           <div className="rounded-full border border-border bg-surface p-1 shadow-sm max-w-fit overflow-x-auto scrollbar-none">
             <div className="flex gap-1">
               {TEACHER_CLASSROOM_TABS.map((tab) => (
