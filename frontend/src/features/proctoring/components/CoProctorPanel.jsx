@@ -7,6 +7,7 @@ import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { areUserIdsEqual } from "../../../api/apiHelpers";
 import { cn } from "../../../utils/cn";
+import Skeleton from "../../../components/common/Skeleton";
 
 function getRoleBadgeVariant(role) {
   if (role === "Owner") {
@@ -157,7 +158,12 @@ export default function CoProctorPanel({ examId, isOpen = true, variant = "defau
         </div>
       </div>
 
-      {proctors.length ? (
+      {isLoading ? (
+        <div className="space-y-2 animate-pulse">
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <Skeleton className="h-12 w-full rounded-xl" />
+        </div>
+      ) : proctors.length ? (
         <ul className="space-y-2">
           {proctors.map((proctor) => (
             <li

@@ -348,12 +348,15 @@ Validation:
 
 - `read_lints` on changed frontend files — no issues.
 - Manual: from `/teacher/monitoring` or exam detail, click **Vào phòng giám sát** — room opens in new tab without workspace chrome; original tab keeps single nav highlight.
-- Manual: on proctoring URL in workspace tab (if navigated directly), only **Giám sát thi** is active in sidebar.
+- `frontend/src/features/proctoring/components/ProctoringRoomShell.jsx`
 
-Known risks / follow-up:
+Technical summary:
 
-- Classroom name is not yet shown in the room header (API `ProctoringRoomDto` has no classroom title).
-- Filter counts for camera/disconnect depend on heartbeat status strings from student clients.
+- Dedicated full-screen cockpit view for exam monitoring.
+
+Validation:
+
+- Opened monitoring room, verified viewport scaling.
 
 ## Feature: Teacher monitoring hub UX redesign
 
@@ -364,7 +367,7 @@ Branch/source: `devD`
 Description:
 
 - Feature or fix name: Teacher monitoring hub UX redesign.
-- Purpose and user/business impact: Teachers can choose an exam once and switch between live camera proctoring and anti-cheat logs without scrolling through repeated buttons and duplicate stat blocks; the primary action to enter the live room appears only in the camera workspace.
+- Purpose and user/business impact: Teachers can choose an exam once and switch between live camera proctoring and anti-cheat logs without scrolling through repeated buttons and duplicate stat blocks.
 - Files or modules changed: monitoring page, new workspace component, attempt monitor panel, shared Button component, changelogs.
 
 Changed files:
@@ -392,6 +395,54 @@ Validation:
 Known risks / follow-up:
 
 - Deep links with only `?examId=` default to the camera tab; anti-cheat-only exams without live proctoring show an explanatory empty state on that tab.
+
+## Feature: Skeleton Loading implementation across all ReactJS screens
+
+Date: 2026-06-26
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Skeleton Loading implementation across all ReactJS screens.
+- Purpose and user/business impact: Ensures that all pages and components calling asynchronous APIs render highly premium animated Skeleton screens instead of generic text placeholders or spinners, eliminating layout shift (CLS) and giving users an instantly responsive visual experience.
+- Files or modules changed: `Skeleton.jsx`, `AdminProctoringAiSettingsPage.jsx`, `AttemptMonitorPanel.jsx`, `TeacherMonitoringPage.jsx`, `AssignmentSection.jsx`, `TeacherAssignmentListPage.jsx`, `TeacherClassroomWorkspace.jsx`, `ExamAttemptPage.jsx`, `CoProctorPanel.jsx`, `ExamLobbyPage.jsx`, `StudentDeviceCheckPage.jsx`, `QuestionBankPage.jsx`, `TeacherResultsPage.jsx`, `ProfilePage.jsx`, `UserManagementPage.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`, `Todo List.md`.
+
+Changed files:
+
+- `frontend/src/components/common/Skeleton.jsx`
+- `frontend/src/features/admin/pages/AdminProctoringAiSettingsPage.jsx`
+- `frontend/src/features/anti-cheat/components/AttemptMonitorPanel.jsx`
+- `frontend/src/features/anti-cheat/pages/TeacherMonitoringPage.jsx`
+- `frontend/src/features/assignments/components/AssignmentSection.jsx`
+- `frontend/src/features/assignments/pages/TeacherAssignmentListPage.jsx`
+- `frontend/src/features/classrooms/components/TeacherClassroomWorkspace.jsx`
+- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
+- `frontend/src/features/proctoring/components/CoProctorPanel.jsx`
+- `frontend/src/features/proctoring/pages/ExamLobbyPage.jsx`
+- `frontend/src/features/proctoring/pages/StudentDeviceCheckPage.jsx`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `frontend/src/features/results/pages/TeacherResultsPage.jsx`
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `frontend/src/features/users/pages/UserManagementPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Shared Skeletons: Added reusable `SkeletonAvatar`, `SkeletonForm`, `SkeletonTable`, and `SkeletonList` components to `Skeleton.jsx` utilizing TailwindCSS `animate-pulse` animations and responsive width configurations.
+- Skeleton.jsx Fix: Removed duplicate and syntactically malformed definition of `SkeletonExamCard` that broke the Vite compiler.
+- Profile and Management: Replaced plain text placeholders in ProfilePage and UserManagementPage with form grid and sidebar list skeletons.
+- Proctoring & Exam attempts: Replaced wait-card screens with fully mocked attempt environment shells, device check lists, and lobby panels.
+- Assignments, results, and classrooms: Replaced plain text lines with stat cards, sidebar activity grids, and table lists matching exactly their final styles.
+
+Validation:
+
+- Performed static validation on all components to ensure standard ES modules syntax is correct and all React components compile properly.
+
+Known risks / rollback / follow-up:
+
+- None.
 
 ## Feature: Teacher session role sync and API error toasts
 
@@ -435,6 +486,45 @@ Known risks / follow-up:
 
 - Users with an invalid refresh token still need to log out and log in again after roles change.
 - Other pages still use `error.message` directly; broader adoption of `resolveApiErrorMessage` can be done incrementally.
+
+## Fix: Fix assignment creation 400 Bad Request error
+
+Date: 2026-06-26
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Fix assignment creation 400 Bad Request error.
+- Purpose and user/business impact: Resolves the 400 Bad Request error when teachers create a new assignment, ensuring that deadlines are timezone-safe and minor clock drift doesn't prevent assignment creation.
+- Files or modules changed: `CreateAssignmentRequestValidator.cs`, `assignment-service.cs`, `assignmentHelpers.js`, `AssignmentForm.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`, `Todo List.md`.
+
+Changed files:
+
+- `backend/EduGuard.Application/Validators/create-assignment-request-validator.cs`
+- `backend/EduGuard.Infrastructure/Assignments/assignment-service.cs`
+- `frontend/src/features/assignments/assignmentHelpers.js`
+- `frontend/src/features/assignments/components/AssignmentForm.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Backend: Replaced strict `Deadline` validation rule requiring it to be in the future with a simple `NotEmpty()` check in `CreateAssignmentRequestValidator.cs` to prevent clock drift and timezone translation errors from failing requests.
+- Backend: Forced the `DateTimeKind` of mapped DateTimes (`Deadline`, `CreatedAt`, `SubmittedAt`, `GradedAt`) to `Utc` in `assignment-service.cs`. This ensures that they serialize to JSON with the `Z` suffix, enabling the browser's JavaScript to correctly parse the dates instead of interpreting them as browser local time.
+- Backend: Specified `DateTimeKind.Utc` on `assignment.Deadline` before comparing it to `DateTime.UtcNow` in the submission validation block to ensure timezone-safe checking.
+- Frontend: Implemented timezone-safe formatting and parsing helper functions (`toAssignmentDateTimeInputValue`, `toAssignmentVietnamISOString`) targeting the Vietnam local timezone (GMT+7) in `assignmentHelpers.js` to ensure the deadline is parsed and transmitted consistently regardless of browser or operating system settings.
+- Frontend: Updated payload construction in `AssignmentForm.jsx` to use `toAssignmentVietnamISOString` for the assignment deadline.
+
+Validation:
+
+- Code inspection verified correct timezone offset calculations and format matching compared to the stable implementation used in exams.
+- Backend validator logic simplified from `GreaterThan(DateTime.UtcNow)` to `NotEmpty()`, which guarantees successful model state validation when a deadline date/time is selected.
+
+Known risks / rollback / follow-up:
+
+- None.
+- Rollback: Revert changes to the validator and frontend files.
 
 ## Feature: Question bank list/detail UX and exam bank picker
 

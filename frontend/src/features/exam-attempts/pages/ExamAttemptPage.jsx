@@ -8,6 +8,7 @@ import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
+import Skeleton from "../../../components/common/Skeleton";
 import Input from "../../../components/common/Input";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
@@ -988,9 +989,59 @@ export default function ExamAttemptPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-surface-sunken px-4 py-6 md:px-6 lg:px-8">
-        <div className="eg-feedback-panel mx-auto max-w-[1280px]">
-          Đang tải phòng làm bài...
+      <div className="min-h-screen bg-surface-sunken px-4 py-6 md:px-6 lg:px-8 animate-pulse">
+        <div className="mx-auto max-w-[1280px] space-y-6">
+          {/* Header block skeleton */}
+          <div className="flex justify-between items-center bg-surface border border-border/50 rounded-2xl p-5">
+            <div className="space-y-3 w-1/3">
+              <Skeleton className="h-6 w-full rounded-md" />
+              <Skeleton className="h-4 w-2/3 rounded-md" />
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-10 w-24 rounded-xl" />
+              <Skeleton className="h-10 w-24 rounded-xl" />
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+            {/* Left side: Questions skeleton */}
+            <div className="space-y-6">
+              <Card className="p-6 space-y-4">
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                </div>
+                <Skeleton className="h-8 w-5/6" />
+                <div className="space-y-3 pt-4">
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                </div>
+              </Card>
+              <div className="flex justify-between">
+                <Skeleton className="h-10 w-28 rounded-xl" />
+                <Skeleton className="h-10 w-28 rounded-xl" />
+              </div>
+            </div>
+
+            {/* Right side: Panel skeleton */}
+            <div className="space-y-6">
+              <Card className="p-5 space-y-4">
+                <Skeleton className="h-6 w-32" />
+                <div className="grid grid-cols-4 gap-2">
+                  {Array.from({ length: 16 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full rounded-lg" />
+                  ))}
+                </div>
+                <Skeleton className="h-12 w-full rounded-xl" />
+              </Card>
+              <Card className="p-5 space-y-3">
+                <Skeleton className="h-6 w-32" />
+                <Skeleton className="h-[180px] w-full rounded-xl" />
+              </Card>
+            </div>
+          </div>
         </div>
       </div>
     );

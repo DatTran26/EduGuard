@@ -14,6 +14,7 @@ import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import AdminUserForm from "../components/AdminUserForm";
+import { SkeletonForm, SkeletonList } from "../../../components/common/Skeleton";
 
 const ROLE_FILTER_OPTIONS = [
   { label: "Tất cả vai trò", value: "" },
@@ -367,7 +368,16 @@ export default function UserManagementPage() {
       </Card>
 
       {isLoading ? (
-        <div className="eg-feedback-panel">Đang tải dữ liệu quản trị...</div>
+        <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+          <Card className="space-y-4">
+            <h3 className="text-lg font-semibold text-primary">Danh sách tài khoản</h3>
+            <SkeletonList items={5} />
+          </Card>
+          <Card className="space-y-4">
+            <h3 className="text-lg font-semibold text-primary">Chi tiết tài khoản</h3>
+            <SkeletonForm fields={4} />
+          </Card>
+        </div>
       ) : (
         <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <Card className="space-y-4">

@@ -19,6 +19,7 @@ import { examAttemptApi } from "../../../api/examAttemptApi";
 import Badge from "../../../components/common/Badge";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
+import Skeleton from "../../../components/common/Skeleton";
 import {
   buildExamDetailPathByRole,
   routeConfig,
@@ -370,9 +371,29 @@ export default function TeacherClassroomWorkspace({
 
   if (isLoading) {
     return (
-      <Card className="text-sm text-secondary">
-        Đang tải workspace lớp học...
-      </Card>
+      <div className="space-y-6 animate-pulse">
+        <Card className="space-y-5">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-[280px] w-full rounded-2xl" />
+        </Card>
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <Card className="p-5 space-y-4">
+            <Skeleton className="h-6 w-32" />
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full rounded-xl" />
+              <Skeleton className="h-10 w-full rounded-xl" />
+            </div>
+          </Card>
+          <Card className="p-5 space-y-4">
+            <Skeleton className="h-6 w-32" />
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full rounded-xl" />
+              <Skeleton className="h-10 w-full rounded-xl" />
+            </div>
+          </Card>
+        </div>
+      </div>
     );
   }
 

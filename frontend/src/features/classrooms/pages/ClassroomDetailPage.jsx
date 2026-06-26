@@ -499,6 +499,10 @@ export default function ClassroomDetailPage() {
       } else {
         navigate(destination);
       }
+    } else if (actionType === "edit-classroom") {
+      setIsEditClassroomFormVisible(true);
+    } else if (actionType === "delete-classroom") {
+      handleDeleteClassroom();
     }
   }
 
@@ -693,14 +697,26 @@ export default function ClassroomDetailPage() {
       ) : null}
 
       {shouldShowTeacherWorkspace ? (
-        <TeacherClassroomTabBar
-          activeTab={activeTeacherTab}
-          onTabChange={handleTeacherTabChange}
-          classroom={classroom}
-          onEdit={() => setIsEditClassroomFormVisible(true)}
-          onDelete={handleDeleteClassroom}
-          isSaving={isSaving}
-        />
+        <div className="py-3 flex justify-center border-b border-border/50">
+          <div className="rounded-full border border-border bg-surface p-1 shadow-sm max-w-fit overflow-x-auto scrollbar-none">
+            <div className="flex gap-1">
+              {TEACHER_CLASSROOM_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTeacherTabChange(tab.id)}
+                  className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all duration-150 whitespace-nowrap ${
+                    activeTeacherTab === tab.id
+                      ? "bg-brand text-white shadow-sm"
+                      : "text-secondary hover:bg-surface-sunken hover:text-primary"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {shouldShowTeacherWorkspace && activeTeacherTab === "overview" && (

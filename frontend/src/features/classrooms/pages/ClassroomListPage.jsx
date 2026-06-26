@@ -436,19 +436,21 @@ export default function ClassroomListPage() {
       {isTeacherView ? (
         <>
           <ClassroomSummary classrooms={classrooms} />
-          <ClassroomToolbar
-            searchTerm={teacherSearchTerm}
-            onSearchTermChange={setTeacherSearchTerm}
-            statusFilter={teacherStatusFilter}
-            onStatusFilterChange={setTeacherStatusFilter}
-            sortOption={teacherSortOption}
-            onSortOptionChange={setTeacherSortOption}
-            onResetFilters={() => {
-              setTeacherSearchTerm("");
-              setTeacherStatusFilter("all");
-              setTeacherSortOption("newest");
-            }}
-          />
+          <div className="flex justify-end mt-2 pr-1">
+            <ClassroomToolbar
+              searchTerm={teacherSearchTerm}
+              onSearchTermChange={setTeacherSearchTerm}
+              statusFilter={teacherStatusFilter}
+              onStatusFilterChange={setTeacherStatusFilter}
+              sortOption={teacherSortOption}
+              onSortOptionChange={setTeacherSortOption}
+              onResetFilters={() => {
+                setTeacherSearchTerm("");
+                setTeacherStatusFilter("all");
+                setTeacherSortOption("newest");
+              }}
+            />
+          </div>
         </>
       ) : null}
 
