@@ -1,5 +1,88 @@
 # Project Changelog
 
+## Feature: Skeleton Loading implementation across all ReactJS screens
+
+Date: 2026-06-26
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Skeleton Loading implementation across all ReactJS screens.
+- Purpose and user/business impact: Ensures that all pages and components calling asynchronous APIs render highly premium animated Skeleton screens instead of generic text placeholders or spinners, eliminating layout shift (CLS) and giving users an instantly responsive visual experience.
+- Files or modules changed: `Skeleton.jsx`, `AdminProctoringAiSettingsPage.jsx`, `AttemptMonitorPanel.jsx`, `TeacherMonitoringPage.jsx`, `AssignmentSection.jsx`, `TeacherAssignmentListPage.jsx`, `TeacherClassroomWorkspace.jsx`, `ExamAttemptPage.jsx`, `CoProctorPanel.jsx`, `ExamLobbyPage.jsx`, `StudentDeviceCheckPage.jsx`, `QuestionBankPage.jsx`, `TeacherResultsPage.jsx`, `ProfilePage.jsx`, `UserManagementPage.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`, `Todo List.md`.
+
+Changed files:
+
+- `frontend/src/components/common/Skeleton.jsx`
+- `frontend/src/features/admin/pages/AdminProctoringAiSettingsPage.jsx`
+- `frontend/src/features/anti-cheat/components/AttemptMonitorPanel.jsx`
+- `frontend/src/features/anti-cheat/pages/TeacherMonitoringPage.jsx`
+- `frontend/src/features/assignments/components/AssignmentSection.jsx`
+- `frontend/src/features/assignments/pages/TeacherAssignmentListPage.jsx`
+- `frontend/src/features/classrooms/components/TeacherClassroomWorkspace.jsx`
+- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
+- `frontend/src/features/proctoring/components/CoProctorPanel.jsx`
+- `frontend/src/features/proctoring/pages/ExamLobbyPage.jsx`
+- `frontend/src/features/proctoring/pages/StudentDeviceCheckPage.jsx`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `frontend/src/features/results/pages/TeacherResultsPage.jsx`
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `frontend/src/features/users/pages/UserManagementPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Shared Skeletons: Added reusable `SkeletonAvatar`, `SkeletonForm`, `SkeletonTable`, and `SkeletonList` components to `Skeleton.jsx` utilizing TailwindCSS `animate-pulse` animations and responsive width configurations.
+- Profile and Management: Replaced plain text placeholders in ProfilePage and UserManagementPage with form grid and sidebar list skeletons.
+- Proctoring & Exam attempts: Replaced wait-card screens with fully mocked attempt environment shells, device check lists, and lobby panels.
+- Assignments, results, and classrooms: Replaced plain text lines with stat cards, sidebar activity grids, and table lists matching exactly their final styles.
+
+Validation:
+
+- Performed static validation on all components to ensure standard ES modules syntax is correct and all React components compile properly.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Fix: Fix assignment creation 400 Bad Request error
+
+Date: 2026-06-26
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Fix assignment creation 400 Bad Request error.
+- Purpose and user/business impact: Resolves the 400 Bad Request error when teachers create a new assignment, ensuring that deadlines are timezone-safe and minor clock drift doesn't prevent assignment creation.
+- Files or modules changed: `CreateAssignmentRequestValidator.cs`, `assignmentHelpers.js`, `AssignmentForm.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`, `Todo List.md`.
+
+Changed files:
+
+- `backend/EduGuard.Application/Validators/create-assignment-request-validator.cs`
+- `frontend/src/features/assignments/assignmentHelpers.js`
+- `frontend/src/features/assignments/components/AssignmentForm.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Backend: Replaced strict `Deadline` validation rule requiring it to be in the future with a simple `NotEmpty()` check in `CreateAssignmentRequestValidator.cs` to prevent clock drift and timezone translation errors from failing requests.
+- Frontend: Implemented timezone-safe formatting and parsing helper functions (`toAssignmentDateTimeInputValue`, `toAssignmentVietnamISOString`) targeting the Vietnam local timezone (GMT+7) in `assignmentHelpers.js` to ensure the deadline is parsed and transmitted consistently regardless of browser or operating system settings.
+- Frontend: Updated payload construction in `AssignmentForm.jsx` to use `toAssignmentVietnamISOString` for the assignment deadline.
+
+Validation:
+
+- Code inspection verified correct timezone offset calculations and format matching compared to the stable implementation used in exams.
+- Backend validator logic simplified from `GreaterThan(DateTime.UtcNow)` to `NotEmpty()`, which guarantees successful model state validation when a deadline date/time is selected.
+
+Known risks / rollback / follow-up:
+
+- None.
+- Rollback: Revert changes to the validator and frontend files.
+
 ## Feature: Question bank list/detail UX and exam bank picker
 
 Date: 2026-06-25
