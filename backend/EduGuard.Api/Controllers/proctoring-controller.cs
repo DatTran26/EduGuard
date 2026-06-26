@@ -207,6 +207,30 @@ public class ProctoringController : ControllerBase
             return ApiResponse<object>.CreateSuccess(null!, "Đã kết thúc bài làm.");
         });
 
+    [HttpGet("api/proctoring/evidence")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<ActionResult<ApiResponse<ProctoringEvidenceListResultDto>>> GetEvidenceList(
+        [FromQuery] int? examId,
+        [FromQuery] int? attemptId,
+        [FromQuery] string? evidenceType,
+        [FromQuery] string? search,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 24,
+        CancellationToken ct = default) =>
+        await ExecuteTeacherAsync(() => _proctoringService.GetEvidenceListAsync(
+            new ProctoringEvidenceListQuery
+            {
+                ExamId = examId,
+                AttemptId = attemptId,
+                EvidenceType = evidenceType,
+                Search = search,
+                Page = page,
+                PageSize = pageSize
+            },
+            GetUserId()!,
+            GetRoles(),
+            ct));
+
     [HttpPost("api/attempts/{attemptId:int}/proctoring/evidence")]
     [Authorize(Roles = "Teacher,Admin,Student")]
     [Consumes("multipart/form-data")]

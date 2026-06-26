@@ -9,4 +9,5 @@ public interface IExamMonitoringNotifier
     Task SendProctoringWarningAsync(ProctoringWarningDto warning, CancellationToken ct = default);
     Task SendProctoringControlAsync(ProctoringControlEventDto controlEvent, CancellationToken ct = default);
     Task SendLateJoinAsync(LateJoinEventDto lateJoinEvent, CancellationToken ct = default);
+    Task SendAiDetectionAsync(AiDetectionEventDto detectionEvent, CancellationToken ct = default);
 }

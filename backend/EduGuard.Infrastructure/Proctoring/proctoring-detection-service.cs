@@ -7,6 +7,7 @@ using EduGuard.Application.Services.Interfaces;
 using EduGuard.Domain.Enums;
 using EduGuard.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace EduGuard.Infrastructure.Proctoring;
 
@@ -14,25 +15,31 @@ public class ProctoringDetectionService : IProctoringDetectionService
 {
     private readonly AppDbContext _db;
     private readonly IAntiCheatService _antiCheatService;
+    private readonly IExamMonitoringNotifier _examMonitoringNotifier;
     private readonly IExamMonitoringService _examMonitoringService;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IProctoringEvidenceService _proctoringEvidenceService;
     private readonly IProctoringRepository _proctoringRepository;
+    private readonly ILogger<ProctoringDetectionService> _logger;
 
     public ProctoringDetectionService(
         AppDbContext db,
         IAntiCheatService antiCheatService,
+        IExamMonitoringNotifier examMonitoringNotifier,
         IExamMonitoringService examMonitoringService,
         IHttpClientFactory httpClientFactory,
         IProctoringEvidenceService proctoringEvidenceService,
-        IProctoringRepository proctoringRepository)
+        IProctoringRepository proctoringRepository,
+        ILogger<ProctoringDetectionService> logger)
     {
         _db = db;
         _antiCheatService = antiCheatService;
+        _examMonitoringNotifier = examMonitoringNotifier;
         _examMonitoringService = examMonitoringService;
         _httpClientFactory = httpClientFactory;
         _proctoringEvidenceService = proctoringEvidenceService;
         _proctoringRepository = proctoringRepository;
+        _logger = logger;
     }
 
     public async Task<ProctoringDetectionResultDto> DetectAsync(
@@ -46,6 +53,7 @@ public class ProctoringDetectionService : IProctoringDetectionService
     {
         var attempt = await _db.ExamAttempts
             .AsNoTracking()
+            .Include(x => x.Student)
             .FirstOrDefaultAsync(x => x.Id == attemptId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy lượt làm bài.");
 
@@ -161,8 +169,17 @@ public class ProctoringDetectionService : IProctoringDetectionService
                 }
             }
         }
+        else if (detectionType is not "Normal" and not "Disabled")
+        {
+            var state = await _proctoringRepository.GetStateByAttemptIdAsync(attemptId, ct);
+            if (state is not null)
+            {
+                state.LatestDetectionType = detectionType;
+                await _proctoringRepository.UpsertStateAsync(state, ct);
+            }
+        }
 
-        return new ProctoringDetectionResultDto
+        var result = new ProctoringDetectionResultDto
         {
             DetectionType = detectionType,
             Confidence = confidence,
@@ -170,6 +187,38 @@ public class ProctoringDetectionService : IProctoringDetectionService
             Labels = labels,
             Message = isFlagged ? "Có dấu hiệu bất thường cần theo dõi." : "Không phát hiện dấu hiệu vượt ngưỡng."
         };
+
+        _logger.LogInformation(
+            "AI detect attempt {AttemptId} exam {ExamId}: type={DetectionType} confidence={Confidence} flagged={IsFlagged} labels={Labels}",
+            attemptId,
+            attempt.ExamId,
+            detectionType,
+            confidence,
+            isFlagged,
+            string.Join(", ", labels));
+
+        try
+        {
+            await _examMonitoringNotifier.SendAiDetectionAsync(new AiDetectionEventDto
+            {
+                ExamId = attempt.ExamId,
+                ExamAttemptId = attemptId,
+                StudentId = attempt.StudentId,
+                StudentName = attempt.Student?.FullName ?? string.Empty,
+                DetectionType = detectionType,
+                Confidence = confidence,
+                IsFlagged = isFlagged,
+                Message = result.Message,
+                Labels = labels,
+                OccurredAt = DateTime.UtcNow
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không gửi được sự kiện AI detection realtime cho đề thi {ExamId}.", attempt.ExamId);
+        }
+
+        return result;
     }
 
     private static CheatingType? MapDetectionToCheatingType(string detectionType) =>
