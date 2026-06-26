@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Backend
 
 - Fixed 400 Bad Request error when creating assignments by replacing the strict `Deadline` comparison `GreaterThan(DateTime.UtcNow.AddMinutes(-1))` with a basic `NotEmpty()` validation check to prevent timezone and clock drift issues.
+- Fixed timezone discrepancy in assignment deadlines where retrieved DateTime objects were interpreted as browser local time by forcing them to UTC kind in MapAssignment and MapSubmission, preventing false overdue states for active assignments.
 - Added teacher-owned question banks with bank questions, bank answers, difficulty/status metadata, versioning for snapshotted questions, and archived-question history.
 - Added exam matrix APIs so teachers can define matrix rows, validate available approved bank questions, generate a balanced preview, and create draft exams from the selected bank.
 - Added Admin read access for exam matrix list/detail while keeping create/update/delete/preview/create-exam restricted to Teacher-owned resources.
@@ -19,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Frontend
 
 - Added global `Skeleton` components (`SkeletonAvatar`, `SkeletonForm`, `SkeletonTable`, `SkeletonList`) in `Skeleton.jsx` and refactored loading state handlers across all API-dependent pages (Profile, AI settings, lobby, attempt room, device checks, question bank, class workspace, result list, etc.) to use polished Skeleton Screens instead of simple spinners or text placeholders, preventing layout shifts and creating a unified high-premium loading UX.
+- Fixed syntax compilation error in Skeleton.jsx by removing duplicate/malformed SkeletonExamCard definition and cleaning up layout hierarchy.
 - Replaced local timezone-unaware datetime conversion for assignment deadlines in `AssignmentForm.jsx` and `assignmentHelpers.js` with Vietnam timezone-safe functions (`toAssignmentDateTimeInputValue`, `toAssignmentVietnamISOString`) to prevent timezone conversion discrepancies.
 - Added a Teacher `Ngân hàng câu hỏi` workspace for creating question banks, filtering bank questions, manually adding/editing/archiving questions, importing files into a bank, creating matrix rows, previewing matrix selections, and creating draft exams from a matrix.
 - Added frontend question bank and exam matrix API adapters with enum normalization for question type, difficulty, and bank question status.

@@ -35,6 +35,7 @@ Changed files:
 Technical summary:
 
 - Shared Skeletons: Added reusable `SkeletonAvatar`, `SkeletonForm`, `SkeletonTable`, and `SkeletonList` components to `Skeleton.jsx` utilizing TailwindCSS `animate-pulse` animations and responsive width configurations.
+- Skeleton.jsx Fix: Removed duplicate and syntactically malformed definition of `SkeletonExamCard` that broke the Vite compiler.
 - Profile and Management: Replaced plain text placeholders in ProfilePage and UserManagementPage with form grid and sidebar list skeletons.
 - Proctoring & Exam attempts: Replaced wait-card screens with fully mocked attempt environment shells, device check lists, and lobby panels.
 - Assignments, results, and classrooms: Replaced plain text lines with stat cards, sidebar activity grids, and table lists matching exactly their final styles.
@@ -57,11 +58,12 @@ Description:
 
 - Feature or fix name: Fix assignment creation 400 Bad Request error.
 - Purpose and user/business impact: Resolves the 400 Bad Request error when teachers create a new assignment, ensuring that deadlines are timezone-safe and minor clock drift doesn't prevent assignment creation.
-- Files or modules changed: `CreateAssignmentRequestValidator.cs`, `assignmentHelpers.js`, `AssignmentForm.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`, `Todo List.md`.
+- Files or modules changed: `CreateAssignmentRequestValidator.cs`, `assignment-service.cs`, `assignmentHelpers.js`, `AssignmentForm.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`, `Todo List.md`.
 
 Changed files:
 
 - `backend/EduGuard.Application/Validators/create-assignment-request-validator.cs`
+- `backend/EduGuard.Infrastructure/Assignments/assignment-service.cs`
 - `frontend/src/features/assignments/assignmentHelpers.js`
 - `frontend/src/features/assignments/components/AssignmentForm.jsx`
 - `CHANGELOG.md`
@@ -70,6 +72,8 @@ Changed files:
 Technical summary:
 
 - Backend: Replaced strict `Deadline` validation rule requiring it to be in the future with a simple `NotEmpty()` check in `CreateAssignmentRequestValidator.cs` to prevent clock drift and timezone translation errors from failing requests.
+- Backend: Forced the `DateTimeKind` of mapped DateTimes (`Deadline`, `CreatedAt`, `SubmittedAt`, `GradedAt`) to `Utc` in `assignment-service.cs`. This ensures that they serialize to JSON with the `Z` suffix, enabling the browser's JavaScript to correctly parse the dates instead of interpreting them as browser local time.
+- Backend: Specified `DateTimeKind.Utc` on `assignment.Deadline` before comparing it to `DateTime.UtcNow` in the submission validation block to ensure timezone-safe checking.
 - Frontend: Implemented timezone-safe formatting and parsing helper functions (`toAssignmentDateTimeInputValue`, `toAssignmentVietnamISOString`) targeting the Vietnam local timezone (GMT+7) in `assignmentHelpers.js` to ensure the deadline is parsed and transmitted consistently regardless of browser or operating system settings.
 - Frontend: Updated payload construction in `AssignmentForm.jsx` to use `toAssignmentVietnamISOString` for the assignment deadline.
 
