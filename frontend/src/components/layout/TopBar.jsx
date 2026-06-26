@@ -44,6 +44,7 @@ const breadcrumbLabelBySegment = {
   classrooms: "Lớp học",
   exams: "Đề thi",
   dashboard: "Dashboard",
+  tasks: "Hoạt động học tập",
   profile: "Hồ sơ",
   results: "Kết quả",
   users: "Người dùng",

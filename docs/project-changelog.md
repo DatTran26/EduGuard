@@ -1,5 +1,28 @@
 # Project Changelog
 
+## Feature: Redesigned Teacher Exam/Test list to compact 4-column grid
+
+Date: 2026-06-26
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Thiết kế lại danh sách Đề thi/Bài thi của giáo viên thành dạng lưới 4x4 compact và đồng bộ header.
+- Purpose and user/business impact: Giúp giáo viên quản lý danh sách bài kiểm tra hiệu quả hơn. UI mới tách biệt hoàn toàn với bài tập (không dùng master-detail split view), ẩn "Khu điều hành bài kiểm tra", hiển thị các card dạng lưới 4 cột trên desktop, làm cực gọn các thông tin hiển thị trên card. Đồng thời cho cả hai tab Bài tập và Đề thi dùng chung phần đầu trang (hero header + stats bar) siêu compact, phóng to nhẹ 4 khối stats lọc nhanh với màu sắc tương phản đậm đà nổi bật hơn để giáo viên dễ phân biệt và nhìn trọn vẹn hàng đầu tiên của 4 bài thi ngay khi mở màn hình mà không cần cuộn trang.
+- Files or modules changed: `frontend/src/features/learning-tasks/components/ExamGridCard.jsx`, `frontend/src/features/learning-tasks/components/ExamGrid.jsx`, `frontend/src/features/learning-tasks/pages/TeacherLearningTasksPage.jsx`, `frontend/src/features/learning-tasks/components/LearningTaskStats.jsx`.
+- Technical summary: Tạo/cập nhật component `ExamGridCard` và `ExamGrid` để kết xuất danh sách đề thi theo lưới responsive 4 cột (`grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4`). Thu gọn thông tin hiển thị trên card bằng cách gộp ngày thi và chuyển các thông số câu hỏi/lượt làm sang một hàng ngang duy nhất. Đồng bộ hóa cấu trúc compact cho cả hai tab Bài tập và Đề thi. Cập nhật `compact` mode cho `LearningTaskStats` sử dụng kích thước lớn hơn một chút với các tông màu background/border/text đậm đà nổi bật và trạng thái active tương phản mạnh mẽ. Triển khai form chỉnh sửa thông tin đề thi `ExamForm` trong modal overlay phủ toàn màn hình (`fixed inset-0 z-50 flex items-center justify-center p-4`) với nút lưu thay đổi được liên kết với form thông qua `formId="edit-exam-form"`.
+- Validation: `npm run build` trong `frontend/` chạy thành công không có lỗi biên dịch.
+
+Changed files:
+
+- `frontend/src/features/learning-tasks/components/ExamGridCard.jsx` [NEW]
+- `frontend/src/features/learning-tasks/components/ExamGrid.jsx` [NEW]
+- `frontend/src/features/learning-tasks/pages/TeacherLearningTasksPage.jsx` [MODIFY]
+- `CHANGELOG.md` [MODIFY]
+- `Todo List.md` [MODIFY]
+- `docs/project-changelog.md` [MODIFY]
+
 ## Release: v1.3.0-rc.1
 
 Date: 2026-06-26
@@ -18,6 +41,51 @@ Description:
 Unresolved questions:
 
 - RC deploy target: local tunnel vs cloud — confirm LiveKit stack per `docs/PROCTORING_SFU_SETUP.md`.
+
+## Feature: Unified teacher learning tasks workspace
+
+Date: 2026-06-26
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Hợp nhất quản lý Bài tập + Đề thi thành Hoạt động học tập.
+- Purpose and user/business impact: Teacher không còn phải đi qua hai màn hình gần giống nhau để quản lý bài tập và đề thi. Tất cả thao tác list/filter/create/select nay đi qua một workspace thống nhất, giảm trùng lặp UI và làm rõ điều hướng trong shell giáo viên.
+- Files or modules changed: `frontend/src/features/learning-tasks/*`, `frontend/src/routes/AppRoutes.jsx`, `frontend/src/routes/roleRoutes.js`, `frontend/src/routes/routeConfig.js`, `frontend/src/components/layout/{Sidebar,TeacherQuickCreateButton,TeacherShellSearch,TopBar}.jsx`, `frontend/src/features/{dashboard,classrooms,question-banks,results}/**`.
+- Technical summary: Tạo feature mới `learning-tasks` với mapper chuẩn hóa assignment/exam về một schema UI chung, page `TeacherLearningTasksPage.jsx`, type switch `assignment|exam`, stats/list/detail panel dùng lại theo type. Panel filter riêng đã được bỏ khỏi UI; thay vào đó teacher bấm trực tiếp vào stat card như `Đang mở`, `Sắp đến hạn`, `Cần chấm`, `Đã publish` để lọc danh sách ngay trên cùng màn hình. Route mới `/teacher/tasks` thay cho list routes cũ; `/teacher/assignments` và `/teacher/exams` được giữ dưới dạng redirect tương thích query cũ. Sidebar giáo viên được gộp còn một mục **Hoạt động học tập**; quick-create, shell search, dashboard, classroom detail/workspace và question bank đều đổi sang route chung. Đề thi vẫn dùng API exam hiện tại và phần chỉnh sâu/question workspace tiếp tục ở `ExamDetailPage`. Sau phản hồi UX, phần đầu trang của workspace này được nén lại: bỏ `PageHeader` lồng trong hero, giảm padding/decoration thừa, rút gọn segmented control chỉ còn nhãn loại nội dung để tiết kiệm chiều cao mà không thêm nút mới. Pass tiếp theo làm rõ tách biệt giữa danh sách và workspace bằng hai khối riêng, bỏ nút `Mở chi tiết` dư thừa, cho phép bấm trực tiếp vào card để chọn hoạt động, và tự cuộn xuống workspace khi teacher bấm `Mở chấm bài` ở danh sách bài tập. Pass mới nhất tiếp tục bỏ phần mô tả dư trong header của workspace, chỉ giữ lại title, xóa hẳn block giới thiệu `Danh sách hoạt động`, và rút gọn panel chi tiết bài tập để bỏ phần header/tóm tắt lặp lại phía trên `Workspace chấm bài`.
+
+Changed files:
+
+- `frontend/src/features/learning-tasks/learningTaskMapper.js`
+- `frontend/src/features/learning-tasks/components/LearningTaskTypeTabs.jsx`
+- `frontend/src/features/learning-tasks/components/LearningTaskStats.jsx`
+- `frontend/src/features/learning-tasks/components/LearningTaskFilters.jsx`
+- `frontend/src/features/learning-tasks/components/LearningTaskCard.jsx`
+- `frontend/src/features/learning-tasks/components/LearningTaskList.jsx`
+- `frontend/src/features/learning-tasks/pages/TeacherLearningTasksPage.jsx`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/routes/roleRoutes.js`
+- `frontend/src/routes/routeConfig.js`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TeacherQuickCreateButton.jsx`
+- `frontend/src/components/layout/TeacherShellSearch.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/features/classrooms/components/TeacherClassroomWorkspace.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `frontend/src/features/results/pages/TeacherResultsPage.jsx`
+- `CHANGELOG.md`, `Todo List.md`, `docs/project-changelog.md`
+
+Validation:
+
+- `npm run build` in `frontend/` passes successfully after the refactor, compact-header pass, list/workspace UX pass, workspace-header simplification, and assignment-workspace collapse.
+- `npm run lint` still reports many pre-existing repository issues outside this feature area (dashboard, proctoring, classrooms, etc.); no new build blocker was introduced by the unified tasks page.
+
+Unresolved questions:
+
+- Exam creation/editing in the unified page now covers metadata/schedule/config, while question authoring and publish checklist details remain in `/teacher/exams/:examId` by design.
 
 ## Feature: Late exam join notifications and camera gate
 

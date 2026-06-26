@@ -10,7 +10,7 @@ import {
   FiRefreshCw,
 } from "react-icons/fi";
 import { dashboardApi } from "../../../api/dashboardApi";
-import { routeConfig } from "../../../routes/routeConfig";
+import { buildTeacherTasksPath, routeConfig } from "../../../routes/routeConfig";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
 import Badge from "../../../components/common/Badge";
@@ -290,13 +290,13 @@ export default function TeacherDashboardPage() {
         <div className="flex flex-wrap gap-3">
           <Button
             variant="secondary"
-            onClick={() => navigate(`${routeConfig.teacherAssignments}?create=1`)}
+            onClick={() => navigate(buildTeacherTasksPath("assignment", { create: 1 }))}
           >
             Tạo bài tập
           </Button>
           <Button
             variant="secondary"
-            onClick={() => navigate(`${routeConfig.teacherExams}?create=1`)}
+            onClick={() => navigate(buildTeacherTasksPath("exam", { create: 1 }))}
           >
             Tạo đề thi
           </Button>

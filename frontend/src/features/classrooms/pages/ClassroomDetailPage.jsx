@@ -14,7 +14,7 @@ import EmptyState from "../../../components/common/EmptyState";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
-import { getClassroomListPathByRole, routeConfig } from "../../../routes/routeConfig";
+import { buildTeacherTasksPath, getClassroomListPathByRole, routeConfig } from "../../../routes/routeConfig";
 import { formatShortDate, formatShortDateTime } from "../../../utils/formatDate";
 import { buildTeacherExamMonitoringPath, isTeacherProctoringPath, openTeacherProctoringRoom } from "../../proctoring/utils/proctoringRouting";
 import AssignmentSection from "../../assignments/components/AssignmentSection";
@@ -476,7 +476,7 @@ export default function ClassroomDetailPage() {
     if (actionType === "create-assignment") {
       setSearchParams({ tab: "assignments", create: "1" });
     } else if (actionType === "create-exam") {
-      navigate(`${routeConfig.teacherExams}?create=1&classroomId=${classroom.id}`);
+      navigate(buildTeacherTasksPath("exam", { create: 1, classroomId: classroom.id }));
     } else if (actionType === "send-notification") {
       setSearchParams({ tab: "notifications", create: "1" });
     } else if (actionType === "view-notifications") {

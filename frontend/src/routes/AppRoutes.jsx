@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import AppShell from "../components/layout/AppShell";
 import ProtectedRoute from "../components/layout/ProtectedRoute";
 import PublicRoute from "../components/layout/PublicRoute";
@@ -10,7 +10,6 @@ import JoinClassroomPage from "../features/classrooms/pages/JoinClassroomPage";
 import AdminMonitoringPage from "../features/admin/pages/AdminMonitoringPage";
 import AdminProctoringAiSettingsPage from "../features/admin/pages/AdminProctoringAiSettingsPage";
 import TeacherMonitoringPage from "../features/anti-cheat/pages/TeacherMonitoringPage";
-import TeacherAssignmentListPage from "../features/assignments/pages/TeacherAssignmentListPage";
 import AdminDashboardPage from "../features/dashboard/pages/AdminDashboardPage";
 import TeacherDashboardPage from "../features/dashboard/pages/TeacherDashboardPage";
 import ExamAttemptPage from "../features/exam-attempts/pages/ExamAttemptPage";
@@ -21,6 +20,7 @@ import ProctoringRoomShell from "../features/proctoring/components/ProctoringRoo
 import TeacherProctoringRoomPage from "../features/proctoring/pages/TeacherProctoringRoomPage";
 import ExamDetailPage from "../features/exams/pages/ExamDetailPage";
 import ExamListPage from "../features/exams/pages/ExamListPage";
+import TeacherLearningTasksPage from "../features/learning-tasks/pages/TeacherLearningTasksPage";
 import QuestionBankPage from "../features/question-banks/pages/QuestionBankPage";
 import TeacherNotificationsPage from "../features/notifications/pages/TeacherNotificationsPage";
 import NotificationsPage from "../features/notifications/pages/NotificationsPage";
@@ -49,6 +49,20 @@ function RootRedirect() {
   }
 
   return <Navigate replace to={getDefaultPathByRole(user?.role)} />;
+}
+
+function LegacyTeacherTaskRedirect({ type }) {
+  const location = useLocation();
+  const nextParams = new URLSearchParams(location.search);
+
+  nextParams.set("type", type);
+
+  return (
+    <Navigate
+      replace
+      to={`${routeConfig.teacherTasks}?${nextParams.toString()}`}
+    />
+  );
 }
 
 export default function AppRoutes() {
@@ -83,8 +97,9 @@ export default function AppRoutes() {
             <Route element={<TeacherDashboardPage />} path={routeConfig.teacherDashboard} />
             <Route element={<ClassroomListPage />} path={routeConfig.teacherClassrooms} />
             <Route element={<ClassroomDetailPage />} path={routeConfig.teacherClassroomDetail} />
-            <Route element={<TeacherAssignmentListPage />} path={routeConfig.teacherAssignments} />
-            <Route element={<ExamListPage />} path={routeConfig.teacherExams} />
+            <Route element={<TeacherLearningTasksPage />} path={routeConfig.teacherTasks} />
+            <Route element={<LegacyTeacherTaskRedirect type="assignment" />} path={routeConfig.teacherAssignments} />
+            <Route element={<LegacyTeacherTaskRedirect type="exam" />} path={routeConfig.teacherExams} />
             <Route element={<QuestionBankPage />} path={routeConfig.teacherQuestionBanks} />
             <Route element={<ExamDetailPage />} path={routeConfig.teacherExamDetail} />
             <Route element={<TeacherMonitoringPage />} path={routeConfig.teacherMonitoring} />

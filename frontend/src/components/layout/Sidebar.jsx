@@ -37,7 +37,7 @@ function getNavigationIconByLabel(label) {
   if (label === "Bài tập") {
     return FiFileText;
   }
-  if (label === "Bài kiểm tra" || label === "Đề thi" || label === "Quản lí bài kiểm tra") {
+  if (label === "Bài kiểm tra" || label === "Đề thi" || label === "Quản lí bài kiểm tra" || label === "Hoạt động học tập") {
     return FiClipboard;
   }
   if (label === "Tham gia lớp") {
@@ -84,10 +84,6 @@ function getNavigationItemIsActive(itemPath, pathname) {
     );
   }
 
-  if (itemPath === routeConfig.teacherAssignments) {
-    return pathname === routeConfig.teacherAssignments;
-  }
-
   if (itemPath === routeConfig.adminClassrooms) {
     return (
       pathname === routeConfig.adminClassrooms ||
@@ -106,11 +102,13 @@ function getNavigationItemIsActive(itemPath, pathname) {
     );
   }
 
-  if (itemPath === routeConfig.teacherExams) {
+  if (itemPath === routeConfig.teacherTasks) {
     return (
+      pathname === routeConfig.teacherTasks ||
+      pathname === routeConfig.teacherAssignments ||
       pathname === routeConfig.teacherExams ||
       (Boolean(matchPath(routeConfig.teacherExamDetail, pathname)) &&
-        !Boolean(matchPath(routeConfig.teacherProctoring, pathname)))
+        !matchPath(routeConfig.teacherProctoring, pathname))
     );
   }
 

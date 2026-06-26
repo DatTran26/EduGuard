@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { FiActivity, FiAward, FiAlertTriangle } from "react-icons/fi";
 import { antiCheatApi } from "../../../api/antiCheatApi";
 import { classroomApi } from "../../../api/classroomApi";
@@ -54,15 +54,36 @@ function matchesRisk(row, riskFilter) {
 }
 
 export default function TeacherResultsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [classrooms, setClassrooms] = useState([]);
   const [exams, setExams] = useState([]);
   const [rows, setRows] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedClassroomId, setSelectedClassroomId] = useState("");
-  const [selectedExamId, setSelectedExamId] = useState("");
+  const [selectedClassroomId, setSelectedClassroomId] = useState(() => searchParams.get("classroomId") ?? "");
+  const [selectedExamId, setSelectedExamId] = useState(() => searchParams.get("examId") ?? "");
   const [selectedRisk, setSelectedRisk] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (selectedClassroomId) {
+      nextParams.set("classroomId", selectedClassroomId);
+    } else {
+      nextParams.delete("classroomId");
+    }
+
+    if (selectedExamId) {
+      nextParams.set("examId", selectedExamId);
+    } else {
+      nextParams.delete("examId");
+    }
+
+    if (nextParams.toString() !== searchParams.toString()) {
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, selectedClassroomId, selectedExamId, setSearchParams]);
 
   useEffect(() => {
     let isMounted = true;

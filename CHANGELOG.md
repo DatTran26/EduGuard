@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Frontend
+
+- Redesigned the Teacher **Bài thi / Đề thi** tab layout in the learning tasks workspace (`/teacher/tasks` when `type=exam`) to use a compact, responsive 4-column grid layout instead of the split 2-column view, completely removing the redundant "Khu điều hành bài kiểm tra" detail panel for exams. Exam cards have been highly compressed vertically, moving calendar schedule and statistics into clean single-line summaries to maximize space. Further UX passes unify the top section (page hero header and stats bar) to be compact for both **Bài tập** (Assignment) and **Bài thi / Đề thi** (Exam) views. The four stats cards are styled larger, using bolder, high-contrast background and border colors, with a distinct visual active state to make them easily distinguishable. Action controls are fully integrated on the card with a primary action button and a dropdown options menu (`...`) for editing, publishing, deleting, closing early, and monitoring. Editing an exam's information now opens in a beautiful, focused pop-up overlay modal instead of inline.
+- Unified Teacher **Bài tập** and **Đề thi** management into a shared **Hoạt động học tập** workspace at `/teacher/tasks`, with `type=assignment|exam`, shared stats/list/detail UI, stat-card quick filters (click `Đang mở` / `Sắp đến hạn` / `Cần chấm` / `Đã publish` to filter immediately), compatibility redirects from `/teacher/assignments` and `/teacher/exams`, and updated sidebar/quick-create/search/dashboard/classroom/question-bank entry points. Assignment grading remains inline in the unified page; advanced exam question editing still lives on `/teacher/exams/:examId`. Follow-up UX passes also compact the page header, split the list vs workspace areas more clearly, auto-scroll `Mở chấm bài` into the grading workspace, remove redundant `Mở chi tiết` buttons, trim the workspace chrome so only the title remains while the extra `Danh sách hoạt động` intro block is removed, and collapse the assignment detail panel so it jumps straight into `Workspace chấm bài` instead of repeating assignment summary cards and description.
+
 ## [1.3.0-rc.1] - 2026-06-26
 
 ### Security
