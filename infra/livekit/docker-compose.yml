@@ -1,0 +1,27 @@
+services:
+  livekit:
+    image: livekit/livekit-server:v1.8.4
+    command: --config /etc/livekit.yaml
+    restart: unless-stopped
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "50000-50100:50000-50100/udp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+
+  # Optional TURN relay for clients behind symmetric NAT (uncomment when needed).
+  # coturn:
+  #   image: instrumentisto/coturn:latest
+  #   restart: unless-stopped
+  #   network_mode: host
+  #   environment:
+  #     TURN_REALM: eduguard.local
+  #   command: >
+  #     -n --log-file=stdout
+  #     --realm=eduguard.local
+  #     --listening-port=3478
+  #     --fingerprint
+  #     --lt-cred-mech
+  #     --user=eduguard:REPLACE_TURN_SECRET
+  #     --no-cli
