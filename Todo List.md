@@ -6,6 +6,8 @@
 **Branch làm việc:** `devD` / `devH` / `devB` (nhánh dev theo feature)
 **Cập nhật:** 2026-06-26 (devB đổi luồng sinh đề từ ma trận sang sinh đề nháp có thể sửa, cảnh báo lệch ma trận và đặt lịch tạo bài kiểm tra thật từ đúng đề nháp đã xác nhận; popup đặt lịch tự tính `Đóng đề = Mở đề + Thời gian làm bài` của ma trận; đã sửa migration live proctoring bị multiple cascade path và apply DB để tránh lỗi tạo bài kiểm tra 500 khi lưu `ExamSettings`; trước đó đã đồng bộ tiếng Việt, popup sửa câu hỏi và nghiệp vụ ma trận tổng điểm/kiểm tra đủ câu cho workspace Ngân hàng câu hỏi; ship **v1.2.0** → `main` via PR #22; `release` @ `bb45b10` — Live Proctoring v1 + evidence auth + TURN/AI Docker docs; devH merge PR #21 — notifications + UI redesign đang xử lý conflict)
 **Ghi chú devH:** 2026-06-25 (thiết kế lại trang Student `Bài tập / Bài thi`, dashboard/sidebar giáo viên, classrooms, notifications realtime; đang merge `release` v1.2.0)
+**Cập nhật:** 2026-06-25 (`release` @ `f01399c` — PR #23 devB merged; `devD` sync `origin/release`; ship **v1.2.0** → `main` via PR #22)
+**Ghi chú devH:** 2026-06-25 (notifications + UI redesign đã merge `release` qua PR #21; thiết kế lại trang Student `Bài tập / Bài thi`, dashboard/sidebar giáo viên, classrooms, notifications realtime)
 **Ghi chú devB:** 2026-06-25 (đã hoàn tất Question Bank + Exam Matrix workspace theo integration devB: backend/frontend tách riêng, create-exam từ matrix chạy trong transaction và luôn tạo `ExamSetting`, Swagger dùng tag `QuestionBank`/`ExamMatrix`, `docs/apiList.md` có nhóm `API-QBK-*`/`API-MTX-*`, không thêm route/hub/entity proctoring.)
 **Ghi chú devB:** 2026-06-26 (đã Việt hóa breadcrumb/dropdown/badge/toast của ngân hàng câu hỏi và ma trận, giữ độ khó `Dễ / Trung bình / Khó`, đổi nhãn `Chuẩn đầu ra` thành `Yêu cầu cần đạt`, chuyển nút `Sửa` câu hỏi sang popup để không mất vị trí câu đang sửa, Việt hóa lỗi validate ma trận và giải thích chỉ đếm câu `Sẵn sàng` khớp đủ điều kiện, đồng thời thêm validate FE trước khi chuyển câu hỏi sang trạng thái `Sẵn sàng`.)
 **Ghi chú devB:** 2026-06-26 (đã cập nhật nghiệp vụ ma trận MVP: giáo viên nhập `Tổng điểm`, hệ thống tự tính `Điểm/câu = Tổng điểm / Tổng số câu`, bỏ nhập điểm/câu ở từng dòng, thêm tóm tắt realtime theo độ khó, chuyển workspace ma trận sang các card full-width xếp dọc để không ép phần chi tiết/kiểm tra/tạo đề vào cột hẹp, khối chi tiết ma trận gồm tổng quan/thống kê/dòng chi tiết/bảng đủ-thiếu câu, backend tự tính lại tổng câu và điểm/câu, availability trả đủ từng dòng, lọc câu `Sẵn sàng` theo môn + chương/bài/yêu cầu cần đạt/loại/độ khó, và chỉ bật `Sinh đề nháp` sau khi kiểm tra đủ câu thành công kèm popup xác nhận.)
@@ -709,7 +711,7 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 - [x] `docs/features.md` — F-FUT-01 đánh dấu v1
 - [x] `npm run lint` sạch cho module proctoring (`src/features/proctoring`, `proctoringApi.js`)
 - [ ] Smoke E2E: lobby → thi → live watch → pause → evidence
-- [ ] Merge / rebase lên `devD` hoặc `release` (tránh conflict devB question bank)
+- [x] Merge / rebase lên `devD` hoặc `release` (tránh conflict devB question bank) — `devD` sync `origin/release` @ `f01399c`
 
 **Tiêu chí hoàn thành (v1):** Học sinh bật camera trước giờ thi → làm bài với heartbeat → giáo viên xem live, chụp/ghi clip, tạm dừng/cảnh báo → AI gợi ý gian lận lưu evidence + CheatingLog.
 

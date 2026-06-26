@@ -280,7 +280,7 @@ namespace EduGuard.Infrastructure.Data.Migrations
                         column: x => x.ExamAttemptId,
                         principalTable: "ExamAttempts",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(

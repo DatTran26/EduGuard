@@ -124,12 +124,14 @@ public static class DependencyInjection
         services.AddScoped<IProctoringDetectionService, ProctoringDetectionService>();
         services.AddScoped<IProctoringSignalingService, ProctoringSignalingService>();
         services.AddScoped<IWebRtcConfigService, WebRtcConfigService>();
+        services.AddScoped<ILiveKitTokenService, LiveKitTokenService>();
         services.AddScoped<ICheatingLogRepository, CheatingLogRepository>();
         services.AddScoped<IAntiCheatService, AntiCheatService>();
         services.AddScoped<INotificationService, NotificationService>();
 
         services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionName));
         services.Configure<WebRtcOptions>(configuration.GetSection(WebRtcOptions.SectionName));
+        services.Configure<LiveKitOptions>(configuration.GetSection(LiveKitOptions.SectionName));
         services.Configure<ProctoringOptions>(configuration.GetSection(ProctoringOptions.SectionName));
         var redisOptions = configuration.GetSection(RedisOptions.SectionName).Get<RedisOptions>() ?? new RedisOptions();
 

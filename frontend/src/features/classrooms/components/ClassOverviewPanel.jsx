@@ -1,11 +1,8 @@
-import { useState } from "react";
 import { 
   FiAlertTriangle, 
   FiClock, 
   FiBookOpen, 
   FiCheckCircle, 
-  FiCopy, 
-  FiCheck, 
   FiBell, 
   FiArrowRight, 
   FiPlus, 
@@ -20,7 +17,6 @@ import Badge from "../../../components/common/Badge";
 import { formatShortDate, formatShortDateTime } from "../../../utils/formatDate";
 
 export default function ClassOverviewPanel({
-  classroom,
   members,
   assignments,
   submissionsByAssignmentId,
@@ -29,12 +25,7 @@ export default function ClassOverviewPanel({
   warningCountByExamId,
   notifications,
   onAction,
-  onEdit,
-  onDelete,
-  isSaving,
 }) {
-  const [copied, setCopied] = useState(false);
-
   // 1. Calculate Pending Tasks
   const studentCount = members.filter((m) => m.role === "Sinh viên").length;
   const pendingTasks = [];
@@ -167,16 +158,6 @@ export default function ClassOverviewPanel({
       total: studentCount,
     };
   }).slice(0, 3);
-
-  async function handleCopyCode() {
-    try {
-      await navigator.clipboard.writeText(classroom.joinCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      console.error("Failed to copy code");
-    }
-  }
 
   // Pending Task helpers
   function getTaskStyles(type) {
@@ -345,74 +326,6 @@ export default function ClassOverviewPanel({
 
       {/* RIGHT COLUMN (40% width) */}
       <div className="space-y-6">
-        {/* Thông tin lớp Card */}
-        <Card className="shadow-sm">
-          <div className="border-b border-border/60 pb-3 mb-4">
-            <h3 className="text-base font-bold text-primary">
-              Thông tin lớp học
-            </h3>
-          </div>
-
-          <div className="space-y-3.5 text-xs text-primary">
-            <div>
-              <p className="font-semibold text-secondary">Mã lớp tham gia</p>
-              <div className="mt-1.5 flex items-center justify-between rounded-xl border border-border/80 bg-surface-sunken p-2.5">
-                <span className="font-mono font-bold tracking-wider text-primary">{classroom.joinCode}</span>
-                <button
-                  type="button"
-                  onClick={handleCopyCode}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-surface hover:bg-surface-sunken text-secondary transition-colors duration-150"
-                  title="Copy mã lớp"
-                >
-                  {copied ? (
-                    <FiCheck className="text-success h-3.5 w-3.5" />
-                  ) : (
-                    <FiCopy className="h-3.5 w-3.5" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 border-t border-border/40 pt-3">
-              <div>
-                <p className="font-semibold text-secondary">Giảng viên</p>
-                <p className="mt-1 font-bold text-primary truncate">{classroom.teacherName}</p>
-              </div>
-              <div>
-                <p className="font-semibold text-secondary">Ngày tạo lớp</p>
-                <p className="mt-1 font-bold text-primary">{formatShortDate(classroom.createdAt)}</p>
-              </div>
-            </div>
-
-            {classroom.description && (
-              <div className="border-t border-border/40 pt-3">
-                <p className="font-semibold text-secondary">Mô tả chi tiết</p>
-                <p className="mt-1.5 leading-relaxed text-secondary italic">
-                  {classroom.description}
-                </p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-2 border-t border-border/40 pt-3">
-              <Button
-                variant="secondary"
-                onClick={onEdit}
-                className="py-1 px-3 text-xs w-full font-bold animate-transition"
-              >
-                Chỉnh sửa lớp
-              </Button>
-              <Button
-                variant="danger"
-                onClick={onDelete}
-                disabled={isSaving}
-                className="py-1 px-3 text-xs w-full font-bold animate-transition"
-              >
-                {isSaving ? "Đang xóa..." : "Xoá lớp học"}
-              </Button>
-            </div>
-          </div>
-        </Card>
-
         {/* Thông báo gần đây Card */}
         <Card className="shadow-sm">
           <div className="flex items-center justify-between border-b border-border/60 pb-3 mb-4">

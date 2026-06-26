@@ -58,4 +58,31 @@ public static class CheatingTypeHelper
             _ => throw new ArgumentException($"Loại hành vi anti-cheat không hợp lệ: {rawType}.")
         };
     }
+
+    public static string GetDisplayName(CheatingType type) => type switch
+    {
+        CheatingType.TabSwitch => "Chuyển tab",
+        CheatingType.WindowBlur => "Rời khỏi cửa sổ",
+        CheatingType.CopyPaste => "Sao chép / dán",
+        CheatingType.ExitFullscreen => "Thoát toàn màn hình",
+        CheatingType.PageReload => "Tải lại trang",
+        CheatingType.Disconnected => "Mất kết nối",
+        CheatingType.WebcamOff => "Tắt webcam",
+        CheatingType.PhoneVisible => "Phát hiện điện thoại",
+        CheatingType.BookVisible => "Phát hiện tài liệu",
+        CheatingType.SecondPersonVisible => "Phát hiện người thứ hai",
+        CheatingType.PersonNotVisible => "Không thấy người trong khung hình",
+        _ => "Hành vi nghi ngờ"
+    };
+
+    public static bool IsHighSeverity(CheatingType type) => type switch
+    {
+        CheatingType.CopyPaste => true,
+        CheatingType.WebcamOff => true,
+        CheatingType.PhoneVisible => true,
+        CheatingType.BookVisible => true,
+        CheatingType.SecondPersonVisible => true,
+        CheatingType.PersonNotVisible => true,
+        _ => false
+    };
 }

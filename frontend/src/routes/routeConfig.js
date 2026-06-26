@@ -8,7 +8,9 @@ export const routeConfig = {
   adminClassroomDetail: "/admin/classrooms/:classroomId",
   adminExams: "/admin/exams",
   adminExamDetail: "/admin/exams/:examId",
+  adminProctoring: "/admin/exams/:examId/proctoring",
   adminMonitoring: "/admin/monitoring",
+  adminExamMonitoring: "/admin/exam-monitoring",
   adminProctoringAi: "/admin/proctoring-ai",
   adminUsers: "/admin/users",
   adminProfile: "/admin/profile",
@@ -85,6 +87,26 @@ export function buildStudentExamDetailPath(examId) {
 
 export function buildTeacherProctoringPath(examId) {
   return `/teacher/exams/${examId}/proctoring`;
+}
+
+export function buildAdminProctoringPath(examId) {
+  return `/admin/exams/${examId}/proctoring`;
+}
+
+export function buildProctoringPathByRole(role, examId) {
+  if (role === "Admin") {
+    return buildAdminProctoringPath(examId);
+  }
+
+  return buildTeacherProctoringPath(examId);
+}
+
+export function buildExamMonitoringPathByRole(role, examId) {
+  if (role === "Admin") {
+    return `${routeConfig.adminExamMonitoring}?examId=${examId}`;
+  }
+
+  return `${routeConfig.teacherMonitoring}?examId=${examId}`;
 }
 
 export function getProfilePathByRole(role) {

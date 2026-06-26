@@ -11,6 +11,10 @@ public class Notification
     public string Type { get; set; } = string.Empty;
     public string SenderId { get; set; } = string.Empty;
     public int ClassroomId { get; set; }
+    public int? RelatedExamId { get; set; }
+    public int? RelatedExamAttemptId { get; set; }
+    public string? ActionUrl { get; set; }
+    public string? SourceKey { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

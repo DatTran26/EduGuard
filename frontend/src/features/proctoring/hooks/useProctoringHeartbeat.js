@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { proctoringApi } from "../../../api/proctoringApi";
+import { devLog } from "../../../utils/devLogger";
 import { captureVideoFrame } from "../utils/captureVideoFrame";
 
 export function useProctoringHeartbeat({
@@ -53,11 +54,16 @@ export function useProctoringHeartbeat({
     async function sendHeartbeat() {
       try {
         const response = await proctoringApi.heartbeatProctoring(attemptId, payloadRef.current);
+        devLog.proctoring(`Heartbeat attempt #${attemptId}`, {
+          cameraStatus: payloadRef.current.cameraStatus,
+          requiresAutoSnapshot: response.data?.requiresAutoSnapshot,
+        });
         if (!isDisposed && response.data?.requiresAutoSnapshot) {
           await uploadAutoSnapshot();
         }
-      } catch {
+      } catch (error) {
         if (!isDisposed) {
+          devLog.warn("proctoring", `Heartbeat failed attempt #${attemptId}`, error?.message);
           payloadRef.current = {
             ...payloadRef.current,
             connectionStatus: "Unstable",

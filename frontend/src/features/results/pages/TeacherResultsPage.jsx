@@ -7,6 +7,7 @@ import { examApi } from "../../../api/examApi";
 import { examAttemptApi } from "../../../api/examAttemptApi";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
+import Skeleton from "../../../components/common/Skeleton";
 import Select from "../../../components/forms/Select";
 import TextInput from "../../../components/forms/TextInput";
 import StatCard from "../../../components/dashboard/StatCard";
@@ -271,7 +272,23 @@ export default function TeacherResultsPage() {
       </Card>
 
       {isLoading ? (
-        <Card className="text-sm text-secondary">Đang tải kết quả bài thi...</Card>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="space-y-4 animate-pulse">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-2 w-1/3">
+                  <div className="flex gap-2">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-5 w-24 rounded-full" />
+                  </div>
+                  <Skeleton className="h-6 w-full rounded-md" />
+                  <Skeleton className="h-4 w-2/3 rounded-md" />
+                </div>
+                <Skeleton className="h-10 w-24 rounded-xl" />
+              </div>
+            </Card>
+          ))}
+        </div>
       ) : visibleRows.length === 0 ? (
         <EmptyState title="Không có lượt làm phù hợp với bộ lọc hiện tại." />
       ) : (

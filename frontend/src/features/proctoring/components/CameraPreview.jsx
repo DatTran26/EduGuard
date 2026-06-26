@@ -42,7 +42,8 @@ export default function CameraPreview({
         />
         {status !== "ready" ? (
           <div className="absolute inset-0 flex items-center justify-center bg-surface/80 px-4 text-center text-sm text-secondary">
-            {errorMessage || "Đang chuẩn bị camera…"}
+            {errorMessage ||
+              (status === "off" ? "Camera đang tắt" : "Đang chuẩn bị camera…")}
           </div>
         ) : null}
       </div>

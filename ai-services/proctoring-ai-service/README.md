@@ -6,13 +6,31 @@ FastAPI service for YOLO-based proctoring detection. The ASP.NET API proxies fra
 
 ```powershell
 Set-Location D:\Projects\EduGuard\ai-services\proctoring-ai-service
-python -m venv .venv
+
+# Lần đầu: tạo venv + cài package
+C:\Users\tinti\AppData\Local\Programs\Python\Python311\python.exe -m venv .venv
+.\.venv\Scripts\pip.exe install -r requirements.txt
+
+# Mỗi lần chạy (chọn một)
+.\run.ps1
+# hoặc:
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
 uvicorn main:app --host 127.0.0.1 --port 8800 --reload
 ```
 
+> Nếu `python` không có trong PATH, dùng đường dẫn đầy đủ tới `python.exe` như trên, hoặc script `run.ps1`.
+
 Default base URL in `ProctoringAiSettings.AiServiceBaseUrl`: `http://127.0.0.1:8800`.
+
+## Model weights (.env)
+
+Copy `.env.example` to `.env` in this folder. `python-dotenv` loads it on startup.
+
+```env
+PROCTORING_MODEL=yolo26s.pt
+```
+
+Admin UI (`/admin/proctoring-ai`) configures **service URL and thresholds only**, not the `.pt` file.
 
 ## Production (Docker)
 

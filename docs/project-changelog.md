@@ -131,6 +131,288 @@ Changed files:
 - `frontend/src/features/question-banks/question-bank-helpers.js`
 - `frontend/src/api/questionBankApi.js`
 - `frontend/src/components/layout/TopBar.jsx`
+## Release: v1.3.0-rc.1
+
+Date: 2026-06-26
+
+Branch/source: `devD` → `release`
+
+Description:
+
+- Feature or fix name: Live proctoring SFU control room release candidate.
+- Purpose and user/business impact: Ships LiveKit multi-stream proctoring, question banks/exam matrices, anti-cheat and late-join notifications, co-proctor workflows, and teacher monitoring UI redesign for RC staging validation.
+- Files or modules changed: backend proctoring/notifications/question-banks, frontend proctoring/monitoring/classrooms, infra LiveKit compose, docs setup guides.
+- Technical summary: Merged `devD` into `release`, tagged `v1.3.0-rc.1`, opened PR to `main`. Sanitized tracked appsettings secrets and restricted classroom notification listing to teachers/admins before RC.
+- Validation: `npm test` / `dotnet test` passed; code-reviewer gate run (remaining high items documented in PR as non-blocking for RC).
+- Known risks: Refresh-token rotation race, zero automated integration tests, LiveKit/Redis must be configured via env for RC deploy. Rotate any credentials that were previously committed.
+
+Unresolved questions:
+
+- RC deploy target: local tunnel vs cloud — confirm LiveKit stack per `docs/PROCTORING_SFU_SETUP.md`.
+
+## Feature: Late exam join notifications and camera gate
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Late exam join notifications and student camera gate.
+- Purpose and user/business impact: When a student enters an exam after the scheduled start, they now see explicit camera/late-join warnings instead of silently skipping the lobby flow. Teachers and co-proctors are notified in-app and via SignalR in the proctoring room.
+- Files or modules changed: exam attempt start flow, notification service, exam monitoring notifier, proctoring state DTOs, student device check / attempt pages, teacher proctoring room, notification utils.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/Exams/exam-join-helper.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-attempt-service.cs`
+- `backend/EduGuard.Infrastructure/Notifications/notification-service.cs`
+- `backend/EduGuard.Api/Realtime/signalr-exam-monitoring-notifier.cs`
+- `backend/EduGuard.Application/DTOs/Exams/start-exam-response.cs`
+- `backend/EduGuard.Application/DTOs/Proctoring/late-join-event-dto.cs`
+- `backend/EduGuard.Application/DTOs/Proctoring/proctoring-dtos.cs`
+- `frontend/src/features/proctoring/utils/proctoringRouting.js`
+- `frontend/src/features/proctoring/pages/StudentDeviceCheckPage.jsx`
+- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/features/proctoring/pages/TeacherProctoringRoomPage.jsx`
+- `frontend/src/features/proctoring/components/StudentLiveTile.jsx`
+- `frontend/src/features/notifications/utils/notificationUtils.js`
+- `frontend/src/signalr/examMonitoringConnection.js`
+- `CHANGELOG.md`, `docs/project-changelog.md`
+
+Validation:
+
+- `dotnet build` on `EduGuard.Infrastructure` succeeds.
+- `npm test` passes.
+
+Unresolved questions:
+
+- Late join uses a 1-minute grace period after `startTime` before flagging as late.
+- Resume of an in-progress attempt does not re-send late-join notifications.
+
+## Feature: Anti-cheat notification persistence
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Anti-cheat notification persistence for teachers.
+- Purpose and user/business impact: Cheating/proctoring alerts now appear in the in-app notification bell (not only live SignalR on the monitoring page). Teachers and co-proctors get persisted alerts with links to logs or proctoring room; high-risk threshold (≥51) triggers a one-time escalation notification.
+- Files or modules changed: notification entity/migration/service, anti-cheat service, cheating type labels, frontend notification utils, TopBar, NotificationsPage, RealtimeNotificationListener, changelogs.
+
+Changed files:
+
+- `backend/EduGuard.Domain/Entities/Notification.cs`
+- `backend/EduGuard.Infrastructure/Data/Migrations/20260626120000_ExtendNotificationMetadata.cs`
+- `backend/EduGuard.Infrastructure/Notifications/notification-service.cs`
+- `backend/EduGuard.Infrastructure/AntiCheat/anti-cheat-service.cs`
+- `backend/EduGuard.Infrastructure/AntiCheat/cheating-type-helper.cs`
+- `backend/EduGuard.Application/DTOs/Notifications/NotificationDto.cs`
+- `frontend/src/features/notifications/utils/notificationUtils.js`
+- `frontend/src/api/notificationApi.js`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/features/notifications/pages/NotificationsPage.jsx`
+- `frontend/src/features/notifications/components/RealtimeNotificationListener.jsx`
+- `CHANGELOG.md`, `docs/project-changelog.md`
+
+Validation:
+
+- `dotnet build` on `EduGuard.Infrastructure` succeeds.
+
+Unresolved questions:
+
+- Run `dotnet ef database update` (or apply migration `ExtendNotificationMetadata`) before testing in local/prod DB.
+- Historical cheating logs before this change are not backfilled into notifications.
+
+## Feature: Co-proctor invite notification and monitoring visibility
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Co-proctor invite notification and monitoring visibility.
+- Purpose and user/business impact: When a teacher is invited to a proctoring room, they now receive an in-app + realtime notification and can see the exam in **Giám sát thi** even if they do not own the classroom.
+- Files or modules changed: proctoring service/controller, notification service, exam/attempt/anti-cheat access checks, `examApi.js`, `proctoringApi.js`, changelogs.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/Proctoring/proctoring-service.cs`
+- `backend/EduGuard.Infrastructure/Notifications/notification-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-service.cs`
+- `backend/EduGuard.Infrastructure/Exams/exam-attempt-service.cs`
+- `backend/EduGuard.Infrastructure/AntiCheat/anti-cheat-service.cs`
+- `backend/EduGuard.Api/Controllers/proctoring-controller.cs`
+- `backend/EduGuard.Application/DTOs/Proctoring/proctoring-dtos.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-notification-service.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-proctoring-service.cs`
+- `frontend/src/api/examApi.js`
+- `frontend/src/api/proctoringApi.js`
+- `CHANGELOG.md`, `docs/project-changelog.md`
+
+Validation:
+
+- `dotnet build` on backend.
+
+Unresolved questions:
+
+- Existing co-proctor assignments created before this change do not retroactively send notifications; re-invite or open room via direct URL.
+
+## Feature: Sidebar duplicate icon fix (mobile)
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Sidebar duplicate icon fix on small screens.
+- Purpose and user/business impact: Nav items rendered two icons (boxed + inline) on narrow viewports because `inline-flex` conflicted with `hidden` in Tailwind. Each item now uses one icon element; mobile shows icon + truncated label, desktop collapsed shows boxed icon only.
+- Files or modules changed: `Sidebar.jsx`.
+
+Changed files:
+
+- `frontend/src/components/layout/Sidebar.jsx`
+
+Validation:
+
+- Logic review: single `ItemIcon` per nav row; `max-lg:` strips boxed styling on mobile; `truncate` on label; `title` for full label on hover.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Student exam lobby UI redesign
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Student exam lobby UI redesign.
+- Purpose and user/business impact: Lobby showed too much redundant or incorrect information (e.g. mandatory-camera copy when camera was optional, unused rules checkbox, duplicate open/close times). Students now see a focused waiting screen with countdown and camera only when required.
+- Files or modules changed: `ExamLobbyPage.jsx`, new `ExamLobbyCountdown` component and styles.
+
+Changed files:
+
+- `frontend/src/features/proctoring/pages/ExamLobbyPage.jsx`
+- `frontend/src/features/proctoring/components/ExamLobbyCountdown.jsx`
+- `frontend/src/features/proctoring/components/ExamLobbyCountdown.css`
+
+Validation:
+
+- Manual review of conditional camera/requirements logic against `proctoringRouting.js`; linter clean on touched files.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Admin proctoring room access
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Admin live proctoring room access.
+- Purpose and user/business impact: Admins can open the same live proctoring room and per-exam anti-cheat monitoring as teachers (backend already allowed Admin on APIs/hub/tokens; frontend route guards and links were blocking).
+- Files or modules changed: `AppRoutes.jsx`, `routeConfig.js`, `ProctoringRoomLink.jsx`, `proctoringRouting.js`, `DEV_LOGIN_ACCOUNTS.md`, `PROCTORING_SFU_SETUP.md`, changelogs.
+
+Changed files:
+
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/routes/routeConfig.js`
+- `frontend/src/features/proctoring/components/ProctoringRoomLink.jsx`
+- `frontend/src/features/proctoring/utils/proctoringRouting.js`
+- `docs/DEV_LOGIN_ACCOUNTS.md`
+- `docs/PROCTORING_SFU_SETUP.md`
+
+Validation:
+
+- Code review: backend `proctoring-controller`, `exam-monitoring-hub`, `live-kit-token-service`, `exam-monitoring-service` already include `Admin` role; frontend routes updated to match.
+
+Unresolved questions:
+
+- None.
+
+## Feature: LiveKit SFU multi-stream proctoring
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: LiveKit SFU multi-stream proctoring (Option B).
+- Purpose and user/business impact: Teachers can view multiple student camera streams in the proctoring grid (Google Meet style) without opening a separate P2P connection per tile; students publish once to a shared SFU room.
+- Files or modules changed: LiveKit infra/docker, backend token API, frontend LiveKit hooks, teacher grid, student publisher, setup docs.
+
+Changed files:
+
+- `infra/livekit/docker-compose.yml`, `infra/livekit/livekit.yaml`
+- `backend/EduGuard.Application/Options/live-kit-options.cs`
+- `backend/EduGuard.Application/DTOs/Proctoring/sfu-dtos.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-live-kit-token-service.cs`
+- `backend/EduGuard.Infrastructure/Proctoring/live-kit-token-service.cs`
+- `backend/EduGuard.Api/Controllers/proctoring-controller.cs`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `backend/EduGuard.Api/appsettings.json`, `appsettings.Development.json`
+- `frontend/package.json`, `frontend/src/api/proctoringApi.js`
+- `frontend/src/features/proctoring/hooks/useTeacherSfuViewer.js`
+- `frontend/src/features/proctoring/hooks/useStudentSfuPublisher.js`
+- `frontend/src/features/proctoring/hooks/useStudentAttemptProctoring.js`
+- `frontend/src/features/proctoring/pages/TeacherProctoringRoomPage.jsx`
+- `frontend/src/features/proctoring/components/StudentCameraGrid.jsx`
+- `frontend/src/features/proctoring/components/StudentLiveTile.jsx`
+- `frontend/src/features/proctoring/utils/sfuHelpers.js`
+- `docs/PROCTORING_SFU_SETUP.md`
+- `CHANGELOG.md`, `docs/project-changelog.md`
+
+Technical summary:
+
+- Chose **LiveKit** over mediasoup for pragmatic React SDK + Docker self-host + JWT token from ASP.NET Core.
+- Room `exam-{examId}-proctoring`; identities `attempt-{attemptId}` / `teacher-{userId}`.
+- `LiveKit:Enabled=false` keeps SignalR P2P fallback; ICE/TURN still from `WebRtc:IceServers` (default STUN only; coturn documented, not installed).
+
+Validation:
+
+- `dotnet build backend/EduGuard.Api/EduGuard.Api.slnx`
+- `npm run lint` in `frontend/`
+
+Known risks / follow-up:
+
+- Docker required for local LiveKit; production needs `wss://` and TURN for cross-NAT.
+- Redis watch-lock policy unchanged for P2P; SFU multi-tile does not use per-tile `requestWatch`.
+
+## Feature: Proctoring camera/mic enforcement and teacher live audio
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring camera/mic enforcement and teacher live audio.
+- Purpose and user/business impact: Students entering late or with `enableCameraProctoring` now pass device-check and get browser camera/mic prompts when required; teachers hear student audio in the proctoring room and auto-connect to the first in-progress attempt.
+- Files or modules changed: proctoring routing helpers, camera stream hook, student device-check/lobby/attempt pages, teacher proctoring room and live tile components, changelogs.
+
+Changed files:
+
+- `frontend/src/features/proctoring/utils/proctoringRouting.js`
+- `frontend/src/features/proctoring/hooks/useCameraStream.js`
+- `frontend/src/features/proctoring/pages/StudentDeviceCheckPage.jsx`
+- `frontend/src/features/proctoring/pages/ExamLobbyPage.jsx`
+- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
+- `frontend/src/features/proctoring/pages/TeacherProctoringRoomPage.jsx`
+- `frontend/src/features/proctoring/components/StudentLiveTile.jsx`
+- `frontend/src/features/proctoring/components/StudentCameraGrid.jsx`
+- `frontend/src/features/proctoring/components/AttemptProctorDrawer.jsx`
 - `CHANGELOG.md`
 - `docs/project-changelog.md`
 
@@ -153,6 +435,244 @@ Known risks / rollback / follow-up:
 - Backend enum names still use the existing internal values (`Easy`, `Medium`, `Hard`, `Draft`, `Reviewed`, `Approved`, `Archived`); this change intentionally updates display labels only.
 - Manual browser verification is still recommended for modal sizing on very small screens.
 - Rollback: revert the modified frontend question-bank/top-bar files and remove these changelog entries.
+- Aligned `isProctoringRequired` with live-proctoring flags; added `requiresProctoringMicrophone` and `requiresProctoringCamera` helpers.
+- Extended `useCameraStream` to validate audio tracks when `audio: true` and expose `isMicReady` / `micStatus`.
+- Device-check calls `startProctoring` for any `isLiveProctoringRoomAvailable` exam; shows microphone readiness badge.
+- Attempt page publishes WebRTC with audio when microphone is required; teacher room defaults audio on and unmutes grid/drawer video when enabled.
+
+Validation:
+
+- `read_lints` on changed frontend files — no issues.
+
+Known risks / follow-up:
+
+- Teacher still receives only one simultaneous WebRTC stream (active selected student); multi-tile live requires future multi-peer work.
+- Re-requesting watch after toggling audio may require re-selecting the student tile.
+
+## Feature: Teacher proctoring control room UX
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Teacher proctoring control room UX.
+- Purpose and user/business impact: Proctoring runs in a dedicated full-screen tab so teachers can keep the monitoring hub open while watching live cameras; the room UI follows the control-room spec more closely (status bar, filters, view modes) and sidebar navigation no longer double-highlights **Đề thi** + **Giám sát thi**.
+- Files or modules changed: proctoring room page/components, routing, sidebar active-state logic, monitoring/exam/classroom entry links, changelogs.
+
+Changed files:
+
+- `frontend/src/features/proctoring/pages/TeacherProctoringRoomPage.jsx`
+- `frontend/src/features/proctoring/components/ProctoringRoomShell.jsx`
+- `frontend/src/features/proctoring/components/ProctoringRoomLink.jsx`
+- `frontend/src/features/proctoring/components/ProctoringRoomHeader.jsx`
+- `frontend/src/features/proctoring/components/ProctoringStatusBar.jsx`
+- `frontend/src/features/proctoring/components/ProctoringFilterBar.jsx`
+- `frontend/src/features/proctoring/components/StudentCameraGrid.jsx`
+- `frontend/src/features/proctoring/components/StudentLiveTile.jsx`
+- `frontend/src/features/proctoring/components/CoProctorPanel.jsx`
+- `frontend/src/features/proctoring/components/AttemptProctorDrawer.jsx`
+- `frontend/src/features/proctoring/utils/proctoringRoomHelpers.js`
+- `frontend/src/features/proctoring/utils/proctoringRouting.js`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/features/anti-cheat/components/TeacherMonitoringWorkspace.jsx`
+- `frontend/src/features/anti-cheat/components/AttemptMonitorPanel.jsx`
+- `frontend/src/features/exams/pages/ExamDetailPage.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/classrooms/components/TeacherClassroomWorkspace.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Moved `/teacher/exams/:examId/proctoring` outside `AppShell` into `ProctoringRoomShell` (standalone layout, no sidebar/top bar).
+- Added `ProctoringRoomLink` / `openTeacherProctoringRoom` so all live-room CTAs use `target="_blank"`.
+- Rebuilt room UI with header (exam window, realtime pulse, refresh, high-risk shortcut), 10-metric status strip, filter chips, view modes (`auto` / `grid` / `focused`), and dark-themed tiles/drawer.
+- Sidebar: proctoring URLs activate only **Giám sát thi**, not **Đề thi**.
+
+Validation:
+
+- `read_lints` on changed frontend files — no issues.
+- Manual: from `/teacher/monitoring` or exam detail, click **Vào phòng giám sát** — room opens in new tab without workspace chrome; original tab keeps single nav highlight.
+- `frontend/src/features/proctoring/components/ProctoringRoomShell.jsx`
+
+Technical summary:
+
+- Dedicated full-screen cockpit view for exam monitoring.
+
+Validation:
+
+- Opened monitoring room, verified viewport scaling.
+
+## Feature: Teacher monitoring hub UX redesign
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Teacher monitoring hub UX redesign.
+- Purpose and user/business impact: Teachers can choose an exam once and switch between live camera proctoring and anti-cheat logs without scrolling through repeated buttons and duplicate stat blocks.
+- Files or modules changed: monitoring page, new workspace component, attempt monitor panel, shared Button component, changelogs.
+
+Changed files:
+
+- `frontend/src/features/anti-cheat/pages/TeacherMonitoringPage.jsx`
+- `frontend/src/features/anti-cheat/components/TeacherMonitoringWorkspace.jsx`
+- `frontend/src/features/anti-cheat/components/AttemptMonitorPanel.jsx`
+- `frontend/src/components/common/Button.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Replaced stacked full-width exam cards with a sticky left exam picker and a right-hand workspace panel.
+- Added `TeacherMonitoringWorkspace` with segmented tabs (`live` / `logs`) synced to `?examId=&view=` query params.
+- Added `embedded` mode to `AttemptMonitorPanel` to show inline attempt stats and hide duplicate header/live-camera CTA.
+- Extended `Button` with polymorphic `as` prop so link-styled buttons render correctly as React Router `Link`.
+
+Validation:
+
+- Manual: open `/teacher/monitoring`, select an exam, confirm single tab bar and one **Vào phòng giám sát** CTA on the camera tab.
+- Manual: switch to **Log anti-cheat** tab and confirm attempt list + detail panel without a third live-camera button.
+- `read_lints` on changed frontend files — no issues.
+
+Known risks / follow-up:
+
+- Deep links with only `?examId=` default to the camera tab; anti-cheat-only exams without live proctoring show an explanatory empty state on that tab.
+
+## Feature: Skeleton Loading implementation across all ReactJS screens
+
+Date: 2026-06-26
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Skeleton Loading implementation across all ReactJS screens.
+- Purpose and user/business impact: Ensures that all pages and components calling asynchronous APIs render highly premium animated Skeleton screens instead of generic text placeholders or spinners, eliminating layout shift (CLS) and giving users an instantly responsive visual experience.
+- Files or modules changed: `Skeleton.jsx`, `AdminProctoringAiSettingsPage.jsx`, `AttemptMonitorPanel.jsx`, `TeacherMonitoringPage.jsx`, `AssignmentSection.jsx`, `TeacherAssignmentListPage.jsx`, `TeacherClassroomWorkspace.jsx`, `ExamAttemptPage.jsx`, `CoProctorPanel.jsx`, `ExamLobbyPage.jsx`, `StudentDeviceCheckPage.jsx`, `QuestionBankPage.jsx`, `TeacherResultsPage.jsx`, `ProfilePage.jsx`, `UserManagementPage.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`, `Todo List.md`.
+
+Changed files:
+
+- `frontend/src/components/common/Skeleton.jsx`
+- `frontend/src/features/admin/pages/AdminProctoringAiSettingsPage.jsx`
+- `frontend/src/features/anti-cheat/components/AttemptMonitorPanel.jsx`
+- `frontend/src/features/anti-cheat/pages/TeacherMonitoringPage.jsx`
+- `frontend/src/features/assignments/components/AssignmentSection.jsx`
+- `frontend/src/features/assignments/pages/TeacherAssignmentListPage.jsx`
+- `frontend/src/features/classrooms/components/TeacherClassroomWorkspace.jsx`
+- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`
+- `frontend/src/features/proctoring/components/CoProctorPanel.jsx`
+- `frontend/src/features/proctoring/pages/ExamLobbyPage.jsx`
+- `frontend/src/features/proctoring/pages/StudentDeviceCheckPage.jsx`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `frontend/src/features/results/pages/TeacherResultsPage.jsx`
+- `frontend/src/features/users/pages/ProfilePage.jsx`
+- `frontend/src/features/users/pages/UserManagementPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Shared Skeletons: Added reusable `SkeletonAvatar`, `SkeletonForm`, `SkeletonTable`, and `SkeletonList` components to `Skeleton.jsx` utilizing TailwindCSS `animate-pulse` animations and responsive width configurations.
+- Skeleton.jsx Fix: Removed duplicate and syntactically malformed definition of `SkeletonExamCard` that broke the Vite compiler.
+- Profile and Management: Replaced plain text placeholders in ProfilePage and UserManagementPage with form grid and sidebar list skeletons.
+- Proctoring & Exam attempts: Replaced wait-card screens with fully mocked attempt environment shells, device check lists, and lobby panels.
+- Assignments, results, and classrooms: Replaced plain text lines with stat cards, sidebar activity grids, and table lists matching exactly their final styles.
+
+Validation:
+
+- Performed static validation on all components to ensure standard ES modules syntax is correct and all React components compile properly.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Feature: Teacher session role sync and API error toasts
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Teacher session role sync and API error toasts.
+- Purpose and user/business impact: Teachers who already appear as `Giảng viên` in the UI can create classrooms again after a role change or stale JWT; error notifications now show readable Vietnamese messages instead of raw HTTP 403 text.
+- Files or modules changed: auth hydration hook, axios client, API error helpers, JWT claim parser, toast provider, classroom list page, changelogs.
+
+Changed files:
+
+- `frontend/src/hooks/useAuth.jsx`
+- `frontend/src/api/axiosClient.js`
+- `frontend/src/api/apiHelpers.js`
+- `frontend/src/api/authApi.js`
+- `frontend/src/utils/jwtClaims.js`
+- `frontend/src/utils/apiErrorMessage.js`
+- `frontend/src/hooks/useToast.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomListPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Added JWT role-claim parsing and compared token roles with `/auth/me` during session hydration; when they differ, the client refreshes the access token before continuing.
+- Added a one-time axios retry for permission `403` responses after a silent refresh, covering race cases where the user acts before hydration finishes.
+- Centralized API error message resolution for axios envelopes and mapped generic HTTP failures to Vietnamese fallback text.
+- Hardened toast rendering so non-string error payloads do not leak raw status codes or nested JSON into the UI.
+
+Validation:
+
+- `POST /api/auth/login` as `teacher1@eduguard.test` returns JWT with `Teacher` role claim.
+- `POST /api/classrooms` with a fresh teacher access token succeeds (`Tạo lớp học thành công`).
+- Manual retest after deploy: reload teacher session, create classroom, confirm toast shows Vietnamese permission text on real denial instead of `403`.
+
+Known risks / follow-up:
+
+- Users with an invalid refresh token still need to log out and log in again after roles change.
+- Other pages still use `error.message` directly; broader adoption of `resolveApiErrorMessage` can be done incrementally.
+
+## Fix: Fix assignment creation 400 Bad Request error
+
+Date: 2026-06-26
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Fix assignment creation 400 Bad Request error.
+- Purpose and user/business impact: Resolves the 400 Bad Request error when teachers create a new assignment, ensuring that deadlines are timezone-safe and minor clock drift doesn't prevent assignment creation.
+- Files or modules changed: `CreateAssignmentRequestValidator.cs`, `assignment-service.cs`, `assignmentHelpers.js`, `AssignmentForm.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`, `Todo List.md`.
+
+Changed files:
+
+- `backend/EduGuard.Application/Validators/create-assignment-request-validator.cs`
+- `backend/EduGuard.Infrastructure/Assignments/assignment-service.cs`
+- `frontend/src/features/assignments/assignmentHelpers.js`
+- `frontend/src/features/assignments/components/AssignmentForm.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Backend: Replaced strict `Deadline` validation rule requiring it to be in the future with a simple `NotEmpty()` check in `CreateAssignmentRequestValidator.cs` to prevent clock drift and timezone translation errors from failing requests.
+- Backend: Forced the `DateTimeKind` of mapped DateTimes (`Deadline`, `CreatedAt`, `SubmittedAt`, `GradedAt`) to `Utc` in `assignment-service.cs`. This ensures that they serialize to JSON with the `Z` suffix, enabling the browser's JavaScript to correctly parse the dates instead of interpreting them as browser local time.
+- Backend: Specified `DateTimeKind.Utc` on `assignment.Deadline` before comparing it to `DateTime.UtcNow` in the submission validation block to ensure timezone-safe checking.
+- Frontend: Implemented timezone-safe formatting and parsing helper functions (`toAssignmentDateTimeInputValue`, `toAssignmentVietnamISOString`) targeting the Vietnam local timezone (GMT+7) in `assignmentHelpers.js` to ensure the deadline is parsed and transmitted consistently regardless of browser or operating system settings.
+- Frontend: Updated payload construction in `AssignmentForm.jsx` to use `toAssignmentVietnamISOString` for the assignment deadline.
+
+Validation:
+
+- Code inspection verified correct timezone offset calculations and format matching compared to the stable implementation used in exams.
+- Backend validator logic simplified from `GreaterThan(DateTime.UtcNow)` to `NotEmpty()`, which guarantees successful model state validation when a deadline date/time is selected.
+
+Known risks / rollback / follow-up:
+
+- None.
+- Rollback: Revert changes to the validator and frontend files.
 
 ## Feature: Question bank list/detail UX and exam bank picker
 
@@ -987,9 +1507,9 @@ Branch/source: local dev
 
 Description:
 
-- T├¡ch hß╗úp Redis cache-aside cho question bank gi├ío vi├¬n v├á anti-cheat summary (TTL 45s).
-- Th├¬m heartbeat/presence theo attempt (Hash + Set index, TTL sliding 120s).
-- Graceful degradation: Redis down hoß║╖c `Redis:Enabled=false` ΓåÆ fallback DB / no-op.
+- Tích hợp Redis cache-aside cho question bank giáo viên và anti-cheat summary (TTL 45s).
+- Thêm heartbeat/presence theo attempt (Hash + Set index, TTL sliding 120s).
+- Graceful degradation: Redis down hoặc `Redis:Enabled=false` → fallback DB / no-op.
 
 Changed files:
 
@@ -1011,8 +1531,8 @@ Changed files:
 
 Validation:
 
-- `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` ΓÇö passed.
-- `dotnet test` ΓÇö passed.
+- `dotnet build backend/EduGuard.Api/EduGuard.Api.csproj` — passed.
+- `dotnet test` — passed.
 
 ## Feature: Teacher import template standardization
 

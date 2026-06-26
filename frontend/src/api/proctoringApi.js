@@ -87,6 +87,33 @@ export const proctoringApi = {
     };
   },
 
+  async getSfuConfig() {
+    const apiResponse = await requestApi(() => axiosClient.get("/proctoring/sfu-config"));
+    return {
+      ...apiResponse,
+      data: {
+        enabled: Boolean(apiResponse.data?.enabled),
+        mode: apiResponse.data?.mode ?? "livekit",
+        url: apiResponse.data?.url ?? null,
+        iceServers: apiResponse.data?.iceServers ?? [{ urls: "stun:stun.l.google.com:19302" }],
+      },
+    };
+  },
+
+  async getTeacherSfuToken(examId) {
+    const apiResponse = await requestApi(() =>
+      axiosClient.get(`/exams/${examId}/proctoring/sfu-token`),
+    );
+    return { ...apiResponse, data: apiResponse.data };
+  },
+
+  async getStudentSfuToken(attemptId) {
+    const apiResponse = await requestApi(() =>
+      axiosClient.get(`/attempts/${attemptId}/proctoring/sfu-token`),
+    );
+    return { ...apiResponse, data: apiResponse.data };
+  },
+
   async getRoom(examId) {
     const apiResponse = await requestApi(() => axiosClient.get(`/exams/${examId}/proctoring/room`));
     return { ...apiResponse, data: apiResponse.data };
@@ -134,6 +161,20 @@ export const proctoringApi = {
 
   async getProctors(examId) {
     const apiResponse = await requestApi(() => axiosClient.get(`/exams/${examId}/proctors`));
+    return { ...apiResponse, data: apiResponse.data ?? [] };
+  },
+
+  async getProctorCandidates(examId) {
+    const apiResponse = await requestApi(() =>
+      axiosClient.get(`/exams/${examId}/proctors/candidates`),
+    );
+    return { ...apiResponse, data: apiResponse.data ?? [] };
+  },
+
+  async getAssignedExams() {
+    const apiResponse = await requestApi(() =>
+      axiosClient.get("/teacher/proctoring/assigned-exams"),
+    );
     return { ...apiResponse, data: apiResponse.data ?? [] };
   },
 

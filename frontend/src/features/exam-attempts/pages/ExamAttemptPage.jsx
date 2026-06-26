@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { antiCheatApi } from "../../../api/antiCheatApi";
 import { examApi } from "../../../api/examApi";
 import { examAttemptApi } from "../../../api/examAttemptApi";
+import { proctoringApi } from "../../../api/proctoringApi";
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
+import Skeleton from "../../../components/common/Skeleton";
 import Input from "../../../components/common/Input";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import {
   buildExamDetailPathByRole,
+  buildStudentDeviceCheckPath,
   buildStudentExamPausedPath,
   getExamListPathByRole,
 } from "../../../routes/routeConfig";
@@ -20,11 +23,16 @@ import ExamWatermark from "../../proctoring/components/ExamWatermark";
 import { useCameraStream } from "../../proctoring/hooks/useCameraStream";
 import { useProctoringAutoDetection } from "../../proctoring/hooks/useProctoringAutoDetection";
 import { useProctoringHeartbeat } from "../../proctoring/hooks/useProctoringHeartbeat";
-import { useStudentWebRtcPublisher } from "../../proctoring/hooks/useStudentWebRtcPublisher";
-import { useStudentProctoringEvents } from "../../proctoring/hooks/useStudentProctoringEvents";
+import { useStudentAttemptProctoring } from "../../proctoring/hooks/useStudentAttemptProctoring";
 import {
   getProctoringHeartbeatIntervalMs,
-  isProctoringRequired,
+  hasPassedExamDeviceCheck,
+  isLateExamJoin,
+  isLiveProctoringRoomAvailable,
+  isStudentRealtimeControlEnabled,
+  requiresProctoringCamera,
+  requiresProctoringMicrophone,
+  shouldRequireDeviceCheckBeforeAttempt,
 } from "../../proctoring/utils/proctoringRouting";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import { getStoredAccessToken } from "../../../utils/tokenStorage";
@@ -160,6 +168,7 @@ function formatResultAnswerSummary(questionResult) {
 export default function ExamAttemptPage() {
   const { attemptId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { showToast } = useToast();
   const [attempt, setAttempt] = useState(null);
@@ -184,6 +193,7 @@ export default function ExamAttemptPage() {
   const [lastWarning, setLastWarning] = useState(null);
   const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false);
   const [clockTickMs, setClockTickMs] = useState(Date.now());
+  const [showLateJoinCameraGate, setShowLateJoinCameraGate] = useState(false);
   const attemptRef = useRef(null);
   const examRef = useRef(null);
   const answersRef = useRef({});
@@ -195,6 +205,8 @@ export default function ExamAttemptPage() {
   const hasAutoSubmittedRef = useRef(false);
   const isSubmittingRef = useRef(false);
   const fullscreenRequestAttemptedRef = useRef(false);
+  const proctoringStartedRef = useRef(false);
+  const lateJoinNoticeShownRef = useRef(false);
   const previousFullscreenStateRef = useRef(
     typeof document === "undefined"
       ? false
@@ -222,8 +234,14 @@ export default function ExamAttemptPage() {
   const latestWarningMeta = getAntiCheatEventMeta(lastWarning?.type);
   const attemptSettingItems = useMemo(() => buildAttemptSettingItems(exam), [exam]);
   const proctoringEnabled =
-    attempt?.status === "InProgress" && isProctoringRequired(exam);
-  const { videoRef, status: cameraStatus, streamRef } = useCameraStream({ enabled: proctoringEnabled });
+    attempt?.status === "InProgress" && isLiveProctoringRoomAvailable(exam);
+  const realtimeControlEnabled =
+    attempt?.status === "InProgress" && isStudentRealtimeControlEnabled(exam);
+  const proctoringAudioEnabled = proctoringEnabled && requiresProctoringMicrophone(exam);
+  const { videoRef, status: cameraStatus, streamRef, isReady: isCameraReady, startStream, errorMessage: cameraErrorMessage } = useCameraStream({
+    audio: proctoringAudioEnabled,
+    enabled: proctoringEnabled,
+  });
   useProctoringHeartbeat({
     attemptId,
     enabled: proctoringEnabled,
@@ -239,15 +257,14 @@ export default function ExamAttemptPage() {
     intervalMs: 4000,
     videoRef,
   });
-  useStudentWebRtcPublisher({
+  useStudentAttemptProctoring({
     attemptId,
-    enabled: proctoringEnabled,
-    mediaStream: streamRef,
-  });
-  useStudentProctoringEvents({
-    attemptId,
+    cameraReady: isCameraReady,
+    controlEventsEnabled: realtimeControlEnabled,
+    enableAudio: proctoringAudioEnabled,
     examId: exam?.id,
-    enabled: proctoringEnabled,
+    mediaStream: streamRef,
+    publishEnabled: proctoringEnabled,
   });
   const orderedResultQuestions = useMemo(() => {
     if (!Array.isArray(result?.questions) || result.questions.length === 0) {
@@ -599,6 +616,17 @@ export default function ExamAttemptPage() {
           return;
         }
 
+        const examData = examResponse.data;
+
+        if (
+          attemptData.status === "InProgress" &&
+          shouldRequireDeviceCheckBeforeAttempt(examData) &&
+          !hasPassedExamDeviceCheck(examData.id, attemptData.id)
+        ) {
+          navigate(buildStudentDeviceCheckPath(examData.id), { replace: true });
+          return;
+        }
+
         const initialAnswers = buildAttemptAnswerState(
           attemptData.savedAnswers,
         );
@@ -615,7 +643,7 @@ export default function ExamAttemptPage() {
           document.fullscreenElement,
         );
         setAttempt(attemptData);
-        setExam(examResponse.data);
+        setExam(examData);
         setQuestions(attemptData.questions);
         setAnswersByQuestionId(initialAnswers);
         setResult(nextResult);
@@ -651,6 +679,56 @@ export default function ExamAttemptPage() {
       isMounted = false;
     };
   }, [attemptId, navigate, showToast]);
+
+  useEffect(() => {
+    if (attempt?.status !== "InProgress" || !exam || !attemptId || proctoringStartedRef.current) {
+      return;
+    }
+
+    if (!isLiveProctoringRoomAvailable(exam)) {
+      return;
+    }
+
+    proctoringStartedRef.current = true;
+    proctoringApi.startProctoring(attemptId).catch(() => {
+      proctoringStartedRef.current = false;
+    });
+  }, [attempt?.status, attemptId, exam]);
+
+  useEffect(() => {
+    if (attempt?.status !== "InProgress" || !exam) {
+      return;
+    }
+
+    const isLateJoin =
+      Boolean(location.state?.isLateJoin) || isLateExamJoin(exam, Date.parse(attempt.startedAt));
+
+    if (!isLateJoin || lateJoinNoticeShownRef.current) {
+      return;
+    }
+
+    lateJoinNoticeShownRef.current = true;
+
+    showToast({
+      tone: "caution",
+      title: "Bạn vào thi sau giờ mở đề",
+      message: requiresProctoringCamera(exam)
+        ? "Hãy bật camera để giảng viên giám sát. Giảng viên đã được thông báo bạn vào trễ."
+        : "Giảng viên đã được thông báo bạn vào trễ so với giờ mở đề.",
+    });
+
+    if (requiresProctoringCamera(exam)) {
+      setShowLateJoinCameraGate(true);
+    }
+  }, [attempt, exam, location.state?.isLateJoin, showToast]);
+
+  useEffect(() => {
+    if (!showLateJoinCameraGate || !isCameraReady) {
+      return;
+    }
+
+    setShowLateJoinCameraGate(false);
+  }, [isCameraReady, showLateJoinCameraGate]);
 
   useEffect(() => {
     if (attempt?.status !== "InProgress" || !attemptId) {
@@ -911,9 +989,59 @@ export default function ExamAttemptPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-surface-sunken px-4 py-6 md:px-6 lg:px-8">
-        <div className="eg-feedback-panel mx-auto max-w-[1280px]">
-          Đang tải phòng làm bài...
+      <div className="min-h-screen bg-surface-sunken px-4 py-6 md:px-6 lg:px-8 animate-pulse">
+        <div className="mx-auto max-w-[1280px] space-y-6">
+          {/* Header block skeleton */}
+          <div className="flex justify-between items-center bg-surface border border-border/50 rounded-2xl p-5">
+            <div className="space-y-3 w-1/3">
+              <Skeleton className="h-6 w-full rounded-md" />
+              <Skeleton className="h-4 w-2/3 rounded-md" />
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-10 w-24 rounded-xl" />
+              <Skeleton className="h-10 w-24 rounded-xl" />
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+            {/* Left side: Questions skeleton */}
+            <div className="space-y-6">
+              <Card className="p-6 space-y-4">
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                </div>
+                <Skeleton className="h-8 w-5/6" />
+                <div className="space-y-3 pt-4">
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                </div>
+              </Card>
+              <div className="flex justify-between">
+                <Skeleton className="h-10 w-28 rounded-xl" />
+                <Skeleton className="h-10 w-28 rounded-xl" />
+              </div>
+            </div>
+
+            {/* Right side: Panel skeleton */}
+            <div className="space-y-6">
+              <Card className="p-5 space-y-4">
+                <Skeleton className="h-6 w-32" />
+                <div className="grid grid-cols-4 gap-2">
+                  {Array.from({ length: 16 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full rounded-lg" />
+                  ))}
+                </div>
+                <Skeleton className="h-12 w-full rounded-xl" />
+              </Card>
+              <Card className="p-5 space-y-3">
+                <Skeleton className="h-6 w-32" />
+                <Skeleton className="h-[180px] w-full rounded-xl" />
+              </Card>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -1457,6 +1585,40 @@ export default function ExamAttemptPage() {
             <div className="mt-6 flex flex-wrap justify-end gap-3">
               <Button onClick={() => handleStartFullscreen()}>
                 Bật toàn màn hình
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showLateJoinCameraGate ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 px-4">
+          <div className="w-full max-w-[560px] rounded-[28px] border border-caution/25 bg-surface p-6 shadow-[0_36px_90px_-45px_rgba(15,23,42,0.75)]">
+            <div className="space-y-4">
+              <Badge variant="caution">Vào thi trễ · Yêu cầu camera</Badge>
+              <h2 className="text-2xl font-semibold tracking-tight text-primary">
+                Bật camera để tiếp tục làm bài
+              </h2>
+              <p className="text-sm leading-6 text-secondary">
+                Bạn vào đề sau giờ mở. Đề này yêu cầu camera trong suốt quá trình
+                làm bài và giảng viên đã được thông báo bạn vào trễ.
+              </p>
+              <CameraPreview
+                errorMessage={cameraErrorMessage}
+                label="Camera giám sát"
+                status={cameraStatus}
+                videoRef={videoRef}
+              />
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              {!isCameraReady ? (
+                <Button onClick={() => startStream()} type="button" variant="secondary">
+                  Thử bật camera lại
+                </Button>
+              ) : null}
+              <Button disabled={!isCameraReady} onClick={() => setShowLateJoinCameraGate(false)} type="button">
+                Tiếp tục làm bài
               </Button>
             </div>
           </div>

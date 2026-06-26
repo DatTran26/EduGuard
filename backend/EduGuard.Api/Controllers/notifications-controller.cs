@@ -66,6 +66,7 @@ public class NotificationsController : ControllerBase
     }
 
     [HttpGet("classroom/{classroomId:int}")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ClassroomNotificationDto>>>> GetClassroomNotifications(int classroomId, CancellationToken ct)
     {
         var userId = GetCurrentUserId();

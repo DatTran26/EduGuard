@@ -6,6 +6,7 @@ import EmptyState from "../../../components/common/EmptyState";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
+import { resolveApiErrorMessage } from "../../../utils/apiErrorMessage";
 import { getRoleLabel } from "../../../routes/roleRoutes";
 import { routeConfig } from "../../../routes/routeConfig";
 import ClassroomCard from "../components/ClassroomCard";
@@ -347,7 +348,7 @@ export default function ClassroomListPage() {
       showToast({
         tone: "danger",
         title: "Tạo lớp học thất bại",
-        message: error.message || "Không thể tạo lớp học.",
+        message: resolveApiErrorMessage(error, "Không thể tạo lớp học."),
       });
       return false;
     } finally {
@@ -435,19 +436,21 @@ export default function ClassroomListPage() {
       {isTeacherView ? (
         <>
           <ClassroomSummary classrooms={classrooms} />
-          <ClassroomToolbar
-            searchTerm={teacherSearchTerm}
-            onSearchTermChange={setTeacherSearchTerm}
-            statusFilter={teacherStatusFilter}
-            onStatusFilterChange={setTeacherStatusFilter}
-            sortOption={teacherSortOption}
-            onSortOptionChange={setTeacherSortOption}
-            onResetFilters={() => {
-              setTeacherSearchTerm("");
-              setTeacherStatusFilter("all");
-              setTeacherSortOption("newest");
-            }}
-          />
+          <div className="flex justify-end mt-2 pr-1">
+            <ClassroomToolbar
+              searchTerm={teacherSearchTerm}
+              onSearchTermChange={setTeacherSearchTerm}
+              statusFilter={teacherStatusFilter}
+              onStatusFilterChange={setTeacherStatusFilter}
+              sortOption={teacherSortOption}
+              onSortOptionChange={setTeacherSortOption}
+              onResetFilters={() => {
+                setTeacherSearchTerm("");
+                setTeacherStatusFilter("all");
+                setTeacherSortOption("newest");
+              }}
+            />
+          </div>
         </>
       ) : null}
 

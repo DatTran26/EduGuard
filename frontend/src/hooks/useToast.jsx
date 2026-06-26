@@ -6,6 +6,24 @@ import ToastViewport from "../components/common/ToastViewport";
 const ToastContext = createContext(undefined);
 const TOAST_LIFETIME_MS = 3000;
 
+function normalizeToastMessage(message) {
+  if (typeof message === "string") {
+    return message.trim();
+  }
+
+  if (message && typeof message === "object") {
+    if (typeof message.userMessage === "string") {
+      return message.userMessage.trim();
+    }
+
+    if (typeof message.message === "string") {
+      return message.message.trim();
+    }
+  }
+
+  return "";
+}
+
 // Hàm này tạo id ngắn cho toast để mình thêm và xóa từng popup cho ổn định.
 function createToastId() {
   return `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -31,13 +49,14 @@ export function ToastProvider({ children }) {
   // Hàm này thêm một toast mới và tự hẹn giờ xóa sau 3 giây đúng theo yêu cầu.
   const showToast = useCallback(({ title = "", message = "", tone = "info" }) => {
     const nextToastId = createToastId();
+    const normalizedMessage = normalizeToastMessage(message);
 
     setToasts((previousToasts) => [
       ...previousToasts,
       {
         id: nextToastId,
         title: title.trim(),
-        message: message.trim(),
+        message: normalizedMessage,
         tone,
       },
     ]);

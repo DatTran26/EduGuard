@@ -1,10 +1,13 @@
 using EduGuard.Application.DTOs.Exams;
+using EduGuard.Application.Options;
+using EduGuard.Application.Redis;
 using EduGuard.Application.Repositories.Interfaces;
 using EduGuard.Application.Services.Interfaces;
 using EduGuard.Domain.Entities;
 using EduGuard.Domain.Enums;
 using EduGuard.Infrastructure.Common;
 using FluentValidation;
+using Microsoft.Extensions.Options;
 
 namespace EduGuard.Infrastructure.Exams;
 
@@ -56,6 +59,7 @@ public class ExamService : IExamService
 
     private readonly IExamRepository _examRepository;
     private readonly IClassroomRepository _classroomRepository;
+    private readonly IProctoringRepository _proctoringRepository;
     private readonly IValidator<CreateExamRequest> _createValidator;
     private readonly IValidator<UpdateExamRequest> _updateValidator;
     private readonly IValidator<PatchExamRequest> _patchValidator;
@@ -65,10 +69,14 @@ public class ExamService : IExamService
     private readonly IValidator<CreateAnswerRequest> _createAnswerValidator;
     private readonly IValidator<UpdateAnswerRequest> _updateAnswerValidator;
     private readonly IValidator<PatchAnswerRequest> _patchAnswerValidator;
+    private readonly ICacheService _cacheService;
+    private readonly IExamCacheInvalidator _cacheInvalidator;
+    private readonly RedisOptions _redisOptions;
 
     public ExamService(
         IExamRepository examRepository,
         IClassroomRepository classroomRepository,
+        IProctoringRepository proctoringRepository,
         IValidator<CreateExamRequest> createValidator,
         IValidator<UpdateExamRequest> updateValidator,
         IValidator<PatchExamRequest> patchValidator,
@@ -77,10 +85,14 @@ public class ExamService : IExamService
         IValidator<PatchQuestionRequest> patchQuestionValidator,
         IValidator<CreateAnswerRequest> createAnswerValidator,
         IValidator<UpdateAnswerRequest> updateAnswerValidator,
-        IValidator<PatchAnswerRequest> patchAnswerValidator)
+        IValidator<PatchAnswerRequest> patchAnswerValidator,
+        ICacheService cacheService,
+        IExamCacheInvalidator cacheInvalidator,
+        IOptions<RedisOptions> redisOptions)
     {
         _examRepository = examRepository;
         _classroomRepository = classroomRepository;
+        _proctoringRepository = proctoringRepository;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
         _patchValidator = patchValidator;
@@ -90,6 +102,9 @@ public class ExamService : IExamService
         _createAnswerValidator = createAnswerValidator;
         _updateAnswerValidator = updateAnswerValidator;
         _patchAnswerValidator = patchAnswerValidator;
+        _cacheService = cacheService;
+        _cacheInvalidator = cacheInvalidator;
+        _redisOptions = redisOptions.Value;
     }
 
     public async Task<ExamDto> CreateAsync(int classroomId, CreateExamRequest request, string teacherId, CancellationToken ct = default)
@@ -156,6 +171,7 @@ public class ExamService : IExamService
         UpsertSetting(exam, request.Settings);
         _examRepository.Update(exam);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(examId, ct);
         return ExamMapper.MapExam(exam);
     }
 
@@ -194,6 +210,7 @@ public class ExamService : IExamService
         exam.UpdatedAt = DateTime.UtcNow;
         _examRepository.Update(exam);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(examId, ct);
         return ExamMapper.MapExam(exam);
     }
 
@@ -202,6 +219,7 @@ public class ExamService : IExamService
         var exam = await RequireTeacherOwnedExamAsync(examId, teacherId, ct);
         _examRepository.Remove(exam);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamAsync(examId, ct);
     }
 
     public async Task<ExamDto> PublishAsync(int examId, string teacherId, CancellationToken ct = default)
@@ -213,6 +231,7 @@ public class ExamService : IExamService
         exam.UpdatedAt = DateTime.UtcNow;
         _examRepository.Update(exam);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(examId, ct);
         return ExamMapper.MapExam(exam);
     }
 
@@ -268,6 +287,7 @@ public class ExamService : IExamService
         exam.UpdatedAt = DateTime.UtcNow;
         _examRepository.Update(exam);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(examId, ct);
 
         result.ImportedCount = importedQuestions.Count;
         result.Questions = importedQuestions
@@ -282,9 +302,33 @@ public class ExamService : IExamService
     public async Task<IReadOnlyList<QuestionDto>> GetQuestionsAsync(
         int examId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
     {
-        var exam = await RequireAccessibleExamAsync(examId, userId, roles, ct);
+        var exam = await _examRepository.GetByIdAsync(examId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
+
+        await EnsureAccessibleExamAsync(exam, userId, roles, ct);
         EnsureQuestionBankAccess(exam, userId, roles);
-        return exam.Questions.OrderBy(x => x.OrderIndex).ThenBy(x => x.Id).Select(x => ExamMapper.MapQuestion(x)).ToList();
+
+        var cacheKey = RedisKeyNames.ExamQuestions(_redisOptions.InstanceName, examId);
+        var cached = await _cacheService.GetAsync<List<QuestionDto>>(cacheKey, ct);
+        if (cached is not null)
+            return cached;
+
+        var examWithQuestions = await _examRepository.GetByIdWithDetailsAsync(examId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
+
+        var questions = examWithQuestions.Questions
+            .OrderBy(x => x.OrderIndex)
+            .ThenBy(x => x.Id)
+            .Select(x => ExamMapper.MapQuestion(x))
+            .ToList();
+
+        await _cacheService.SetAsync(
+            cacheKey,
+            questions,
+            TimeSpan.FromMinutes(_redisOptions.QuestionCacheMinutes),
+            ct);
+
+        return questions;
     }
 
     public async Task<QuestionDto> AddQuestionAsync(int examId, CreateQuestionRequest request, string teacherId, CancellationToken ct = default)
@@ -317,6 +361,7 @@ public class ExamService : IExamService
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
         ExamQuestionOrderHelper.Resequence(examWithQuestions.Questions.ToList(), question.Id, request.OrderIndex);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(examId, ct);
 
         var saved = await _examRepository.GetQuestionByIdAsync(question.Id, ct) ?? question;
         return ExamMapper.MapQuestion(saved);
@@ -348,6 +393,7 @@ public class ExamService : IExamService
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
         ExamQuestionOrderHelper.Resequence(exam.Questions.ToList(), question.Id, request.OrderIndex);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(question.ExamId, ct);
 
         var saved = await _examRepository.GetQuestionByIdAsync(question.Id, ct) ?? question;
         return ExamMapper.MapQuestion(saved);
@@ -379,6 +425,8 @@ public class ExamService : IExamService
             await _examRepository.SaveChangesAsync(ct);
         }
 
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(question.ExamId, ct);
+
         var saved = await _examRepository.GetQuestionByIdAsync(question.Id, ct) ?? question;
         return ExamMapper.MapQuestion(saved);
     }
@@ -393,6 +441,7 @@ public class ExamService : IExamService
         _examRepository.RemoveQuestion(question);
         ExamQuestionOrderHelper.Renumber(exam.Questions.Where(x => x.Id != question.Id).ToList());
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(question.ExamId, ct);
     }
 
     public async Task<AnswerDto> AddAnswerAsync(int questionId, CreateAnswerRequest request, string teacherId, CancellationToken ct = default)
@@ -412,6 +461,7 @@ public class ExamService : IExamService
 
         await _examRepository.AddAnswerAsync(answer, ct);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(question.ExamId, ct);
         return ExamMapper.MapAnswer(answer);
     }
 
@@ -429,6 +479,7 @@ public class ExamService : IExamService
         answer.OrderIndex = request.OrderIndex;
         _examRepository.UpdateAnswer(answer);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(answer.Question.ExamId, ct);
         return ExamMapper.MapAnswer(answer);
     }
 
@@ -453,6 +504,7 @@ public class ExamService : IExamService
 
         _examRepository.UpdateAnswer(answer);
         await _examRepository.SaveChangesAsync(ct);
+        await _cacheInvalidator.InvalidateExamQuestionsAsync(answer.Question.ExamId, ct);
         return ExamMapper.MapAnswer(answer);
     }
 
@@ -770,19 +822,26 @@ public class ExamService : IExamService
         }
     }
 
+    private async Task EnsureAccessibleExamAsync(Exam exam, string userId, IReadOnlyList<string> roles, CancellationToken ct)
+    {
+        var classroom = await ClassroomAccessHelper.RequireClassroomAsync(_classroomRepository, exam.ClassroomId, ct);
+        if (roles.Contains("Admin") || exam.TeacherId == userId)
+            return;
+
+        if (roles.Contains("Teacher") && await _proctoringRepository.IsAssignedProctorAsync(exam.Id, userId, ct))
+            return;
+
+        await ClassroomAccessHelper.EnsureCanAccessClassroomAsync(_classroomRepository, classroom, userId, roles, ct);
+        if (!exam.IsPublished)
+            throw new UnauthorizedAccessException("Bạn không có quyền xem đề thi này.");
+    }
+
     private async Task<Exam> RequireAccessibleExamAsync(int examId, string userId, IReadOnlyList<string> roles, CancellationToken ct)
     {
         var exam = await _examRepository.GetByIdWithDetailsAsync(examId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
 
-        var classroom = await ClassroomAccessHelper.RequireClassroomAsync(_classroomRepository, exam.ClassroomId, ct);
-        if (roles.Contains("Admin") || exam.TeacherId == userId)
-            return exam;
-
-        await ClassroomAccessHelper.EnsureCanAccessClassroomAsync(_classroomRepository, classroom, userId, roles, ct);
-        if (!exam.IsPublished)
-            throw new UnauthorizedAccessException("Bạn không có quyền xem đề thi này.");
-
+        await EnsureAccessibleExamAsync(exam, userId, roles, ct);
         return exam;
     }
 

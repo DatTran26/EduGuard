@@ -6,12 +6,13 @@ using EduGuard.Infrastructure.Data;
 using FluentValidation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace EduGuard.Infrastructure.Auth;
 
 public class AuthService : IAuthService
 {
-    private const int RefreshTokenDays = 7;
+    private const int DefaultRefreshTokenDays = 7;
     private const string DefaultRole = "Student";
 
     private readonly UserManager<ApplicationUser> _userManager;
@@ -20,6 +21,7 @@ public class AuthService : IAuthService
     private readonly AppDbContext _db;
     private readonly IValidator<RegisterRequest> _registerValidator;
     private readonly IValidator<LoginRequest> _loginValidator;
+    private readonly int _refreshTokenDays;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -27,7 +29,8 @@ public class AuthService : IAuthService
         IJwtTokenService jwtTokenService,
         AppDbContext db,
         IValidator<RegisterRequest> registerValidator,
-        IValidator<LoginRequest> loginValidator)
+        IValidator<LoginRequest> loginValidator,
+        IConfiguration configuration)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -35,6 +38,9 @@ public class AuthService : IAuthService
         _db = db;
         _registerValidator = registerValidator;
         _loginValidator = loginValidator;
+        _refreshTokenDays = int.TryParse(configuration["Jwt:RefreshTokenDays"], out var days)
+            ? days
+            : DefaultRefreshTokenDays;
     }
 
     public async Task<UserDto> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
@@ -136,7 +142,7 @@ public class AuthService : IAuthService
         {
             UserId = userId,
             Token = token,
-            ExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenDays),
+            ExpiresAt = DateTime.UtcNow.AddDays(_refreshTokenDays),
             CreatedAt = DateTime.UtcNow
         });
 

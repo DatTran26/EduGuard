@@ -79,6 +79,30 @@ public class ExamAttemptsController : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(ApiResponse<object>.CreateFailure(ex.Message)); }
     }
 
+    [HttpPost("api/attempts/{attemptId:int}/heartbeat")]
+    [Authorize(Roles = "Student")]
+    public async Task<ActionResult<ApiResponse<object>>> Heartbeat(
+        int attemptId,
+        [FromBody] AttemptHeartbeatRequest? request,
+        CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+            return Unauthorized(ApiResponse<object>.CreateFailure("Token không hợp lệ."));
+
+        try
+        {
+            await _attemptService.HeartbeatAsync(attemptId, userId, request?.Client, ct);
+            return Ok(ApiResponse<object>.CreateSuccess(new { }, "Heartbeat thành công."));
+        }
+        catch (KeyNotFoundException ex) { return NotFound(ApiResponse<object>.CreateFailure(ex.Message)); }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object>.CreateFailure(ex.Message));
+        }
+        catch (InvalidOperationException ex) { return BadRequest(ApiResponse<object>.CreateFailure(ex.Message)); }
+    }
+
     [HttpPost("api/attempts/{attemptId:int}/submit")]
     [Authorize(Roles = "Student")]
     public async Task<ActionResult<ApiResponse<ExamResultDto>>> Submit(int attemptId, CancellationToken ct)

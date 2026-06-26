@@ -1,32 +1,60 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { examApi } from "../../../api/examApi";
+import { examAttemptApi } from "../../../api/examAttemptApi";
 import { proctoringApi } from "../../../api/proctoringApi";
-import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
-import PageHeader from "../../../components/layout/PageHeader";
 import { useToast } from "../../../hooks/useToast";
+import Skeleton from "../../../components/common/Skeleton";
 import {
   buildStudentDeviceCheckPath,
+  buildStudentExamAttemptPath,
   buildStudentExamDetailPath,
 } from "../../../routes/routeConfig";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import CameraPreview from "../components/CameraPreview";
+import ExamLobbyCountdown from "../components/ExamLobbyCountdown";
+import MediaStreamControls from "../components/MediaStreamControls";
 import { useCameraStream } from "../hooks/useCameraStream";
-import { isProctoringRequired } from "../utils/proctoringRouting";
+import {
+  isProctoringRequired,
+  requiresProctoringCamera,
+  requiresProctoringMicrophone,
+} from "../utils/proctoringRouting";
 
-function formatCountdown(seconds) {
-  const safeSeconds = Math.max(0, Number(seconds) || 0);
-  const hours = Math.floor(safeSeconds / 3600);
-  const minutes = Math.floor((safeSeconds % 3600) / 60);
-  const secs = safeSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(secs).padStart(2, "0")}s`;
+function LobbyRequirementNote({ requireCamera, requireMicrophone, isCameraOn, isMicOn }) {
+  if (!requireCamera && !requireMicrophone) {
+    return null;
   }
 
-  return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  const messages = [];
+  if (requireCamera && !isCameraOn) {
+    messages.push("Bật camera trước giờ mở đề.");
+  }
+  if (requireMicrophone && !isMicOn) {
+    messages.push("Bật micro trước giờ mở đề.");
+  }
+
+  const requirementParts = [];
+  if (requireCamera) {
+    requirementParts.push("camera");
+  }
+  if (requireMicrophone) {
+    requirementParts.push("micro");
+  }
+
+  return (
+    <div
+      className="rounded-[var(--radius-md)] border border-danger/35 bg-danger-muted px-4 py-3 text-sm leading-6 text-danger"
+      role="alert"
+    >
+      <p className="font-semibold">
+        Bắt buộc: Đề thi này yêu cầu bật {requirementParts.join(" và ")}.
+      </p>
+      {messages.length > 0 ? <p className="mt-1">{messages.join(" ")}</p> : null}
+    </div>
+  );
 }
 
 export default function ExamLobbyPage() {
@@ -36,10 +64,31 @@ export default function ExamLobbyPage() {
   const [exam, setExam] = useState(null);
   const [lobbyStatus, setLobbyStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasAcceptedRules, setHasAcceptedRules] = useState(false);
-  const { videoRef, status: cameraStatus, errorMessage, isReady, startStream } = useCameraStream({
+
+  const requireCamera = useMemo(
+    () => requiresProctoringCamera(exam) || Boolean(lobbyStatus?.requireCamera),
+    [exam, lobbyStatus?.requireCamera],
+  );
+  const requireMicrophone = requiresProctoringMicrophone(exam);
+  const needsDeviceCheck = isProctoringRequired(exam);
+
+  const {
+    videoRef,
+    status: cameraStatus,
+    micStatus,
+    errorMessage,
+    isCameraOn,
+    isMicOn,
+    isReady,
+    startStream,
+    toggleCamera,
+    toggleMicrophone,
+  } = useCameraStream({
+    audio: true,
     enabled: true,
   });
+
+  const cameraReadyForLobby = requireCamera && isCameraOn;
 
   useEffect(() => {
     let isMounted = true;
@@ -87,11 +136,16 @@ export default function ExamLobbyPage() {
         setLobbyStatus(response.data);
 
         if (response.data.isOpen) {
-          navigate(buildStudentDeviceCheckPath(examId), { replace: true });
+          if (exam && needsDeviceCheck) {
+            navigate(buildStudentDeviceCheckPath(examId), { replace: true });
+          } else if (exam) {
+            const startResponse = await examAttemptApi.start(examId);
+            navigate(buildStudentExamAttemptPath(startResponse.data.attempt.id), { replace: true });
+          }
           return;
         }
 
-        if (isReady) {
+        if (cameraReadyForLobby) {
           await proctoringApi.heartbeatLobby(examId, true);
         } else {
           await proctoringApi.joinLobby(examId, false);
@@ -114,52 +168,78 @@ export default function ExamLobbyPage() {
       window.clearInterval(intervalId);
       proctoringApi.leaveLobby(examId).catch(() => {});
     };
-  }, [examId, isReady, navigate, showToast]);
+  }, [cameraReadyForLobby, exam, examId, navigate, needsDeviceCheck, showToast]);
 
   useEffect(() => {
-    if (!examId || !isReady) {
+    if (!examId || !cameraReadyForLobby) {
       return;
     }
 
     proctoringApi.joinLobby(examId, true).catch(() => {});
-  }, [examId, isReady]);
+  }, [cameraReadyForLobby, examId]);
 
-  const countdownLabel = useMemo(
-    () => formatCountdown(lobbyStatus?.secondsUntilOpen ?? 0),
-    [lobbyStatus?.secondsUntilOpen],
-  );
+  const examTitle = exam?.title ?? lobbyStatus?.examTitle ?? "Phòng chờ bài thi";
+  const openTimeLabel = lobbyStatus?.startTime ? formatShortDateTime(lobbyStatus.startTime) : null;
+  const micToggleAvailable = micStatus !== "not-required" && micStatus !== "unsupported";
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <Card className="p-6 text-sm text-secondary">Đang tải phòng chờ…</Card>
+      <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 animate-pulse">
+        <div className="flex justify-between items-center border-b border-border/60 pb-5">
+          <div className="space-y-3 w-1/3">
+            <Skeleton className="h-4 w-24 rounded-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+          </div>
+          <Skeleton className="h-10 w-32 rounded-xl" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-[1.5fr_1fr]">
+          <Card className="p-6 space-y-4">
+            <Skeleton className="h-6 w-32" />
+            <div className="flex justify-center py-8">
+              <Skeleton className="h-32 w-32 rounded-full" />
+            </div>
+            <Skeleton className="h-8 w-full" />
+          </Card>
+          <Card className="p-6 space-y-4">
+            <Skeleton className="h-6 w-32" />
+            <div className="space-y-3">
+              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
-      <PageHeader
-        actions={
-          <Button as={Link} to={buildStudentExamDetailPath(examId)} variant="secondary">
-            Quay lại đề thi
-          </Button>
-        }
-        description="Bật camera sớm và chờ đến giờ mở đề. Khi đến giờ, hệ thống sẽ chuyển bạn sang bước kiểm tra thiết bị."
-        eyebrow="Phòng chờ trước giờ thi"
-        title={exam?.title ?? lobbyStatus?.examTitle ?? "Phòng chờ bài thi"}
-      />
+    <div className="mx-auto flex min-h-[calc(100dvh-4rem)] max-w-lg flex-col px-4 py-8 sm:py-10">
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <p className="text-xs font-medium uppercase tracking-[0.08em] text-secondary">Phòng chờ</p>
+        <Button as={Link} className="text-sm" to={buildStudentExamDetailPath(examId)} variant="ghost">
+          Quay lại
+        </Button>
+      </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <Card className="space-y-5 p-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="caution">Chờ mở đề</Badge>
-            <Badge variant="neutral">Còn {countdownLabel}</Badge>
-            {lobbyStatus?.waitingStudentCount ? (
-              <Badge variant="neutral">{lobbyStatus.waitingStudentCount} người đang chờ</Badge>
-            ) : null}
-          </div>
+      <div className="flex flex-1 flex-col gap-6">
+        <div className="space-y-2 text-center">
+          <h1 className="text-xl font-semibold leading-snug text-primary sm:text-2xl">{examTitle}</h1>
+          {openTimeLabel ? (
+            <p className="text-sm text-secondary">Mở đề lúc {openTimeLabel}</p>
+          ) : null}
+        </div>
 
+        <ExamLobbyCountdown secondsUntilOpen={lobbyStatus?.secondsUntilOpen ?? 0} />
+
+        <LobbyRequirementNote
+          isCameraOn={isCameraOn}
+          isMicOn={isMicOn}
+          requireCamera={requireCamera}
+          requireMicrophone={requireMicrophone}
+        />
+
+        <Card className="space-y-4 p-5">
           <CameraPreview
             errorMessage={errorMessage}
             label="Camera phòng chờ"
@@ -167,56 +247,28 @@ export default function ExamLobbyPage() {
             videoRef={videoRef}
           />
 
-          {!isReady ? (
-            <Button onClick={startStream} type="button" variant="secondary">
-              Thử bật camera lại
+          <MediaStreamControls
+            isCameraOn={isCameraOn}
+            isMicOn={isMicOn}
+            onToggleCamera={toggleCamera}
+            onToggleMicrophone={toggleMicrophone}
+            showMicrophone={micToggleAvailable}
+          />
+
+          {!isReady && cameraStatus !== "off" ? (
+            <Button className="w-full" onClick={startStream} type="button" variant="secondary">
+              Thử bật lại thiết bị
             </Button>
           ) : null}
-
-          <label className="flex items-start gap-3 text-sm leading-6 text-secondary">
-            <input
-              checked={hasAcceptedRules}
-              className="mt-1"
-              onChange={(event) => setHasAcceptedRules(event.target.checked)}
-              type="checkbox"
-            />
-            <span>
-              Đề thi này yêu cầu camera. Hệ thống có thể ghi nhận hành vi bất thường, hiển thị
-              camera cho giáo viên trong quá trình thi và chụp ảnh bằng chứng khi phát hiện dấu
-              hiệu rủi ro. Các cảnh báo chỉ được dùng để giáo viên xem xét, không tự động kết
-              luận gian lận.
-            </span>
-          </label>
         </Card>
 
-        <Card className="space-y-4 p-6">
-          <h3 className="text-base font-semibold text-primary">Thông tin buổi thi</h3>
-          <dl className="space-y-3 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-secondary">Giờ mở đề</dt>
-              <dd className="font-medium text-primary">
-                {lobbyStatus?.startTime ? formatShortDateTime(lobbyStatus.startTime) : "Chưa đặt"}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-secondary">Giờ đóng đề</dt>
-              <dd className="font-medium text-primary">
-                {lobbyStatus?.endTime ? formatShortDateTime(lobbyStatus.endTime) : "Chưa đặt"}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-secondary">Camera</dt>
-              <dd className="font-medium text-primary">
-                {isProctoringRequired(exam) || lobbyStatus?.requireCamera ? "Bắt buộc" : "Không bắt buộc"}
-              </dd>
-            </div>
-          </dl>
-
-          <p className="text-sm leading-6 text-secondary">
-            Khi đến giờ mở đề, bạn sẽ được chuyển tự động sang màn kiểm tra thiết bị rồi vào làm
-            bài.
-          </p>
-        </Card>
+        <p className="text-center text-sm leading-6 text-secondary">
+          {cameraReadyForLobby
+            ? "Thiết bị đã sẵn sàng. Hệ thống sẽ tự chuyển bạn khi đến giờ mở đề."
+            : "Giữ tab này mở. Khi đến giờ, hệ thống sẽ tự chuyển bạn" +
+              (needsDeviceCheck ? " sang kiểm tra thiết bị" : " vào làm bài") +
+              "."}
+        </p>
       </div>
     </div>
   );

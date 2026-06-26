@@ -24,6 +24,14 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
             .IsRequired()
             .HasMaxLength(50);
 
+        builder.Property(x => x.ActionUrl)
+            .HasMaxLength(500);
+
+        builder.Property(x => x.SourceKey)
+            .HasMaxLength(120);
+
+        builder.HasIndex(x => new { x.SourceKey, x.CreatedAt });
+
         builder.HasOne(x => x.Sender)
             .WithMany(x => x.SentNotifications)
             .HasForeignKey(x => x.SenderId)

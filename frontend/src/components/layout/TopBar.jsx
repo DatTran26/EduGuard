@@ -10,6 +10,10 @@ import { useToast } from "../../hooks/useToast";
 import { getProfileRouteByRole, getRoleLabel } from "../../routes/roleRoutes";
 import { routeConfig } from "../../routes/routeConfig";
 import { notificationApi } from "../../api/notificationApi";
+import {
+  getNotificationTypeMeta,
+  resolveNotificationPath,
+} from "../../features/notifications/utils/notificationUtils";
 import TeacherQuickCreateButton from "./TeacherQuickCreateButton";
 import TeacherShellSearch from "./TeacherShellSearch";
 import {
@@ -35,6 +39,7 @@ import {
 const BREADCRUMB_MAX_VISIBLE = 4;
 
 const breadcrumbLabelBySegment = {
+  admin: "Quản trị",
   assignments: "Bài tập",
   classrooms: "Lớp học",
   exams: "Đề thi",
@@ -46,6 +51,7 @@ const breadcrumbLabelBySegment = {
   monitoring: "Giám sát thi",
   notifications: "Thông báo",
   "question-banks": "Ngân hàng câu hỏi",
+  "proctoring-ai": "AI giám sát",
 };
 
 const homeHrefByRoleSegment = {
@@ -333,12 +339,13 @@ export default function TopBar({
       try {
         await notificationApi.markAsRead(item.userNotificationId);
         fetchNotifications();
+        window.dispatchEvent(new CustomEvent("eduguard:notification-updated"));
       } catch (error) {
         console.error("Lỗi đánh dấu đọc thông báo:", error);
       }
     }
     setIsNotificationOpen(false);
-    navigate(routeConfig.notifications);
+    navigate(resolveNotificationPath(item, user?.role));
   }
 
   // Hàm này đưa người dùng tới trang hồ sơ từ dropdown mà không đổi logic trang hồ sơ hiện tại.
@@ -547,7 +554,9 @@ export default function TopBar({
               <div className="max-h-[360px] overflow-y-auto p-1">
                 {notificationItems.length > 0 ? (
                   <div className="space-y-1">
-                    {notificationItems.map((item) => (
+                    {notificationItems.map((item) => {
+                      const typeMeta = getNotificationTypeMeta(item.type);
+                      return (
                       <div
                         key={item.userNotificationId}
                         onClick={() => handleNotificationClick(item)}
@@ -560,7 +569,7 @@ export default function TopBar({
                             <p className={`truncate text-xs font-semibold ${!item.isRead ? "text-brand" : "text-primary"}`}>
                               {item.title || "Thông báo"}
                             </p>
-                            <p className="pt-1 text-[11px] leading-relaxed text-secondary truncate">
+                            <p className="pt-1 text-[11px] leading-relaxed text-secondary line-clamp-2">
                               {item.content || "Bạn có thông báo mới."}
                             </p>
                           </div>
@@ -568,8 +577,10 @@ export default function TopBar({
                             className={`mt-1 inline-flex h-2 w-2 shrink-0 rounded-full ${
                               !item.isRead
                                 ? "bg-brand ring-4 ring-brand/10"
-                                : item.type === "Warning"
+                                : typeMeta.tone === "danger"
                                   ? "bg-rose-500"
+                                  : typeMeta.tone === "warning"
+                                    ? "bg-amber-500"
                                   : item.type === "Success"
                                     ? "bg-emerald-500"
                                     : "bg-sky-500"
@@ -583,7 +594,8 @@ export default function TopBar({
                           </p>
                         ) : null}
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 ) : (
                   <div className="px-3 py-8">

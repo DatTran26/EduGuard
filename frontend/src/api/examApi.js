@@ -1,4 +1,5 @@
 import axiosClient from "./axiosClient";
+import { proctoringApi } from "./proctoringApi";
 import {
   areUserIdsEqual,
   buildClientError,
@@ -24,6 +25,25 @@ function normalizeExamSetting(settings) {
     maxAttempts: Number(settings?.maxAttempts) || 1,
     showResultAfterSubmit: Boolean(settings?.showResultAfterSubmit),
     requireFullscreen: Boolean(settings?.requireFullscreen),
+    antiCheatMode: settings?.antiCheatMode ?? "BASIC",
+    requireCamera: Boolean(settings?.requireCamera),
+    requireMicrophone: Boolean(settings?.requireMicrophone),
+    enableLiveProctoring: Boolean(settings?.enableLiveProctoring),
+    enableCameraProctoring: Boolean(settings?.enableCameraProctoring),
+    enableExternalDeviceDetection: Boolean(settings?.enableExternalDeviceDetection),
+    captureSnapshotOnViolation: Boolean(settings?.captureSnapshotOnViolation),
+    enableRealtimeWarning: settings?.enableRealtimeWarning !== false,
+    cameraHeartbeatIntervalSeconds: Number(settings?.cameraHeartbeatIntervalSeconds) || 10,
+    maxCameraOffSeconds: Number(settings?.maxCameraOffSeconds) || 15,
+    snapshotCooldownSeconds: Number(settings?.snapshotCooldownSeconds) || 30,
+    maxSnapshotsPerAttempt: Number(settings?.maxSnapshotsPerAttempt) || 20,
+    maxActiveLiveTiles: Number(settings?.maxActiveLiveTiles) || 9,
+    defaultLiveQuality: settings?.defaultLiveQuality ?? "360p",
+    focusedLiveQuality: settings?.focusedLiveQuality ?? "720p",
+    allowTeacherManualSnapshot: settings?.allowTeacherManualSnapshot !== false,
+    allowTeacherManualRecording: Boolean(settings?.allowTeacherManualRecording),
+    allowMoveToWaitingRoom: settings?.allowMoveToWaitingRoom !== false,
+    violationAction: settings?.violationAction ?? "WARN_TEACHER",
   };
 }
 
@@ -149,6 +169,37 @@ function normalizeExamDto(exam, currentUser, classroom = null, extraData = {}) {
   };
 }
 
+function normalizeAssignedProctorExamDto(exam, currentUser) {
+  const classroom = {
+    id: Number(exam?.classroomId) || 0,
+    name: exam?.classroomName ?? "Lớp học chưa xác định",
+    teacherName: exam?.ownerTeacherName ?? "",
+  };
+
+  return {
+    ...normalizeExamDto(exam, currentUser, classroom),
+    isCoProctorAccess: true,
+    canEdit: false,
+    canDelete: false,
+    canViewQuestionBank: false,
+  };
+}
+
+async function loadAssignedProctorExams(currentUser, ownedExamIds) {
+  if (currentUser?.role !== "Teacher") {
+    return [];
+  }
+
+  try {
+    const assignedResponse = await proctoringApi.getAssignedExams();
+    return (Array.isArray(assignedResponse.data) ? assignedResponse.data : [])
+      .filter((exam) => !ownedExamIds.has(Number(exam?.id)))
+      .map((exam) => normalizeAssignedProctorExamDto(exam, currentUser));
+  } catch {
+    return [];
+  }
+}
+
 function buildExamWritePayload(payload) {
   return {
     title: payload.title?.trim() ?? "",
@@ -258,10 +309,14 @@ export const examApi = {
       }),
     );
 
+    const ownedExams = examGroups.flat().sort(sortExamItemsByCreatedAt);
+    const ownedExamIds = new Set(ownedExams.map((exam) => Number(exam.id)));
+    const assignedExams = await loadAssignedProctorExams(currentUser, ownedExamIds);
+
     return {
       success: true,
       message: "Lấy danh sách bài kiểm tra thành công.",
-      data: examGroups.flat().sort(sortExamItemsByCreatedAt),
+      data: [...ownedExams, ...assignedExams].sort(sortExamItemsByCreatedAt),
     };
   },
 
@@ -310,6 +365,20 @@ export const examApi = {
 
   async publish(examId) {
     const apiResponse = await requestApi(() => axiosClient.post(`/exams/${examId}/publish`));
+    const normalizedResponse = await getNormalizedExamById(apiResponse.data?.id || examId);
+
+    return {
+      ...normalizedResponse,
+      message: apiResponse.message,
+    };
+  },
+
+  async closeEarly(examId) {
+    const apiResponse = await requestApi(() =>
+      axiosClient.patch(`/exams/${examId}`, {
+        endTime: new Date().toISOString(),
+      }),
+    );
     const normalizedResponse = await getNormalizedExamById(apiResponse.data?.id || examId);
 
     return {

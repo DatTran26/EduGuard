@@ -1,5 +1,6 @@
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
+import { cn } from "../../../utils/cn";
 import AuthenticatedEvidenceMedia from "./AuthenticatedEvidenceMedia";
 import RiskBadge from "./RiskBadge";
 
@@ -20,20 +21,36 @@ export default function AttemptProctorDrawer({
   onStartClip,
   onStopClip,
   onToggleAudio,
+  variant = "default",
 }) {
   if (!student) {
     return null;
   }
 
+  const isRoom = variant === "room";
   const isPaused = student.attemptStatus === "PausedByProctor";
 
   return (
-    <aside className="fixed inset-y-0 right-0 z-40 w-full max-w-[420px] border-l border-border bg-surface shadow-2xl">
+    <aside
+      className={cn(
+        "fixed inset-y-0 right-0 z-40 w-full max-w-[420px] border-l shadow-2xl",
+        isRoom ? "border-white/10 bg-[#0b1220]" : "border-border bg-surface",
+      )}
+    >
       <div className="flex h-full flex-col">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div
+          className={cn(
+            "flex items-center justify-between border-b px-5 py-4",
+            isRoom ? "border-white/10" : "border-border",
+          )}
+        >
           <div>
-            <h2 className="text-lg font-semibold text-primary">{student.studentName}</h2>
-            <p className="text-sm text-secondary">Attempt #{student.attemptId}</p>
+            <h2 className={cn("text-lg font-semibold", isRoom ? "text-white" : "text-primary")}>
+              {student.studentName}
+            </h2>
+            <p className={cn("text-sm", isRoom ? "text-slate-400" : "text-secondary")}>
+              Attempt #{student.attemptId}
+            </p>
           </div>
           <Button onClick={onClose} variant="ghost">
             Đóng
@@ -41,10 +58,26 @@ export default function AttemptProctorDrawer({
         </div>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
-          <div className="relative aspect-video overflow-hidden rounded-[16px] border border-border bg-surface-sunken">
-            <video ref={liveVideoRef} autoPlay className="h-full w-full object-cover" playsInline />
+          <div
+            className={cn(
+              "relative aspect-video overflow-hidden rounded-[16px] border",
+              isRoom ? "border-white/10 bg-[#060b14]" : "border-border bg-surface-sunken",
+            )}
+          >
+            <video
+              ref={liveVideoRef}
+              autoPlay
+              className="h-full w-full object-cover"
+              muted={!isAudioEnabled}
+              playsInline
+            />
             {remoteStatus !== "connected" ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-surface/80 text-sm text-secondary">
+              <div
+                className={cn(
+                  "absolute inset-0 flex items-center justify-center text-sm",
+                  isRoom ? "bg-[#060b14]/90 text-slate-400" : "bg-surface/80 text-secondary",
+                )}
+              >
                 {remoteStatus === "connecting" ? "Đang kết nối live…" : "Chưa có live stream"}
               </div>
             ) : null}
@@ -88,11 +121,19 @@ export default function AttemptProctorDrawer({
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-primary">Bằng chứng</h3>
+            <h3 className={cn("text-sm font-semibold", isRoom ? "text-slate-200" : "text-primary")}>
+              Bằng chứng
+            </h3>
             {(detail?.evidence ?? []).length ? (
               <ul className="grid grid-cols-2 gap-2">
                 {detail.evidence.map((item) => (
-                  <li key={item.id} className="overflow-hidden rounded-[12px] border border-border">
+                  <li
+                    key={item.id}
+                    className={cn(
+                      "overflow-hidden rounded-[12px] border",
+                      isRoom ? "border-white/10" : "border-border",
+                    )}
+                  >
                     <AuthenticatedEvidenceMedia
                       attemptId={student.attemptId}
                       className="aspect-video w-full object-cover"
@@ -100,28 +141,42 @@ export default function AttemptProctorDrawer({
                       evidenceType={item.evidenceType}
                       fileUrl={item.fileUrl}
                     />
-                    <p className="px-2 py-1 text-[11px] text-secondary">{item.evidenceType}</p>
+                    <p className={cn("px-2 py-1 text-[11px]", isRoom ? "text-slate-500" : "text-secondary")}>
+                      {item.evidenceType}
+                    </p>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-secondary">Chưa có bằng chứng.</p>
+              <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>Chưa có bằng chứng.</p>
             )}
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-primary">Timeline gần đây</h3>
+            <h3 className={cn("text-sm font-semibold", isRoom ? "text-slate-200" : "text-primary")}>
+              Timeline gần đây
+            </h3>
             {(detail?.recentActions ?? []).length ? (
-              <ul className="space-y-2 text-sm text-secondary">
+              <ul className={cn("space-y-2 text-sm", isRoom ? "text-slate-400" : "text-secondary")}>
                 {detail.recentActions.map((action) => (
-                  <li key={action.id} className="rounded-[12px] border border-border bg-neutral px-3 py-2">
-                    <p className="font-medium text-primary">{action.actionType}</p>
+                  <li
+                    key={action.id}
+                    className={cn(
+                      "rounded-[12px] border px-3 py-2",
+                      isRoom ? "border-white/10 bg-white/[0.03]" : "border-border bg-neutral",
+                    )}
+                  >
+                    <p className={cn("font-medium", isRoom ? "text-slate-200" : "text-primary")}>
+                      {action.actionType}
+                    </p>
                     <p>{action.reason || "Không có ghi chú"}</p>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-secondary">Chưa có thao tác giáo viên.</p>
+              <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>
+                Chưa có thao tác giáo viên.
+              </p>
             )}
           </div>
         </div>
