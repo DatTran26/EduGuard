@@ -1,5 +1,6 @@
 import axiosClient from "./axiosClient";
 import { requestApi } from "./apiHelpers";
+import { normalizeNotificationDto } from "../features/notifications/utils/notificationUtils";
 
 export const notificationApi = {
   async createClassroomNotification(payload) {
@@ -18,7 +19,13 @@ export const notificationApi = {
   },
 
   async getMyNotifications() {
-    return requestApi(() => axiosClient.get("/notifications/me"));
+    const apiResponse = await requestApi(() => axiosClient.get("/notifications/me"));
+    return {
+      ...apiResponse,
+      data: Array.isArray(apiResponse.data)
+        ? apiResponse.data.map((item) => normalizeNotificationDto(item))
+        : [],
+    };
   },
 
   async getUnreadCount() {

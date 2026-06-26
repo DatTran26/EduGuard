@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { proctoringApi } from "../../../api/proctoringApi";
+import { devLog } from "../../../utils/devLogger";
 import {
   EXAM_MONITORING_EVENTS,
   EXAM_MONITORING_METHODS,
@@ -9,11 +10,30 @@ import { createExamMonitoringConnection } from "../../../signalr/examMonitoringC
 export function useProctoringHubConnection({ enabled = true, onEvent } = {}) {
   const connectionRef = useRef(null);
   const onEventRef = useRef(onEvent);
+  const extraHandlersRef = useRef(new Set());
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     onEventRef.current = onEvent;
   }, [onEvent]);
+
+  const registerHandler = useCallback((handler) => {
+    if (typeof handler !== "function") {
+      return () => {};
+    }
+
+    extraHandlersRef.current.add(handler);
+    return () => {
+      extraHandlersRef.current.delete(handler);
+    };
+  }, []);
+
+  const dispatchEvent = useCallback((eventName, payload) => {
+    onEventRef.current?.(eventName, payload);
+    extraHandlersRef.current.forEach((handler) => {
+      handler(eventName, payload);
+    });
+  }, []);
 
   const invoke = useCallback(async (method, ...args) => {
     const connection = connectionRef.current;
@@ -25,6 +45,7 @@ export function useProctoringHubConnection({ enabled = true, onEvent } = {}) {
 
   useEffect(() => {
     if (!enabled) {
+      setIsConnected(false);
       return undefined;
     }
 
@@ -35,7 +56,7 @@ export function useProctoringHubConnection({ enabled = true, onEvent } = {}) {
     const eventNames = Object.values(EXAM_MONITORING_EVENTS);
     eventNames.forEach((eventName) => {
       connection.on(eventName, (payload) => {
-        onEventRef.current?.(eventName, payload);
+        dispatchEvent(eventName, payload);
       });
     });
 
@@ -44,27 +65,31 @@ export function useProctoringHubConnection({ enabled = true, onEvent } = {}) {
       .then(() => {
         if (!isDisposed) {
           setIsConnected(true);
+          devLog.proctoring("Exam monitoring hub connected");
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!isDisposed) {
           setIsConnected(false);
+          devLog.error("proctoring", "Exam monitoring hub connect failed", error);
         }
       });
 
     return () => {
       isDisposed = true;
       setIsConnected(false);
+      devLog.proctoring("Exam monitoring hub disconnecting");
       eventNames.forEach((eventName) => connection.off(eventName));
       connection.stop().catch(() => {});
       connectionRef.current = null;
     };
-  }, [enabled]);
+  }, [dispatchEvent, enabled]);
 
   return {
     connectionRef,
     isConnected,
     invoke,
+    registerHandler,
     methods: EXAM_MONITORING_METHODS,
     events: EXAM_MONITORING_EVENTS,
   };

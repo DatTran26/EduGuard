@@ -1,28 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
 import { proctoringApi } from "../../../api/proctoringApi";
-import Button from "../../../components/common/Button";
-import Card from "../../../components/common/Card";
-import PageHeader from "../../../components/layout/PageHeader";
-import { useToast } from "../../../hooks/useToast";
-import { routeConfig } from "../../../routes/routeConfig";
+import { examApi } from "../../../api/examApi";
 import AttemptProctorDrawer from "../components/AttemptProctorDrawer";
-import CoProctorPanel from "../components/CoProctorPanel";
+import CoProctorDialog from "../components/CoProctorDialog";
+import ProctoringFilterBar from "../components/ProctoringFilterBar";
 import ProctoringReasonDialog from "../components/ProctoringReasonDialog";
+import ProctoringRoomHeader from "../components/ProctoringRoomHeader";
+import ProctoringStatusBar from "../components/ProctoringStatusBar";
 import StudentCameraGrid from "../components/StudentCameraGrid";
+import CloseExamDialog from "../../exams/components/CloseExamDialog";
 import { useTeacherClipRecorder } from "../hooks/useTeacherClipRecorder";
+import { useProctoringHubConnection } from "../hooks/useProctoringHubConnection";
 import { useTeacherWebRtcViewer } from "../hooks/useTeacherWebRtcViewer";
-
-function sortStudents(students = []) {
-  const priority = { Critical: 0, Warning: 1, Watch: 2, Normal: 3 };
-  return [...students].sort((a, b) => {
-    const riskDiff = (priority[a.riskLevel] ?? 9) - (priority[b.riskLevel] ?? 9);
-    if (riskDiff !== 0) {
-      return riskDiff;
-    }
-    return (b.suspicionScore ?? 0) - (a.suspicionScore ?? 0);
-  });
-}
+import { useTeacherSfuViewer } from "../hooks/useTeacherSfuViewer";
+import { useToast } from "../../../hooks/useToast";
+import { useParams } from "react-router-dom";
+import {
+  EXAM_MONITORING_EVENTS,
+  EXAM_MONITORING_METHODS,
+} from "../../../signalr/examMonitoringConnection";
+import {
+  computeRoomStats,
+  filterStudents,
+  isProctoringRoomSessionLive,
+  sortStudentsByRisk,
+} from "../utils/proctoringRoomHelpers";
 
 export default function TeacherProctoringRoomPage() {
   const { examId } = useParams();
@@ -31,31 +33,24 @@ export default function TeacherProctoringRoomPage() {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [detail, setDetail] = useState(null);
-  const [isAudioEnabled, setIsAudioEnabled] = useState(false);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [reasonDialog, setReasonDialog] = useState(null);
   const [reasonText, setReasonText] = useState("");
   const [isActionSubmitting, setIsActionSubmitting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [viewMode, setViewMode] = useState("auto");
+  const [isCoProctorOpen, setIsCoProctorOpen] = useState(false);
+  const [isRoomLoading, setIsRoomLoading] = useState(true);
+  const [isDrawerDismissed, setIsDrawerDismissed] = useState(false);
+  const [isCloseExamDialogOpen, setIsCloseExamDialogOpen] = useState(false);
+  const [isClosingExam, setIsClosingExam] = useState(false);
   const liveVideoRef = useRef(null);
+  const requestWatchRef = useRef(null);
+  const stopWatchRef = useRef(null);
 
-  const sortedStudents = useMemo(() => sortStudents(students), [students]);
   const activeAttemptId = selectedStudent?.attemptId ?? null;
-
-  const { remoteStream, remoteStatus, requestWatch, stopWatch } = useTeacherWebRtcViewer({
-    attemptId: activeAttemptId,
-    enabled: Boolean(activeAttemptId),
-    enableAudio: isAudioEnabled,
-    videoRef: liveVideoRef,
-  });
-
-  const {
-    elapsedSeconds: clipElapsedSeconds,
-    isRecording: isClipRecording,
-    startRecording: startClipRecording,
-    stopRecording: stopClipRecording,
-  } = useTeacherClipRecorder({
-    stream: remoteStream,
-    maxSeconds: 30,
-  });
+  const sessionLive = useMemo(() => isProctoringRoomSessionLive(room), [room]);
 
   const refreshRoom = useCallback(async () => {
     const [roomResponse, statesResponse] = await Promise.all([
@@ -66,11 +61,123 @@ export default function TeacherProctoringRoomPage() {
     setStudents(statesResponse.data);
   }, [examId]);
 
+  const handleRoomHubEvent = useCallback(
+    (eventName) => {
+      if (
+        eventName === EXAM_MONITORING_EVENTS.studentJoinedExamLate ||
+        eventName === EXAM_MONITORING_EVENTS.liveStreamConnected ||
+        eventName === EXAM_MONITORING_EVENTS.liveStreamStopped ||
+        eventName === EXAM_MONITORING_EVENTS.liveStreamFailed ||
+        eventName === EXAM_MONITORING_EVENTS.receiveProctoringWarning
+      ) {
+        refreshRoom().catch(() => {});
+      }
+    },
+    [refreshRoom],
+  );
+
+  const roomHub = useProctoringHubConnection({
+    enabled: Boolean(examId) && sessionLive !== false,
+    onEvent: handleRoomHubEvent,
+  });
+  const { isConnected: isRoomHubConnected, invoke: invokeRoomHub } = roomHub;
+
+  useEffect(() => {
+    if (!isRoomHubConnected || !examId) {
+      return undefined;
+    }
+
+    let isMounted = true;
+    invokeRoomHub(EXAM_MONITORING_METHODS.joinExam, Number(examId)).catch(() => {
+      if (isMounted) {
+        showToast({
+          tone: "danger",
+          title: "Không kết nối được realtime",
+          message: "Thử làm mới trang hoặc kiểm tra backend SignalR.",
+        });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      invokeRoomHub(EXAM_MONITORING_METHODS.leaveExam, Number(examId)).catch(() => {});
+    };
+  }, [examId, invokeRoomHub, isRoomHubConnected, showToast]);
+
+  const maxActiveLiveTiles = room?.maxActiveLiveTiles ?? 9;
+
+  const {
+    sfuEnabled,
+    connectionStatus: sfuConnectionStatus,
+    getStreamForAttempt,
+    getStatusForAttempt,
+    activeRemoteStream,
+  } = useTeacherSfuViewer({
+    examId: Number(examId),
+    enabled: Boolean(examId) && sessionLive !== false,
+    enableAudio: isAudioEnabled,
+    maxTiles: maxActiveLiveTiles,
+  });
+
+  const { remoteStream, remoteStatus, requestWatch, stopWatch } = useTeacherWebRtcViewer({
+    attemptId: activeAttemptId,
+    enabled: Boolean(activeAttemptId) && !sfuEnabled,
+    enableAudio: isAudioEnabled,
+    sharedHub: roomHub,
+    videoRef: liveVideoRef,
+  });
+
+  useEffect(() => {
+    requestWatchRef.current = requestWatch;
+    stopWatchRef.current = stopWatch;
+  }, [requestWatch, stopWatch]);
+
+  const selectedRemoteStream = sfuEnabled
+    ? activeRemoteStream(activeAttemptId)
+    : remoteStream;
+  const selectedRemoteStatus = sfuEnabled
+    ? getStatusForAttempt(activeAttemptId)
+    : remoteStatus;
+
+  useEffect(() => {
+    if (!sfuEnabled || !liveVideoRef.current) {
+      return;
+    }
+    if (selectedRemoteStream && selectedRemoteStatus === "connected") {
+      liveVideoRef.current.srcObject = selectedRemoteStream;
+      liveVideoRef.current.play().catch(() => {});
+      return;
+    }
+    liveVideoRef.current.srcObject = null;
+  }, [selectedRemoteStatus, selectedRemoteStream, sfuEnabled]);
+
+  const {
+    elapsedSeconds: clipElapsedSeconds,
+    isRecording: isClipRecording,
+    startRecording: startClipRecording,
+    stopRecording: stopClipRecording,
+  } = useTeacherClipRecorder({
+    stream: selectedRemoteStream,
+    maxSeconds: 30,
+  });
+
+  useEffect(() => {
+    const previousTitle = document.title;
+    const title = room?.examTitle
+      ? `Giám sát · ${room.examTitle} · EduGuard`
+      : "Phòng giám sát · EduGuard";
+    document.title = title;
+    return () => {
+      document.title = previousTitle;
+    };
+  }, [room?.examTitle]);
+
   useEffect(() => {
     let isMounted = true;
     let intervalId;
 
     async function load() {
+      setIsRoomLoading(true);
       try {
         await refreshRoom();
       } catch (error) {
@@ -80,6 +187,10 @@ export default function TeacherProctoringRoomPage() {
             title: "Không tải được phòng giám sát",
             message: error.message,
           });
+        }
+      } finally {
+        if (isMounted) {
+          setIsRoomLoading(false);
         }
       }
     }
@@ -110,28 +221,90 @@ export default function TeacherProctoringRoomPage() {
       })
       .catch(() => {});
 
-    requestWatch().catch((error) => {
-      showToast({
-        tone: "danger",
-        title: "Không thể xem live",
-        message: error.message,
+    if (!sfuEnabled && isRoomHubConnected) {
+      requestWatchRef.current?.().catch((error) => {
+        showToast({
+          tone: "danger",
+          title: "Không thể xem live",
+          message: error.message,
+        });
       });
-    });
+    }
 
     return () => {
       isMounted = false;
-      stopWatch().catch(() => {});
+      if (!sfuEnabled) {
+        stopWatchRef.current?.().catch(() => {});
+      }
     };
-  }, [requestWatch, selectedStudent?.attemptId, showToast, stopWatch]);
+  }, [isRoomHubConnected, selectedStudent?.attemptId, sfuEnabled, showToast]);
+
+  useEffect(() => {
+    if (!isRoomHubConnected || isRoomLoading || selectedStudent || students.length === 0 || isDrawerDismissed) {
+      return;
+    }
+
+    const firstInProgress = students.find((student) => student.attemptStatus === "InProgress");
+    if (firstInProgress) {
+      setSelectedStudent(firstInProgress);
+    }
+  }, [isDrawerDismissed, isRoomHubConnected, isRoomLoading, selectedStudent, students]);
+
+  const sortedStudents = useMemo(() => sortStudentsByRisk(students), [students]);
+  const filteredStudents = useMemo(
+    () => filterStudents(sortedStudents, activeFilter),
+    [activeFilter, sortedStudents],
+  );
+  const roomStats = useMemo(() => computeRoomStats(students, room), [room, students]);
+
+  async function handleManualRefresh() {
+    setIsRefreshing(true);
+    try {
+      await refreshRoom();
+    } catch (error) {
+      showToast({
+        tone: "danger",
+        title: "Làm mới thất bại",
+        message: error.message,
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
 
   function handleCloseDrawer() {
-    stopWatch().catch(() => {});
+    if (!sfuEnabled) {
+      stopWatch().catch(() => {});
+    }
     setSelectedStudent(null);
     setDetail(null);
+    setIsDrawerDismissed(true);
+  }
+
+  function handleSelectStudent(student) {
+    setIsDrawerDismissed(false);
+    setSelectedStudent(student);
   }
 
   async function handleRequestWatch(student) {
+    setIsDrawerDismissed(false);
     setSelectedStudent(student);
+  }
+
+  function handleViewHighRisk() {
+    setActiveFilter("highRisk");
+    setIsDrawerDismissed(false);
+    const firstCritical = sortedStudents.find((student) => student.riskLevel === "Critical");
+    if (firstCritical) {
+      setSelectedStudent(firstCritical);
+      return;
+    }
+    const firstHighRisk = sortedStudents.find(
+      (student) => student.riskLevel === "Warning" || student.riskLevel === "Critical",
+    );
+    if (firstHighRisk) {
+      setSelectedStudent(firstHighRisk);
+    }
   }
 
   function openReasonDialog(type, student) {
@@ -191,7 +364,7 @@ export default function TeacherProctoringRoomPage() {
 
   async function handleSnapshot() {
     const video = liveVideoRef.current;
-    if (!video || remoteStatus !== "connected" || !selectedStudent?.attemptId) {
+    if (!video || selectedRemoteStatus !== "connected" || !selectedStudent?.attemptId) {
       return;
     }
 
@@ -218,7 +391,7 @@ export default function TeacherProctoringRoomPage() {
   }
 
   async function handleStartClip() {
-    if (remoteStatus !== "connected") {
+    if (selectedRemoteStatus !== "connected") {
       return;
     }
     const started = startClipRecording();
@@ -226,6 +399,30 @@ export default function TeacherProctoringRoomPage() {
       showToast({ tone: "danger", title: "Không thể bắt đầu ghi clip" });
     }
   }
+
+  async function handleCloseExam() {
+    setIsClosingExam(true);
+    try {
+      const response = await examApi.closeEarly(examId);
+      setRoom((previous) =>
+        previous
+          ? {
+              ...previous,
+              endTime: response.data?.endTime ?? previous.endTime,
+            }
+          : previous,
+      );
+      setIsCloseExamDialogOpen(false);
+      showToast({ tone: "success", title: "Đã đóng bài thi" });
+      await refreshRoom();
+    } catch (error) {
+      showToast({ tone: "danger", title: "Đóng bài thi thất bại", message: error.message });
+    } finally {
+      setIsClosingExam(false);
+    }
+  }
+
+  const canCloseExam = sessionLive !== false;
 
   async function handleStopClip() {
     if (!selectedStudent?.attemptId) {
@@ -254,35 +451,53 @@ export default function TeacherProctoringRoomPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        actions={
-          <Button as={Link} to={routeConfig.teacherMonitoring} variant="secondary">
-            Về giám sát
-          </Button>
-        }
-        description="Live camera là trung tâm. Tile rủi ro cao được ưu tiên lên đầu."
-        eyebrow="Phòng giám sát bài thi"
-        title={room?.examTitle ?? "Phòng giám sát"}
+    <div className="flex min-h-[100dvh] flex-col">
+      <ProctoringRoomHeader
+        canCloseExam={canCloseExam}
+        examTitle={room?.examTitle}
+        isHubConnected={isRoomHubConnected}
+        isRoomLoading={isRoomLoading}
+        isRefreshing={isRefreshing}
+        onCloseExam={() => setIsCloseExamDialogOpen(true)}
+        onRefresh={handleManualRefresh}
+        onOpenCoProctor={() => setIsCoProctorOpen(true)}
+        onViewHighRisk={handleViewHighRisk}
+        room={room}
+        sessionLive={sessionLive}
       />
 
-      <Card className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-5">
-        <Metric label="Đang làm" value={room?.inProgressCount ?? 0} />
-        <Metric label="Live" value={room?.liveSessionCount ?? 0} />
-        <Metric label="Tạm dừng" value={room?.pausedCount ?? 0} />
-        <Metric label="Đã nộp" value={room?.submittedCount ?? 0} />
-        <Metric label="Slot live" value={room?.maxActiveLiveTiles ?? 9} />
-      </Card>
+      <div className="mx-auto w-full max-w-[1600px] flex-1 space-y-5 px-4 py-5 md:px-6 md:py-6">
+        <ProctoringStatusBar stats={roomStats} />
 
-      <CoProctorPanel examId={examId} />
+        <ProctoringFilterBar
+          activeFilter={activeFilter}
+          activeViewMode={viewMode}
+          filteredCount={filteredStudents.length}
+          onFilterChange={setActiveFilter}
+          onViewModeChange={setViewMode}
+          totalCount={students.length}
+        />
 
-      <StudentCameraGrid
-        activeAttemptId={activeAttemptId}
-        onRequestWatch={handleRequestWatch}
-        onSelectStudent={setSelectedStudent}
-        remoteStatus={remoteStatus}
-        remoteStream={remoteStream}
-        students={sortedStudents}
+        <StudentCameraGrid
+          activeAttemptId={activeAttemptId}
+          getStatusForAttempt={sfuEnabled ? getStatusForAttempt : undefined}
+          getStreamForAttempt={sfuEnabled ? getStreamForAttempt : undefined}
+          isAudioEnabled={isAudioEnabled}
+          onRequestWatch={handleRequestWatch}
+          onSelectStudent={handleSelectStudent}
+          remoteStatus={selectedRemoteStatus}
+          remoteStream={selectedRemoteStream}
+          sfuConnectionStatus={sfuEnabled ? sfuConnectionStatus : null}
+          sfuEnabled={sfuEnabled}
+          students={filteredStudents}
+          viewMode={viewMode}
+        />
+      </div>
+
+      <CoProctorDialog
+        examId={examId}
+        isOpen={isCoProctorOpen}
+        onClose={() => setIsCoProctorOpen(false)}
       />
 
       <AttemptProctorDrawer
@@ -300,8 +515,17 @@ export default function TeacherProctoringRoomPage() {
         onTerminate={handleTerminate}
         onToggleAudio={() => setIsAudioEnabled((value) => !value)}
         onWarn={handleWarn}
-        remoteStatus={remoteStatus}
+        remoteStatus={selectedRemoteStatus}
         student={selectedStudent}
+        variant="room"
+      />
+
+      <CloseExamDialog
+        isOpen={isCloseExamDialogOpen}
+        isSubmitting={isClosingExam}
+        onCancel={() => setIsCloseExamDialogOpen(false)}
+        onConfirm={handleCloseExam}
+        variant="room"
       />
 
       <ProctoringReasonDialog
@@ -332,15 +556,6 @@ export default function TeacherProctoringRoomPage() {
               : "Nhắc nhở học sinh"
         }
       />
-    </div>
-  );
-}
-
-function Metric({ label, value }) {
-  return (
-    <div className="rounded-[12px] border border-border bg-neutral px-4 py-3">
-      <p className="text-xs text-secondary">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-primary">{value}</p>
     </div>
   );
 }

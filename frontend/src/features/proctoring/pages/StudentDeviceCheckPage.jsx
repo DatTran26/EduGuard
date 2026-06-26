@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { examApi } from "../../../api/examApi";
 import { examAttemptApi } from "../../../api/examAttemptApi";
@@ -11,9 +11,18 @@ import { useToast } from "../../../hooks/useToast";
 import {
   buildStudentExamAttemptPath,
   buildStudentExamDetailPath,
+  buildStudentExamLobbyPath,
 } from "../../../routes/routeConfig";
 import CameraPreview from "../components/CameraPreview";
 import { useCameraStream } from "../hooks/useCameraStream";
+import {
+  isExamLobbyRequired,
+  isLateExamJoin,
+  isLiveProctoringRoomAvailable,
+  markExamDeviceCheckPassed,
+  requiresProctoringCamera,
+  requiresProctoringMicrophone,
+} from "../utils/proctoringRouting";
 
 async function requestFullscreenIfNeeded(required) {
   if (!required || typeof document === "undefined") {
@@ -41,8 +50,23 @@ export default function StudentDeviceCheckPage() {
   const [hasAcceptedRules, setHasAcceptedRules] = useState(false);
   const [isFullscreenReady, setIsFullscreenReady] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
-  const { videoRef, status: cameraStatus, errorMessage, isReady, startStream } = useCameraStream({
-    enabled: true,
+
+  const requireCamera = useMemo(() => requiresProctoringCamera(exam), [exam]);
+  const requireMicrophone = useMemo(() => requiresProctoringMicrophone(exam), [exam]);
+  const isLateJoin = useMemo(() => isLateExamJoin(exam), [exam]);
+  const requireFullscreen = Boolean(exam?.settings?.requireFullscreen);
+  const needsMediaCheck = requireCamera || requireMicrophone;
+
+  const {
+    videoRef,
+    status: cameraStatus,
+    errorMessage,
+    isReady,
+    isMicReady,
+    startStream,
+  } = useCameraStream({
+    enabled: needsMediaCheck,
+    audio: requireMicrophone,
   });
 
   useEffect(() => {
@@ -75,6 +99,16 @@ export default function StudentDeviceCheckPage() {
   }, [examId, showToast]);
 
   useEffect(() => {
+    if (!exam || isLoading) {
+      return;
+    }
+
+    if (isExamLobbyRequired(exam)) {
+      navigate(buildStudentExamLobbyPath(examId), { replace: true });
+    }
+  }, [exam, examId, isLoading, navigate]);
+
+  useEffect(() => {
     function syncFullscreen() {
       setIsFullscreenReady(Boolean(document.fullscreenElement));
     }
@@ -84,11 +118,10 @@ export default function StudentDeviceCheckPage() {
     return () => document.removeEventListener("fullscreenchange", syncFullscreen);
   }, []);
 
-  const requireCamera = Boolean(exam?.settings?.requireCamera || exam?.settings?.enableLiveProctoring);
-  const requireFullscreen = Boolean(exam?.settings?.requireFullscreen);
   const canStart =
     hasAcceptedRules &&
     (!requireCamera || isReady) &&
+    (!requireMicrophone || isMicReady) &&
     (!requireFullscreen || isFullscreenReady) &&
     window.navigator.onLine;
 
@@ -117,11 +150,18 @@ export default function StudentDeviceCheckPage() {
         throw new Error("Không nhận được mã lượt làm bài.");
       }
 
-      if (requireCamera) {
+      if (isLiveProctoringRoomAvailable(exam)) {
         await proctoringApi.startProctoring(attemptId);
       }
 
-      navigate(buildStudentExamAttemptPath(attemptId), { replace: true });
+      markExamDeviceCheckPassed(examId, attemptId);
+      navigate(buildStudentExamAttemptPath(attemptId), {
+        replace: true,
+        state: {
+          isLateJoin: startResponse.data?.isLateJoin || isLateJoin,
+          requireCamera,
+        },
+      });
     } catch (error) {
       showToast({
         tone: "danger",
@@ -149,29 +189,57 @@ export default function StudentDeviceCheckPage() {
             Quay lại
           </Button>
         }
-        description="Hoàn tất kiểm tra camera và quy định trước khi vào màn hình làm bài."
+        description="Hoàn tất kiểm tra camera, micro và quy định trước khi vào màn hình làm bài."
         eyebrow="Kiểm tra thiết bị"
         title={exam?.title ?? "Kiểm tra trước khi thi"}
       />
 
       <Card className="space-y-6 p-6">
-        <CameraPreview
-          errorMessage={errorMessage}
-          status={cameraStatus}
-          videoRef={videoRef}
-        />
-
-        {!isReady ? (
-          <Button onClick={startStream} type="button" variant="secondary">
-            Thử bật camera lại
-          </Button>
+        {isLateJoin ? (
+          <div
+            className="rounded-[var(--radius-md)] border border-caution/35 bg-caution-muted px-4 py-3 text-sm leading-6 text-caution"
+            role="alert"
+          >
+            <p className="font-semibold">Bạn đang vào thi sau giờ mở đề.</p>
+            <p className="mt-1">
+              {requireCamera
+                ? "Đề này yêu cầu bật camera trước khi làm bài. Giảng viên sẽ được thông báo bạn vào trễ."
+                : "Giảng viên sẽ được thông báo bạn vào trễ so với giờ mở đề."}
+            </p>
+          </div>
         ) : null}
 
-        <div className="grid gap-3 md:grid-cols-3">
+        {needsMediaCheck ? (
+          <>
+            <CameraPreview
+              errorMessage={errorMessage}
+              status={cameraStatus}
+              videoRef={videoRef}
+            />
+
+            {!isReady ? (
+              <Button onClick={startStream} type="button" variant="secondary">
+                Thử bật camera{requireMicrophone ? " và micro" : ""} lại
+              </Button>
+            ) : null}
+          </>
+        ) : (
+          <p className="text-sm leading-6 text-secondary">
+            Đề thi này không yêu cầu kiểm tra camera trước khi làm bài.
+          </p>
+        )}
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-[12px] border border-border bg-neutral p-4">
             <p className="text-xs text-secondary">Camera</p>
-            <Badge className="mt-2" variant={isReady ? "success" : "danger"}>
-              {isReady ? "Đã sẵn sàng" : "Chưa sẵn sàng"}
+            <Badge className="mt-2" variant={!requireCamera || isReady ? "success" : "danger"}>
+              {!requireCamera ? "Không yêu cầu" : isReady ? "Đã sẵn sàng" : "Chưa sẵn sàng"}
+            </Badge>
+          </div>
+          <div className="rounded-[12px] border border-border bg-neutral p-4">
+            <p className="text-xs text-secondary">Micro</p>
+            <Badge className="mt-2" variant={!requireMicrophone || isMicReady ? "success" : "danger"}>
+              {!requireMicrophone ? "Không yêu cầu" : isMicReady ? "Đã sẵn sàng" : "Chưa sẵn sàng"}
             </Badge>
           </div>
           <div className="rounded-[12px] border border-border bg-neutral p-4">
@@ -202,8 +270,9 @@ export default function StudentDeviceCheckPage() {
             type="checkbox"
           />
           <span>
-            Tôi hiểu đề thi có thể được giám sát bằng camera và các cảnh báo chỉ giúp giáo viên
-            xem xét, không tự kết luận gian lận.
+            Tôi hiểu đề thi có thể được giám sát bằng camera
+            {requireMicrophone ? " và micro" : ""}, và các cảnh báo chỉ giúp giáo viên xem xét,
+            không tự kết luận gian lận.
           </span>
         </label>
 

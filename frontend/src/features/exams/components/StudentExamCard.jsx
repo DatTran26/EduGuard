@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { FiArrowRight, FiCalendar, FiClipboard, FiClock } from "react-icons/fi";
+import { FiArrowRight, FiClipboard } from "react-icons/fi";
 import Badge from "../../../components/common/Badge";
 import Card from "../../../components/common/Card";
 import { buildExamDetailPathByRole } from "../../../routes/routeConfig";
@@ -73,7 +73,6 @@ export default function StudentExamCard({ exam }) {
       ? `${statusMeta.score} điểm`
       : scheduleLabel;
   const secondaryTitle = typeof statusMeta.score === "number" ? "Điểm" : "Mở đề";
-  const supportingLabel = `${exam.questionCount || 0} câu hỏi`;
 
   return (
     <Card className="group flex h-full flex-col rounded-[24px] border border-border bg-surface p-5 transition-all duration-200 hover:-translate-y-1 hover:border-tertiary/25">
@@ -106,17 +105,6 @@ export default function StudentExamCard({ exam }) {
             {secondaryValue}
           </p>
         </div>
-      </div>
-
-      <div className="mt-4 flex items-center gap-2 text-sm text-secondary">
-        {typeof statusMeta.score === "number" ? (
-          <FiClipboard className="h-4 w-4 shrink-0 text-success" />
-        ) : exam.startTime ? (
-          <FiCalendar className="h-4 w-4 shrink-0 text-secondary" />
-        ) : (
-          <FiClock className="h-4 w-4 shrink-0 text-secondary" />
-        )}
-        <span className="truncate" title={supportingLabel}>{supportingLabel}</span>
       </div>
 
       <div className="mt-auto pt-5">

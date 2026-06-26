@@ -4,11 +4,10 @@ import {
   NOTIFICATION_EVENTS,
 } from "../../../signalr/notificationConnection";
 import { useAuth } from "../../../hooks/useAuth";
-import { useToast } from "../../../hooks/useToast";
 import { appendNotification } from "../notificationStorage";
 
 function normalizeNotificationTone(tone) {
-  if (tone === "success" || tone === "danger") {
+  if (tone === "success" || tone === "danger" || tone === "warning") {
     return tone;
   }
 
@@ -16,11 +15,10 @@ function normalizeNotificationTone(tone) {
 }
 
 export default function RealtimeNotificationListener() {
-  const { isAuthenticated } = useAuth();
-  const { showToast } = useToast();
+  const { accessToken, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !accessToken) {
       return undefined;
     }
 
@@ -41,12 +39,7 @@ export default function RealtimeNotificationListener() {
 
       appendNotification(nextItem);
       window.dispatchEvent(new CustomEvent("eduguard:notification", { detail: nextItem }));
-
-      showToast({
-        tone: nextItem.tone,
-        title: nextItem.title,
-        message: nextItem.message,
-      });
+      window.dispatchEvent(new CustomEvent("eduguard:notification-updated"));
     }
 
     connection.on(NOTIFICATION_EVENTS.receiveNotification, handleNotification);
@@ -56,7 +49,7 @@ export default function RealtimeNotificationListener() {
       connection.off(NOTIFICATION_EVENTS.receiveNotification, handleNotification);
       connection.stop().catch(() => {});
     };
-  }, [isAuthenticated, showToast]);
+  }, [accessToken, isAuthenticated]);
 
   return null;
 }

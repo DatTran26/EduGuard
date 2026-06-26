@@ -1009,6 +1009,10 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.Property<int>("ClassroomId")
                         .HasColumnType("int");
 
+                    b.Property<string>("ActionUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -1017,9 +1021,19 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("RelatedExamAttemptId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RelatedExamId")
+                        .HasColumnType("int");
+
                     b.Property<string>("SenderId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("SourceKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -1039,6 +1053,8 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.HasIndex("ClassroomId");
 
                     b.HasIndex("SenderId");
+
+                    b.HasIndex("SourceKey", "CreatedAt");
 
                     b.ToTable("Notifications", (string)null);
                 });
@@ -1686,7 +1702,7 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.HasOne("EduGuard.Domain.Entities.ExamAttempt", "ExamAttempt")
                         .WithMany()
                         .HasForeignKey("ExamAttemptId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("CheatingLog");

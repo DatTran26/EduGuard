@@ -1,14 +1,22 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { notificationApi } from "../../../api/notificationApi";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
 import PageHeader from "../../../components/layout/PageHeader";
+import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { formatShortDateTime } from "../../../utils/formatDate";
+import {
+  getNotificationTypeMeta,
+  resolveNotificationPath,
+} from "../utils/notificationUtils";
 import { FiBell, FiCheckSquare, FiMail, FiUser, FiBookOpen } from "react-icons/fi";
 
 export default function NotificationsPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,6 +40,13 @@ export default function NotificationsPage() {
   useEffect(() => {
     loadNotifications();
   }, []);
+
+  async function handleNotificationClick(item) {
+    if (!item.isRead) {
+      await handleMarkAsRead(item.userNotificationId);
+    }
+    navigate(resolveNotificationPath(item, user?.role));
+  }
 
   async function handleMarkAsRead(userNotificationId) {
     const target = notifications.find((n) => n.userNotificationId === userNotificationId);
@@ -145,22 +160,18 @@ export default function NotificationsPage() {
       ) : (
         <div className="space-y-4">
           {notifications.map((item) => {
+            const typeMeta = getNotificationTypeMeta(item.type);
             const toneClasses = {
-              Warning: "border-danger/25 bg-danger-muted text-danger",
-              Success: "border-success/25 bg-success-muted text-success",
-              Info: "border-info/25 bg-info-muted text-info",
-            }[item.type] || "border-info/25 bg-info-muted text-info";
-
-            const toneLabel = {
-              Warning: "Cảnh báo",
-              Success: "Thành công",
-              Info: "Thông báo",
-            }[item.type] || "Thông báo";
+              danger: "border-danger/25 bg-danger-muted text-danger",
+              warning: "border-amber-500/25 bg-amber-500/10 text-amber-700",
+              success: "border-success/25 bg-success-muted text-success",
+              info: "border-info/25 bg-info-muted text-info",
+            }[typeMeta.tone] || "border-info/25 bg-info-muted text-info";
 
             return (
               <div
                 key={item.userNotificationId}
-                onClick={() => handleMarkAsRead(item.userNotificationId)}
+                onClick={() => handleNotificationClick(item)}
                 className={[
                   "group relative cursor-pointer border rounded-[20px] p-5 transition-all duration-200",
                   item.isRead
@@ -177,7 +188,7 @@ export default function NotificationsPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${toneClasses}`}>
-                        {toneLabel}
+                        {typeMeta.label}
                       </span>
                       {!item.isRead && (
                         <span className="rounded-full border border-brand/20 bg-brand/5 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand">

@@ -24,6 +24,8 @@ import {
   routeConfig,
 } from "../../../routes/routeConfig";
 import { formatShortDateTime } from "../../../utils/formatDate";
+import { buildTeacherExamMonitoringPath, isLiveProctoringRoomAvailable } from "../../proctoring/utils/proctoringRouting";
+import ProctoringRoomLink from "../../proctoring/components/ProctoringRoomLink";
 import AssignmentSection from "../../assignments/components/AssignmentSection";
 import { getExamStatusVariant } from "../../exams/examHelpers";
 import { normalizeTeacherClassroomTab } from "./teacher-classroom-tabs";
@@ -620,12 +622,21 @@ export default function TeacherClassroomWorkspace({
                         >
                           Xem chi tiết
                         </Link>
-                        <Link
-                          className="eg-button eg-button-ghost"
-                          to={`${routeConfig.teacherMonitoring}?examId=${exam.id}`}
-                        >
-                          Giám sát
-                        </Link>
+                        {isLiveProctoringRoomAvailable(exam) ? (
+                          <ProctoringRoomLink
+                            className="eg-button eg-button-ghost"
+                            examId={exam.id}
+                          >
+                            Giám sát
+                          </ProctoringRoomLink>
+                        ) : (
+                          <Link
+                            className="eg-button eg-button-ghost"
+                            to={buildTeacherExamMonitoringPath(exam)}
+                          >
+                            Giám sát
+                          </Link>
+                        )}
                       </div>
                     </Card>
                   ))}

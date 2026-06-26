@@ -158,4 +158,17 @@ export const examAttemptApi = {
         : [],
     };
   },
+
+  async sendHeartbeat(attemptId, payload = {}) {
+    const apiResponse = await requestApi(() =>
+      axiosClient.post(`/attempts/${attemptId}/heartbeat`, {
+        client: payload.client?.trim() || "web",
+      }),
+    );
+
+    return {
+      ...apiResponse,
+      data: apiResponse.data ?? null,
+    };
+  },
 };

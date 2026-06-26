@@ -2,11 +2,19 @@ from __future__ import annotations
 
 import io
 import os
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from PIL import Image
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parent / ".env")
+except ImportError:
+    pass
 
 app = FastAPI(title="EduGuard Proctoring AI Service", version="0.3.0")
 

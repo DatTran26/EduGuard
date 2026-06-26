@@ -15,6 +15,7 @@ export const EXAM_MONITORING_EVENTS = {
   studentMovedToWaitingRoom: "StudentMovedToWaitingRoom",
   studentAttemptResumed: "StudentAttemptResumed",
   studentAttemptTerminated: "StudentAttemptTerminated",
+  studentJoinedExamLate: "StudentJoinedExamLate",
 };
 
 export const EXAM_MONITORING_METHODS = {

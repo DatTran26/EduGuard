@@ -4,8 +4,8 @@
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD` / `devH` / `devB` (nhánh dev theo feature)
-**Cập nhật:** 2026-06-25 (ship **v1.2.0** → `main` via PR #22; `release` @ `bb45b10` — Live Proctoring v1 + evidence auth + TURN/AI Docker docs; devH merge PR #21 — notifications + UI redesign đang xử lý conflict)
-**Ghi chú devH:** 2026-06-25 (thiết kế lại trang Student `Bài tập / Bài thi`, dashboard/sidebar giáo viên, classrooms, notifications realtime; đang merge `release` v1.2.0)
+**Cập nhật:** 2026-06-25 (`release` @ `f01399c` — PR #23 devB merged; `devD` sync `origin/release`; ship **v1.2.0** → `main` via PR #22)
+**Ghi chú devH:** 2026-06-25 (notifications + UI redesign đã merge `release` qua PR #21; thiết kế lại trang Student `Bài tập / Bài thi`, dashboard/sidebar giáo viên, classrooms, notifications realtime)
 **Ghi chú devB:** 2026-06-25 (đã hoàn tất Question Bank + Exam Matrix workspace theo integration devB: backend/frontend tách riêng, create-exam từ matrix chạy trong transaction và luôn tạo `ExamSetting`, Swagger dùng tag `QuestionBank`/`ExamMatrix`, `docs/apiList.md` có nhóm `API-QBK-*`/`API-MTX-*`, không thêm route/hub/entity proctoring.)
 **Ghi chú devB:** 2026-06-25 (đã cập nhật UI ngân hàng câu hỏi theo luồng list trước/detail sau, form câu hỏi bank dạng panel ngang có thể thu gọn, list câu hỏi full-width có badge trạng thái/độ khó rõ dấu, nút nhảy sang ma trận, popup thiếu câu ma trận chi tiết, và thêm tab `Ngân hàng` trong flow tạo đề để chọn câu đã duyệt từ question bank.)
 **Ghi chú devB:** 2026-06-20 (đã thêm file chuẩn import `.md` và prompt chuyển đổi vào backend resource; Teacher/Admin có thể tải file chuẩn trong question workspace, xem prompt thu gọn/mở rộng và copy toàn bộ prompt bằng nút ở góc phải.)
@@ -703,7 +703,7 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 - [x] `docs/features.md` — F-FUT-01 đánh dấu v1
 - [x] `npm run lint` sạch cho module proctoring (`src/features/proctoring`, `proctoringApi.js`)
 - [ ] Smoke E2E: lobby → thi → live watch → pause → evidence
-- [ ] Merge / rebase lên `devD` hoặc `release` (tránh conflict devB question bank)
+- [x] Merge / rebase lên `devD` hoặc `release` (tránh conflict devB question bank) — `devD` sync `origin/release` @ `f01399c`
 
 **Tiêu chí hoàn thành (v1):** Học sinh bật camera trước giờ thi → làm bài với heartbeat → giáo viên xem live, chụp/ghi clip, tạm dừng/cảnh báo → AI gợi ý gian lận lưu evidence + CheatingLog.
 

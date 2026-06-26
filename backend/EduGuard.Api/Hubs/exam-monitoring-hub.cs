@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using EduGuard.Application.Repositories.Interfaces;
 using EduGuard.Application.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -11,15 +12,18 @@ public class ExamMonitoringHub : Hub
     private readonly IExamMonitoringService _examMonitoringService;
     private readonly IProctoringSignalingService _proctoringSignalingService;
     private readonly ILiveProctoringService _liveProctoringService;
+    private readonly IProctoringRepository _proctoringRepository;
 
     public ExamMonitoringHub(
         IExamMonitoringService examMonitoringService,
         IProctoringSignalingService proctoringSignalingService,
-        ILiveProctoringService liveProctoringService)
+        ILiveProctoringService liveProctoringService,
+        IProctoringRepository proctoringRepository)
     {
         _examMonitoringService = examMonitoringService;
         _proctoringSignalingService = proctoringSignalingService;
         _liveProctoringService = liveProctoringService;
+        _proctoringRepository = proctoringRepository;
     }
 
     public static string GetExamGroupName(int examId) => $"exam:{examId}";
@@ -55,6 +59,18 @@ public class ExamMonitoringHub : Hub
             Context.ConnectionAborted);
 
         await Groups.AddToGroupAsync(Context.ConnectionId, GetAttemptGroupName(attemptId), Context.ConnectionAborted);
+
+        var activeSession = await _proctoringRepository.GetActiveWatchSessionAsync(attemptId, Context.ConnectionAborted);
+        if (activeSession is not null &&
+            (activeSession.Status == "Requested" ||
+             activeSession.Status == "Connecting" ||
+             activeSession.Status == "Connected"))
+        {
+            await Clients.Caller.SendAsync(
+                "TeacherRequestedWatch",
+                new { attemptId, teacherId = activeSession.TeacherId, enableAudio = false },
+                Context.ConnectionAborted);
+        }
     }
 
     public async Task TeacherRequestWatch(int attemptId, bool enableAudio = false)

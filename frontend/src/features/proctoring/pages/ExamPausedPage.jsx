@@ -9,6 +9,7 @@ import { useAuth } from "../../../hooks/useAuth";
 import CameraPreview from "../components/CameraPreview";
 import { useCameraStream } from "../hooks/useCameraStream";
 import { useProctoringHeartbeat } from "../hooks/useProctoringHeartbeat";
+import { useStudentAttemptProctoring } from "../hooks/useStudentAttemptProctoring";
 
 export default function ExamPausedPage() {
   const { attemptId } = useParams();
@@ -22,6 +23,13 @@ export default function ExamPausedPage() {
     connectionStatus: window.navigator.onLine ? "Online" : "Offline",
     fullscreenStatus: "Unknown",
     intervalMs: 10000,
+  });
+
+  useStudentAttemptProctoring({
+    attemptId,
+    controlEventsEnabled: Boolean(attemptId),
+    publishEnabled: false,
+    cameraReady: cameraStatus === "ready",
   });
 
   useEffect(() => {

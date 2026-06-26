@@ -7,8 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0-rc.1] - 2026-06-26
+
+### Security
+
+- Removed committed Redis Cloud password and production JWT key from tracked `appsettings.json`; RC deploys must set `ConnectionStrings__Redis`, `Jwt__Key`, and LiveKit secrets via environment variables or user secrets.
+- Restricted `GET /api/notifications/classroom/{classroomId}` to classroom teachers and admins so students cannot enumerate anti-cheat or proctoring notifications.
+
 ### Backend
 
+- **Late exam join alerts:** When a student starts a new attempt after the scheduled open time, teachers and co-proctors receive an in-app notification (`LateJoin`) plus a realtime SignalR event (`StudentJoinedExamLate`) on the exam monitoring hub; proctoring state summaries expose `isLateJoin` and `lateByMinutes`.
+- **Anti-cheat in-app notifications:** Cheating logs now persist notifications for exam owner and co-proctors (`AntiCheat`, `AntiCheatHighRisk`), with SignalR push, dedupe window, deep links, and migration `ExtendNotificationMetadata` (`ActionUrl`, `RelatedExamId`, `SourceKey`).
+- **Co-proctor invite notifications:** `AddProctorAsync` now creates an in-app notification and SignalR push for the invited teacher (`Type: ProctorInvite`, link to proctoring room).
+- **Co-proctor exam discovery:** `GET /api/teacher/proctoring/assigned-exams` returns exams where the teacher is assigned as co-proctor; co-proctors can also load exam detail, attempts, and anti-cheat summary for those exams.
+- Added **LiveKit SFU** for multi-stream teacher proctoring: `LiveKit` config section, JWT token service, `GET /api/proctoring/sfu-config`, teacher/student SFU token endpoints; SignalR retained for control events (warn/pause/terminate).
 - Added teacher-owned question banks with bank questions, bank answers, difficulty/status metadata, versioning for snapshotted questions, and archived-question history.
 - Added exam matrix APIs so teachers can define matrix rows, validate available approved bank questions, generate a balanced preview, and create draft exams from the selected bank.
 - Added Admin read access for exam matrix list/detail while keeping create/update/delete/preview/create-exam restricted to Teacher-owned resources.
@@ -17,14 +29,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Frontend
 
-- Added a Teacher `Ngân hàng câu hỏi` workspace for creating question banks, filtering bank questions, manually adding/editing/archiving questions, importing files into a bank, creating matrix rows, previewing matrix selections, and creating draft exams from a matrix.
+- **Late exam join UX:** Students joining after open time see device-check and attempt-page warnings about camera requirements; teachers in the proctoring room get a realtime toast and a "Vào trễ" badge on student tiles.
+- **Notification center navigation:** Bell dropdown and `/notifications` now open the relevant monitoring/proctoring page from `actionUrl` and notification type (anti-cheat, proctor invite, high-risk).
+- **Co-proctor monitoring:** `examApi.getAll()` merges assigned proctoring exams so co-proctors see them under **Giám sát thi** without owning the classroom.
+- Fixed sidebar navigation showing duplicate icons on small screens when the desktop collapsed state was persisted in localStorage; nav items now render a single icon (plain on mobile, boxed on desktop) plus label, with truncated text and tooltip when space is tight. (`/student/exams/:examId/lobby`): single-column focus layout with a live countdown timer, camera preview only when the exam requires it, and removal of redundant badges, duplicate session metadata, and unused consent checkbox that contradicted optional-camera exams. (`useTeacherSfuViewer`, `useStudentSfuPublisher`) for multi-tile proctoring grid (up to `maxActiveLiveTiles`); falls back to SignalR P2P when `LiveKit:Enabled` is false.
+- Fixed teacher classroom creation returning 403 when the UI showed `Giảng viên` but the stored JWT access token still carried an older role set; session hydration now compares JWT role claims with `/auth/me` and refreshes the token when they diverge, and axios retries once after a permission 403 following a silent token refresh.
+- Improved API error toasts so users see Vietnamese messages from the backend (or friendly fallbacks) instead of raw HTTP status text such as `Request failed with status code 403`.
 - Added frontend question bank and exam matrix API adapters with enum normalization for question type, difficulty, and bank question status.
 - Added the Teacher sidebar route `/teacher/question-banks` while keeping the existing exam create/detail flow intact.
 - Changed the Teacher question bank route to open on a bank list first; selecting a bank now enters the full edit workspace with a collapsible horizontal question form, full-width question list, clearer status/difficulty badges, matrix jump action, and a closable matrix-shortfall dialog that lists required versus available questions.
 - Added a `Ngân hàng` mode to the Teacher exam create workspace so approved bank questions can be selected into an unsaved draft or snapshotted into an already saved exam through `POST /api/exams/{examId}/bank-questions`.
+- Redesigned the Teacher monitoring hub (`/teacher/monitoring`) with a split master-detail layout: compact exam list on the left, workspace on the right with a single tab bar for **Camera trực tiếp** vs **Log anti-cheat**, removing duplicate stat cards and repeated live-camera buttons.
+- Fixed anti-cheat log panel showing **Đang trực tiếp** after an exam session ended; the live badge now reflects exam window and in-progress attempts, not only the SignalR socket state.
+- Fixed proctoring room header stuck on **Đang kết nối realtime…** when no student tile was selected; the room now opens a shared SignalR hub on load and shows **Phiên đã kết thúc** after the exam window closes.
+- Fixed late exam entry skipping camera/microphone checks when only `enableCameraProctoring` was enabled; device-check now uses the same proctoring flags as the live room, requests mic when `requireMicrophone` is set, and starts proctoring for all live-proctoring exams.
+- Teacher proctoring room now auto-selects the first in-progress student for live watch, enables student audio by default in the grid/drawer, and passes `enableAudio` when requesting WebRTC streams.
+- Redesigned **Phòng giám sát bài thi** as a standalone control-room tab (no workspace sidebar): dark cockpit layout, expanded status bar and filters aligned to the live proctoring spec, collapsible co-proctor panel, and focused/grid view modes. Entry links now open the room in a new browser tab.
+- Co-proctor management opens in a modal dialog; teacher candidates load via `GET /exams/{id}/proctors/candidates` instead of admin-only user list.
+- Fixed teacher sidebar highlighting both **Đề thi** and **Giám sát thi** when viewing a proctoring room URL.
+- Enabled **Admin** access to the live proctoring room and per-exam monitoring: routes `/admin/exams/:examId/proctoring` and `/admin/exam-monitoring`; proctoring links now resolve by role (backend already authorized Admin on proctoring APIs, SignalR hub, and LiveKit tokens).
 
 ### Docs
 
+- Added `docs/PROCTORING_SFU_SETUP.md` — LiveKit Docker, TURN/STUN env vars, teacher/student SFU flows, dev test steps.
 - Added `docs/apiList.md` registry entries for `API-QBK-*` and `API-MTX-*`, including non-conflicting Swagger/API groups for Question Bank and Exam Matrix.
 
 ### Known risks
@@ -185,6 +212,8 @@ Stable release promoted from `v1.1.0-rc.1` after RC validation (auth + classroom
 - `GET /api/classrooms/{id}` (classroom detail) deferred
 - Members endpoint returns email for active members; tighten for production if needed
 
+[1.3.0-rc.1]: https://github.com/DatTran26/EduGuard/compare/v1.2.0...v1.3.0-rc.1
+[1.2.0]: https://github.com/DatTran26/EduGuard/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/DatTran26/EduGuard/compare/v1.0.0...v1.1.0
 
 ## [1.0.0] - 2026-06-10
