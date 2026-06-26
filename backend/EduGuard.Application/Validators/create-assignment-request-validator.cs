@@ -9,8 +9,8 @@ public class CreateAssignmentRequestValidator : AbstractValidator<CreateAssignme
     {
         RuleFor(x => x.Title).NotEmpty().MaximumLength(300);
         RuleFor(x => x.Description).MaximumLength(2000);
-        RuleFor(x => x.Deadline).GreaterThan(DateTime.UtcNow.AddMinutes(-1))
-            .WithMessage("Hạn nộp phải ở tương lai.");
+        RuleFor(x => x.Deadline).NotEmpty()
+            .WithMessage("Hạn nộp không được để trống.");
         RuleFor(x => x.MaxScore).GreaterThan(0).LessThanOrEqualTo(100);
     }
 }
