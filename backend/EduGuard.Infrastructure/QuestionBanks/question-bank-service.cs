@@ -1,4 +1,4 @@
-﻿using EduGuard.Application.DTOs.Exams;
+using EduGuard.Application.DTOs.Exams;
 using EduGuard.Application.DTOs.QuestionBanks;
 using EduGuard.Application.Repositories.Interfaces;
 using EduGuard.Application.Services.Interfaces;
@@ -333,7 +333,7 @@ public class QuestionBankService : IQuestionBankService
     {
         Content = parsedQuestion.Content,
         QuestionType = parsedQuestion.QuestionType,
-        Difficulty = defaults.Difficulty,
+        Difficulty = ParseDifficultyLevel(parsedQuestion.Difficulty, defaults.Difficulty),
         DefaultScore = parsedQuestion.Score,
         Subject = NormalizeOptional(defaults.Subject),
         Chapter = NormalizeOptional(defaults.Chapter),
@@ -342,6 +342,22 @@ public class QuestionBankService : IQuestionBankService
         Status = defaults.Status,
         Answers = parsedQuestion.Answers
     };
+
+    private static DifficultyLevel ParseDifficultyLevel(string? value, DifficultyLevel defaultDifficulty)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return defaultDifficulty;
+
+        var normalized = value.Trim().ToLowerInvariant();
+        if (normalized.Contains("easy") || normalized.Contains("de") || normalized == "0")
+            return DifficultyLevel.Easy;
+        if (normalized.Contains("hard") || normalized.Contains("kho") || normalized == "2")
+            return DifficultyLevel.Hard;
+        if (normalized.Contains("medium") || normalized.Contains("trung binh") || normalized == "1")
+            return DifficultyLevel.Medium;
+
+        return defaultDifficulty;
+    }
 
     private static Question BuildExamQuestionSnapshot(BankQuestion source, int orderIndex, int examId) => new()
     {

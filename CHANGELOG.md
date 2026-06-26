@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Backend
+
+- Added difficulty parsing to the question import parser from Excel/CSV columns ("difficulty", "do kho", "muc do") and structured text metadata ("difficulty", "Mức độ", "Do khó").
+- Mapped question-specific difficulty into bank question import requests, falling back to defaults if not specified.
+
+### Frontend
+
+- Moved exam matrix filters (Chapter, Lesson, LearningOutcome, QuestionType) to top-level fields in the matrix editor form, and removed row-level grids and "Thêm dòng" button entirely.
+- Redesigned the exam matrix difficulty configuration with a global multi-range interactive slider mapping to Easy, Medium, and Hard counts.
+- Replaced the custom file upload form in the question bank page with the reusable `QuestionImportPanel` and `QuestionImportResources` components.
+- Added a collapsible panel with a toggle button to hide the AI Excel template guide in the manual exam creation workspace by default.
+- Added a "Bài" (lesson) input text field to the import defaults card, and removed the "Độ khó" dropdown.
+- Streamlined the saved matrix workflow by adding a copy configuration dropdown directly in the matrix editor form, removing arbitrary selection dropdowns, and binding validation/preview generation directly to the active bank and active matrix.
+- Removed statistics dashboards cards and info blocks from both the list and detail views of the question bank page.
+
 ## [1.3.0-rc.1] - 2026-06-26
 
 ### Security
@@ -16,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Backend
 
+- Changed matrix-generated exam creation to require a confirmed draft-question snapshot, validate a start time, build the real exam from the edited snapshot instead of regenerating the matrix preview, publish the exam immediately for scheduling, and still update source bank-question usage counts transactionally.
+- Fixed the live-proctoring migration for SQL Server by changing the `ProctoringEvidences -> CheatingLogs` delete rule to `NO ACTION`, allowing pending database migrations to apply cleanly before matrix-generated exams save full `ExamSetting` rows.
+- Added database-save error handling to matrix exam creation so EF save failures return a Vietnamese API error message instead of a generic 500 toast.
+- Fixed matrix-generated exam creation to validate the exam time window and build the full exam setting entity, preventing invalid generate-exam requests from falling through as a generic 500 error.
+- Fixed matrix availability matching so chapter, lesson, and learning-outcome comparisons ignore surrounding spaces/case, while questions with blank subject metadata are still usable inside the selected bank instead of being incorrectly reported as missing.
+- Changed exam matrix create/update/preview/generated exam scoring to derive `TotalQuestions` from matrix rows and use one common `ScorePerQuestion = TotalScore / TotalQuestions`; matrix availability now returns every row and counts only approved questions matching the matrix subject plus row filters.
 - **Late exam join alerts:** When a student starts a new attempt after the scheduled open time, teachers and co-proctors receive an in-app notification (`LateJoin`) plus a realtime SignalR event (`StudentJoinedExamLate`) on the exam monitoring hub; proctoring state summaries expose `isLateJoin` and `lateByMinutes`.
 - **Anti-cheat in-app notifications:** Cheating logs now persist notifications for exam owner and co-proctors (`AntiCheat`, `AntiCheatHighRisk`), with SignalR push, dedupe window, deep links, and migration `ExtendNotificationMetadata` (`ActionUrl`, `RelatedExamId`, `SourceKey`).
 - **Co-proctor invite notifications:** `AddProctorAsync` now creates an in-app notification and SignalR push for the invited teacher (`Type: ProctorInvite`, link to proctoring room).
@@ -31,6 +52,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Frontend
 
+- Reworked `Sinh đề từ ma trận` into a draft-first workflow: teachers generate a local draft from the matrix, edit each draft question in a popup without changing the question bank, see non-blocking matrix-mismatch warnings, then confirm the draft and choose class/start time/settings in a scheduling popup before creating the real test.
+- Auto-fills `Đóng đề` in the matrix scheduling popup as `Mở đề + Thời gian làm bài` from the selected matrix, while still letting teachers adjust the close time if needed.
+- Added a time-window guard before matrix exam generation so teachers see `Thời gian đóng đề phải sau thời gian mở đề` before the confirmation request is sent.
+- Added `Môn` to matrix availability row conditions so teachers can see every filter used when a row reports enough or missing questions.
+- Reworked the Teacher matrix builder for the MVP matrix workflow: teachers enter `Tổng điểm`, score per question is computed read-only, realtime totals/difficulty counts are shown, matrix sections now render as stacked full-width cards, the saved matrix detail panel shows overview/difficulty/detail/availability tables, and `Sinh đề nháp` requires a successful availability check plus confirmation modal.
+- Fixed the Teacher question bank workspace to use fully accented Vietnamese labels for breadcrumbs, difficulty/status dropdowns, badges, buttons, toasts, and matrix validation errors; `Chuẩn đầu ra` is now shown as `Yêu cầu cần đạt`, and editing a bank question now opens in a modal so teachers keep their position in the question list, with client-side validation before marking a question ready.
 - **Late exam join UX:** Students joining after open time see device-check and attempt-page warnings about camera requirements; teachers in the proctoring room get a realtime toast and a "Vào trễ" badge on student tiles.
 - **Notification center navigation:** Bell dropdown and `/notifications` now open the relevant monitoring/proctoring page from `actionUrl` and notification type (anti-cheat, proctor invite, high-risk).
 - **Co-proctor monitoring:** `examApi.getAll()` merges assigned proctoring exams so co-proctors see them under **Giám sát thi** without owning the classroom.
@@ -62,7 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known risks
 
-- Matrix-generated exams are created as drafts; publishing still uses the existing exam detail publish checklist.
+- Matrix-generated exams are now published/scheduled immediately after the teacher confirms the edited draft; teachers should review the draft carefully before creating the real test.
 
 ## [1.2.0] - 2026-06-25
 

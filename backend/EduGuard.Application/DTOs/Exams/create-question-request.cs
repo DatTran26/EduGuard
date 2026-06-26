@@ -8,5 +8,6 @@ public class CreateQuestionRequest
     public QuestionType QuestionType { get; set; }
     public decimal Score { get; set; }
     public int OrderIndex { get; set; }
+    public string? Difficulty { get; set; }
     public List<AnswerInputDto> Answers { get; set; } = [];
 }

@@ -91,7 +91,10 @@ function AnswerEditor({ answers, questionType, onChange }) {
 export default function BankQuestionForm({
   formValues,
   isDisabled = false,
+  isFramed = true,
   isSubmitting = false,
+  resetLabel = "Làm mới",
+  submitLabel,
   title,
   onChange,
   onReset,
@@ -109,10 +112,13 @@ export default function BankQuestionForm({
     });
   }
 
+  const Wrapper = isFramed ? Card : "div";
+  const wrapperClassName = isFramed ? "space-y-5" : "space-y-5";
+
   return (
-    <Card className="space-y-5">
+    <Wrapper className={wrapperClassName}>
       <h3 className="text-lg font-semibold text-primary">
-        {title ?? (formValues.id ? "Sửa câu hỏi bank" : "Thêm câu hỏi vào bank")}
+        {title ?? (formValues.id ? "Sửa câu hỏi" : "Thêm câu hỏi vào ngân hàng")}
       </h3>
 
       <form className="space-y-4" onSubmit={onSubmit}>
@@ -160,7 +166,7 @@ export default function BankQuestionForm({
           <TextInput id="bank-question-subject" label="Môn" onChange={(event) => updateField("subject", event.target.value)} value={formValues.subject} />
           <TextInput id="bank-question-chapter" label="Chương" onChange={(event) => updateField("chapter", event.target.value)} value={formValues.chapter} />
           <TextInput id="bank-question-lesson" label="Bài" onChange={(event) => updateField("lesson", event.target.value)} value={formValues.lesson} />
-          <TextInput id="bank-question-outcome" label="Chuẩn đầu ra" onChange={(event) => updateField("learningOutcome", event.target.value)} value={formValues.learningOutcome} />
+          <TextInput id="bank-question-outcome" label="Yêu cầu cần đạt" onChange={(event) => updateField("learningOutcome", event.target.value)} value={formValues.learningOutcome} />
         </div>
 
         <AnswerEditor
@@ -171,13 +177,15 @@ export default function BankQuestionForm({
 
         <div className="flex flex-wrap gap-3">
           <Button disabled={isSubmitting || isDisabled} type="submit">
-            {isSubmitting ? "Đang lưu..." : formValues.id ? "Cập nhật câu hỏi" : "Thêm câu hỏi"}
+            {isSubmitting ? "Đang lưu..." : submitLabel ?? (formValues.id ? "Cập nhật câu hỏi" : "Thêm câu hỏi")}
           </Button>
-          <Button onClick={onReset} variant="secondary">
-            Làm mới
-          </Button>
+          {typeof onReset === "function" ? (
+            <Button onClick={onReset} variant="secondary">
+              {resetLabel}
+            </Button>
+          ) : null}
         </div>
       </form>
-    </Card>
+    </Wrapper>
   );
 }

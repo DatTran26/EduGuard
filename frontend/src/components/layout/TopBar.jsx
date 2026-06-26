@@ -50,6 +50,7 @@ const breadcrumbLabelBySegment = {
   join: "Tham gia lớp",
   monitoring: "Giám sát thi",
   notifications: "Thông báo",
+  "question-banks": "Ngân hàng câu hỏi",
   "proctoring-ai": "AI giám sát",
 };
 

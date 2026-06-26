@@ -5,6 +5,7 @@ namespace EduGuard.Application.DTOs.ExamMatrices;
 public class ExamMatrixValidationIssueDto
 {
     public int? MatrixItemId { get; set; }
+    public string? Subject { get; set; }
     public string? Chapter { get; set; }
     public string? Lesson { get; set; }
     public string? LearningOutcome { get; set; }

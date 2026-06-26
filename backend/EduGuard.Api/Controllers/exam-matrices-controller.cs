@@ -6,6 +6,7 @@ using EduGuard.Application.Services.Interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace EduGuard.Api.Controllers;
 
@@ -153,6 +154,7 @@ public class ExamMatricesController : ControllerBase
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse<ExamDto>.CreateFailure(ex.Message)); }
         catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<ExamDto>.CreateFailure(ex.Message)); }
         catch (InvalidOperationException ex) { return BadRequest(ApiResponse<ExamDto>.CreateFailure(ex.Message)); }
+        catch (DbUpdateException ex) { return BadRequest(ApiResponse<ExamDto>.CreateFailure($"Không thể lưu bài kiểm tra từ ma trận: {ex.GetBaseException().Message}")); }
     }
 
     private string? GetCurrentUserId()
