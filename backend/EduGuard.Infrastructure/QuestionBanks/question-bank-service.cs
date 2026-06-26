@@ -22,6 +22,7 @@ public class QuestionBankService : IQuestionBankService
     private readonly IValidator<UpdateBankQuestionRequest> _updateQuestionValidator;
     private readonly IValidator<ImportBankQuestionsRequest> _importValidator;
     private readonly IValidator<SnapshotBankQuestionsRequest> _snapshotValidator;
+    private readonly IAiQuestionGeneratorService _aiQuestionGenerator;
 
     public QuestionBankService(
         IQuestionBankRepository questionBankRepository,
@@ -31,7 +32,8 @@ public class QuestionBankService : IQuestionBankService
         IValidator<CreateBankQuestionRequest> createQuestionValidator,
         IValidator<UpdateBankQuestionRequest> updateQuestionValidator,
         IValidator<ImportBankQuestionsRequest> importValidator,
-        IValidator<SnapshotBankQuestionsRequest> snapshotValidator)
+        IValidator<SnapshotBankQuestionsRequest> snapshotValidator,
+        IAiQuestionGeneratorService aiQuestionGenerator)
     {
         _questionBankRepository = questionBankRepository;
         _examRepository = examRepository;
@@ -41,6 +43,7 @@ public class QuestionBankService : IQuestionBankService
         _updateQuestionValidator = updateQuestionValidator;
         _importValidator = importValidator;
         _snapshotValidator = snapshotValidator;
+        _aiQuestionGenerator = aiQuestionGenerator;
     }
 
     public async Task<IReadOnlyList<QuestionBankDto>> GetBanksAsync(string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
@@ -183,6 +186,44 @@ public class QuestionBankService : IQuestionBankService
         }
 
         var imported = parsed.Questions.Select(question => BuildBankQuestion(bank, BuildCreateRequest(question, request), teacherId)).ToList();
+        await _questionBankRepository.AddQuestionsAsync(imported, ct);
+        bank.UpdatedAt = DateTime.UtcNow;
+        _questionBankRepository.UpdateBank(bank);
+        await _questionBankRepository.SaveChangesAsync(ct);
+
+        result.ImportedCount = imported.Count;
+        result.Questions = imported.Select(QuestionBankMapper.MapQuestion).ToList();
+        return result;
+    }
+    public async Task<BankQuestionImportResultDto> GenerateQuestionsAiAsync(int bankId, GenerateBankQuestionsAiRequest request, string teacherId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Prompt))
+            throw new ArgumentException("Prompt cannot be empty.", nameof(request));
+
+        var bank = await RequireTeacherBankAsync(bankId, teacherId, ct);
+        
+        var parsedQuestions = await _aiQuestionGenerator.GenerateQuestionsAsync(request.Prompt, request.UserApiKey, ct);
+        
+        var result = new BankQuestionImportResultDto { FileName = "AI_Generated" };
+        result.TotalRows = parsedQuestions.Count;
+
+        if (parsedQuestions.Count == 0)
+        {
+            result.FailedCount = 0;
+            return result;
+        }
+
+        var defaults = new ImportBankQuestionsRequest
+        {
+            Difficulty = request.Difficulty,
+            Status = request.Status,
+            Subject = request.Subject,
+            Chapter = request.Chapter,
+            Lesson = request.Lesson,
+            LearningOutcome = request.LearningOutcome
+        };
+
+        var imported = parsedQuestions.Select(question => BuildBankQuestion(bank, BuildCreateRequest(question, defaults), teacherId)).ToList();
         await _questionBankRepository.AddQuestionsAsync(imported, ct);
         bank.UpdatedAt = DateTime.UtcNow;
         _questionBankRepository.UpdateBank(bank);

@@ -1331,7 +1331,18 @@ export default function QuestionBankPage() {
 
         {isImportPanelOpen ? (
           <div className="space-y-6">
-            <QuestionImportResources />
+            <QuestionImportResources
+              bankId={selectedBankId}
+              onQuestionsGenerated={async () => {
+                await loadBankQuestions(selectedBankId);
+                await loadPageData({ showLoader: false });
+                showToast({
+                  tone: "success",
+                  title: "Sinh câu hỏi thành công",
+                  message: "Các câu hỏi đã được sinh bằng AI và thêm vào ngân hàng câu hỏi.",
+                });
+              }}
+            />
             <Card className="space-y-4">
               <h3 className="text-lg font-semibold text-primary">Cấu hình thông tin mặc định cho câu hỏi nhập từ tệp</h3>
               <div className="grid gap-4 md:grid-cols-4">

@@ -1,5 +1,53 @@
 # Project Changelog
 
+## Feature: AI question generation in Question Bank
+
+Date: 2026-06-26
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: AI question generation in Question Bank.
+- Purpose and user/business impact: Enables teachers to generate test questions instantly using OpenAI's structured outputs (`gpt-5.5` with strict JSON schema) directly from the Question Bank and Exam workspaces. This replaces a multi-step manual guide and streamlines test prep by automatically inserting correctly structured questions (type, difficulty, answers) into the bank.
+- Files or modules changed: backend request DTOs, service interfaces/implementations, API controllers, configurations, frontend API adapters, import resource UI components, question bank page, and exam workspace integration.
+
+Changed files:
+
+- `backend/EduGuard.Application/DTOs/QuestionBanks/generate-bank-questions-ai-request.cs`
+- `backend/EduGuard.Application/Services/Interfaces/IAiQuestionGeneratorService.cs`
+- `backend/EduGuard.Infrastructure/QuestionBanks/OpenAiQuestionGeneratorService.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-question-bank-service.cs`
+- `backend/EduGuard.Infrastructure/QuestionBanks/question-bank-service.cs`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `backend/EduGuard.Api/Controllers/question-banks-controller.cs`
+- `backend/EduGuard.Api/appsettings.json`
+- `frontend/src/api/questionBankApi.js`
+- `frontend/src/features/exams/components/QuestionImportResources.jsx`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Added `GenerateBankQuestionsAiRequest` DTO and defined `IAiQuestionGeneratorService` interface.
+- Backend: Implemented `OpenAiQuestionGeneratorService` making HTTP POST requests to the OpenAI completions endpoint with strict `json_schema` response formatting to get well-structured questions.
+- Backend: Updated `IQuestionBankService` and `QuestionBankService` to call the generator and store the questions in the repository, mapping fields to native schema.
+- Backend: Added the controller endpoint `/api/question-banks/{bankId}/questions/generate-ai` and dependency-injected the HTTP client and service.
+- Frontend: Rewrote `QuestionImportResources.jsx` into a tabbed layout, introducing a "Tạo câu hỏi bằng AI" tab with prompt fields, local storage key backup, configuration defaults, and a loading/success state.
+- Frontend: Connected API callbacks to reload data on parent views (`QuestionBankPage.jsx`, `TeacherQuestionWorkspace.jsx`) when questions are generated.
+
+Validation:
+
+- Backend project successfully built using `dotnet build` with zero compile/build errors.
+- Frontend files successfully integrated.
+
+Known risks / rollback / follow-up:
+
+- Needs a valid OpenAI API key (either set in `appsettings.json` or provided dynamically by the user).
+
 ## Feature: Matrix difficulty redesign and bank import enhancements
 
 Date: 2026-06-26

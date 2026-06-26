@@ -17,5 +17,6 @@ public interface IQuestionBankService
     Task<BankQuestionDto> UpdateQuestionAsync(int questionId, UpdateBankQuestionRequest request, string teacherId, CancellationToken ct = default);
     Task ArchiveQuestionAsync(int questionId, string teacherId, CancellationToken ct = default);
     Task<BankQuestionImportResultDto> ImportQuestionsAsync(int bankId, Stream fileStream, string fileName, string contentType, long fileLength, ImportBankQuestionsRequest request, string teacherId, CancellationToken ct = default);
+    Task<BankQuestionImportResultDto> GenerateQuestionsAiAsync(int bankId, GenerateBankQuestionsAiRequest request, string teacherId, CancellationToken ct = default);
     Task<IReadOnlyList<QuestionDto>> SnapshotQuestionsToExamAsync(int examId, SnapshotBankQuestionsRequest request, string teacherId, CancellationToken ct = default);
 }

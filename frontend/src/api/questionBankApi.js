@@ -423,6 +423,29 @@ export const questionBankApi = {
     }
   },
 
+  async generateQuestionsAi(bankId, payload) {
+    const apiResponse = await requestApi(() => axiosClient.post(`/question-banks/${bankId}/questions/generate-ai`, {
+      prompt: payload.prompt,
+      userApiKey: payload.userApiKey,
+      difficulty: toDifficultyCode(payload.difficulty),
+      status: toQuestionStatusCode(payload.status),
+      subject: payload.subject?.trim() || null,
+      chapter: payload.chapter?.trim() || null,
+      lesson: payload.lesson?.trim() || null,
+      learningOutcome: payload.learningOutcome?.trim() || null,
+    }));
+
+    return {
+      ...apiResponse,
+      data: {
+        ...(apiResponse.data ?? {}),
+        questions: Array.isArray(apiResponse.data?.questions)
+          ? apiResponse.data.questions.map((question) => normalizeBankQuestion(question))
+          : [],
+      },
+    };
+  },
+
   async getMatrices() {
     const apiResponse = await requestApi(() => axiosClient.get("/exam-matrices"));
 

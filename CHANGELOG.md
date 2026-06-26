@@ -9,11 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Backend
 
+- Added a direct AI question generation endpoint `POST api/question-banks/{bankId}/questions/generate-ai` that calls OpenAI using structured JSON outputs (`gpt-5.5` with reasoning_effort medium).
+- Added `OpenAiQuestionGeneratorService` to call the OpenAI completion API and deserialize generated questions directly matching the database schema.
+- Extended `IQuestionBankService` with `GenerateQuestionsAiAsync` to automatically parse and save AI-generated questions into the database.
 - Added difficulty parsing to the question import parser from Excel/CSV columns ("difficulty", "do kho", "muc do") and structured text metadata ("difficulty", "Mức độ", "Do khó").
 - Mapped question-specific difficulty into bank question import requests, falling back to defaults if not specified.
 
 ### Frontend
 
+- Replaced the static manual instructions box in `QuestionImportResources.jsx` with a tabbed UI, introducing an interactive "Tạo câu hỏi bằng AI" panel alongside the manual Excel import instructions.
+- Added prompt text inputs, optional local-storage saved OpenAI API Key inputs, and advanced configuration defaults (difficulty, status, subject, chapter) directly into the AI Question Generator.
+- Integrated AI generation directly in `QuestionBankPage.jsx` and `TeacherQuestionWorkspace.jsx` to refresh lists upon successful question generation.
 - Moved exam matrix filters (Chapter, Lesson, LearningOutcome, QuestionType) to top-level fields in the matrix editor form, and removed row-level grids and "Thêm dòng" button entirely.
 - Redesigned the exam matrix difficulty configuration with a global multi-range interactive slider mapping to Easy, Medium, and Hard counts.
 - Replaced the custom file upload form in the question bank page with the reusable `QuestionImportPanel` and `QuestionImportResources` components.

@@ -158,6 +158,7 @@ public static class DependencyInjection
 
         services.AddScoped<IExamCacheInvalidator, ExamCacheInvalidator>();
         services.AddHttpClient("ProctoringAi");
+        services.AddHttpClient<IAiQuestionGeneratorService, OpenAiQuestionGeneratorService>();
 
         return services;
     }
