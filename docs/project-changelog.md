@@ -1,5 +1,24 @@
 # Project Changelog
 
+## Release: v1.3.0-rc.1
+
+Date: 2026-06-26
+
+Branch/source: `devD` → `release`
+
+Description:
+
+- Feature or fix name: Live proctoring SFU control room release candidate.
+- Purpose and user/business impact: Ships LiveKit multi-stream proctoring, question banks/exam matrices, anti-cheat and late-join notifications, co-proctor workflows, and teacher monitoring UI redesign for RC staging validation.
+- Files or modules changed: backend proctoring/notifications/question-banks, frontend proctoring/monitoring/classrooms, infra LiveKit compose, docs setup guides.
+- Technical summary: Merged `devD` into `release`, tagged `v1.3.0-rc.1`, opened PR to `main`. Sanitized tracked appsettings secrets and restricted classroom notification listing to teachers/admins before RC.
+- Validation: `npm test` / `dotnet test` passed; code-reviewer gate run (remaining high items documented in PR as non-blocking for RC).
+- Known risks: Refresh-token rotation race, zero automated integration tests, LiveKit/Redis must be configured via env for RC deploy. Rotate any credentials that were previously committed.
+
+Unresolved questions:
+
+- RC deploy target: local tunnel vs cloud — confirm LiveKit stack per `docs/PROCTORING_SFU_SETUP.md`.
+
 ## Feature: Late exam join notifications and camera gate
 
 Date: 2026-06-26

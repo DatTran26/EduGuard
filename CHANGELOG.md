@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0-rc.1] - 2026-06-26
+
+### Security
+
+- Removed committed Redis Cloud password and production JWT key from tracked `appsettings.json`; RC deploys must set `ConnectionStrings__Redis`, `Jwt__Key`, and LiveKit secrets via environment variables or user secrets.
+- Restricted `GET /api/notifications/classroom/{classroomId}` to classroom teachers and admins so students cannot enumerate anti-cheat or proctoring notifications.
+
 ### Backend
 
 - **Late exam join alerts:** When a student starts a new attempt after the scheduled open time, teachers and co-proctors receive an in-app notification (`LateJoin`) plus a realtime SignalR event (`StudentJoinedExamLate`) on the exam monitoring hub; proctoring state summaries expose `isLateJoin` and `lateByMinutes`.
@@ -205,6 +212,8 @@ Stable release promoted from `v1.1.0-rc.1` after RC validation (auth + classroom
 - `GET /api/classrooms/{id}` (classroom detail) deferred
 - Members endpoint returns email for active members; tighten for production if needed
 
+[1.3.0-rc.1]: https://github.com/DatTran26/EduGuard/compare/v1.2.0...v1.3.0-rc.1
+[1.2.0]: https://github.com/DatTran26/EduGuard/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/DatTran26/EduGuard/compare/v1.0.0...v1.1.0
 
 ## [1.0.0] - 2026-06-10
