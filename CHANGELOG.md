@@ -7,11 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Backend
+
+- Added difficulty parsing to the question import parser from Excel/CSV columns ("difficulty", "do kho", "muc do") and structured text metadata ("difficulty", "Mức độ", "Do khó").
+- Mapped question-specific difficulty into bank question import requests, falling back to defaults if not specified.
+
 ### Frontend
 
-- Redesigned the exam matrix difficulty configuration with a global multi-range interactive slider mapping to Easy, Medium, and Hard counts, and removed row-level difficulty selection dropdowns from individual matrix rows.
+- Moved exam matrix filters (Chapter, Lesson, LearningOutcome, QuestionType) to top-level fields in the matrix editor form, and removed row-level grids and "Thêm dòng" button entirely.
+- Redesigned the exam matrix difficulty configuration with a global multi-range interactive slider mapping to Easy, Medium, and Hard counts.
 - Replaced the custom file upload form in the question bank page with the reusable `QuestionImportPanel` and `QuestionImportResources` components.
 - Added a collapsible panel with a toggle button to hide the AI Excel template guide in the manual exam creation workspace by default.
+- Added a "Bài" (lesson) input text field to the import defaults card, and removed the "Độ khó" dropdown.
 - Streamlined the saved matrix workflow by adding a copy configuration dropdown directly in the matrix editor form, removing arbitrary selection dropdowns, and binding validation/preview generation directly to the active bank and active matrix.
 - Removed statistics dashboards cards and info blocks from both the list and detail views of the question bank page.
 

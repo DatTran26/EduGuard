@@ -49,7 +49,11 @@ export const EMPTY_MATRIX_FORM = {
   gradeLevel: "",
   durationMinutes: 45,
   totalScore: 10,
-  items: [{ ...EMPTY_MATRIX_ITEM }],
+  totalQuestions: 10,
+  chapter: "",
+  lesson: "",
+  learningOutcome: "",
+  questionType: "",
 };
 
 export const EMPTY_CREATE_EXAM_FORM = {
@@ -120,6 +124,8 @@ export function buildQuestionFormFromQuestion(question) {
 }
 
 export function buildMatrixFormFromMatrix(matrix) {
+  const parsed = parseMatrixItemsForForm(matrix.items || []);
+  const firstItem = matrix.items?.[0] || {};
   return {
     id: matrix.id,
     name: matrix.name,
@@ -127,7 +133,11 @@ export function buildMatrixFormFromMatrix(matrix) {
     gradeLevel: matrix.gradeLevel,
     durationMinutes: matrix.durationMinutes || 45,
     totalScore: matrix.totalScore || 10,
-    items: matrix.items.length > 0 ? matrix.items.map((item) => ({ ...item })) : [{ ...EMPTY_MATRIX_ITEM }],
+    totalQuestions: matrix.totalQuestions || parsed.easyCount + parsed.mediumCount + parsed.hardCount || 10,
+    chapter: firstItem.chapter || "",
+    lesson: firstItem.lesson || "",
+    learningOutcome: firstItem.learningOutcome || "",
+    questionType: firstItem.questionType || "",
   };
 }
 

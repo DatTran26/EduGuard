@@ -9,11 +9,14 @@ Branch/source: `devB`
 Description:
 
 - Feature or fix name: Matrix difficulty redesign and bank import enhancements.
-- Purpose and user/business impact: Improves teacher experience when setting up exam matrices by replacing complex row-level difficulty selectors with a single global interactive multi-range slider for Easy/Medium/Hard counts. Simplifies importing questions into the bank by reusing the standard drag-and-drop import components, hiding manual workspace AI guides by default, and removing the unused statistics dashboard from the bank list/detail views.
-- Files or modules changed: frontend question bank page, teacher question workspace component, question bank helpers, changelogs, and Todo List.
+- Purpose and user/business impact: Improves teacher experience when setting up exam matrices by replacing complex row-level difficulty selectors and items grid with a single global interactive difficulty slider and top-level filter fields. Automatically extracts question difficulty during Excel/CSV and text imports, and adds standard "Bài" default inputs in the import panel.
+- Files or modules changed: backend CreateQuestionRequest DTO, question import parser, question bank service, frontend question bank page, teacher question workspace component, question bank helpers, changelogs, and Todo List.
 
 Changed files:
 
+- `backend/EduGuard.Application/DTOs/Exams/create-question-request.cs`
+- `backend/EduGuard.Infrastructure/Exams/question-import-parser.cs`
+- `backend/EduGuard.Infrastructure/QuestionBanks/question-bank-service.cs`
 - `frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx`
 - `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
 - `frontend/src/features/question-banks/question-bank-helpers.js`
@@ -23,15 +26,17 @@ Changed files:
 
 Technical summary:
 
-- Added a collapsible container with toggle button for `<QuestionImportResources />` in `TeacherQuestionWorkspace.jsx` under manual creation mode, defaulting it to hidden.
-- Removed statistics dashboards cards and information guide blocks from both the list and detail views of `QuestionBankPage.jsx`.
-- Replaced row-level difficulty dropdown selectors in matrix rows with a global multi-range slider that partitions total questions into Easy, Medium, and Hard counts.
-- Added data mapping helpers `distributeDifficultyToItems` and `parseMatrixItemsForForm` in `question-bank-helpers.js` to map the global difficulty partition back to individual matrix items database schema during save/validate, and group them on load.
-- Replaced the custom file import form in `QuestionBankPage.jsx` with standard `QuestionImportPanel` and `QuestionImportResources` components.
-- Streamlined the saved matrix flow in `QuestionBankPage.jsx` by adding a "Sao chép cấu hình từ ma trận có sẵn" dropdown to copy existing matrix configurations directly into the editor form state, and binding validation/draft generation directly to the active bank and selected matrix.
+- Backend: Added a `Difficulty` string field to `CreateQuestionRequest` DTO and updated `QuestionImportStructuredTextParser` and `QuestionImportQuestionBuilder` to parse difficulty from files.
+- Backend: Updated `BuildCreateRequest` in `question-bank-service.cs` to map the parsed question difficulty into the bank question request, falling back to defaults if not specified.
+- Frontend: Removed the row list editor grid and "Thêm dòng" button from the matrix builder form entirely.
+- Frontend: Moved matrix filters (Chương, Bài, Yêu cầu cần đạt, Loại câu) directly into top-level fields under `matrixForm`.
+- Frontend: Updated the matrix submit handler to map the top-level form state into a single virtual item, distributing difficulty counts (Easy, Medium, Hard) into rows of items using the existing helper functions before posting to the API.
+- Frontend: Removed the default "Độ khó" dropdown from the file import defaults card and replaced it with a "Bài" (lesson) text input field.
+- Frontend: Replaced statistics dashboards and information guide cards from both the list and detail views of the question bank.
 
 Validation:
 
+- Backend project successfully built using `dotnet build` with zero compile/build errors.
 - Frontend project successfully built using `npm run build` with zero compile/bundle errors.
 
 Known risks / rollback / follow-up:

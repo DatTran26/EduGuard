@@ -50,6 +50,7 @@ internal sealed class QuestionImportTextBlock
     public string? QuestionType { get; set; }
     public string CorrectAnswer { get; set; } = string.Empty;
     public string Score { get; set; } = string.Empty;
+    public string Difficulty { get; set; } = string.Empty;
     public List<QuestionImportOption> Options { get; } = [];
 }
 
@@ -486,6 +487,10 @@ internal static class QuestionImportStructuredTextParser
         @"^\s*(?:score|\u0110i\u1ec3m|Diem)\s*[:\uff1a]\s*(?<value>.+?)\s*$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
+    private static readonly Regex DifficultyRegex = new(
+        @"^\s*(?:difficulty|M\u1ee9c\s*\u0111\u1ed9|Muc\s*do|Do\s*kho|\u0110\u1ed9\s*kh\u00f3)\s*[:\uff1a]\s*(?<value>.+?)\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
     private static readonly Regex IgnoredMetadataRegex = new(
         @"^\s*(?:subject|chapter|lesson|difficulty|explanation|tags|image_url|status|M\u00f4n|Mon|Ch\u01b0\u01a1ng|Chuong|B\u00e0i|Bai|M\u1ee9c\s*\u0111\u1ed9|Muc\s*do|Gi\u1ea3i\s*th\u00edch|Giai\s*thich)\s*[:\uff1a]",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
@@ -570,6 +575,13 @@ internal static class QuestionImportStructuredTextParser
                 continue;
             }
 
+            var difficultyMatch = DifficultyRegex.Match(trimmed);
+            if (difficultyMatch.Success)
+            {
+                current.Difficulty = difficultyMatch.Groups["value"].Value.Trim();
+                continue;
+            }
+
             if (IgnoredMetadataRegex.IsMatch(trimmed))
                 continue;
 
@@ -640,7 +652,13 @@ internal static class QuestionImportQuestionBuilder
             .Where(x => !string.IsNullOrWhiteSpace(x.Content))
             .ToList();
 
-        return BuildQuestion(questionText, questionType, correctAnswer, score, options, rowNumber, errors, startErrorCount);
+        var difficultyVal = GetField(headerIndexes, values, "difficulty");
+        if (string.IsNullOrWhiteSpace(difficultyVal))
+            difficultyVal = GetField(headerIndexes, values, "do kho");
+        if (string.IsNullOrWhiteSpace(difficultyVal))
+            difficultyVal = GetField(headerIndexes, values, "muc do");
+
+        return BuildQuestion(questionText, questionType, correctAnswer, score, options, rowNumber, errors, startErrorCount, difficultyVal);
     }
 
     public static CreateQuestionRequest? ParseTextBlock(
@@ -677,7 +695,7 @@ internal static class QuestionImportQuestionBuilder
         if (errors.Count > startErrorCount)
             return null;
 
-        return BuildQuestion(questionText, questionType, correctAnswer, score, block.Options, block.RowNumber, errors, startErrorCount);
+        return BuildQuestion(questionText, questionType, correctAnswer, score, block.Options, block.RowNumber, errors, startErrorCount, block.Difficulty);
     }
 
     public static string NormalizeToken(string value)
@@ -708,7 +726,8 @@ internal static class QuestionImportQuestionBuilder
         IReadOnlyList<QuestionImportOption> options,
         int rowNumber,
         List<QuestionImportErrorDto> errors,
-        int startErrorCount)
+        int startErrorCount,
+        string? difficulty = null)
     {
         var answers = questionType switch
         {
@@ -738,7 +757,8 @@ internal static class QuestionImportQuestionBuilder
             QuestionType = questionType,
             Score = score,
             OrderIndex = rowNumber,
-            Answers = answers
+            Answers = answers,
+            Difficulty = difficulty
         };
     }
 

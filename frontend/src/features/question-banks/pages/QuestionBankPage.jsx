@@ -569,7 +569,7 @@ export default function QuestionBankPage() {
       scorePerQuestion,
       difficultySummary,
     };
-  }, [matrixForm.items, matrixForm.totalScore, matrixForm.totalQuestions, easyCount, mediumCount, hardCount]);
+  }, [matrixForm.totalScore, matrixForm.totalQuestions, easyCount, mediumCount, hardCount]);
   const selectedMatrixTotals = useMemo(
     () => selectedMatrix ? calculateMatrixTotals(selectedMatrix.items, selectedMatrix.totalScore) : calculateMatrixTotals([], 0),
     [selectedMatrix],
@@ -689,11 +689,8 @@ export default function QuestionBankPage() {
   function loadMatrixIntoForm(matrix) {
     if (!matrix) return;
     const formValues = buildMatrixFormFromMatrix(matrix);
-    const parsed = parseMatrixItemsForForm(formValues.items);
-    setMatrixForm({
-      ...formValues,
-      items: parsed.items,
-    });
+    const parsed = parseMatrixItemsForForm(matrix.items || []);
+    setMatrixForm(formValues);
     setEasyCount(parsed.easyCount);
     setMediumCount(parsed.mediumCount);
     setHardCount(parsed.hardCount);
@@ -996,9 +993,19 @@ export default function QuestionBankPage() {
       return;
     }
 
-    const distributedItems = distributeDifficultyToItems(matrixForm.items, easyCount, mediumCount, hardCount);
+    const singleItem = {
+      chapter: matrixForm.chapter || "",
+      lesson: matrixForm.lesson || "",
+      learningOutcome: matrixForm.learningOutcome || "",
+      questionType: matrixForm.questionType || "",
+      questionCount: Number(matrixForm.totalQuestions) || 0,
+    };
+    const distributedItems = distributeDifficultyToItems([singleItem], easyCount, mediumCount, hardCount);
     const payload = {
-      ...matrixForm,
+      name: matrixForm.name,
+      subject: matrixForm.subject,
+      gradeLevel: matrixForm.gradeLevel,
+      durationMinutes: Number(matrixForm.durationMinutes) || 45,
       totalQuestions: matrixTotals.totalQuestions,
       totalScore: matrixTotals.totalScore,
       items: distributedItems,
@@ -1328,10 +1335,10 @@ export default function QuestionBankPage() {
             <Card className="space-y-4">
               <h3 className="text-lg font-semibold text-primary">Cấu hình thông tin mặc định cho câu hỏi nhập từ tệp</h3>
               <div className="grid gap-4 md:grid-cols-4">
-                <Select id="import-difficulty" label="Độ khó" onChange={(event) => setImportDefaults((previous) => ({ ...previous, difficulty: event.target.value }))} options={questionBankEnums.difficultyOptions} value={importDefaults.difficulty} />
                 <Select id="import-status" label="Trạng thái" onChange={(event) => setImportDefaults((previous) => ({ ...previous, status: event.target.value }))} options={questionBankEnums.statusOptions} value={importDefaults.status} />
                 <TextInput id="import-subject" label="Môn" onChange={(event) => setImportDefaults((previous) => ({ ...previous, subject: event.target.value }))} value={importDefaults.subject} />
                 <TextInput id="import-chapter" label="Chương" onChange={(event) => setImportDefaults((previous) => ({ ...previous, chapter: event.target.value }))} value={importDefaults.chapter} />
+                <TextInput id="import-lesson" label="Bài" onChange={(event) => setImportDefaults((previous) => ({ ...previous, lesson: event.target.value }))} value={importDefaults.lesson} />
               </div>
             </Card>
             <QuestionImportPanel
@@ -1651,29 +1658,22 @@ export default function QuestionBankPage() {
               </div>
             </div>
 
-            {matrixForm.items.map((item, index) => (
-              <div key={index} className="rounded-[18px] border border-border bg-neutral p-4">
-                <div className="mb-4 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-primary">Dòng ma trận {index + 1}</p>
-                  {matrixForm.items.length > 1 ? <Button onClick={() => setMatrixForm((previous) => ({ ...previous, items: previous.items.filter((_, itemIndex) => itemIndex !== index) }))} variant="ghost">Xóa dòng</Button> : null}
-                </div>
-                <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
-                  <TextInput id={`matrix-chapter-${index}`} label="Chương" onChange={(event) => updateMatrixItem(index, "chapter", event.target.value)} value={item.chapter} />
-                  <TextInput id={`matrix-lesson-${index}`} label="Bài" onChange={(event) => updateMatrixItem(index, "lesson", event.target.value)} value={item.lesson} />
-                  <TextInput id={`matrix-outcome-${index}`} label="Yêu cầu cần đạt" onChange={(event) => updateMatrixItem(index, "learningOutcome", event.target.value)} value={item.learningOutcome} />
-                  <Select id={`matrix-type-${index}`} label="Loại câu" onChange={(event) => updateMatrixItem(index, "questionType", event.target.value)} options={MATRIX_QUESTION_TYPE_OPTIONS} value={item.questionType} />
-                  <TextInput id={`matrix-count-${index}`} label="Số câu" min="1" onChange={(event) => updateMatrixItem(index, "questionCount", event.target.value)} type="number" value={item.questionCount} />
-                </div>
-              </div>
-            ))}
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={() => setMatrixForm((previous) => ({ ...previous, items: [...previous.items, { ...EMPTY_MATRIX_ITEM }] }))} variant="secondary">
-                <IconButtonContent icon={Plus}>Thêm dòng</IconButtonContent>
-              </Button>
+            <div className="grid gap-4 md:grid-cols-4 mt-4">
+              <TextInput id="matrix-chapter" label="Chương" onChange={(event) => updateMatrixForm("chapter", event.target.value)} value={matrixForm.chapter} />
+              <TextInput id="matrix-lesson" label="Bài" onChange={(event) => updateMatrixForm("lesson", event.target.value)} value={matrixForm.lesson} />
+              <TextInput id="matrix-outcome" label="Yêu cầu cần đạt" onChange={(event) => updateMatrixForm("learningOutcome", event.target.value)} value={matrixForm.learningOutcome} />
+              <Select id="matrix-type" label="Loại câu" onChange={(event) => updateMatrixForm("questionType", event.target.value)} options={MATRIX_QUESTION_TYPE_OPTIONS} value={matrixForm.questionType} />
+            </div>
+
+            <div className="flex flex-wrap gap-3 mt-5">
               <Button disabled={isMatrixSubmitting} type="submit">
                 <IconButtonContent icon={Table2}>{isMatrixSubmitting ? "Đang lưu..." : matrixForm.id ? "Cập nhật ma trận" : "Tạo ma trận"}</IconButtonContent>
               </Button>
-              {matrixForm.id ? <Button onClick={() => setMatrixForm(EMPTY_MATRIX_FORM)} variant="ghost">Hủy sửa</Button> : null}
+              {matrixForm.id ? (
+                <Button onClick={() => { setSelectedMatrixId(""); resetMatrixForm(); }} variant="ghost">
+                  Hủy sửa
+                </Button>
+              ) : null}
             </div>
           </form>
         </Card>
