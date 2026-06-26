@@ -29,6 +29,7 @@ export default function ProctoringRoomHeader({
   canCloseExam = false,
   onRefresh,
   onOpenCoProctor,
+  onOpenClassReport,
   onCloseExam,
 }) {
   const countdown = useExamEndCountdown({
@@ -136,6 +137,13 @@ export default function ProctoringRoomHeader({
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10"
+            onClick={onOpenClassReport}
+            variant="secondary"
+          >
+            Báo cáo lớp
+          </Button>
           <Button
             className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10"
             onClick={onOpenCoProctor}

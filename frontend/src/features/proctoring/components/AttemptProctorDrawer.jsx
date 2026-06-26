@@ -1,6 +1,15 @@
+import { useEffect, useState } from "react";
+import { antiCheatApi } from "../../../api/antiCheatApi";
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import { cn } from "../../../utils/cn";
+import { formatShortDateTime } from "../../../utils/formatDate";
+import { getAntiCheatEventMeta } from "../../anti-cheat/antiCheatHelpers";
+import {
+  formatAiConfidence,
+  getAiDetectionMeta,
+  parseAiDetectionMetadata,
+} from "../utils/proctoringAiHelpers";
 import {
   getAttemptStatusMeta,
   getCameraStatusMeta,
@@ -29,7 +38,42 @@ export default function AttemptProctorDrawer({
   onStopClip,
   onToggleAudio,
   variant = "default",
+  violationRefreshToken = 0,
 }) {
+  const [violationLogs, setViolationLogs] = useState([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
+  useEffect(() => {
+    if (!student?.attemptId) {
+      setViolationLogs([]);
+      return undefined;
+    }
+
+    let isMounted = true;
+    setIsLoadingLogs(true);
+    antiCheatApi
+      .getLogsByAttempt(student.attemptId)
+      .then((response) => {
+        if (isMounted) {
+          setViolationLogs(response.data ?? []);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setViolationLogs([]);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingLogs(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [student?.attemptId, violationRefreshToken]);
+
   if (!student) {
     return null;
   }
@@ -40,6 +84,8 @@ export default function AttemptProctorDrawer({
   const cameraMeta = getCameraStatusMeta(student.cameraStatus);
   const connectionMeta = getConnectionStatusMeta(student.connectionStatus);
   const liveMeta = getLiveStatusMeta(student.liveStatus);
+  const latestDetectionType = detail?.state?.latestDetectionType ?? student.latestDetectionType;
+  const latestDetectionMeta = latestDetectionType ? getAiDetectionMeta(latestDetectionType) : null;
   const videoPlaceholder = resolveTileVideoPlaceholder({
     student,
     remoteStatus,
@@ -119,6 +165,9 @@ export default function AttemptProctorDrawer({
             <Badge title={liveMeta.hint} variant={liveMeta.variant}>
               Live: {liveMeta.label}
             </Badge>
+            {latestDetectionMeta ? (
+              <Badge variant={latestDetectionMeta.variant}>AI: {latestDetectionMeta.label}</Badge>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -181,6 +230,48 @@ export default function AttemptProctorDrawer({
               </ul>
             ) : (
               <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>Chưa có bằng chứng.</p>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <h3 className={cn("text-sm font-semibold", isRoom ? "text-slate-200" : "text-primary")}>
+              Lịch sử vi phạm
+            </h3>
+            {isLoadingLogs ? (
+              <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>Đang tải log…</p>
+            ) : violationLogs.length ? (
+              <ul className={cn("space-y-2 text-sm", isRoom ? "text-slate-400" : "text-secondary")}>
+                {violationLogs.map((log) => {
+                  const meta = getAntiCheatEventMeta(log.type);
+                  const aiMeta = parseAiDetectionMetadata(log.metadata);
+
+                  return (
+                    <li
+                      key={log.id}
+                      className={cn(
+                        "rounded-[12px] border px-3 py-2",
+                        isRoom ? "border-white/10 bg-white/[0.03]" : "border-border bg-neutral",
+                      )}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={meta.variant}>{meta.label}</Badge>
+                        <span className="text-[11px] text-slate-500">{formatShortDateTime(log.occurredAt)}</span>
+                      </div>
+                      <p className={cn("mt-1", isRoom ? "text-slate-300" : "text-primary")}>{log.description}</p>
+                      {aiMeta ? (
+                        <p className="mt-1 text-xs text-slate-500">
+                          AI: {formatAiConfidence(aiMeta.confidence)}
+                          {aiMeta.labels?.length ? ` · ${aiMeta.labels.join(", ")}` : ""}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>
+                Chưa có vi phạm ghi nhận.
+              </p>
             )}
           </div>
 

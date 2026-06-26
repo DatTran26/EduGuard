@@ -51,6 +51,7 @@ const breadcrumbLabelBySegment = {
   users: "Người dùng",
   join: "Tham gia lớp",
   monitoring: "Giám sát thi",
+  "proctoring-evidence": "Bằng chứng vi phạm",
   notifications: "Thông báo",
   "proctoring-ai": "AI giám sát",
 };

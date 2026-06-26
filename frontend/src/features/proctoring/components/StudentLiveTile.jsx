@@ -9,6 +9,7 @@ import {
   resolveTileVideoPlaceholder,
 } from "../utils/proctoringStudentStatus";
 import RiskBadge from "./RiskBadge";
+import { getAiDetectionMeta } from "../utils/proctoringAiHelpers";
 
 const TILE_BORDER = {
   Normal: "border-white/10",
@@ -67,6 +68,9 @@ export default function StudentLiveTile({
   const riskLevel = student.riskLevel ?? "Normal";
   const showLiveVideo = Boolean(remoteStream) && remoteStatus === "connected";
   const attemptMeta = getAttemptStatusMeta(student.attemptStatus);
+  const latestDetectionMeta = student.latestDetectionType
+    ? getAiDetectionMeta(student.latestDetectionType)
+    : null;
   const watchable = canWatchStudentLive(student);
   const placeholder = resolveTileVideoPlaceholder({
     student,
@@ -177,6 +181,10 @@ export default function StudentLiveTile({
 
         {!compact && student.warningCount ? (
           <Badge variant="caution">{student.warningCount} cảnh báo</Badge>
+        ) : null}
+
+        {!compact && latestDetectionMeta && latestDetectionMeta.variant !== "success" ? (
+          <Badge variant={latestDetectionMeta.variant}>AI: {latestDetectionMeta.label}</Badge>
         ) : null}
 
         {watchable && !student.watchedByTeacherId ? (

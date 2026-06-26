@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { proctoringApi } from "../../../api/proctoringApi";
+import { devLog } from "../../../utils/devLogger";
 import { captureVideoFrame } from "../utils/captureVideoFrame";
 
 export function useProctoringAutoDetection({
@@ -34,7 +35,8 @@ export function useProctoringAutoDetection({
 
       isRunningRef.current = true;
       try {
-        await proctoringApi.detectFrame(attemptId, file);
+        const response = await proctoringApi.detectFrame(attemptId, file);
+        devLog.proctoring("AI detect response", response.data);
       } catch {
         // Detection failures should not block the attempt UI.
       } finally {

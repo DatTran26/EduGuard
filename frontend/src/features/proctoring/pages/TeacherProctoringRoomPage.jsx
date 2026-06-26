@@ -3,6 +3,8 @@ import { proctoringApi } from "../../../api/proctoringApi";
 import { examApi } from "../../../api/examApi";
 import AttemptProctorDrawer from "../components/AttemptProctorDrawer";
 import CoProctorDialog from "../components/CoProctorDialog";
+import ExamClassReportDialog from "../components/ExamClassReportDialog";
+import ProctoringAiAlertFeed from "../components/ProctoringAiAlertFeed";
 import ProctoringFilterBar from "../components/ProctoringFilterBar";
 import ProctoringReasonDialog from "../components/ProctoringReasonDialog";
 import ProctoringRoomHeader from "../components/ProctoringRoomHeader";
@@ -27,6 +29,9 @@ import {
   sortStudentsByRisk,
 } from "../utils/proctoringRoomHelpers";
 import { canWatchStudentLive } from "../utils/proctoringStudentStatus";
+import { devLog } from "../../../utils/devLogger";
+import { normalizeAiDetectionEvent } from "../utils/proctoringAiHelpers";
+import { normalizeAntiCheatEventType } from "../../anti-cheat/antiCheatHelpers";
 
 export default function TeacherProctoringRoomPage() {
   const { examId } = useParams();
@@ -47,6 +52,10 @@ export default function TeacherProctoringRoomPage() {
   const [isDrawerDismissed, setIsDrawerDismissed] = useState(false);
   const [isCloseExamDialogOpen, setIsCloseExamDialogOpen] = useState(false);
   const [isClosingExam, setIsClosingExam] = useState(false);
+  const [isClassReportOpen, setIsClassReportOpen] = useState(false);
+  const [reportRefreshToken, setReportRefreshToken] = useState(0);
+  const [aiEvents, setAiEvents] = useState([]);
+  const [violationEvents, setViolationEvents] = useState([]);
   const liveVideoRef = useRef(null);
   const requestWatchRef = useRef(null);
   const stopWatchRef = useRef(null);
@@ -65,7 +74,38 @@ export default function TeacherProctoringRoomPage() {
   }, [examId]);
 
   const handleRoomHubEvent = useCallback(
-    (eventName) => {
+    (eventName, payload) => {
+      if (eventName === EXAM_MONITORING_EVENTS.receiveAiDetection) {
+        const event = normalizeAiDetectionEvent(payload);
+        devLog.proctoring("AI detection result", event);
+        setAiEvents((previous) => [event, ...previous].slice(0, 80));
+        if (event.isFlagged) {
+          showToast({
+            tone: "danger",
+            title: `AI: ${event.studentName}`,
+            message: `${event.detectionType} (${Math.round(event.confidence * 100)}%)`,
+          });
+        }
+        refreshRoom().catch(() => {});
+        setReportRefreshToken((value) => value + 1);
+        return;
+      }
+
+      if (eventName === EXAM_MONITORING_EVENTS.receiveAntiCheatWarning) {
+        const warning = {
+          id: Number(payload?.logId) || Date.now(),
+          examAttemptId: Number(payload?.examAttemptId) || 0,
+          studentName: payload?.studentName ?? "",
+          type: normalizeAntiCheatEventType(payload?.type),
+          description: payload?.description ?? "",
+          occurredAt: payload?.occurredAt ?? new Date().toISOString(),
+        };
+        setViolationEvents((previous) => [warning, ...previous].slice(0, 80));
+        refreshRoom().catch(() => {});
+        setReportRefreshToken((value) => value + 1);
+        return;
+      }
+
       if (
         eventName === EXAM_MONITORING_EVENTS.studentJoinedExamLate ||
         eventName === EXAM_MONITORING_EVENTS.liveStreamConnected ||
@@ -74,9 +114,10 @@ export default function TeacherProctoringRoomPage() {
         eventName === EXAM_MONITORING_EVENTS.receiveProctoringWarning
       ) {
         refreshRoom().catch(() => {});
+        setReportRefreshToken((value) => value + 1);
       }
     },
-    [refreshRoom],
+    [refreshRoom, showToast],
   );
 
   const roomHub = useProctoringHubConnection({
@@ -281,6 +322,13 @@ export default function TeacherProctoringRoomPage() {
     setIsDrawerDismissed(true);
   }
 
+  function handleSelectStudentFromFeed(attemptId) {
+    const matchedStudent = students.find((student) => student.attemptId === attemptId);
+    if (matchedStudent) {
+      handleSelectStudent(matchedStudent);
+    }
+  }
+
   function handleSelectStudent(student) {
     setIsDrawerDismissed(false);
     setSelectedStudent(student);
@@ -458,6 +506,7 @@ export default function TeacherProctoringRoomPage() {
         onCloseExam={() => setIsCloseExamDialogOpen(true)}
         onRefresh={handleManualRefresh}
         onOpenCoProctor={() => setIsCoProctorOpen(true)}
+        onOpenClassReport={() => setIsClassReportOpen(true)}
         room={room}
         sessionLive={sessionLive}
         sessionPhase={sessionPhase}
@@ -480,6 +529,12 @@ export default function TeacherProctoringRoomPage() {
         ) : null}
 
         <ProctoringStatusBar stats={roomStats} />
+
+        <ProctoringAiAlertFeed
+          aiEvents={aiEvents}
+          onSelectStudent={handleSelectStudentFromFeed}
+          violationEvents={violationEvents}
+        />
 
         <ProctoringFilterBar
           activeFilter={activeFilter}
@@ -512,6 +567,14 @@ export default function TeacherProctoringRoomPage() {
         onClose={() => setIsCoProctorOpen(false)}
       />
 
+      <ExamClassReportDialog
+        examId={Number(examId)}
+        examTitle={room?.examTitle}
+        isOpen={isClassReportOpen}
+        onClose={() => setIsClassReportOpen(false)}
+        refreshToken={reportRefreshToken}
+      />
+
       <AttemptProctorDrawer
         clipElapsedSeconds={clipElapsedSeconds}
         detail={detail}
@@ -530,6 +593,7 @@ export default function TeacherProctoringRoomPage() {
         remoteStatus={selectedRemoteStatus}
         student={selectedStudent}
         variant="room"
+        violationRefreshToken={reportRefreshToken}
       />
 
       <CloseExamDialog
