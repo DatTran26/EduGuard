@@ -33,14 +33,18 @@ export default function ClassDetailHeader({ classroom, onAction }) {
           <button
             type="button"
             onClick={handleCopy}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs font-mono text-secondary transition-colors duration-150 hover:bg-surface-sunken hover:text-primary focus:outline-none focus:ring-2 focus:ring-brand/20"
+            aria-label="Sao chép mã lớp"
+            className="inline-flex items-center gap-2 rounded-xl border border-info/25 bg-info-muted px-3 py-1.5 transition-all duration-150 hover:border-info/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tertiary focus-visible:ring-offset-2"
             title="Sao chép mã lớp"
           >
-            <span>Mã lớp: {classroom.joinCode}</span>
+            <span className="text-[0.82rem] font-semibold text-info">Mã lớp</span>
+            <span className="font-mono text-sm font-bold tracking-widest text-primary">
+              {classroom.joinCode}
+            </span>
             {copied ? (
-              <FiCheck className="text-success h-3.5 w-3.5" />
+              <FiCheck className="h-4 w-4 shrink-0 text-success" />
             ) : (
-              <FiCopy className="h-3 w-3" />
+              <FiCopy className="h-4 w-4 shrink-0 text-info" />
             )}
           </button>
         </div>

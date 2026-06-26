@@ -4,17 +4,10 @@ import {
   normalizeLoginResponseData,
   unwrapApiResponse,
 } from "./auth-response-helpers";
+import { createApiClientError } from "../utils/apiErrorMessage";
 
 function buildClientError(error) {
-  const message =
-    error.response?.data?.message ||
-    error.response?.data?.title ||
-    error.message ||
-    "Đã có lỗi xảy ra trong lúc gọi API.";
-  const nextError = new Error(message);
-
-  nextError.status = error.response?.status;
-  return nextError;
+  return createApiClientError(error, "Đã có lỗi xảy ra trong lúc gọi API.");
 }
 
 async function requestAuthApi(requestFactory) {

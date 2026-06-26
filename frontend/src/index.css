@@ -415,6 +415,12 @@ button {
   --summary-card-border: rgb(100 116 139 / 18%);
 }
 
+.eg-exam-summary-card-danger {
+  --summary-card-accent: #dc2626;
+  --summary-card-bg: rgb(220 38 38 / 9%);
+  --summary-card-border: rgb(220 38 38 / 16%);
+}
+
 .eg-classroom-title-link {
   display: inline-flex;
   max-width: max-content;

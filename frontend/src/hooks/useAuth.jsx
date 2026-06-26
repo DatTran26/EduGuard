@@ -4,6 +4,8 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { authApi } from "../api/authApi";
 import { userApi } from "../api/userApi";
 import { normalizeUserId } from "../api/apiHelpers";
+import { devLog } from "../utils/devLogger";
+import { getAccessTokenRoles } from "../utils/jwtClaims";
 import {
   clearStoredTokens,
   clearStoredUser,
@@ -68,15 +70,31 @@ function getUserRoles(user) {
 }
 
 // Hàm này so sánh hai tập role bất kể thứ tự để biết token hiện tại có bị lệch quyền với DB hay không.
-function hasSameRoles(firstUser, secondUser) {
-  const firstRoles = [...getUserRoles(firstUser)].sort();
-  const secondRoles = [...getUserRoles(secondUser)].sort();
+function hasSameRoleSets(firstRoles = [], secondRoles = []) {
+  const normalizedFirstRoles = [...firstRoles].filter(Boolean).sort();
+  const normalizedSecondRoles = [...secondRoles].filter(Boolean).sort();
 
-  if (firstRoles.length !== secondRoles.length) {
+  if (normalizedFirstRoles.length !== normalizedSecondRoles.length) {
     return false;
   }
 
-  return firstRoles.every((role, index) => role === secondRoles[index]);
+  return normalizedFirstRoles.every((role, index) => role === normalizedSecondRoles[index]);
+}
+
+function hasSameRoles(firstUser, secondUser) {
+  return hasSameRoleSets(getUserRoles(firstUser), getUserRoles(secondUser));
+}
+
+// Hàm này so role trong JWT với role từ /auth/me để phát hiện token cũ sau khi quyền được cập nhật.
+function accessTokenRolesMismatch(accessToken, user) {
+  const tokenRoles = getAccessTokenRoles(accessToken);
+  const userRoles = getUserRoles(user);
+
+  if (tokenRoles.length === 0 && userRoles.length === 0) {
+    return false;
+  }
+
+  return !hasSameRoleSets(tokenRoles, userRoles);
 }
 
 // Hàm này lưu session mới sau login, register hoặc refresh profile.
@@ -183,7 +201,17 @@ export function AuthProvider({ children }) {
         }
 
         // Nếu role trong DB đã đổi sau lúc user đăng nhập, mình refresh token để claim Role khớp lại.
-        if (currentSession.refreshToken && !hasSameRoles(currentSession.user, nextUser)) {
+        const storedRolesChanged = !hasSameRoles(currentSession.user, nextUser);
+        const jwtRolesChanged = accessTokenRolesMismatch(currentSession.accessToken, nextUser);
+
+        if (currentSession.refreshToken && (storedRolesChanged || jwtRolesChanged)) {
+          if (jwtRolesChanged) {
+            devLog.auth("JWT role lệch với /auth/me — đang refresh token", {
+              tokenRoles: getAccessTokenRoles(currentSession.accessToken),
+              userRoles: getUserRoles(nextUser),
+            });
+          }
+
           const refreshResponse = await authApi.refreshToken(currentSession.refreshToken);
           nextAccessToken = refreshResponse.data.accessToken;
           nextRefreshToken = refreshResponse.data.refreshToken;
@@ -242,6 +270,11 @@ export function AuthProvider({ children }) {
 
     persistSession(nextSession);
     setSession(nextSession);
+    devLog.auth("Session applied", {
+      email: nextSession.user?.email,
+      role: nextSession.user?.role,
+      roles: nextSession.user?.roles,
+    });
     return nextSession;
   }
 
@@ -295,6 +328,7 @@ export function AuthProvider({ children }) {
     } catch {
       // Đoạn này mình chủ động bỏ qua vì kể cả revoke lỗi thì phía client vẫn nên thoát phiên.
     } finally {
+      devLog.auth("Logout — cleared local session");
       clearSessionStorage();
       setSession({
         accessToken: "",

@@ -102,6 +102,10 @@ function getQuestionPublishAnswers(question) {
 }
 
 // Hàm này đổi status đề thi sang màu badge để danh sách và trang chi tiết nhìn thống nhất hơn.
+export function canCloseExamEarly(exam) {
+  return Boolean(exam?.isPublished && exam?.canEdit && exam?.statusLabel === "Đang mở");
+}
+
 export function getExamStatusVariant(statusLabel) {
   if (statusLabel === "Bản nháp") {
     return "neutral";

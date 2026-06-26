@@ -17,9 +17,9 @@ import {
   buildStudentExamAttemptPath,
   buildStudentDeviceCheckPath,
   buildStudentExamLobbyPath,
-  buildTeacherProctoringPath,
 } from "../../../routes/routeConfig";
-import { isExamLobbyRequired, isProctoringRequired } from "../../proctoring/utils/proctoringRouting";
+import ProctoringRoomLink from "../../proctoring/components/ProctoringRoomLink";
+import { isExamLobbyRequired, isLiveProctoringRoomAvailable, isProctoringRequired, shouldRequireDeviceCheckBeforeAttempt } from "../../proctoring/utils/proctoringRouting";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import AttemptMonitorPanel from "../../anti-cheat/components/AttemptMonitorPanel";
 import ExamForm from "../components/ExamForm";
@@ -28,9 +28,11 @@ import { validateQuestionImportFile } from "../components/teacher-question-works
 import { buildDraftQuestion, resequenceDraftQuestions } from "./exam-create-draft-helpers";
 import {
   buildExamPublishIssueList,
+  canCloseExamEarly,
   getExamStatusVariant,
   splitPublishErrorMessage,
 } from "../examHelpers";
+import CloseExamDialog from "../components/CloseExamDialog";
 import Skeleton, { SkeletonText } from "../../../components/common/Skeleton";
 
 function buildEditableImportPreviewQuestions(questions = []) {
@@ -189,6 +191,8 @@ export default function ExamDetailPage() {
     examId: null,
     isOpen: false,
   });
+  const [isCloseExamDialogOpen, setIsCloseExamDialogOpen] = useState(false);
+  const [isClosingExam, setIsClosingExam] = useState(false);
   const isManagementPanelOpen =
     managementPanelState.examId === examId && managementPanelState.isOpen;
 
@@ -721,6 +725,33 @@ export default function ExamDetailPage() {
     }
   }
 
+  async function handleCloseExam() {
+    if (!exam) {
+      return;
+    }
+
+    setIsClosingExam(true);
+
+    try {
+      await examApi.closeEarly(examId);
+      await loadExamDetail({ showPageLoader: false });
+      setIsCloseExamDialogOpen(false);
+      showToast({
+        tone: "success",
+        title: "Đã đóng bài thi",
+        message: "Sinh viên không thể tiếp tục làm bài sau thời điểm này.",
+      });
+    } catch (error) {
+      showToast({
+        tone: "danger",
+        title: "Đóng bài thi thất bại",
+        message: error.message || "Không thể đóng bài thi.",
+      });
+    } finally {
+      setIsClosingExam(false);
+    }
+  }
+
   async function handleStartAttempt() {
     setIsStartingAttempt(true);
 
@@ -730,7 +761,7 @@ export default function ExamDetailPage() {
         return;
       }
 
-      if (isProctoringRequired(exam)) {
+      if (shouldRequireDeviceCheckBeforeAttempt(exam)) {
         navigate(buildStudentDeviceCheckPath(examId));
         return;
       }
@@ -911,11 +942,20 @@ export default function ExamDetailPage() {
             <Button disabled={isStartingAttempt} onClick={handleStartAttempt}>
               {isStartingAttempt ? "Đang vào phòng thi..." : "Bắt đầu làm bài"}
             </Button>
-          ) : exam.settings?.enableLiveProctoring ? (
-            <Button as={Link} to={buildTeacherProctoringPath(exam.id)} variant="secondary">
-              Mở phòng giám sát live
-            </Button>
-          ) : null
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {isLiveProctoringRoomAvailable(exam) ? (
+                <Button as={ProctoringRoomLink} examId={exam.id} variant="secondary">
+                  Mở phòng giám sát live
+                </Button>
+              ) : null}
+              {canCloseExamEarly(exam) ? (
+                <Button onClick={() => setIsCloseExamDialogOpen(true)} variant="danger">
+                  Đóng bài thi
+                </Button>
+              ) : null}
+            </div>
+          )
         }
       />
 
@@ -1193,6 +1233,13 @@ export default function ExamDetailPage() {
           attempts={attempts}
         />
       ) : null}
+
+      <CloseExamDialog
+        isOpen={isCloseExamDialogOpen}
+        isSubmitting={isClosingExam}
+        onCancel={() => setIsCloseExamDialogOpen(false)}
+        onConfirm={handleCloseExam}
+      />
     </div>
   );
 }

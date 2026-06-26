@@ -6,7 +6,13 @@ import {
 } from "../../../signalr/examMonitoringConnection";
 import { useProctoringHubConnection } from "./useProctoringHubConnection";
 
-export function useTeacherWebRtcViewer({ attemptId, enabled, enableAudio = false, videoRef }) {
+export function useTeacherWebRtcViewer({
+  attemptId,
+  enabled,
+  enableAudio = false,
+  sharedHub = null,
+  videoRef,
+}) {
   const peerRef = useRef(null);
   const invokeRef = useRef(null);
   const [remoteStream, setRemoteStream] = useState(null);
@@ -87,10 +93,20 @@ export function useTeacherWebRtcViewer({ attemptId, enabled, enableAudio = false
     [attemptId, cleanupPeer, enabled, videoRef],
   );
 
-  const { isConnected, invoke } = useProctoringHubConnection({
-    enabled,
+  const internalHub = useProctoringHubConnection({
+    enabled: enabled && !sharedHub,
     onEvent: handleHubEvent,
   });
+  const activeHub = sharedHub ?? internalHub;
+  const { isConnected, invoke, registerHandler } = activeHub;
+
+  useEffect(() => {
+    if (!sharedHub || !enabled) {
+      return undefined;
+    }
+
+    return registerHandler(handleHubEvent);
+  }, [enabled, handleHubEvent, registerHandler, sharedHub]);
 
   useEffect(() => {
     invokeRef.current = invoke;

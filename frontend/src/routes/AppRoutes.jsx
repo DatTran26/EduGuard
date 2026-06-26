@@ -17,6 +17,7 @@ import ExamAttemptPage from "../features/exam-attempts/pages/ExamAttemptPage";
 import ExamLobbyPage from "../features/proctoring/pages/ExamLobbyPage";
 import ExamPausedPage from "../features/proctoring/pages/ExamPausedPage";
 import StudentDeviceCheckPage from "../features/proctoring/pages/StudentDeviceCheckPage";
+import ProctoringRoomShell from "../features/proctoring/components/ProctoringRoomShell";
 import TeacherProctoringRoomPage from "../features/proctoring/pages/TeacherProctoringRoomPage";
 import ExamDetailPage from "../features/exams/pages/ExamDetailPage";
 import ExamListPage from "../features/exams/pages/ExamListPage";
@@ -72,6 +73,7 @@ export default function AppRoutes() {
             <Route element={<ExamListPage />} path={routeConfig.adminExams} />
             <Route element={<ExamDetailPage />} path={routeConfig.adminExamDetail} />
             <Route element={<AdminMonitoringPage />} path={routeConfig.adminMonitoring} />
+            <Route element={<TeacherMonitoringPage />} path={routeConfig.adminExamMonitoring} />
             <Route element={<AdminProctoringAiSettingsPage />} path={routeConfig.adminProctoringAi} />
             <Route element={<UserManagementPage />} path={routeConfig.adminUsers} />
             <Route element={<ProfilePage />} path={routeConfig.adminProfile} />
@@ -86,7 +88,6 @@ export default function AppRoutes() {
             <Route element={<QuestionBankPage />} path={routeConfig.teacherQuestionBanks} />
             <Route element={<ExamDetailPage />} path={routeConfig.teacherExamDetail} />
             <Route element={<TeacherMonitoringPage />} path={routeConfig.teacherMonitoring} />
-            <Route element={<TeacherProctoringRoomPage />} path={routeConfig.teacherProctoring} />
             <Route element={<TeacherResultsPage />} path={routeConfig.teacherResults} />
             <Route element={<TeacherNotificationsPage />} path={routeConfig.teacherNotifications} />
             <Route element={<ProfilePage />} path={routeConfig.teacherProfile} />
@@ -101,6 +102,13 @@ export default function AppRoutes() {
             <Route element={<Navigate replace to={routeConfig.studentClassrooms} />} path={routeConfig.studentDashboard} />
             <Route element={<ProfilePage />} path={routeConfig.studentProfile} />
           </Route>
+        </Route>
+      </Route>
+
+      <Route element={<ProtectedRoute allowedRoles={["Teacher", "Admin"]} />}>
+        <Route element={<ProctoringRoomShell />}>
+          <Route element={<TeacherProctoringRoomPage />} path={routeConfig.teacherProctoring} />
+          <Route element={<TeacherProctoringRoomPage />} path={routeConfig.adminProctoring} />
         </Route>
       </Route>
 

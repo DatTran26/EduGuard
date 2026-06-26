@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { FiCpu, FiInfo, FiSave, FiSettings, FiSliders } from "react-icons/fi";
 import { proctoringApi } from "../../../api/proctoringApi";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
-import Input from "../../../components/common/Input";
+import CheckboxField from "../../../components/forms/CheckboxField";
+import TextInput from "../../../components/forms/TextInput";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useToast } from "../../../hooks/useToast";
 
@@ -14,6 +16,19 @@ const defaultForm = {
   secondPersonMinConfidence: 0.65,
   detectionIntervalSeconds: 4,
 };
+
+function SettingsSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-36 rounded-3xl border border-border bg-surface-sunken p-6" />
+      <div className="grid gap-6 xl:grid-cols-2">
+        <div className="h-56 rounded-2xl border border-border bg-surface p-6" />
+        <div className="h-56 rounded-2xl border border-border bg-surface p-6" />
+      </div>
+      <div className="h-72 rounded-2xl border border-border bg-surface p-6" />
+    </div>
+  );
+}
 
 export default function AdminProctoringAiSettingsPage() {
   const { showToast } = useToast();
@@ -68,68 +83,146 @@ export default function AdminProctoringAiSettingsPage() {
     setForm((previous) => ({ ...previous, [field]: value }));
   }
 
+  if (isLoading) {
+    return <SettingsSkeleton />;
+  }
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        description="Cấu hình ngưỡng YOLO và URL dịch vụ AI. API backend proxy frame tới service này."
-        eyebrow="Admin"
-        title="Cấu hình AI giám sát"
-      />
+      <div className="eg-page-hero">
+        <div
+          className="absolute -right-8 -top-8 h-40 w-40 rounded-full blur-3xl"
+          style={{ background: "rgb(99 102 241 / 8%)" }}
+          aria-hidden="true"
+        />
+        <div className="relative space-y-2">
+          <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-info">
+            Quản trị viên
+          </p>
+          <PageHeader
+            description="Cấu hình URL dịch vụ AI và ngưỡng phát hiện YOLO. Backend sẽ proxy khung hình camera tới dịch vụ này khi giám sát thi."
+            title="Cấu hình AI giám sát"
+          />
+        </div>
+      </div>
 
-      <Card className="p-6">
-        {isLoading ? (
-          <p className="text-sm text-secondary">Đang tải…</p>
-        ) : (
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <label className="flex items-center gap-2 text-sm font-medium text-primary">
-              <input
-                checked={form.enableYoloDetection}
-                onChange={(event) => updateField("enableYoloDetection", event.target.checked)}
-                type="checkbox"
-              />
-              Bật phát hiện YOLO
-            </label>
+      <form className="space-y-6" onSubmit={handleSubmit}>
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Card className="space-y-5 p-6">
+            <div className="flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-sunken text-info">
+                <FiSettings size={18} />
+              </span>
+              <div>
+                <h2 className="text-base font-semibold text-primary">Kết nối dịch vụ</h2>
+                <p className="text-sm text-secondary">Địa chỉ FastAPI YOLO mà backend gọi tới.</p>
+              </div>
+            </div>
 
-            <Input
-              label="AI service base URL"
+            <TextInput
+              id="proctoring-ai-service-url"
+              label="URL dịch vụ AI"
+              helperText="Ví dụ: http://127.0.0.1:8800 (local) hoặc http://proctoring-ai:8800 (Docker)."
               onChange={(event) => updateField("aiServiceBaseUrl", event.target.value)}
+              placeholder="http://127.0.0.1:8800"
               value={form.aiServiceBaseUrl}
             />
-            <Input
+          </Card>
+
+          <Card className="space-y-5 p-6">
+            <div className="flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-sunken text-info">
+                <FiCpu size={18} />
+              </span>
+              <div>
+                <h2 className="text-base font-semibold text-primary">Phát hiện YOLO</h2>
+                <p className="text-sm text-secondary">Bật/tắt phân tích khung hình bằng mô hình YOLO.</p>
+              </div>
+            </div>
+
+            <CheckboxField
+              checked={form.enableYoloDetection}
+              helperText="Khi tắt, backend không gửi frame tới dịch vụ AI — chỉ giám sát thủ công qua camera."
+              id="proctoring-ai-enable-yolo"
+              label="Bật phát hiện YOLO"
+              onChange={(event) => updateField("enableYoloDetection", event.target.checked)}
+            />
+          </Card>
+        </div>
+
+        <Card className="space-y-5 p-6">
+          <div className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-sunken text-info">
+              <FiSliders size={18} />
+            </span>
+            <div>
+              <h2 className="text-base font-semibold text-primary">Ngưỡng tin cậy</h2>
+              <p className="text-sm text-secondary">
+                Giá trị từ 0 đến 1 — càng cao thì càng ít cảnh báo nhưng dễ bỏ sót vi phạm.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <TextInput
+              id="proctoring-ai-phone-confidence"
               label="Ngưỡng điện thoại"
+              helperText="Độ tin cậy tối thiểu để gắn nhãn phát hiện điện thoại."
+              max="1"
+              min="0"
               onChange={(event) => updateField("phoneVisibleMinConfidence", Number(event.target.value))}
               step="0.01"
               type="number"
               value={form.phoneVisibleMinConfidence}
             />
-            <Input
-              label="Ngưỡng sách/tài liệu"
+            <TextInput
+              id="proctoring-ai-book-confidence"
+              label="Ngưỡng sách / tài liệu"
+              helperText="Độ tin cậy tối thiểu khi phát hiện sách hoặc tài liệu lận."
+              max="1"
+              min="0"
               onChange={(event) => updateField("bookVisibleMinConfidence", Number(event.target.value))}
               step="0.01"
               type="number"
               value={form.bookVisibleMinConfidence}
             />
-            <Input
+            <TextInput
+              id="proctoring-ai-second-person-confidence"
               label="Ngưỡng người thứ hai"
+              helperText="Độ tin cậy tối thiểu khi phát hiện thêm người trong khung hình."
+              max="1"
+              min="0"
               onChange={(event) => updateField("secondPersonMinConfidence", Number(event.target.value))}
               step="0.01"
               type="number"
               value={form.secondPersonMinConfidence}
             />
-            <Input
-              label="Chu kỳ detect (giây)"
-              onChange={(event) => updateField("detectionIntervalSeconds", Number(event.target.value))}
+            <TextInput
+              id="proctoring-ai-detection-interval"
+              label="Chu kỳ phát hiện (giây)"
+              helperText="Khoảng thời gian giữa hai lần gửi frame tới dịch vụ AI (tối thiểu 2 giây)."
               min="2"
+              onChange={(event) => updateField("detectionIntervalSeconds", Number(event.target.value))}
               type="number"
               value={form.detectionIntervalSeconds}
             />
+          </div>
+        </Card>
 
-            <Button disabled={isSaving} type="submit">
-              {isSaving ? "Đang lưu…" : "Lưu cấu hình"}
-            </Button>
-          </form>
-        )}
-      </Card>
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-neutral px-5 py-4">
+          <div className="flex items-start gap-3 text-sm leading-6 text-secondary">
+            <FiInfo className="mt-0.5 shrink-0 text-info" size={18} />
+            <p>
+              Trọng số mô hình <code className="rounded bg-surface-sunken px-1.5 py-0.5 text-xs">.pt</code> được
+              cấu hình trên máy chủ AI, không qua màn hình này. Cảnh báo chỉ hỗ trợ giáo viên xem xét.
+            </p>
+          </div>
+          <Button className="inline-flex items-center gap-2" disabled={isSaving} type="submit">
+            <FiSave size={16} />
+            {isSaving ? "Đang lưu…" : "Lưu cấu hình"}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

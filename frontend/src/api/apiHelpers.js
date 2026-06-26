@@ -1,5 +1,6 @@
 import { getStoredUser } from "../utils/tokenStorage";
 import { parseDateValue } from "../utils/formatDate";
+import { createApiClientError } from "../utils/apiErrorMessage";
 
 export const QUESTION_TYPE_VALUE_BY_CODE = {
   1: "SingleChoice",
@@ -35,20 +36,11 @@ export function unwrapApiResponse(response) {
 
 // Hàm này gom message lỗi từ axios/backend để toast trên UI luôn hiển thị dễ hiểu.
 export function buildClientError(error) {
-  if (error instanceof Error && typeof error.status !== "undefined") {
+  if (error instanceof Error && error.userMessage) {
     return error;
   }
 
-  const message =
-    error.response?.data?.message ||
-    error.response?.data?.title ||
-    error.message ||
-    "Đã có lỗi xảy ra trong lúc gọi API.";
-  const nextError = new Error(message);
-
-  nextError.status = error.response?.status;
-  nextError.details = Array.isArray(error.response?.data?.errors) ? error.response.data.errors : [];
-  return nextError;
+  return createApiClientError(error);
 }
 
 // Hàm này bọc lời gọi axios để mọi API module đều xử lý lỗi theo một chuẩn chung.

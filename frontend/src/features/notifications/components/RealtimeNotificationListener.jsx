@@ -8,7 +8,7 @@ import { useToast } from "../../../hooks/useToast";
 import { appendNotification } from "../notificationStorage";
 
 function normalizeNotificationTone(tone) {
-  if (tone === "success" || tone === "danger") {
+  if (tone === "success" || tone === "danger" || tone === "warning") {
     return tone;
   }
 
@@ -41,6 +41,7 @@ export default function RealtimeNotificationListener() {
 
       appendNotification(nextItem);
       window.dispatchEvent(new CustomEvent("eduguard:notification", { detail: nextItem }));
+      window.dispatchEvent(new CustomEvent("eduguard:notification-updated"));
 
       showToast({
         tone: nextItem.tone,

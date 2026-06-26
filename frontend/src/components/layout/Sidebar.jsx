@@ -109,13 +109,16 @@ function getNavigationItemIsActive(itemPath, pathname) {
   if (itemPath === routeConfig.teacherExams) {
     return (
       pathname === routeConfig.teacherExams ||
-      Boolean(matchPath(routeConfig.teacherExamDetail, pathname)) ||
-      Boolean(matchPath(routeConfig.teacherProctoring, pathname))
+      (Boolean(matchPath(routeConfig.teacherExamDetail, pathname)) &&
+        !Boolean(matchPath(routeConfig.teacherProctoring, pathname)))
     );
   }
 
   if (itemPath === routeConfig.teacherMonitoring) {
-    return pathname === routeConfig.teacherMonitoring;
+    return (
+      pathname === routeConfig.teacherMonitoring ||
+      Boolean(matchPath(routeConfig.teacherProctoring, pathname))
+    );
   }
 
   if (itemPath === routeConfig.teacherResults) {
@@ -222,22 +225,19 @@ export default function Sidebar({
                   isCollapsed ? "lg:px-2 lg:py-2.5 lg:rounded-[16px]" : "",
                 )}
                 onClick={onNavigate}
-                title={isCollapsed ? item.label : undefined}
+                title={item.label}
                 to={item.path}
               >
-                <span className={cn("flex items-center gap-3", isCollapsed ? "lg:justify-center" : "")}>
+                <span className={cn("flex min-w-0 items-center gap-3", isCollapsed ? "lg:justify-center" : "")}>
                   <span
                     className={cn(
-                      "inline-flex h-9 w-9 items-center justify-center rounded-[14px] border border-white/10 bg-white/6 text-white/90",
-                      isCollapsed ? "lg:flex" : "hidden lg:flex",
+                      "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border border-white/10 bg-white/6 text-white/90",
+                      "max-lg:h-auto max-lg:w-auto max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent",
                     )}
                   >
-                    <ItemIcon className="h-[18px] w-[18px]" />
+                    <ItemIcon className="h-[18px] w-[18px] max-lg:text-slate-300" />
                   </span>
-                  <span className={cn("flex items-center gap-3", isCollapsed ? "lg:hidden" : "")}>
-                    <ItemIcon className="h-[18px] w-[18px] text-slate-300 lg:hidden" />
-                    <span>{item.label}</span>
-                  </span>
+                  <span className={cn("min-w-0 truncate", isCollapsed ? "lg:hidden" : "")}>{item.label}</span>
                 </span>
               </Link>
             );

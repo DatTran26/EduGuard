@@ -16,17 +16,16 @@ import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { getClassroomListPathByRole, routeConfig } from "../../../routes/routeConfig";
 import { formatShortDate, formatShortDateTime } from "../../../utils/formatDate";
+import { buildTeacherExamMonitoringPath, isTeacherProctoringPath, openTeacherProctoringRoom } from "../../proctoring/utils/proctoringRouting";
 import AssignmentSection from "../../assignments/components/AssignmentSection";
 import CreateClassroomForm from "../components/CreateClassroomForm";
 import Skeleton from "../../../components/common/Skeleton";
 import TeacherClassroomWorkspace from "../components/TeacherClassroomWorkspace";
 import ClassDetailHeader from "../components/ClassDetailHeader";
-import ClassQuickStats from "../components/ClassQuickStats";
+import TeacherClassroomTabBar from "../components/TeacherClassroomTabBar";
+import ClassQuickStatsPanel from "../components/ClassQuickStats";
 import ClassOverviewPanel from "../components/ClassOverviewPanel";
-import {
-  TEACHER_CLASSROOM_TABS,
-  normalizeTeacherClassroomTab,
-} from "../components/teacher-classroom-tabs";
+import { normalizeTeacherClassroomTab } from "../components/teacher-classroom-tabs";
 
 function buildQuickInfoItems(classroom) {
   return [
@@ -491,7 +490,15 @@ export default function ClassroomDetailPage() {
     } else if (actionType === "view-exam") {
       setSearchParams({ tab: "exams" });
     } else if (actionType === "monitor-exam") {
-      navigate(`${routeConfig.teacherMonitoring}?examId=${targetId}`);
+      const targetExam = exams.find((exam) => Number(exam.id) === Number(targetId));
+      const destination = targetExam
+        ? buildTeacherExamMonitoringPath(targetExam)
+        : `${routeConfig.teacherMonitoring}?examId=${targetId}`;
+      if (isTeacherProctoringPath(destination)) {
+        openTeacherProctoringRoom(targetId);
+      } else {
+        navigate(destination);
+      }
     }
   }
 
@@ -626,12 +633,15 @@ export default function ClassroomDetailPage() {
         {/* KPI Skeleton */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-20 w-full rounded-2xl animate-pulse" />
+            <Skeleton key={i} className="h-20 w-full rounded-[20px] animate-pulse" />
           ))}
         </div>
 
         {/* Tabs Skeleton */}
-        <Skeleton className="h-12 w-full rounded-full animate-pulse" />
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-12 flex-1 rounded-full animate-pulse" />
+          <Skeleton className="h-10 w-10 shrink-0 rounded-full animate-pulse" />
+        </div>
 
         {/* Content Skeleton */}
         <div className="grid gap-6 lg:grid-cols-[1.8fr_1.2fr]">
@@ -679,30 +689,18 @@ export default function ClassroomDetailPage() {
       )}
 
       {shouldShowTeacherWorkspace ? (
-        <ClassQuickStats stats={quickStats} />
+        <ClassQuickStatsPanel stats={quickStats} layout="grid" />
       ) : null}
 
       {shouldShowTeacherWorkspace ? (
-        <div className="sticky top-[64px] z-10 -mx-4 px-4 py-3 bg-[#F8FAFC]/80 backdrop-blur-md border-b border-border/50 transition-all duration-150">
-          <div className="rounded-full border border-border bg-surface p-1 shadow-sm max-w-fit overflow-x-auto scrollbar-none">
-            <div className="flex gap-1">
-              {TEACHER_CLASSROOM_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => handleTeacherTabChange(tab.id)}
-                  className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all duration-150 whitespace-nowrap ${
-                    activeTeacherTab === tab.id
-                      ? "bg-brand text-white shadow-sm"
-                      : "text-secondary hover:bg-surface-sunken hover:text-primary"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <TeacherClassroomTabBar
+          activeTab={activeTeacherTab}
+          onTabChange={handleTeacherTabChange}
+          classroom={classroom}
+          onEdit={() => setIsEditClassroomFormVisible(true)}
+          onDelete={handleDeleteClassroom}
+          isSaving={isSaving}
+        />
       ) : null}
 
       {shouldShowTeacherWorkspace && activeTeacherTab === "overview" && (
@@ -719,7 +717,6 @@ export default function ClassroomDetailPage() {
             />
           ) : (
             <ClassOverviewPanel
-              classroom={classroom}
               members={members}
               assignments={assignments}
               submissionsByAssignmentId={submissionsByAssignmentId}
@@ -728,9 +725,6 @@ export default function ClassroomDetailPage() {
               warningCountByExamId={warningCountByExamId}
               notifications={notifications}
               onAction={handleHeaderAction}
-              onEdit={() => setIsEditClassroomFormVisible(true)}
-              onDelete={handleDeleteClassroom}
-              isSaving={isSaving}
             />
           )}
         </div>
