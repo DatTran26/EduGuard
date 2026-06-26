@@ -64,6 +64,7 @@ export default function TeacherProctoringRoomPage() {
   const handleRoomHubEvent = useCallback(
     (eventName) => {
       if (
+        eventName === EXAM_MONITORING_EVENTS.studentJoinedExamLate ||
         eventName === EXAM_MONITORING_EVENTS.liveStreamConnected ||
         eventName === EXAM_MONITORING_EVENTS.liveStreamStopped ||
         eventName === EXAM_MONITORING_EVENTS.liveStreamFailed ||

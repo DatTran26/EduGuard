@@ -4,7 +4,6 @@ import {
   NOTIFICATION_EVENTS,
 } from "../../../signalr/notificationConnection";
 import { useAuth } from "../../../hooks/useAuth";
-import { useToast } from "../../../hooks/useToast";
 import { appendNotification } from "../notificationStorage";
 
 function normalizeNotificationTone(tone) {
@@ -17,7 +16,6 @@ function normalizeNotificationTone(tone) {
 
 export default function RealtimeNotificationListener() {
   const { accessToken, isAuthenticated } = useAuth();
-  const { showToast } = useToast();
 
   useEffect(() => {
     if (!isAuthenticated || !accessToken) {
@@ -42,12 +40,6 @@ export default function RealtimeNotificationListener() {
       appendNotification(nextItem);
       window.dispatchEvent(new CustomEvent("eduguard:notification", { detail: nextItem }));
       window.dispatchEvent(new CustomEvent("eduguard:notification-updated"));
-
-      showToast({
-        tone: nextItem.tone,
-        title: nextItem.title,
-        message: nextItem.message,
-      });
     }
 
     connection.on(NOTIFICATION_EVENTS.receiveNotification, handleNotification);
@@ -57,7 +49,7 @@ export default function RealtimeNotificationListener() {
       connection.off(NOTIFICATION_EVENTS.receiveNotification, handleNotification);
       connection.stop().catch(() => {});
     };
-  }, [accessToken, isAuthenticated, showToast]);
+  }, [accessToken, isAuthenticated]);
 
   return null;
 }

@@ -443,11 +443,7 @@ public class NotificationService : INotificationService
             .FirstOrDefaultAsync(c => c.Id == classroomId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy lớp học.");
 
-        var isTeacher = classroom.TeacherId == userId;
-        var isStudent = await _context.ClassroomMembers
-            .AnyAsync(cm => cm.ClassroomId == classroomId && cm.StudentId == userId && cm.Status == ClassroomMemberStatus.Active, ct);
-
-        if (!isTeacher && !isStudent)
+        if (classroom.TeacherId != userId)
         {
             throw new UnauthorizedAccessException("Bạn không có quyền xem thông báo của lớp học này.");
         }

@@ -177,7 +177,6 @@ export default function AttemptMonitorPanel({
 
     function handleWarning(rawWarning) {
       const warning = normalizeRealtimeAntiCheatWarning(rawWarning);
-      const eventMeta = getAntiCheatEventMeta(warning.type);
 
       onAntiCheatWarning?.(warning);
 
@@ -192,12 +191,6 @@ export default function AttemptMonitorPanel({
           ...previousLogs.filter((logItem) => logItem.id !== warning.id),
         ]);
       }
-
-      showToast({
-        tone: eventMeta.variant === "danger" ? "danger" : "info",
-        title: "Cảnh báo phòng thi",
-        message: `${warning.studentName || "Học sinh"}: ${eventMeta.label}`,
-      });
     }
 
     async function startConnection() {
@@ -252,7 +245,7 @@ export default function AttemptMonitorPanel({
           connection.stop().catch(() => {});
         });
     };
-  }, [exam?.enableAntiCheat, exam?.id, isSessionLive, onAntiCheatWarning, showToast]);
+  }, [exam?.enableAntiCheat, exam?.id, isSessionLive, onAntiCheatWarning]);
 
   async function handleInspectAttempt(attemptId) {
     if (!exam.enableAntiCheat) {

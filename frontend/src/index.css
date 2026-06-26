@@ -35,6 +35,7 @@
 
 :root {
   --radius: 0.5rem;
+  --eg-shell-header-height: 4rem;
 }
 
 :root {
@@ -601,9 +602,9 @@ button {
 
 .eg-toast-viewport {
   position: fixed;
-  top: 20px;
+  top: calc(var(--eg-shell-header-height, 4rem) + 12px);
   right: 20px;
-  z-index: 90;
+  z-index: 30;
   display: flex;
   width: min(360px, calc(100vw - 32px));
   flex-direction: column;
