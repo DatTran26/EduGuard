@@ -5,6 +5,7 @@ import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import { useToast } from "../../../hooks/useToast";
+import Skeleton from "../../../components/common/Skeleton";
 
 export default function CoProctorPanel({ examId }) {
   const { showToast } = useToast();
@@ -103,7 +104,10 @@ export default function CoProctorPanel({ examId }) {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-secondary">Đang tải…</p>
+        <div className="space-y-2 animate-pulse">
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <Skeleton className="h-12 w-full rounded-xl" />
+        </div>
       ) : proctors.length ? (
         <ul className="space-y-2">
           {proctors.map((proctor) => (

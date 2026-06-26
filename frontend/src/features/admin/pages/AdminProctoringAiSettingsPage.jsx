@@ -5,6 +5,7 @@ import Card from "../../../components/common/Card";
 import Input from "../../../components/common/Input";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useToast } from "../../../hooks/useToast";
+import { SkeletonForm } from "../../../components/common/Skeleton";
 
 const defaultForm = {
   enableYoloDetection: true,
@@ -78,7 +79,7 @@ export default function AdminProctoringAiSettingsPage() {
 
       <Card className="p-6">
         {isLoading ? (
-          <p className="text-sm text-secondary">Đang tải…</p>
+          <SkeletonForm fields={6} />
         ) : (
           <form className="space-y-4" onSubmit={handleSubmit}>
             <label className="flex items-center gap-2 text-sm font-medium text-primary">

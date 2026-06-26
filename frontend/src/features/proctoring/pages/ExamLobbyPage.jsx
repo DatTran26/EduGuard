@@ -7,6 +7,7 @@ import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useToast } from "../../../hooks/useToast";
+import Skeleton from "../../../components/common/Skeleton";
 import {
   buildStudentDeviceCheckPath,
   buildStudentExamDetailPath,
@@ -131,8 +132,31 @@ export default function ExamLobbyPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <Card className="p-6 text-sm text-secondary">Đang tải phòng chờ…</Card>
+      <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 animate-pulse">
+        <div className="flex justify-between items-center border-b border-border/60 pb-5">
+          <div className="space-y-3 w-1/3">
+            <Skeleton className="h-4 w-24 rounded-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+          </div>
+          <Skeleton className="h-10 w-32 rounded-xl" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-[1.5fr_1fr]">
+          <Card className="p-6 space-y-4">
+            <Skeleton className="h-6 w-32" />
+            <div className="flex justify-center py-8">
+              <Skeleton className="h-32 w-32 rounded-full" />
+            </div>
+            <Skeleton className="h-8 w-full" />
+          </Card>
+          <Card className="p-6 space-y-4">
+            <Skeleton className="h-6 w-32" />
+            <div className="space-y-3">
+              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+          </Card>
+        </div>
       </div>
     );
   }

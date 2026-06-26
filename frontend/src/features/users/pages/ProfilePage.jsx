@@ -17,6 +17,7 @@ import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import FormErrorSummary from "../../../components/forms/FormErrorSummary";
 import TextInput from "../../../components/forms/TextInput";
+import Skeleton, { SkeletonAvatar, SkeletonForm } from "../../../components/common/Skeleton";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { getRoleLabel } from "../../../routes/roleRoutes";
@@ -275,7 +276,29 @@ export default function ProfilePage() {
   }
 
   if (isLoading) {
-    return <div className="eg-feedback-panel">Đang tải hồ sơ cá nhân...</div>;
+    return (
+      <div className="space-y-6 animate-pulse">
+        {/* Banner header skeleton */}
+        <div className="h-[200px] w-full rounded-[32px] bg-surface-sunken border border-border/40" />
+        
+        {/* Main layout skeleton */}
+        <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">
+          <div className="space-y-6">
+            <div className="h-[320px] w-full rounded-[24px] bg-surface border border-border/50 p-6 flex flex-col items-center justify-center space-y-4">
+              <SkeletonAvatar size="lg" />
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+          </div>
+          <div className="space-y-6">
+            <div className="rounded-[24px] border border-border/50 bg-surface p-6 space-y-6">
+              <Skeleton className="h-8 w-48" />
+              <SkeletonForm fields={4} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const effectiveProfile = profile ?? user;
