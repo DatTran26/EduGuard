@@ -203,8 +203,8 @@ bind_addresses:
   - ""
 rtc:
   tcp_port: 7881
-  port_range_start: 50000
-  port_range_end: 50100
+  port_range_start: 57000
+  port_range_end: 57100
   use_external_ip: false
   node_ip: $NodeIp
 keys:
@@ -259,7 +259,7 @@ function Enable-LanFirewallRules {
         @{ Name = "EduGuard Vite 5173"; Protocol = "TCP"; Port = 5173 },
         @{ Name = "EduGuard API 5157"; Protocol = "TCP"; Port = 5157 },
         @{ Name = "LiveKit WS 7880"; Protocol = "TCP"; Port = 7880 },
-        @{ Name = "LiveKit Media UDP"; Protocol = "UDP"; Port = "50000-50100" }
+        @{ Name = "LiveKit Media UDP"; Protocol = "UDP"; Port = "57000-57100" }
     )
 
     foreach ($r in $firewallRules) {

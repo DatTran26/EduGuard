@@ -18,7 +18,28 @@ except ImportError:
 
 app = FastAPI(title="EduGuard Proctoring AI Service", version="0.3.0")
 
-MODEL_PATH = os.environ.get("PROCTORING_MODEL", "yolo11n.pt")
+SERVICE_ROOT = Path(__file__).resolve().parent
+SHARED_MODELS_DIR = SERVICE_ROOT.parent / "models"
+
+
+def resolve_model_path(raw: str) -> str:
+    path = Path(raw)
+    if path.is_file():
+        return str(path.resolve())
+
+    candidates = (
+        SERVICE_ROOT / raw,
+        SHARED_MODELS_DIR / raw,
+        SHARED_MODELS_DIR / path.name,
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate.resolve())
+
+    return raw
+
+
+MODEL_PATH = resolve_model_path(os.environ.get("PROCTORING_MODEL", "yolo26s.pt"))
 
 try:
     from ultralytics import YOLO
