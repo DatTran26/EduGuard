@@ -11,6 +11,9 @@ public class NotificationDto
     public string Type { get; set; } = string.Empty;
     public string SenderName { get; set; } = string.Empty;
     public string ClassroomName { get; set; } = string.Empty;
+    public int? RelatedExamId { get; set; }
+    public int? RelatedExamAttemptId { get; set; }
+    public string? ActionUrl { get; set; }
     public bool IsRead { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? ReadAt { get; set; }

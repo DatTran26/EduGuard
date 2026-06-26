@@ -59,6 +59,7 @@ public class ExamService : IExamService
 
     private readonly IExamRepository _examRepository;
     private readonly IClassroomRepository _classroomRepository;
+    private readonly IProctoringRepository _proctoringRepository;
     private readonly IValidator<CreateExamRequest> _createValidator;
     private readonly IValidator<UpdateExamRequest> _updateValidator;
     private readonly IValidator<PatchExamRequest> _patchValidator;
@@ -75,6 +76,7 @@ public class ExamService : IExamService
     public ExamService(
         IExamRepository examRepository,
         IClassroomRepository classroomRepository,
+        IProctoringRepository proctoringRepository,
         IValidator<CreateExamRequest> createValidator,
         IValidator<UpdateExamRequest> updateValidator,
         IValidator<PatchExamRequest> patchValidator,
@@ -90,6 +92,7 @@ public class ExamService : IExamService
     {
         _examRepository = examRepository;
         _classroomRepository = classroomRepository;
+        _proctoringRepository = proctoringRepository;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
         _patchValidator = patchValidator;
@@ -823,6 +826,9 @@ public class ExamService : IExamService
     {
         var classroom = await ClassroomAccessHelper.RequireClassroomAsync(_classroomRepository, exam.ClassroomId, ct);
         if (roles.Contains("Admin") || exam.TeacherId == userId)
+            return;
+
+        if (roles.Contains("Teacher") && await _proctoringRepository.IsAssignedProctorAsync(exam.Id, userId, ct))
             return;
 
         await ClassroomAccessHelper.EnsureCanAccessClassroomAsync(_classroomRepository, classroom, userId, roles, ct);

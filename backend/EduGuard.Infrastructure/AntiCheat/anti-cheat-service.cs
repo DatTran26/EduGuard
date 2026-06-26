@@ -17,7 +17,9 @@ public class AntiCheatService : IAntiCheatService
 
     private readonly ICheatingLogRepository _cheatingLogRepository;
     private readonly IExamMonitoringNotifier _examMonitoringNotifier;
+    private readonly IExamMonitoringService _examMonitoringService;
     private readonly IExamRepository _examRepository;
+    private readonly INotificationService _notificationService;
     private readonly IValidator<CreateCheatingLogRequest> _createLogValidator;
     private readonly ILogger<AntiCheatService> _logger;
     private readonly ICacheService _cacheService;
@@ -27,7 +29,9 @@ public class AntiCheatService : IAntiCheatService
     public AntiCheatService(
         ICheatingLogRepository cheatingLogRepository,
         IExamMonitoringNotifier examMonitoringNotifier,
+        IExamMonitoringService examMonitoringService,
         IExamRepository examRepository,
+        INotificationService notificationService,
         IValidator<CreateCheatingLogRequest> createLogValidator,
         ILogger<AntiCheatService> logger,
         ICacheService cacheService,
@@ -36,7 +40,9 @@ public class AntiCheatService : IAntiCheatService
     {
         _cheatingLogRepository = cheatingLogRepository;
         _examMonitoringNotifier = examMonitoringNotifier;
+        _examMonitoringService = examMonitoringService;
         _examRepository = examRepository;
+        _notificationService = notificationService;
         _createLogValidator = createLogValidator;
         _logger = logger;
         _cacheService = cacheService;
@@ -76,6 +82,7 @@ public class AntiCheatService : IAntiCheatService
         var logDto = AntiCheatMapper.MapLog(log);
         var logCount = await _cheatingLogRepository.CountByAttemptIdAsync(attempt.Id, ct);
         await SendAntiCheatWarningAsync(attempt, logDto, logCount, ct);
+        await PersistAntiCheatNotificationAsync(attempt, cheatingType, log.Description, attempt.SuspicionScore, ct);
         await _cacheInvalidator.InvalidateExamAntiCheatSummaryAsync(attempt.ExamId, ct);
 
         return logDto;
@@ -114,7 +121,12 @@ public class AntiCheatService : IAntiCheatService
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
 
         if (!roles.Contains("Admin") && exam.TeacherId != userId)
-            throw new UnauthorizedAccessException("Chỉ giáo viên tạo đề mới được xem tổng hợp anti-cheat.");
+        {
+            if (!roles.Contains("Teacher"))
+                throw new UnauthorizedAccessException("Chỉ giáo viên tạo đề mới được xem tổng hợp anti-cheat.");
+
+            await _examMonitoringService.EnsureCanMonitorExamAsync(examId, userId, roles, ct);
+        }
 
         var cacheKey = RedisKeyNames.ExamAntiCheatSummary(_redisOptions.InstanceName, examId);
         var cached = await _cacheService.GetAsync<ExamAntiCheatSummaryDto>(cacheKey, ct);
@@ -209,6 +221,32 @@ public class AntiCheatService : IAntiCheatService
         }
     }
 
+    private async Task PersistAntiCheatNotificationAsync(
+        ExamAttempt attempt,
+        CheatingType cheatingType,
+        string description,
+        int suspicionScore,
+        CancellationToken ct)
+    {
+        try
+        {
+            await _notificationService.CreateAntiCheatAlertNotificationAsync(
+                attempt,
+                cheatingType,
+                description,
+                suspicionScore,
+                ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Không thể lưu thông báo anti-cheat cho đề thi {ExamId}, lượt làm {AttemptId}.",
+                attempt.ExamId,
+                attempt.Id);
+        }
+    }
+
     private async Task<ExamAttempt> EnsureTeacherCanViewAttemptAsync(
         int attemptId, string userId, IReadOnlyList<string> roles, CancellationToken ct)
     {
@@ -217,6 +255,12 @@ public class AntiCheatService : IAntiCheatService
 
         if (roles.Contains("Admin") || attempt.Exam.TeacherId == userId)
             return attempt;
+
+        if (roles.Contains("Teacher"))
+        {
+            await _examMonitoringService.EnsureCanMonitorExamAsync(attempt.ExamId, userId, roles, ct);
+            return attempt;
+        }
 
         throw new UnauthorizedAccessException("Chỉ giáo viên tạo đề mới được xem log anti-cheat.");
     }

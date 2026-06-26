@@ -1,3 +1,5 @@
+using EduGuard.Application.DTOs.Exams;
+
 namespace EduGuard.Application.DTOs.Proctoring;
 
 public class ProctoringRoomDto
@@ -33,6 +35,8 @@ public class ProctoringStateSummaryDto
     public string? WatchedByTeacherId { get; set; }
     public string? WatchedByTeacherName { get; set; }
     public DateTime? LatestWarningAt { get; set; }
+    public bool IsLateJoin { get; set; }
+    public int LateByMinutes { get; set; }
 }
 
 public class ProctoringAttemptDetailDto
@@ -108,9 +112,22 @@ public class ExamProctorAssignmentDto
     public DateTime CreatedAt { get; set; }
 }
 
+public class ProctorCandidateDto
+{
+    public string TeacherId { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
+
 public class AddExamProctorRequest
 {
     public string TeacherId { get; set; } = string.Empty;
+}
+
+public class AssignedProctorExamDto : ExamDto
+{
+    public string ClassroomName { get; set; } = string.Empty;
+    public string OwnerTeacherName { get; set; } = string.Empty;
 }
 
 public class ProctoringAiSettingsDto

@@ -2,7 +2,9 @@ using EduGuard.Application.DTOs.Notifications;
 using EduGuard.Application.Services.Interfaces;
 using EduGuard.Domain.Entities;
 using EduGuard.Domain.Enums;
+using EduGuard.Infrastructure.AntiCheat;
 using EduGuard.Infrastructure.Data;
+using EduGuard.Infrastructure.Exams;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -14,6 +16,8 @@ namespace EduGuard.Infrastructure.Notifications;
 
 public class NotificationService : INotificationService
 {
+    private static readonly TimeSpan AntiCheatDedupeWindow = TimeSpan.FromSeconds(90);
+
     private readonly AppDbContext _context;
     private readonly INotificationNotifier _notifier;
 
@@ -94,6 +98,312 @@ public class NotificationService : INotificationService
         }
     }
 
+    public async Task CreateProctorInviteNotificationAsync(
+        string senderId,
+        string invitedTeacherId,
+        int examId,
+        int classroomId,
+        string examTitle,
+        CancellationToken ct = default)
+    {
+        var inviter = await _context.Users.FirstOrDefaultAsync(u => u.Id == senderId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy người gửi.");
+
+        var safeTitle = examTitle.Trim();
+        var notification = new Notification
+        {
+            Title = "Lời mời giám sát bài thi",
+            Content = $"{inviter.FullName} đã mời bạn vào phòng giám sát đề «{safeTitle}».",
+            Type = "ProctorInvite",
+            SenderId = senderId,
+            ClassroomId = classroomId,
+            RelatedExamId = examId,
+            ActionUrl = $"/teacher/exams/{examId}/proctoring",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        notification.UserNotifications.Add(new UserNotification
+        {
+            UserId = invitedTeacherId,
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        _context.Notifications.Add(notification);
+        await _context.SaveChangesAsync(ct);
+
+        var realtimeDto = new RealtimeNotificationDto
+        {
+            Title = notification.Title,
+            Message = notification.Content,
+            Tone = "info",
+            Url = $"/teacher/exams/{examId}/proctoring",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        try
+        {
+            await _notifier.SendToUserAsync(invitedTeacherId, realtimeDto, ct);
+        }
+        catch
+        {
+            // Bỏ qua lỗi gửi realtime để tránh làm gián đoạn luồng chính
+        }
+    }
+
+    public async Task CreateAntiCheatAlertNotificationAsync(
+        ExamAttempt attempt,
+        CheatingType cheatingType,
+        string description,
+        int suspicionScore,
+        CancellationToken ct = default)
+    {
+        var exam = attempt.Exam;
+        if (exam is null || !exam.EnableAntiCheat)
+            return;
+
+        var typeLabel = CheatingTypeHelper.GetDisplayName(cheatingType);
+        var typeCode = CheatingTypeHelper.ToApiType(cheatingType);
+        var sourceKey = $"anti-cheat:{attempt.Id}:{typeCode}";
+        var dedupeCutoff = DateTime.UtcNow.Subtract(AntiCheatDedupeWindow);
+        var isDuplicate = await _context.Notifications.AnyAsync(
+            n => n.SourceKey == sourceKey && n.CreatedAt >= dedupeCutoff,
+            ct);
+
+        if (isDuplicate)
+            return;
+
+        var studentName = attempt.Student?.FullName ?? "Học sinh";
+        var examTitle = exam.Title.Trim();
+        var safeDescription = string.IsNullOrWhiteSpace(description)
+            ? typeLabel
+            : description.Trim();
+        var content =
+            $"{studentName} · {examTitle}: {safeDescription}. Điểm nghi ngờ hiện tại: {suspicionScore}.";
+
+        var recipientIds = await GetExamMonitorTeacherIdsAsync(exam.Id, exam.TeacherId, ct);
+        if (recipientIds.Count == 0)
+            return;
+
+        var notification = new Notification
+        {
+            Title = $"Cảnh báo gian lận · {typeLabel}",
+            Content = content,
+            Type = "AntiCheat",
+            SenderId = attempt.StudentId,
+            ClassroomId = exam.ClassroomId,
+            RelatedExamId = exam.Id,
+            RelatedExamAttemptId = attempt.Id,
+            ActionUrl = $"/teacher/monitoring?examId={exam.Id}&view=logs",
+            SourceKey = sourceKey,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        foreach (var teacherId in recipientIds)
+        {
+            notification.UserNotifications.Add(new UserNotification
+            {
+                UserId = teacherId,
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        _context.Notifications.Add(notification);
+        await _context.SaveChangesAsync(ct);
+
+        var tone = CheatingTypeHelper.IsHighSeverity(cheatingType) || suspicionScore >= 51
+            ? "danger"
+            : "warning";
+        var realtimeDto = new RealtimeNotificationDto
+        {
+            Title = notification.Title,
+            Message = content,
+            Tone = tone,
+            Url = notification.ActionUrl,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        foreach (var teacherId in recipientIds)
+        {
+            try
+            {
+                await _notifier.SendToUserAsync(teacherId, realtimeDto, ct);
+            }
+            catch
+            {
+                // Bỏ qua lỗi gửi realtime để tránh làm gián đoạn luồng chính
+            }
+        }
+
+        if (suspicionScore >= 51)
+        {
+            await TryCreateHighRiskNotificationAsync(
+                attempt,
+                exam,
+                studentName,
+                examTitle,
+                suspicionScore,
+                recipientIds,
+                ct);
+        }
+    }
+
+    public async Task CreateLateJoinNotificationAsync(ExamAttempt attempt, CancellationToken ct = default)
+    {
+        var exam = attempt.Exam;
+        if (exam is null)
+            return;
+
+        var sourceKey = $"late-join:{attempt.Id}";
+        var alreadySent = await _context.Notifications.AnyAsync(n => n.SourceKey == sourceKey, ct);
+        if (alreadySent)
+            return;
+
+        var studentName = attempt.Student?.FullName ?? "Học sinh";
+        var examTitle = exam.Title.Trim();
+        var lateByMinutes = ExamJoinHelper.GetLateByMinutes(exam, attempt.StartedAt);
+        var content =
+            $"{studentName} vào đề «{examTitle}» trễ {lateByMinutes} phút so với giờ mở đề.";
+
+        var recipientIds = await GetExamMonitorTeacherIdsAsync(exam.Id, exam.TeacherId, ct);
+        if (recipientIds.Count == 0)
+            return;
+
+        var actionUrl = exam.Setting?.EnableLiveProctoring == true || exam.Setting?.RequireCamera == true
+            ? $"/teacher/exams/{exam.Id}/proctoring"
+            : $"/teacher/monitoring?examId={exam.Id}";
+
+        var notification = new Notification
+        {
+            Title = "Sinh viên vào thi trễ",
+            Content = content,
+            Type = "LateJoin",
+            SenderId = attempt.StudentId,
+            ClassroomId = exam.ClassroomId,
+            RelatedExamId = exam.Id,
+            RelatedExamAttemptId = attempt.Id,
+            ActionUrl = actionUrl,
+            SourceKey = sourceKey,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        foreach (var teacherId in recipientIds)
+        {
+            notification.UserNotifications.Add(new UserNotification
+            {
+                UserId = teacherId,
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        _context.Notifications.Add(notification);
+        await _context.SaveChangesAsync(ct);
+
+        var realtimeDto = new RealtimeNotificationDto
+        {
+            Title = notification.Title,
+            Message = content,
+            Tone = "warning",
+            Url = actionUrl,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        foreach (var teacherId in recipientIds)
+        {
+            try
+            {
+                await _notifier.SendToUserAsync(teacherId, realtimeDto, ct);
+            }
+            catch
+            {
+                // Bỏ qua lỗi gửi realtime
+            }
+        }
+    }
+
+    private async Task TryCreateHighRiskNotificationAsync(
+        ExamAttempt attempt,
+        Exam exam,
+        string studentName,
+        string examTitle,
+        int suspicionScore,
+        IReadOnlyList<string> recipientIds,
+        CancellationToken ct)
+    {
+        var sourceKey = $"high-risk:{attempt.Id}";
+        var alreadySent = await _context.Notifications.AnyAsync(n => n.SourceKey == sourceKey, ct);
+        if (alreadySent)
+            return;
+
+        var notification = new Notification
+        {
+            Title = "Rủi ro gian lận cao",
+            Content =
+                $"{studentName} · {examTitle} đạt {suspicionScore} điểm nghi ngờ. Cần xem xét ngay trong phòng giám sát.",
+            Type = "AntiCheatHighRisk",
+            SenderId = attempt.StudentId,
+            ClassroomId = exam.ClassroomId,
+            RelatedExamId = exam.Id,
+            RelatedExamAttemptId = attempt.Id,
+            ActionUrl = $"/teacher/exams/{exam.Id}/proctoring",
+            SourceKey = sourceKey,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        foreach (var teacherId in recipientIds)
+        {
+            notification.UserNotifications.Add(new UserNotification
+            {
+                UserId = teacherId,
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        _context.Notifications.Add(notification);
+        await _context.SaveChangesAsync(ct);
+
+        var realtimeDto = new RealtimeNotificationDto
+        {
+            Title = notification.Title,
+            Message = notification.Content,
+            Tone = "danger",
+            Url = notification.ActionUrl,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        foreach (var teacherId in recipientIds)
+        {
+            try
+            {
+                await _notifier.SendToUserAsync(teacherId, realtimeDto, ct);
+            }
+            catch
+            {
+                // Bỏ qua lỗi gửi realtime
+            }
+        }
+    }
+
+    private async Task<List<string>> GetExamMonitorTeacherIdsAsync(
+        int examId,
+        string ownerTeacherId,
+        CancellationToken ct)
+    {
+        var coProctorIds = await _context.ExamProctorAssignments
+            .Where(x => x.ExamId == examId)
+            .Select(x => x.TeacherId)
+            .ToListAsync(ct);
+
+        return coProctorIds
+            .Append(ownerTeacherId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
     public async Task<IReadOnlyList<NotificationDto>> GetMyNotificationsAsync(
         string userId,
         CancellationToken ct = default)
@@ -114,6 +424,9 @@ public class NotificationService : INotificationService
                 Type = un.Notification.Type,
                 SenderName = un.Notification.Sender.FullName,
                 ClassroomName = un.Notification.Classroom.Name,
+                RelatedExamId = un.Notification.RelatedExamId,
+                RelatedExamAttemptId = un.Notification.RelatedExamAttemptId,
+                ActionUrl = un.Notification.ActionUrl,
                 IsRead = un.IsRead,
                 CreatedAt = un.CreatedAt,
                 ReadAt = un.ReadAt

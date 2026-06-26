@@ -5,6 +5,7 @@ using EduGuard.Domain.Entities;
 using EduGuard.Domain.Enums;
 using EduGuard.Infrastructure.Data;
 using EduGuard.Infrastructure.Exams;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace EduGuard.Infrastructure.Proctoring;
@@ -14,17 +15,20 @@ public class ProctoringService : IProctoringService
     private readonly AppDbContext _db;
     private readonly IExamRepository _examRepository;
     private readonly IExamMonitoringService _examMonitoringService;
+    private readonly INotificationService _notificationService;
     private readonly IProctoringRepository _proctoringRepository;
 
     public ProctoringService(
         AppDbContext db,
         IExamRepository examRepository,
         IExamMonitoringService examMonitoringService,
+        INotificationService notificationService,
         IProctoringRepository proctoringRepository)
     {
         _db = db;
         _examRepository = examRepository;
         _examMonitoringService = examMonitoringService;
+        _notificationService = notificationService;
         _proctoringRepository = proctoringRepository;
     }
 
@@ -91,7 +95,7 @@ public class ProctoringService : IProctoringService
 
     public async Task<IReadOnlyList<ExamProctorAssignmentDto>> GetProctorsAsync(int examId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
     {
-        await EnsureExamOwnerAsync(examId, userId, roles, ct);
+        await _examMonitoringService.EnsureCanMonitorExamAsync(examId, userId, roles, ct);
         var exam = await _examRepository.GetByIdAsync(examId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
 
@@ -125,6 +129,48 @@ public class ProctoringService : IProctoringService
         return result;
     }
 
+    public async Task<IReadOnlyList<ProctorCandidateDto>> GetProctorCandidatesAsync(
+        int examId,
+        string userId,
+        IReadOnlyList<string> roles,
+        CancellationToken ct = default)
+    {
+        await EnsureExamOwnerAsync(examId, userId, roles, ct);
+        var exam = await _examRepository.GetByIdAsync(examId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
+
+        var assignments = await _proctoringRepository.GetProctorAssignmentsAsync(examId, ct);
+        var excludedTeacherIds = assignments
+            .Select(x => x.TeacherId)
+            .Append(exam.TeacherId)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var teacherRoleId = await _db.Set<IdentityRole>()
+            .Where(role => role.Name == "Teacher")
+            .Select(role => role.Id)
+            .FirstOrDefaultAsync(ct);
+
+        if (teacherRoleId is null)
+            return [];
+
+        var candidates = await (
+            from user in _db.Users
+            join userRole in _db.Set<IdentityUserRole<string>>() on user.Id equals userRole.UserId
+            where userRole.RoleId == teacherRoleId
+                  && user.IsActive
+                  && !excludedTeacherIds.Contains(user.Id)
+            orderby user.FullName
+            select new ProctorCandidateDto
+            {
+                TeacherId = user.Id,
+                FullName = user.FullName,
+                Email = user.Email ?? string.Empty,
+            })
+            .ToListAsync(ct);
+
+        return candidates;
+    }
+
     public async Task<ExamProctorAssignmentDto> AddProctorAsync(int examId, AddExamProctorRequest request, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
     {
         await EnsureExamOwnerAsync(examId, userId, roles, ct);
@@ -154,6 +200,14 @@ public class ProctoringService : IProctoringService
         };
         await _proctoringRepository.AddProctorAssignmentAsync(assignment, ct);
 
+        await _notificationService.CreateProctorInviteNotificationAsync(
+            userId,
+            request.TeacherId,
+            examId,
+            exam.ClassroomId,
+            exam.Title,
+            ct);
+
         return new ExamProctorAssignmentDto
         {
             Id = assignment.Id,
@@ -171,6 +225,69 @@ public class ProctoringService : IProctoringService
         var assignment = await _proctoringRepository.GetProctorAssignmentAsync(examId, teacherId, ct)
             ?? throw new KeyNotFoundException("Không tìm thấy giáo viên trong phòng giám sát.");
         await _proctoringRepository.RemoveProctorAssignmentAsync(assignment, ct);
+    }
+
+    public async Task<IReadOnlyList<AssignedProctorExamDto>> GetAssignedExamsAsync(
+        string userId,
+        IReadOnlyList<string> roles,
+        CancellationToken ct = default)
+    {
+        if (!roles.Contains("Teacher"))
+            return [];
+
+        var assignedExamIds = await _db.ExamProctorAssignments
+            .Where(x => x.TeacherId == userId)
+            .Select(x => x.ExamId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        if (assignedExamIds.Count == 0)
+            return [];
+
+        var exams = await _db.Exams
+            .Include(x => x.Setting)
+            .Include(x => x.Questions)
+            .Include(x => x.Attempts)
+            .Where(x => assignedExamIds.Contains(x.Id))
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(ct);
+
+        var classroomIds = exams.Select(x => x.ClassroomId).Distinct().ToList();
+        var teacherIds = exams.Select(x => x.TeacherId).Distinct().ToList();
+
+        var classrooms = await _db.Classrooms
+            .Where(x => classroomIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+
+        var teachers = await _db.Users
+            .Where(x => teacherIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.FullName, ct);
+
+        return exams
+            .Select(exam =>
+            {
+                var mapped = ExamMapper.MapExam(exam);
+                return new AssignedProctorExamDto
+                {
+                    Id = mapped.Id,
+                    ClassroomId = mapped.ClassroomId,
+                    TeacherId = mapped.TeacherId,
+                    Title = mapped.Title,
+                    Description = mapped.Description,
+                    DurationMinutes = mapped.DurationMinutes,
+                    StartTime = mapped.StartTime,
+                    EndTime = mapped.EndTime,
+                    IsPublished = mapped.IsPublished,
+                    EnableAntiCheat = mapped.EnableAntiCheat,
+                    CreatedAt = mapped.CreatedAt,
+                    QuestionCount = mapped.QuestionCount,
+                    AttemptCount = mapped.AttemptCount,
+                    Settings = mapped.Settings,
+                    ClassroomName = classrooms.GetValueOrDefault(exam.ClassroomId) ?? string.Empty,
+                    OwnerTeacherName = teachers.GetValueOrDefault(exam.TeacherId) ?? string.Empty,
+                };
+            })
+            .ToList();
     }
 
     public async Task<ProctoringAiSettingsDto> GetAiSettingsAsync(CancellationToken ct = default)
@@ -196,6 +313,7 @@ public class ProctoringService : IProctoringService
     {
         var attempts = await _db.ExamAttempts
             .Include(x => x.Student)
+            .Include(x => x.Exam)
             .Where(x => x.ExamId == examId)
             .ToListAsync(ct);
 
@@ -230,7 +348,9 @@ public class ProctoringService : IProctoringService
                     EvidenceCount = state?.EvidenceCount ?? 0,
                     WatchedByTeacherId = watch?.TeacherId,
                     WatchedByTeacherName = watch is null ? null : teacherNames.GetValueOrDefault(watch.TeacherId),
-                    LatestWarningAt = state?.LatestWarningAt
+                    LatestWarningAt = state?.LatestWarningAt,
+                    IsLateJoin = ExamJoinHelper.IsLateJoin(attempt.Exam, attempt.StartedAt),
+                    LateByMinutes = ExamJoinHelper.GetLateByMinutes(attempt.Exam, attempt.StartedAt)
                 };
             })
             .OrderByDescending(x => x.SuspicionScore)
