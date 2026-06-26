@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Frontend
 
+- **Proctoring evidence gallery:** Added sidebar tab **Bằng chứng vi phạm** (`/teacher/proctoring-evidence`, `/admin/proctoring-evidence`) with filterable grid, lightbox viewer, and stats for snapshots/clips/auto evidence — no need to browse server folders.
+
+### Backend
+
+- **Proctoring evidence list API:** `GET /api/proctoring/evidence` returns paginated evidence with exam/student context; teachers see owned/co-proctor exams only, admins see all.
+
+### Frontend
+
 - **Exam and assignment notifications:** Students receive in-app and SignalR alerts when a teacher publishes an exam or creates an assignment; teacher success toasts note that the class was notified; notification inbox supports `ExamPublished` and `AssignmentNew` types with deep links.
 
 ### Backend

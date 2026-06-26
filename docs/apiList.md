@@ -377,6 +377,7 @@ Không phải REST — kết nối WebSocket qua `@microsoft/signalr`.
 | API-PRO-02 | GET | `/api/exams/{examId}/proctoring/room` | Bearer | Teacher, Admin | ✓ | Teacher control room summary |
 | API-PRO-03 | GET | `/api/exams/{examId}/proctoring/states` | Bearer | Teacher, Admin | ✓ | Student tile states |
 | API-PRO-04 | GET | `/api/attempts/{attemptId}/proctoring/detail` | Bearer | Teacher, Admin, Student | ✓ | Attempt detail + evidence |
+| API-PRO-04b | GET | `/api/proctoring/evidence` | Bearer | Teacher, Admin | ✓ | Paginated evidence gallery (filter by exam, type, search) |
 | API-PRO-05 | POST | `/api/attempts/{attemptId}/proctoring/evidence` | Bearer | Teacher, Admin | ✓ | Upload snapshot/clip |
 | API-PRO-06 | POST | `/api/attempts/{attemptId}/proctoring/detect` | Bearer | Teacher, Admin, Student | | YOLO proxy |
 | API-PRO-07 | GET/PUT | `/api/admin/proctoring/ai-settings` | Bearer | Admin | | AI thresholds |

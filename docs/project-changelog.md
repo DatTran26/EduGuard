@@ -1155,6 +1155,42 @@ Unresolved questions: None.
 
 ---
 
+## Feature: Proctoring Evidence Gallery
+
+Date: 2026-06-27
+
+Branch/source: local dev
+
+Description:
+
+- Feature name: Proctoring Evidence Gallery (Bằng chứng vi phạm).
+- Purpose and user/business impact: Teachers and admins can browse saved proctoring snapshots and video clips in the app instead of opening `wwwroot/uploads/proctoring` on the server; supports filters by exam, evidence type, and student/exam search.
+- Files or modules changed: `ProctoringEvidenceList*` DTOs, `ProctoringService.GetEvidenceListAsync`, `GET /api/proctoring/evidence`, `ProctoringEvidencePage`, `EvidenceCard`, `EvidenceLightbox`, sidebar/routes, `proctoringApi.getEvidenceList`.
+
+Changed files (high level):
+
+- `backend/EduGuard.Application/DTOs/Proctoring/proctoring-dtos.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-proctoring-service.cs`
+- `backend/EduGuard.Infrastructure/Proctoring/proctoring-service.cs`
+- `backend/EduGuard.Api/Controllers/proctoring-controller.cs`
+- `frontend/src/features/proctoring/pages/ProctoringEvidencePage.jsx`
+- `frontend/src/features/proctoring/components/EvidenceCard.jsx`
+- `frontend/src/features/proctoring/components/EvidenceLightbox.jsx`
+- `frontend/src/features/proctoring/utils/evidenceHelpers.js`
+- `frontend/src/api/proctoringApi.js`
+- `frontend/src/routes/*`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `docs/apiList.md`
+
+Validation:
+
+- `dotnet build` (EduGuard.Infrastructure) — pass
+- Frontend lint on new proctoring evidence files — no diagnostics
+
+Unresolved questions: None.
+
+---
+
 ## Feature: Live Proctoring Control Room v1
 
 Date: 2026-06-25
