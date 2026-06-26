@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Backend
 
+- Changed matrix-generated exam creation to require a confirmed draft-question snapshot, validate a start time, build the real exam from the edited snapshot instead of regenerating the matrix preview, publish the exam immediately for scheduling, and still update source bank-question usage counts transactionally.
+- Fixed the live-proctoring migration for SQL Server by changing the `ProctoringEvidences -> CheatingLogs` delete rule to `NO ACTION`, allowing pending database migrations to apply cleanly before matrix-generated exams save full `ExamSetting` rows.
+- Added database-save error handling to matrix exam creation so EF save failures return a Vietnamese API error message instead of a generic 500 toast.
+- Fixed matrix-generated exam creation to validate the exam time window and build the full exam setting entity, preventing invalid generate-exam requests from falling through as a generic 500 error.
+- Fixed matrix availability matching so chapter, lesson, and learning-outcome comparisons ignore surrounding spaces/case, while questions with blank subject metadata are still usable inside the selected bank instead of being incorrectly reported as missing.
+- Changed exam matrix create/update/preview/generated exam scoring to derive `TotalQuestions` from matrix rows and use one common `ScorePerQuestion = TotalScore / TotalQuestions`; matrix availability now returns every row and counts only approved questions matching the matrix subject plus row filters.
 - Added teacher-owned question banks with bank questions, bank answers, difficulty/status metadata, versioning for snapshotted questions, and archived-question history.
 - Added exam matrix APIs so teachers can define matrix rows, validate available approved bank questions, generate a balanced preview, and create draft exams from the selected bank.
 - Added Admin read access for exam matrix list/detail while keeping create/update/delete/preview/create-exam restricted to Teacher-owned resources.
@@ -17,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Frontend
 
+- Reworked `Sinh đề từ ma trận` into a draft-first workflow: teachers generate a local draft from the matrix, edit each draft question in a popup without changing the question bank, see non-blocking matrix-mismatch warnings, then confirm the draft and choose class/start time/settings in a scheduling popup before creating the real test.
+- Auto-fills `Đóng đề` in the matrix scheduling popup as `Mở đề + Thời gian làm bài` from the selected matrix, while still letting teachers adjust the close time if needed.
+- Added a time-window guard before matrix exam generation so teachers see `Thời gian đóng đề phải sau thời gian mở đề` before the confirmation request is sent.
+- Added `Môn` to matrix availability row conditions so teachers can see every filter used when a row reports enough or missing questions.
+- Reworked the Teacher matrix builder for the MVP matrix workflow: teachers enter `Tổng điểm`, score per question is computed read-only, realtime totals/difficulty counts are shown, matrix sections now render as stacked full-width cards, the saved matrix detail panel shows overview/difficulty/detail/availability tables, and `Sinh đề nháp` requires a successful availability check plus confirmation modal.
+- Fixed the Teacher question bank workspace to use fully accented Vietnamese labels for breadcrumbs, difficulty/status dropdowns, badges, buttons, toasts, and matrix validation errors; `Chuẩn đầu ra` is now shown as `Yêu cầu cần đạt`, and editing a bank question now opens in a modal so teachers keep their position in the question list, with client-side validation before marking a question ready.
 - Added a Teacher `Ngân hàng câu hỏi` workspace for creating question banks, filtering bank questions, manually adding/editing/archiving questions, importing files into a bank, creating matrix rows, previewing matrix selections, and creating draft exams from a matrix.
 - Added frontend question bank and exam matrix API adapters with enum normalization for question type, difficulty, and bank question status.
 - Added the Teacher sidebar route `/teacher/question-banks` while keeping the existing exam create/detail flow intact.
@@ -29,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known risks
 
-- Matrix-generated exams are created as drafts; publishing still uses the existing exam detail publish checklist.
+- Matrix-generated exams are now published/scheduled immediately after the teacher confirms the edited draft; teachers should review the draft carefully before creating the real test.
 
 ## [1.2.0] - 2026-06-25
 

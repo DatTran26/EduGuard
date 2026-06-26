@@ -20,6 +20,6 @@ public class ProctoringEvidenceConfiguration : IEntityTypeConfiguration<Proctori
         builder.HasIndex(x => x.ExamAttemptId);
 
         builder.HasOne(x => x.ExamAttempt).WithMany().HasForeignKey(x => x.ExamAttemptId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasOne(x => x.CheatingLog).WithMany().HasForeignKey(x => x.CheatingLogId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(x => x.CheatingLog).WithMany().HasForeignKey(x => x.CheatingLogId).OnDelete(DeleteBehavior.NoAction);
     }
 }

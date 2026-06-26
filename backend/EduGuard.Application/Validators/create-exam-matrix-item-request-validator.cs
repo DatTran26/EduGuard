@@ -13,6 +13,5 @@ public class CreateExamMatrixItemRequestValidator : AbstractValidator<CreateExam
         RuleFor(x => x.QuestionType).IsInEnum().When(x => x.QuestionType.HasValue);
         RuleFor(x => x.Difficulty).IsInEnum();
         RuleFor(x => x.QuestionCount).GreaterThan(0);
-        RuleFor(x => x.ScorePerQuestion).GreaterThan(0);
     }
 }

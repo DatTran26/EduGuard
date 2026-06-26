@@ -1,5 +1,159 @@
 # Project Changelog
 
+## Feature: Matrix draft review and scheduled exam creation
+
+Date: 2026-06-26
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Matrix draft review and scheduled exam creation.
+- Purpose and user/business impact: Lets teachers generate a draft from an exam matrix, review and edit the exact questions that will be used, then create the real scheduled test only after confirming the draft. This avoids losing the current question while editing and prevents the final exam from being regenerated with different random questions.
+- Files or modules changed: backend matrix create-exam DTO/validator/service/controller, live-proctoring evidence migration/configuration, frontend question bank matrix page, question bank API adapter, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Application/DTOs/ExamMatrices/create-exam-from-matrix-request.cs`
+- `backend/EduGuard.Application/Validators/create-exam-from-matrix-request-validator.cs`
+- `backend/EduGuard.Api/Controllers/exam-matrices-controller.cs`
+- `backend/EduGuard.Infrastructure/ExamMatrices/exam-matrix-service.cs`
+- `backend/EduGuard.Infrastructure/Data/Configurations/proctoring-evidence-configuration.cs`
+- `backend/EduGuard.Infrastructure/Data/Migrations/20260625112413_AddLiveProctoringEntities.cs`
+- `backend/EduGuard.Infrastructure/Data/Migrations/20260625112413_AddLiveProctoringEntities.Designer.cs`
+- `backend/EduGuard.Infrastructure/Data/Migrations/AppDbContextModelSnapshot.cs`
+- `frontend/src/api/questionBankApi.js`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Extended `CreateExamFromMatrixRequest` with `Questions` so the frontend can submit the confirmed draft question snapshot, including source bank question id/version, matrix row id, edited content, question type, score, order, and answers.
+- Updated the create-exam-from-matrix validator to require a start time, a non-empty confirmed draft, valid question metadata, positive scores, and a valid close/open time window.
+- Changed `ExamMatrixService.CreateExamAsync` to stop calling `GeneratePreviewAsync` during final creation; the real exam is built from the submitted draft snapshot, so edited draft questions are preserved and no different question set is selected at confirmation time.
+- Kept bank safety and statistics by verifying all draft source questions belong to the selected teacher-owned bank, rejecting duplicate/missing source questions, and incrementing `TimesUsed` only after the draft snapshot validates.
+- Matrix-created exams are now saved with `IsPublished = true`, making them real scheduled tests; students can only start according to the existing exam start/end-time rules.
+- Added `DbUpdateException` handling for matrix exam creation so database save issues return a Vietnamese API error instead of a generic HTTP 500 toast.
+- Fixed the pending live-proctoring migration for SQL Server by changing `ProctoringEvidences -> CheatingLogs` from `SET NULL` to `NO ACTION`, removing the multiple-cascade-path blocker that prevented the local database from receiving the new `ExamSettings` columns.
+- Reworked the matrix UI into a draft-first flow: `Sinh đề nháp`, editable draft question list, popup edit for content/type/score/answers, non-blocking matrix mismatch warnings, then `Xác nhận đề nháp và đặt lịch`.
+- Auto-fills `Đóng đề` when the teacher selects `Mở đề` in the scheduling popup using `Mở đề + selectedMatrix.durationMinutes`; the duration is still controlled by the matrix form.
+- Draft edits are local to the exam snapshot only; they do not call the question bank update API and do not change the original bank question.
+- Added the scheduling popup for class, title, start time, optional close time, anti-cheat, shuffle options, and max attempts before creating the real test.
+
+Validation:
+
+- `npm.cmd run build` from `frontend/` passed.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore -p:OutputPath=..\..\temp\backend-ma-tran-draft-build\` passed with 0 warnings and 0 errors; the temporary output folder was removed after validation.
+- `dotnet ef migrations list --project backend\EduGuard.Infrastructure\EduGuard.Infrastructure.csproj --startup-project backend\EduGuard.Api\EduGuard.Api.csproj --context AppDbContext --no-build` showed `20260625112413_AddLiveProctoringEntities` as pending before the migration fix and fully applied after the update.
+- `dotnet ef database update --project backend\EduGuard.Infrastructure\EduGuard.Infrastructure.csproj --startup-project backend\EduGuard.Api\EduGuard.Api.csproj --context AppDbContext` passed after the cascade-rule fix.
+- `GET http://127.0.0.1:5157/swagger/v1/swagger.json` returned HTTP 200 after restarting the backend server.
+- Frontend build output still reports existing Vite/Rolldown warnings from `@microsoft/signalr` pure annotations and the existing large chunk warning; no build error was introduced.
+
+Known risks / rollback / follow-up:
+
+- The draft is kept in frontend state until the teacher creates the real test; refreshing the page before confirmation discards the local draft.
+- Matrix mismatch after editing is intentionally warning-only per current business decision; teachers can still create the scheduled test after seeing the warning.
+- The local backend server was restarted on `http://127.0.0.1:5157` after applying migrations so the running API uses the updated schema/code.
+- Rollback: revert the request DTO/validator/service changes and the matrix draft UI/API helper changes, then restore the previous matrix create-exam flow and remove this changelog entry.
+
+## Feature: Exam matrix MVP scoring and availability workflow
+
+Date: 2026-06-26
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Exam matrix MVP scoring and availability workflow.
+- Purpose and user/business impact: Lets teachers define a matrix as a generation formula instead of a finished exam, enter total score once, immediately see score-per-question and difficulty totals, verify whether the selected question bank is sufficient, and generate a draft exam only after the matrix has enough matching ready questions.
+- Files or modules changed: backend exam matrix service/validators/validation DTO, frontend question bank matrix page, question bank API adapter/helpers, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Application/DTOs/ExamMatrices/exam-matrix-validation-result-dto.cs`
+- `backend/EduGuard.Application/Validators/create-exam-matrix-item-request-validator.cs`
+- `backend/EduGuard.Application/Validators/create-exam-matrix-request-validator.cs`
+- `backend/EduGuard.Application/Validators/update-exam-matrix-request-validator.cs`
+- `backend/EduGuard.Infrastructure/ExamMatrices/exam-matrix-service.cs`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `frontend/src/features/question-banks/question-bank-helpers.js`
+- `frontend/src/api/questionBankApi.js`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Fixed matrix-generated exam creation to validate `EndTime > StartTime`, reuse the full exam setting mapper, and surface invalid time windows as business validation instead of a generic 500.
+- Added a frontend guard that blocks opening/confirming matrix exam generation when the closing time is not after the opening time.
+- Fixed availability matching to trim and ignore case for chapter, lesson, and learning-outcome comparisons, and to allow existing bank questions with blank subject metadata to count within the selected bank.
+- Added `Môn` to the availability issue payload and frontend condition formatter so hidden subject filtering is visible in the enough/missing table and shortage dialog.
+- Changed matrix create/update/preview/generated exam scoring so the backend derives `TotalQuestions` from row `QuestionCount` and uses a shared `ScorePerQuestion = TotalScore / TotalQuestions`; the client still sends the existing field for contract compatibility, but server calculation is authoritative.
+- Removed the per-row score validator because `Điểm/câu` is no longer a user input in the MVP flow; `Môn` is now required for matrix create/update.
+- Matrix availability now returns an `Items` list for every matrix row, not only missing rows, so the frontend can render a full enough/missing table.
+- Availability/preview/generate matching now counts only `Sẵn sàng` questions that match matrix subject plus the row filters for chapter, lesson, learning outcome, question type, and difficulty.
+- Reworked the matrix form to use `Tổng điểm` as the main score input, show read-only `Điểm/câu`, and display realtime total questions, total score, score per question, and easy/medium/hard counts.
+- Changed the matrix workspace from a two-column layout to stacked full-width cards so the saved matrices, matrix detail, availability check, and generate-exam sections are no longer squeezed into a narrow side column.
+- Added a matrix detail panel with matrix overview, difficulty summary, matrix row details, and question availability table; saving a matrix shows a toast and updates the detail panel instead of using a popup as the main output.
+- Added a generate-exam confirmation modal and disabled `Sinh đề nháp` until the selected bank/matrix has a passing availability check.
+- Added an in-page benefit note explaining that a question bank lets teachers import/classify questions once, reuse them through matrices, see shortages early, and generate exams faster.
+
+Validation:
+
+- `npm.cmd run build` from `frontend/` passed.
+- `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj --no-restore -p:OutputPath=..\..\temp\backend-ma-tran-build\` passed with 0 warnings and 0 errors; the temporary output folder was removed after validation.
+- Frontend build output still reports existing Vite/Rolldown warnings from `@microsoft/signalr` pure annotations and the existing large chunk warning; no build error was introduced.
+
+Known risks / rollback / follow-up:
+
+- Matrix subject matching is exact string matching; existing questions/matrices with different spelling or whitespace after normalization can appear as shortages until their metadata is aligned.
+- The backend API contract still contains item `ScorePerQuestion` for compatibility with the current DTO/entity shape; the backend now recalculates it and should remain the source of truth.
+- Rollback: revert the matrix service/validator changes and the matrix UI/API helper changes, then remove this changelog entry and the related `CHANGELOG.md`/`Todo List.md` notes.
+
+## Feature: Question bank Vietnamese labels and edit dialog
+
+Date: 2026-06-26
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Question bank Vietnamese labels and edit dialog.
+- Purpose and user/business impact: Keeps the Teacher question bank and matrix workspace consistent in Vietnamese, prevents teachers from losing context when editing a question, and blocks invalid ready questions before they are used for matrix-based exam generation.
+- Files or modules changed: frontend question bank page, bank question form, question bank helpers/API adapter, top-bar breadcrumb, main changelog, and project changelog.
+
+Changed files:
+
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `frontend/src/features/question-banks/components/BankQuestionForm.jsx`
+- `frontend/src/features/question-banks/question-bank-helpers.js`
+- `frontend/src/api/questionBankApi.js`
+- `frontend/src/components/layout/TopBar.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+
+Technical summary:
+
+- Added the `/teacher/question-banks` breadcrumb label so the top bar displays `Trang chủ > Ngân hàng câu hỏi` instead of the raw route segment.
+- Replaced no-accent difficulty/status labels with `Dễ`, `Trung bình`, `Khó`, `Nháp`, `Cần rà soát`, `Sẵn sàng`, and `Lưu trữ` while keeping the existing backend enum values unchanged.
+- Replaced visible `bank`, `preview`, `import`, `review`, `Teacher`, and `anti-cheat` wording in the question bank/matrix workspace with Vietnamese labels; renamed `Chuẩn đầu ra` to `Yêu cầu cần đạt` while keeping the internal `learningOutcome` field unchanged.
+- Localized backend matrix validation messages and normalized issue enum codes so shortage dialogs explain that only `Sẵn sàng` questions matching all matrix row filters are counted.
+- Changed question editing from the inline composer to a modal dialog, while preserving the inline composer for adding new questions.
+- Added client-side question validation before submit: content is required, default score must be positive, and `Sẵn sàng` questions must have valid correct-answer rules for single-choice, multiple-choice, true/false, and short-answer types.
+
+Validation:
+
+- `npm.cmd run build` from `frontend/` passed.
+- Build output still reports existing Vite/Rolldown warnings from `@microsoft/signalr` pure annotations and the existing large chunk warning; no build error was introduced.
+
+Known risks / rollback / follow-up:
+
+- Backend enum names still use the existing internal values (`Easy`, `Medium`, `Hard`, `Draft`, `Reviewed`, `Approved`, `Archived`); this change intentionally updates display labels only.
+- Manual browser verification is still recommended for modal sizing on very small screens.
+- Rollback: revert the modified frontend question-bank/top-bar files and remove these changelog entries.
+
 ## Feature: Question bank list/detail UX and exam bank picker
 
 Date: 2026-06-25

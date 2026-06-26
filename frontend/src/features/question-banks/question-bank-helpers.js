@@ -48,6 +48,7 @@ export const EMPTY_MATRIX_FORM = {
   subject: "",
   gradeLevel: "",
   durationMinutes: 45,
+  totalScore: 10,
   items: [{ ...EMPTY_MATRIX_ITEM }],
 };
 
@@ -125,23 +126,43 @@ export function buildMatrixFormFromMatrix(matrix) {
     subject: matrix.subject,
     gradeLevel: matrix.gradeLevel,
     durationMinutes: matrix.durationMinutes || 45,
+    totalScore: matrix.totalScore || 10,
     items: matrix.items.length > 0 ? matrix.items.map((item) => ({ ...item })) : [{ ...EMPTY_MATRIX_ITEM }],
   };
 }
 
-export function calculateMatrixTotals(items = []) {
-  return items.reduce(
-    (summary, item) => {
-      const questionCount = Number(item.questionCount) || 0;
-      const scorePerQuestion = Number(item.scorePerQuestion) || 0;
+export function calculateMatrixTotals(items = [], totalScoreValue = 0) {
+  const totalQuestions = items.reduce((total, item) => total + (Number(item.questionCount) || 0), 0);
+  const totalScore = Number(totalScoreValue) || 0;
+  const scorePerQuestion = totalQuestions > 0 ? totalScore / totalQuestions : 0;
+  const difficultySummary = questionBankEnums.difficultyOptions.map((option) => {
+    const questionCount = items
+      .filter((item) => item.difficulty === option.value)
+      .reduce((total, item) => total + (Number(item.questionCount) || 0), 0);
 
-      return {
-        totalQuestions: summary.totalQuestions + questionCount,
-        totalScore: summary.totalScore + questionCount * scorePerQuestion,
-      };
-    },
-    { totalQuestions: 0, totalScore: 0 },
-  );
+    return {
+      difficulty: option.value,
+      label: option.label,
+      questionCount,
+      totalScore: questionCount * scorePerQuestion,
+    };
+  });
+
+  return {
+    totalQuestions,
+    totalScore,
+    scorePerQuestion,
+    difficultySummary,
+  };
+}
+
+export function formatMatrixNumber(value, maximumFractionDigits = 2) {
+  const numericValue = Number(value) || 0;
+
+  return new Intl.NumberFormat("vi-VN", {
+    maximumFractionDigits,
+    minimumFractionDigits: 0,
+  }).format(numericValue);
 }
 
 export function getDifficultyLabel(value) {
@@ -166,6 +187,44 @@ export function getStatusBadgeVariant(value) {
   }
 
   return "caution";
+}
+
+export function getBankQuestionValidationError(formValues = {}) {
+  const content = String(formValues.content ?? "").trim();
+  const score = Number(formValues.defaultScore);
+  const answers = Array.isArray(formValues.answers) ? formValues.answers : [];
+  const filledAnswers = answers.filter((answer) => String(answer.content ?? "").trim().length > 0);
+  const correctAnswers = filledAnswers.filter((answer) => Boolean(answer.isCorrect));
+
+  if (!content) {
+    return "Vui lòng nhập nội dung câu hỏi.";
+  }
+
+  if (!Number.isFinite(score) || score <= 0) {
+    return "Điểm mặc định phải lớn hơn 0.";
+  }
+
+  if (formValues.status !== "Approved") {
+    return "";
+  }
+
+  if (formValues.questionType === "SingleChoice" && correctAnswers.length !== 1) {
+    return "Câu hỏi một đáp án cần có đúng 1 đáp án đúng trước khi chuyển sang Sẵn sàng.";
+  }
+
+  if (formValues.questionType === "MultipleChoice" && correctAnswers.length < 1) {
+    return "Câu hỏi nhiều đáp án cần có ít nhất 1 đáp án đúng trước khi chuyển sang Sẵn sàng.";
+  }
+
+  if (formValues.questionType === "TrueFalse" && correctAnswers.length !== 1) {
+    return "Câu hỏi Đúng/Sai cần có đúng 1 lựa chọn đúng trước khi chuyển sang Sẵn sàng.";
+  }
+
+  if (formValues.questionType === "ShortAnswer" && filledAnswers.length < 1) {
+    return "Câu trả lời ngắn cần có ít nhất 1 đáp án mẫu trước khi chuyển sang Sẵn sàng.";
+  }
+
+  return "";
 }
 
 export function getDifficultyBadgeVariant(value) {
@@ -218,9 +277,10 @@ export function getQuestionTypeLabel(value) {
 
 export function formatMatrixIssueRequirement(issue = {}) {
   const filters = [
+    issue.subject ? `Môn: ${issue.subject}` : null,
     issue.chapter ? `Chương: ${issue.chapter}` : null,
     issue.lesson ? `Bài: ${issue.lesson}` : null,
-    issue.learningOutcome ? `Chuẩn đầu ra: ${issue.learningOutcome}` : null,
+    issue.learningOutcome ? `Yêu cầu cần đạt: ${issue.learningOutcome}` : null,
     issue.questionType ? `Loại: ${getQuestionTypeLabel(issue.questionType)}` : null,
     issue.difficulty ? `Độ khó: ${getDifficultyLabel(issue.difficulty)}` : null,
   ].filter(Boolean);

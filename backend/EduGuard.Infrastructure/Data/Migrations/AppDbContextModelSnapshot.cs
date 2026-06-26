@@ -1681,7 +1681,7 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.HasOne("EduGuard.Domain.Entities.CheatingLog", "CheatingLog")
                         .WithMany()
                         .HasForeignKey("CheatingLogId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("EduGuard.Domain.Entities.ExamAttempt", "ExamAttempt")
                         .WithMany()

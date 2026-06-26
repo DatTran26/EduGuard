@@ -60,8 +60,9 @@ public class ExamMatrixService : IExamMatrixService
 
     public async Task<ExamMatrixDto> CreateAsync(CreateExamMatrixRequest request, string teacherId, CancellationToken ct = default)
     {
+        PrepareMatrixRequest(request);
         await _createValidator.ValidateAndThrowAsync(request, ct);
-        ValidateMatrixTotals(request.TotalQuestions, request.TotalScore, request.Items);
+        ValidateMatrixTotals(request.TotalQuestions, request.Items);
         var matrix = BuildMatrix(request, teacherId);
         await _matrixRepository.AddAsync(matrix, ct);
         await _matrixRepository.SaveChangesAsync(ct);
@@ -70,12 +71,13 @@ public class ExamMatrixService : IExamMatrixService
 
     public async Task<ExamMatrixDto> UpdateAsync(int matrixId, UpdateExamMatrixRequest request, string teacherId, CancellationToken ct = default)
     {
+        PrepareMatrixRequest(request);
         await _updateValidator.ValidateAndThrowAsync(request, ct);
-        ValidateMatrixTotals(request.TotalQuestions, request.TotalScore, request.Items);
+        ValidateMatrixTotals(request.TotalQuestions, request.Items);
         var matrix = await RequireTeacherMatrixAsync(matrixId, teacherId, ct);
         ApplyMatrixUpdate(matrix, request);
         _matrixRepository.RemoveItems(matrix.Items);
-        matrix.Items = BuildItems(request.Items);
+        matrix.Items = BuildItems(request.Items, CalculateScorePerQuestion(request.TotalScore, request.TotalQuestions));
         _matrixRepository.Update(matrix);
         await _matrixRepository.SaveChangesAsync(ct);
         return ExamMatrixMapper.MapMatrix(matrix);
@@ -110,20 +112,28 @@ public class ExamMatrixService : IExamMatrixService
         var classroom = await ClassroomAccessHelper.RequireClassroomAsync(_classroomRepository, request.ClassroomId, ct);
         ClassroomAccessHelper.EnsureTeacherOwnsClassroom(classroom, teacherId);
 
-        var preview = await GeneratePreviewAsync(matrixId, request.QuestionBankId, teacherId, ct);
-        if (!preview.Success)
-            throw new InvalidOperationException(preview.Message);
+        var draftQuestions = request.Questions
+            .OrderBy(x => x.OrderIndex)
+            .ThenBy(x => x.BankQuestionId)
+            .ToList();
+        var selectedQuestionIds = draftQuestions.Select(x => x.BankQuestionId).ToList();
+        var sourceQuestions = await _questionBankRepository.GetQuestionsByIdsAsync(selectedQuestionIds, ct);
+        ValidateDraftQuestions(matrix, request.QuestionBankId, teacherId, draftQuestions, sourceQuestions);
+        var sourceById = sourceQuestions.ToDictionary(x => x.Id);
+        var examQuestions = BuildExamQuestionsFromDraft(draftQuestions, sourceById);
 
         await using var transaction = await _db.Database.BeginTransactionAsync(ct);
 
-        var selectedQuestionIds = preview.Questions.Select(x => x.Question.Id).ToList();
-        var sourceQuestions = await _questionBankRepository.GetQuestionsByIdsAsync(selectedQuestionIds, ct);
         foreach (var sourceQuestion in sourceQuestions)
         {
             sourceQuestion.TimesUsed += 1;
             sourceQuestion.UpdatedAt = DateTime.UtcNow;
             _questionBankRepository.UpdateQuestion(sourceQuestion);
         }
+
+        var startTime = ExamDateTimeHelper.NormalizeNullableUtc(request.StartTime);
+        var endTime = ExamDateTimeHelper.NormalizeNullableUtc(request.EndTime);
+        EnsureExamWindowValid(startTime, endTime);
 
         var exam = new Exam
         {
@@ -132,20 +142,13 @@ public class ExamMatrixService : IExamMatrixService
             Title = request.Title.Trim(),
             Description = NormalizeOptional(request.Description),
             DurationMinutes = matrix.DurationMinutes,
-            StartTime = ExamDateTimeHelper.NormalizeNullableUtc(request.StartTime),
-            EndTime = ExamDateTimeHelper.NormalizeNullableUtc(request.EndTime),
+            StartTime = startTime,
+            EndTime = endTime,
             EnableAntiCheat = request.EnableAntiCheat,
-            IsPublished = false,
+            IsPublished = true,
             CreatedAt = DateTime.UtcNow,
-            Setting = new ExamSetting
-            {
-                ShuffleQuestions = request.Settings.ShuffleQuestions,
-                ShuffleAnswers = request.Settings.ShuffleAnswers,
-                MaxAttempts = request.Settings.MaxAttempts,
-                ShowResultAfterSubmit = request.Settings.ShowResultAfterSubmit,
-                RequireFullscreen = request.Settings.RequireFullscreen
-            },
-            Questions = BuildExamQuestionsFromPreview(preview)
+            Setting = ExamSettingMapper.BuildEntity(request.Settings),
+            Questions = examQuestions
         };
 
         await _examRepository.AddAsync(exam, ct);
@@ -157,6 +160,7 @@ public class ExamMatrixService : IExamMatrixService
     private static ExamMatrixPreviewDto BuildPreview(ExamMatrix matrix, IReadOnlyList<BankQuestion> questions)
     {
         var validation = ValidateMatrixAgainstQuestions(matrix, questions);
+        var scorePerQuestion = CalculateScorePerQuestion(matrix.TotalScore, matrix.TotalQuestions);
         var preview = new ExamMatrixPreviewDto
         {
             Success = validation.IsValid,
@@ -172,7 +176,7 @@ public class ExamMatrixService : IExamMatrixService
         var usedIds = new HashSet<int>();
         foreach (var item in matrix.Items.OrderBy(x => x.Id))
         {
-            var selected = FilterQuestions(questions, item)
+            var selected = FilterQuestions(questions, matrix, item)
                 .Where(question => !usedIds.Contains(question.Id))
                 .Take(item.QuestionCount)
                 .ToList();
@@ -183,7 +187,7 @@ public class ExamMatrixService : IExamMatrixService
                 preview.Questions.Add(new ExamMatrixPreviewQuestionDto
                 {
                     MatrixItemId = item.Id,
-                    Score = item.ScorePerQuestion,
+                    Score = scorePerQuestion,
                     Question = QuestionBankMapper.MapQuestion(question)
                 });
             }
@@ -214,25 +218,94 @@ public class ExamMatrixService : IExamMatrixService
         }).ToList();
     }
 
+    private static List<Question> BuildExamQuestionsFromDraft(
+        IReadOnlyList<CreateExamFromMatrixQuestionRequest> draftQuestions,
+        IReadOnlyDictionary<int, BankQuestion> sourceById)
+    {
+        return draftQuestions.Select((draftQuestion, index) =>
+        {
+            var sourceQuestion = sourceById[draftQuestion.BankQuestionId];
+            var normalizedAnswers = ExamQuestionValidator.NormalizeAnswers(draftQuestion.QuestionType, draftQuestion.Answers);
+            ExamQuestionValidator.ValidateQuestionInput(draftQuestion.QuestionType, normalizedAnswers);
+
+            return new Question
+            {
+                BankQuestionId = sourceQuestion.Id,
+                BankQuestionVersion = draftQuestion.BankQuestionVersion.GetValueOrDefault(sourceQuestion.Version),
+                Content = draftQuestion.Content.Trim(),
+                QuestionType = draftQuestion.QuestionType,
+                Score = draftQuestion.Score,
+                OrderIndex = index + 1,
+                CreatedAt = DateTime.UtcNow,
+                Answers = normalizedAnswers.Select((answer, answerIndex) => new Answer
+                {
+                    Content = answer.Content,
+                    IsCorrect = answer.IsCorrect,
+                    OrderIndex = answerIndex + 1
+                }).ToList()
+            };
+        }).ToList();
+    }
+
+    private static void ValidateDraftQuestions(
+        ExamMatrix matrix,
+        int questionBankId,
+        string teacherId,
+        IReadOnlyList<CreateExamFromMatrixQuestionRequest> draftQuestions,
+        IReadOnlyList<BankQuestion> sourceQuestions)
+    {
+        if (draftQuestions.Count != matrix.TotalQuestions)
+            throw new InvalidOperationException("Số câu trong đề nháp chưa khớp với tổng số câu của ma trận.");
+
+        var sourceIds = draftQuestions.Select(x => x.BankQuestionId).ToList();
+        if (sourceIds.Count != sourceIds.Distinct().Count())
+            throw new InvalidOperationException("Đề nháp đang có câu hỏi nguồn bị trùng.");
+
+        var sourceById = sourceQuestions.ToDictionary(x => x.Id);
+        var missingSourceIds = sourceIds.Where(id => !sourceById.ContainsKey(id)).ToList();
+        if (missingSourceIds.Count > 0)
+            throw new InvalidOperationException("Một số câu hỏi trong đề nháp không còn tồn tại trong ngân hàng.");
+
+        foreach (var sourceQuestion in sourceQuestions)
+        {
+            if (sourceQuestion.QuestionBankId != questionBankId || sourceQuestion.TeacherId != teacherId)
+                throw new UnauthorizedAccessException("Bạn chỉ được tạo đề từ câu hỏi thuộc ngân hàng của mình.");
+        }
+
+        var matrixItemById = matrix.Items.ToDictionary(x => x.Id);
+        foreach (var draftQuestion in draftQuestions)
+        {
+            if (!matrixItemById.ContainsKey(draftQuestion.MatrixItemId))
+                throw new InvalidOperationException("Đề nháp có câu hỏi không thuộc dòng ma trận đang chọn.");
+        }
+
+        foreach (var item in matrix.Items)
+        {
+            var actualCount = draftQuestions.Count(x => x.MatrixItemId == item.Id);
+            if (actualCount != item.QuestionCount)
+                throw new InvalidOperationException("Số câu trong đề nháp chưa khớp với từng dòng ma trận.");
+        }
+    }
+
     private static ExamMatrixValidationResultDto ValidateMatrixAgainstQuestions(ExamMatrix matrix, IReadOnlyList<BankQuestion> questions)
     {
         var result = new ExamMatrixValidationResultDto
         {
             TotalQuestions = matrix.Items.Sum(x => x.QuestionCount),
-            TotalScore = matrix.Items.Sum(x => x.QuestionCount * x.ScorePerQuestion)
+            TotalScore = matrix.TotalScore
         };
 
         if (result.TotalQuestions != matrix.TotalQuestions)
             result.Errors.Add(new ExamMatrixValidationIssueDto { Required = matrix.TotalQuestions, Available = result.TotalQuestions, Message = "Matrix question total does not match." });
 
-        if (result.TotalScore != matrix.TotalScore)
-            result.Errors.Add(new ExamMatrixValidationIssueDto { Message = "Matrix score total does not match." });
-
         foreach (var item in matrix.Items)
         {
-            var available = FilterQuestions(questions, item).Count;
+            var available = FilterQuestions(questions, matrix, item).Count;
+            var availabilityItem = BuildAvailabilityItem(matrix, item, available);
+            result.Items.Add(availabilityItem);
+
             if (available < item.QuestionCount)
-                result.Errors.Add(BuildIssue(item, available));
+                result.Errors.Add(availabilityItem);
         }
 
         result.IsValid = result.Errors.Count == 0;
@@ -240,21 +313,32 @@ public class ExamMatrixService : IExamMatrixService
         return result;
     }
 
-    private static List<BankQuestion> FilterQuestions(IEnumerable<BankQuestion> questions, ExamMatrixItem item) =>
+    private static List<BankQuestion> FilterQuestions(IEnumerable<BankQuestion> questions, ExamMatrix matrix, ExamMatrixItem item) =>
         questions.Where(question =>
             question.Status == QuestionStatus.Approved
             && question.Difficulty == item.Difficulty
+            && SubjectMatches(question.Subject, matrix.Subject)
             && (!item.QuestionType.HasValue || question.QuestionType == item.QuestionType.Value)
-            && (string.IsNullOrWhiteSpace(item.Chapter) || question.Chapter == item.Chapter)
-            && (string.IsNullOrWhiteSpace(item.Lesson) || question.Lesson == item.Lesson)
-            && (string.IsNullOrWhiteSpace(item.LearningOutcome) || question.LearningOutcome == item.LearningOutcome))
+            && OptionalTextMatches(question.Chapter, item.Chapter)
+            && OptionalTextMatches(question.Lesson, item.Lesson)
+            && OptionalTextMatches(question.LearningOutcome, item.LearningOutcome))
             .OrderBy(question => question.TimesUsed)
             .ThenBy(question => question.Id)
             .ToList();
 
-    private static ExamMatrixValidationIssueDto BuildIssue(ExamMatrixItem item, int available) => new()
+    private static bool SubjectMatches(string? actual, string? expected) =>
+        string.IsNullOrWhiteSpace(expected) || string.IsNullOrWhiteSpace(actual) || TextEquals(actual, expected);
+
+    private static bool OptionalTextMatches(string? actual, string? expected) =>
+        string.IsNullOrWhiteSpace(expected) || TextEquals(actual, expected);
+
+    private static bool TextEquals(string? actual, string? expected) =>
+        string.Equals(NormalizeOptional(actual), NormalizeOptional(expected), StringComparison.OrdinalIgnoreCase);
+
+    private static ExamMatrixValidationIssueDto BuildAvailabilityItem(ExamMatrix matrix, ExamMatrixItem item, int available) => new()
     {
         MatrixItemId = item.Id,
+        Subject = matrix.Subject,
         Chapter = item.Chapter,
         Lesson = item.Lesson,
         LearningOutcome = item.LearningOutcome,
@@ -262,7 +346,9 @@ public class ExamMatrixService : IExamMatrixService
         Difficulty = item.Difficulty,
         Required = item.QuestionCount,
         Available = available,
-        Message = "Not enough approved questions for this matrix item."
+        Message = available < item.QuestionCount
+            ? "Not enough approved questions for this matrix item."
+            : "Enough approved questions for this matrix item."
     };
 
     private static ExamMatrix BuildMatrix(CreateExamMatrixRequest request, string teacherId) => new()
@@ -275,7 +361,7 @@ public class ExamMatrixService : IExamMatrixService
         TotalScore = request.TotalScore,
         DurationMinutes = request.DurationMinutes,
         CreatedAt = DateTime.UtcNow,
-        Items = BuildItems(request.Items)
+        Items = BuildItems(request.Items, CalculateScorePerQuestion(request.TotalScore, request.TotalQuestions))
     };
 
     private static void ApplyMatrixUpdate(ExamMatrix matrix, CreateExamMatrixRequest request)
@@ -289,7 +375,7 @@ public class ExamMatrixService : IExamMatrixService
         matrix.UpdatedAt = DateTime.UtcNow;
     }
 
-    private static List<ExamMatrixItem> BuildItems(IEnumerable<CreateExamMatrixItemRequest> items) =>
+    private static List<ExamMatrixItem> BuildItems(IEnumerable<CreateExamMatrixItemRequest> items, decimal scorePerQuestion) =>
         items.Select(item => new ExamMatrixItem
         {
             Chapter = NormalizeOptional(item.Chapter),
@@ -298,18 +384,38 @@ public class ExamMatrixService : IExamMatrixService
             QuestionType = item.QuestionType,
             Difficulty = item.Difficulty,
             QuestionCount = item.QuestionCount,
-            ScorePerQuestion = item.ScorePerQuestion
+            ScorePerQuestion = scorePerQuestion
         }).ToList();
 
-    private static void ValidateMatrixTotals(int totalQuestions, decimal totalScore, IEnumerable<CreateExamMatrixItemRequest> items)
+    private static void PrepareMatrixRequest(CreateExamMatrixRequest request)
+    {
+        request.Items ??= [];
+        request.TotalQuestions = request.Items.Sum(x => x.QuestionCount);
+        var scorePerQuestion = CalculateScorePerQuestion(request.TotalScore, request.TotalQuestions);
+
+        foreach (var item in request.Items)
+        {
+            item.ScorePerQuestion = scorePerQuestion;
+        }
+    }
+
+    private static void ValidateMatrixTotals(int totalQuestions, IEnumerable<CreateExamMatrixItemRequest> items)
     {
         var itemList = items.ToList();
+        if (totalQuestions <= 0)
+            throw new InvalidOperationException("Matrix must have at least one question.");
+
         if (itemList.Sum(x => x.QuestionCount) != totalQuestions)
             throw new InvalidOperationException("Matrix item question count must match total questions.");
+    }
 
-        var itemScore = itemList.Sum(x => x.QuestionCount * x.ScorePerQuestion);
-        if (itemScore != totalScore)
-            throw new InvalidOperationException("Matrix item score must match total score.");
+    private static decimal CalculateScorePerQuestion(decimal totalScore, int totalQuestions) =>
+        totalQuestions > 0 ? totalScore / totalQuestions : 0;
+
+    private static void EnsureExamWindowValid(DateTime? startTime, DateTime? endTime)
+    {
+        if (startTime.HasValue && endTime.HasValue && endTime <= startTime)
+            throw new InvalidOperationException("Thời gian đóng đề phải sau thời gian mở đề.");
     }
 
     private async Task<ExamMatrix> RequireTeacherMatrixAsync(int matrixId, string teacherId, CancellationToken ct)
