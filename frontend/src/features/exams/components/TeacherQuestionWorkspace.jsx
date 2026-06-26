@@ -170,6 +170,7 @@ export default function TeacherQuestionWorkspace({
   onRefreshBankQuestions,
 }) {
   const [editingImportQuestionId, setEditingImportQuestionId] = useState(null);
+  const [showManualImportGuide, setShowManualImportGuide] = useState(false);
   const editingQuestion = questions.find((question) => question.id === editingQuestionId) ?? null;
   const questionSummaryItems = buildQuestionSummaryItems(exam, questions);
   const questionComposerKey = editingQuestion
@@ -252,7 +253,22 @@ export default function TeacherQuestionWorkspace({
         </div>
       </Card>
 
-      <QuestionImportResources />
+      {questionWorkspaceMode !== "import" ? (
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <Button
+              onClick={() => setShowManualImportGuide((prev) => !prev)}
+              variant="secondary"
+              className="text-xs"
+            >
+              {showManualImportGuide ? "Ẩn hướng dẫn tạo file import bằng AI" : "Xem hướng dẫn tạo file import bằng AI"}
+            </Button>
+          </div>
+          {showManualImportGuide && <QuestionImportResources />}
+        </div>
+      ) : (
+        <QuestionImportResources />
+      )}
 
       <div
         className={

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Frontend
+
+- Redesigned the exam matrix difficulty configuration with a global multi-range interactive slider mapping to Easy, Medium, and Hard counts, and removed row-level difficulty selection dropdowns from individual matrix rows.
+- Replaced the custom file upload form in the question bank page with the reusable `QuestionImportPanel` and `QuestionImportResources` components.
+- Added a collapsible panel with a toggle button to hide the AI Excel template guide in the manual exam creation workspace by default.
+- Streamlined the saved matrix workflow by adding a copy configuration dropdown directly in the matrix editor form, removing arbitrary selection dropdowns, and binding validation/preview generation directly to the active bank and active matrix.
+- Removed statistics dashboards cards and info blocks from both the list and detail views of the question bank page.
+
 ## [1.3.0-rc.1] - 2026-06-26
 
 ### Security

@@ -309,3 +309,98 @@ export function buildBankQuestionFilters(filters) {
     chapter: filters.chapter || undefined,
   };
 }
+
+export function distributeDifficultyToItems(items, easyCount, mediumCount, hardCount) {
+  const resultItems = [];
+  
+  let easyRemaining = easyCount;
+  let mediumRemaining = mediumCount;
+  let hardRemaining = hardCount;
+
+  for (const item of items) {
+    let needed = Number(item.questionCount) || 0;
+    if (needed <= 0) continue;
+
+    // Distribute Easy
+    const easyAlloc = Math.min(needed, easyRemaining);
+    if (easyAlloc > 0) {
+      resultItems.push({
+        ...item,
+        difficulty: "Easy",
+        questionCount: easyAlloc,
+      });
+      needed -= easyAlloc;
+      easyRemaining -= easyAlloc;
+    }
+
+    // Distribute Medium
+    const mediumAlloc = Math.min(needed, mediumRemaining);
+    if (mediumAlloc > 0) {
+      resultItems.push({
+        ...item,
+        difficulty: "Medium",
+        questionCount: mediumAlloc,
+      });
+      needed -= mediumAlloc;
+      mediumRemaining -= mediumAlloc;
+    }
+
+    // Distribute Hard
+    const hardAlloc = Math.min(needed, hardRemaining);
+    if (hardAlloc > 0) {
+      resultItems.push({
+        ...item,
+        difficulty: "Hard",
+        questionCount: hardAlloc,
+      });
+      needed -= hardAlloc;
+      hardRemaining -= hardAlloc;
+    }
+  }
+
+  // If there are still remaining difficulties, add them as fallback items
+  if (easyRemaining > 0) {
+    resultItems.push({ chapter: "", lesson: "", learningOutcome: "", questionType: "", difficulty: "Easy", questionCount: easyRemaining });
+  }
+  if (mediumRemaining > 0) {
+    resultItems.push({ chapter: "", lesson: "", learningOutcome: "", questionType: "", difficulty: "Medium", questionCount: mediumRemaining });
+  }
+  if (hardRemaining > 0) {
+    resultItems.push({ chapter: "", lesson: "", learningOutcome: "", questionType: "", difficulty: "Hard", questionCount: hardRemaining });
+  }
+
+  return resultItems;
+}
+
+export function parseMatrixItemsForForm(items) {
+  const grouped = {};
+  let easyCount = 0;
+  let mediumCount = 0;
+  let hardCount = 0;
+
+  for (const item of items) {
+    const qCount = Number(item.questionCount) || 0;
+    if (item.difficulty === "Easy") easyCount += qCount;
+    else if (item.difficulty === "Hard") hardCount += qCount;
+    else mediumCount += qCount;
+
+    const key = `${item.chapter || ""}|${item.lesson || ""}|${item.learningOutcome || ""}|${item.questionType || ""}`;
+    if (!grouped[key]) {
+      grouped[key] = {
+        chapter: item.chapter || "",
+        lesson: item.lesson || "",
+        learningOutcome: item.learningOutcome || "",
+        questionType: item.questionType || "",
+        questionCount: 0,
+      };
+    }
+    grouped[key].questionCount += qCount;
+  }
+
+  return {
+    items: Object.values(grouped),
+    easyCount,
+    mediumCount,
+    hardCount,
+  };
+}

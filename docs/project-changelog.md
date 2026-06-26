@@ -1,5 +1,44 @@
 # Project Changelog
 
+## Feature: Matrix difficulty redesign and bank import enhancements
+
+Date: 2026-06-26
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Matrix difficulty redesign and bank import enhancements.
+- Purpose and user/business impact: Improves teacher experience when setting up exam matrices by replacing complex row-level difficulty selectors with a single global interactive multi-range slider for Easy/Medium/Hard counts. Simplifies importing questions into the bank by reusing the standard drag-and-drop import components, hiding manual workspace AI guides by default, and removing the unused statistics dashboard from the bank list/detail views.
+- Files or modules changed: frontend question bank page, teacher question workspace component, question bank helpers, changelogs, and Todo List.
+
+Changed files:
+
+- `frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `frontend/src/features/question-banks/question-bank-helpers.js`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Added a collapsible container with toggle button for `<QuestionImportResources />` in `TeacherQuestionWorkspace.jsx` under manual creation mode, defaulting it to hidden.
+- Removed statistics dashboards cards and information guide blocks from both the list and detail views of `QuestionBankPage.jsx`.
+- Replaced row-level difficulty dropdown selectors in matrix rows with a global multi-range slider that partitions total questions into Easy, Medium, and Hard counts.
+- Added data mapping helpers `distributeDifficultyToItems` and `parseMatrixItemsForForm` in `question-bank-helpers.js` to map the global difficulty partition back to individual matrix items database schema during save/validate, and group them on load.
+- Replaced the custom file import form in `QuestionBankPage.jsx` with standard `QuestionImportPanel` and `QuestionImportResources` components.
+- Streamlined the saved matrix flow in `QuestionBankPage.jsx` by adding a "Sao chép cấu hình từ ma trận có sẵn" dropdown to copy existing matrix configurations directly into the editor form state, and binding validation/draft generation directly to the active bank and selected matrix.
+
+Validation:
+
+- Frontend project successfully built using `npm run build` with zero compile/bundle errors.
+
+Known risks / rollback / follow-up:
+
+- None.
+- Rollback: Revert files to previous state and remove changelog entries.
+
 ## Feature: Matrix draft review and scheduled exam creation
 
 Date: 2026-06-26

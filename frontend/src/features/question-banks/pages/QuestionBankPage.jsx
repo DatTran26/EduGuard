@@ -32,6 +32,8 @@ import { useToast } from "../../../hooks/useToast";
 import { routeConfig } from "../../../routes/routeConfig";
 import { QUESTION_TYPE_OPTIONS, calculateEndTimeInputValue, toVietnamISOString } from "../../exams/examHelpers";
 import BankQuestionForm from "../components/BankQuestionForm";
+import QuestionImportPanel from "../../exams/components/QuestionImportPanel";
+import QuestionImportResources from "../../exams/components/QuestionImportResources";
 import {
   EMPTY_BANK_FORM,
   EMPTY_CREATE_EXAM_FORM,
@@ -58,6 +60,8 @@ import {
   getStatusBadgeMark,
   getStatusBadgeVariant,
   getStatusLabel,
+  distributeDifficultyToItems,
+  parseMatrixItemsForForm,
 } from "../question-bank-helpers";
 
 function buildBankFormValues(bank) {
@@ -511,6 +515,10 @@ export default function QuestionBankPage() {
   const { showToast } = useToast();
   const importFileRef = useRef(null);
   const matrixPanelRef = useRef(null);
+  const sliderRef = useRef(null);
+  const [easyCount, setEasyCount] = useState(0);
+  const [mediumCount, setMediumCount] = useState(0);
+  const [hardCount, setHardCount] = useState(0);
   const [banks, setBanks] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [matrices, setMatrices] = useState([]);
@@ -546,7 +554,22 @@ export default function QuestionBankPage() {
   const [isMatrixActionRunning, setIsMatrixActionRunning] = useState(false);
   const selectedBank = banks.find((bank) => Number(bank.id) === Number(selectedBankId)) ?? null;
   const selectedMatrix = matrices.find((matrix) => Number(matrix.id) === Number(selectedMatrixId)) ?? null;
-  const matrixTotals = useMemo(() => calculateMatrixTotals(matrixForm.items, matrixForm.totalScore), [matrixForm.items, matrixForm.totalScore]);
+  const matrixTotals = useMemo(() => {
+    const totalQuestions = Number(matrixForm.totalQuestions) || 0;
+    const totalScore = Number(matrixForm.totalScore) || 0;
+    const scorePerQuestion = totalQuestions > 0 ? totalScore / totalQuestions : 0;
+    const difficultySummary = [
+      { difficulty: "Easy", label: "Dễ", questionCount: easyCount, totalScore: easyCount * scorePerQuestion },
+      { difficulty: "Medium", label: "Trung bình", questionCount: mediumCount, totalScore: mediumCount * scorePerQuestion },
+      { difficulty: "Hard", label: "Khó", questionCount: hardCount, totalScore: hardCount * scorePerQuestion },
+    ];
+    return {
+      totalQuestions,
+      totalScore,
+      scorePerQuestion,
+      difficultySummary,
+    };
+  }, [matrixForm.items, matrixForm.totalScore, matrixForm.totalQuestions, easyCount, mediumCount, hardCount]);
   const selectedMatrixTotals = useMemo(
     () => selectedMatrix ? calculateMatrixTotals(selectedMatrix.items, selectedMatrix.totalScore) : calculateMatrixTotals([], 0),
     [selectedMatrix],
@@ -621,7 +644,39 @@ export default function QuestionBankPage() {
   }
 
   function updateMatrixForm(fieldName, value) {
-    setMatrixForm((previous) => ({ ...previous, [fieldName]: value }));
+    if (fieldName === "totalQuestions") {
+      const total = Math.max(0, parseInt(value) || 0);
+      setMatrixForm((prev) => ({ ...prev, totalQuestions: total }));
+
+      if (total === 0) {
+        setEasyCount(0);
+        setMediumCount(0);
+        setHardCount(0);
+      } else {
+        const currentTotal = easyCount + mediumCount + hardCount;
+        if (currentTotal === 0) {
+          const easy = Math.round(total * 0.4);
+          const medium = Math.round(total * 0.4);
+          const hard = total - easy - medium;
+          setEasyCount(easy);
+          setMediumCount(medium);
+          setHardCount(hard);
+        } else {
+          let easy = Math.round((easyCount / currentTotal) * total);
+          let medium = Math.round((mediumCount / currentTotal) * total);
+          let hard = total - easy - medium;
+          if (hard < 0) {
+            medium += hard;
+            hard = 0;
+          }
+          setEasyCount(easy);
+          setMediumCount(medium);
+          setHardCount(hard);
+        }
+      }
+    } else {
+      setMatrixForm((previous) => ({ ...previous, [fieldName]: value }));
+    }
   }
 
   function updateMatrixItem(index, fieldName, value) {
@@ -629,6 +684,26 @@ export default function QuestionBankPage() {
       ...previous,
       items: previous.items.map((item, itemIndex) => itemIndex === index ? { ...item, [fieldName]: value } : item),
     }));
+  }
+
+  function loadMatrixIntoForm(matrix) {
+    if (!matrix) return;
+    const formValues = buildMatrixFormFromMatrix(matrix);
+    const parsed = parseMatrixItemsForForm(formValues.items);
+    setMatrixForm({
+      ...formValues,
+      items: parsed.items,
+    });
+    setEasyCount(parsed.easyCount);
+    setMediumCount(parsed.mediumCount);
+    setHardCount(parsed.hardCount);
+  }
+
+  function resetMatrixForm() {
+    setMatrixForm(EMPTY_MATRIX_FORM);
+    setEasyCount(0);
+    setMediumCount(1);
+    setHardCount(0);
   }
 
   function resetMatrixDraft() {
@@ -644,6 +719,47 @@ export default function QuestionBankPage() {
     setCreateExamForm((previous) => ({ ...previous, matrixId }));
     setValidationResult(null);
     resetMatrixDraft();
+    const foundMatrix = matrices.find((m) => String(m.id) === String(matrixId));
+    if (foundMatrix) {
+      loadMatrixIntoForm(foundMatrix);
+    }
+  }
+
+  function handleStartDrag(e, handleIndex) {
+    e.preventDefault();
+    const handleMove = (moveEvent) => {
+      if (!sliderRef.current || matrixTotals.totalQuestions === 0) return;
+      const clientX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const rect = sliderRef.current.getBoundingClientRect();
+      const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      const rawValue = Math.round(percentage * matrixTotals.totalQuestions);
+
+      if (handleIndex === 1) {
+        const limit = easyCount + mediumCount;
+        const nextEasy = Math.max(0, Math.min(rawValue, limit));
+        const nextMedium = limit - nextEasy;
+        setEasyCount(nextEasy);
+        setMediumCount(nextMedium);
+      } else if (handleIndex === 2) {
+        const nextTotalEasyMedium = Math.max(easyCount, Math.min(rawValue, matrixTotals.totalQuestions));
+        const nextMedium = nextTotalEasyMedium - easyCount;
+        const nextHard = matrixTotals.totalQuestions - nextTotalEasyMedium;
+        setMediumCount(nextMedium);
+        setHardCount(nextHard);
+      }
+    };
+
+    const handleEndDrag = () => {
+      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mouseup", handleEndDrag);
+      document.removeEventListener("touchmove", handleMove);
+      document.removeEventListener("touchend", handleEndDrag);
+    };
+
+    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mouseup", handleEndDrag);
+    document.addEventListener("touchmove", handleMove);
+    document.addEventListener("touchend", handleEndDrag);
   }
 
   function buildAvailabilityRows(matrix = selectedMatrix) {
@@ -843,7 +959,7 @@ export default function QuestionBankPage() {
   }
 
   async function handleImportQuestions(event) {
-    event.preventDefault();
+    if (event && event.preventDefault) event.preventDefault();
     if (!selectedBankId || !importFile) return;
     setIsImportSubmitting(true);
     try {
@@ -874,14 +990,27 @@ export default function QuestionBankPage() {
       return;
     }
 
-    const payload = { ...matrixForm, totalQuestions: matrixTotals.totalQuestions, totalScore: matrixTotals.totalScore };
+    const totalSliderQuestions = easyCount + mediumCount + hardCount;
+    if (totalSliderQuestions !== matrixTotals.totalQuestions) {
+      showToast({ tone: "caution", title: "Ma trận chưa hợp lệ", message: `Tổng số câu phân bổ theo độ khó (${totalSliderQuestions}) phải khớp với tổng số câu các dòng (${matrixTotals.totalQuestions}).` });
+      return;
+    }
+
+    const distributedItems = distributeDifficultyToItems(matrixForm.items, easyCount, mediumCount, hardCount);
+    const payload = {
+      ...matrixForm,
+      totalQuestions: matrixTotals.totalQuestions,
+      totalScore: matrixTotals.totalScore,
+      items: distributedItems,
+    };
+
     setIsMatrixSubmitting(true);
     try {
       const response = matrixForm.id ? await questionBankApi.updateMatrix(matrixForm.id, payload) : await questionBankApi.createMatrix(payload);
       await loadPageData({ showLoader: false });
       setSelectedMatrixId(String(response.data.id));
       setCreateExamForm((previous) => ({ ...previous, matrixId: String(response.data.id) }));
-      setMatrixForm(buildMatrixFormFromMatrix(response.data));
+      loadMatrixIntoForm(response.data);
       resetMatrixDraft();
 
       if (selectedBankId) {
@@ -1046,12 +1175,6 @@ export default function QuestionBankPage() {
           }
         />
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card><p className="text-sm text-secondary">Ngân hàng</p><p className="mt-2 text-3xl font-semibold text-primary">{banks.length}</p></Card>
-          <Card><p className="text-sm text-secondary">Tổng câu hỏi</p><p className="mt-2 text-3xl font-semibold text-primary">{banks.reduce((total, bank) => total + Number(bank.questionCount || 0), 0)}</p></Card>
-          <Card><p className="text-sm text-secondary">Ma trận đề thi</p><p className="mt-2 text-3xl font-semibold text-primary">{matrices.length}</p></Card>
-        </div>
-
         {renderBankFormPanel()}
 
         {banks.length > 0 ? (
@@ -1200,21 +1323,31 @@ export default function QuestionBankPage() {
         ) : null}
 
         {isImportPanelOpen ? (
-          <Card className="space-y-4">
-            <h3 className="text-lg font-semibold text-primary">Nhập câu hỏi từ tệp vào ngân hàng</h3>
-            <form className="space-y-4" onSubmit={handleImportQuestions}>
-              <input ref={importFileRef} accept=".csv,.xlsx,.txt,.docx,.pdf" className="eg-input w-full" onChange={(event) => setImportFile(event.target.files?.[0] ?? null)} type="file" />
+          <div className="space-y-6">
+            <QuestionImportResources />
+            <Card className="space-y-4">
+              <h3 className="text-lg font-semibold text-primary">Cấu hình thông tin mặc định cho câu hỏi nhập từ tệp</h3>
               <div className="grid gap-4 md:grid-cols-4">
                 <Select id="import-difficulty" label="Độ khó" onChange={(event) => setImportDefaults((previous) => ({ ...previous, difficulty: event.target.value }))} options={questionBankEnums.difficultyOptions} value={importDefaults.difficulty} />
                 <Select id="import-status" label="Trạng thái" onChange={(event) => setImportDefaults((previous) => ({ ...previous, status: event.target.value }))} options={questionBankEnums.statusOptions} value={importDefaults.status} />
                 <TextInput id="import-subject" label="Môn" onChange={(event) => setImportDefaults((previous) => ({ ...previous, subject: event.target.value }))} value={importDefaults.subject} />
                 <TextInput id="import-chapter" label="Chương" onChange={(event) => setImportDefaults((previous) => ({ ...previous, chapter: event.target.value }))} value={importDefaults.chapter} />
               </div>
-              <Button disabled={isImportSubmitting || !selectedBankId || !importFile} type="submit">
-                <IconButtonContent icon={FilePlus2}>{isImportSubmitting ? "Đang nhập..." : "Nhập vào ngân hàng"}</IconButtonContent>
-              </Button>
-            </form>
-          </Card>
+            </Card>
+            <QuestionImportPanel
+              acceptedExtensions={[".csv", ".xlsx", ".txt", ".docx", ".pdf"]}
+              commitLabel="Nhập vào ngân hàng"
+              isDisabled={!selectedBankId}
+              isSubmitting={isImportSubmitting}
+              maxFileSizeLabel="5 MB"
+              onClearFile={() => setImportFile(null)}
+              onCommitImport={() => handleImportQuestions()}
+              onFileSelected={setImportFile}
+              stagedFile={importFile}
+              statusLabel="Review trước khi nhập"
+              submittingLabel="Đang nhập..."
+            />
+          </div>
         ) : null}
 
         {renderQuestionList()}
@@ -1348,8 +1481,47 @@ export default function QuestionBankPage() {
   }
 
   function renderMatrixManager() {
+    const easyPercent = matrixTotals.totalQuestions > 0 ? (easyCount / matrixTotals.totalQuestions) * 100 : 0;
+    const mediumPercent = matrixTotals.totalQuestions > 0 ? (mediumCount / matrixTotals.totalQuestions) * 100 : 0;
+    const easyMediumPercent = matrixTotals.totalQuestions > 0 ? ((easyCount + mediumCount) / matrixTotals.totalQuestions) * 100 : 0;
+
     return (
       <div ref={matrixPanelRef} className="space-y-6">
+        <Card className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-primary">Chọn ma trận làm việc</h3>
+              <p className="text-sm text-secondary">Chọn ma trận đã lưu để chỉnh sửa, kiểm tra tương thích và sinh đề, hoặc tạo ma trận mới.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <select
+                className="eg-input min-w-56"
+                value={selectedMatrixId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "new") {
+                    setSelectedMatrixId("");
+                    resetMatrixForm();
+                  } else {
+                    selectMatrix(val);
+                  }
+                }}
+              >
+                <option value="new">-- Tạo ma trận mới --</option>
+                {matrices.map((matrix) => (
+                  <option key={matrix.id} value={matrix.id}>
+                    {matrix.name} ({matrix.totalQuestions} câu · {matrix.totalScore} điểm)
+                  </option>
+                ))}
+              </select>
+              {selectedMatrixId && (
+                <Button onClick={() => { setSelectedMatrixId(""); resetMatrixForm(); }} variant="secondary">
+                  Tạo mới
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
         <Card className="space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -1359,14 +1531,112 @@ export default function QuestionBankPage() {
             <Badge variant="info">{matrixTotals.totalQuestions} câu · {formatMatrixNumber(matrixTotals.totalScore)} điểm · {formatMatrixNumber(matrixTotals.scorePerQuestion, 4)} điểm/câu</Badge>
           </div>
           <form className="space-y-5" onSubmit={handleSubmitMatrix}>
-            <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+            <div className="flex flex-col gap-2 max-w-md mb-2">
+              <label className="text-sm font-semibold text-secondary" htmlFor="copy-matrix-select">
+                Sao chép cấu hình từ ma trận có sẵn
+              </label>
+              <select
+                id="copy-matrix-select"
+                className="eg-input"
+                onChange={(e) => {
+                  const targetId = e.target.value;
+                  if (!targetId) return;
+                  const foundMatrix = matrices.find((m) => String(m.id) === String(targetId));
+                  if (foundMatrix) {
+                    loadMatrixIntoForm(foundMatrix);
+                    showToast({ tone: "success", title: "Đã sao chép cấu hình", message: `Đã sao chép cấu hình của ma trận "${foundMatrix.name}"` });
+                  }
+                  e.target.value = "";
+                }}
+              >
+                <option value="">-- Chọn ma trận để sao chép --</option>
+                {matrices.map((matrix) => (
+                  <option key={matrix.id} value={matrix.id}>
+                    {matrix.name} ({matrix.totalQuestions} câu - {matrix.totalScore} điểm)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-4 xl:grid-cols-7">
               <TextInput id="matrix-name" label="Tên ma trận" onChange={(event) => updateMatrixForm("name", event.target.value)} required value={matrixForm.name} />
               <TextInput id="matrix-subject" label="Môn" onChange={(event) => updateMatrixForm("subject", event.target.value)} required value={matrixForm.subject} />
               <TextInput id="matrix-grade" label="Khối/lớp" onChange={(event) => updateMatrixForm("gradeLevel", event.target.value)} value={matrixForm.gradeLevel} />
               <TextInput id="matrix-duration" label="Thời lượng phút" min="1" onChange={(event) => updateMatrixForm("durationMinutes", event.target.value)} type="number" value={matrixForm.durationMinutes} />
+              <TextInput id="matrix-total-questions" label="Tổng số câu" min="1" onChange={(event) => updateMatrixForm("totalQuestions", event.target.value)} required type="number" value={matrixForm.totalQuestions} />
               <TextInput id="matrix-total-score" label="Tổng điểm" min="0.25" onChange={(event) => updateMatrixForm("totalScore", event.target.value)} required step="0.25" type="number" value={matrixForm.totalScore} />
               <TextInput id="matrix-score-per-question" label="Điểm/câu" readOnly value={formatMatrixNumber(matrixTotals.scorePerQuestion, 4)} />
             </div>
+
+            <div className="space-y-4 rounded-[18px] border border-border bg-neutral p-4">
+              <label className="text-sm font-semibold text-primary block">Tỷ lệ độ khó (kéo các nút để phân bổ số câu)</label>
+              <div 
+                className="relative h-6 w-full rounded-full bg-slate-200 dark:bg-slate-700/50 border border-border select-none mt-2 overflow-visible" 
+                ref={sliderRef}
+              >
+                {/* Segment 1: Easy (Blue) */}
+                <div 
+                  className="absolute top-0 bottom-0 left-0 rounded-l-full bg-gradient-to-r from-blue-500 to-indigo-500 opacity-90 transition-all"
+                  style={{ width: `${easyPercent}%` }}
+                />
+                {/* Segment 2: Medium (Orange) */}
+                <div 
+                  className="absolute top-0 bottom-0 bg-gradient-to-r from-amber-500 to-orange-500 opacity-90 transition-all"
+                  style={{ 
+                    left: `${easyPercent}%`, 
+                    width: `${mediumPercent}%` 
+                  }}
+                />
+                {/* Segment 3: Hard (Purple) */}
+                <div 
+                  className="absolute top-0 bottom-0 right-0 rounded-r-full bg-gradient-to-r from-violet-500 to-purple-500 opacity-90 transition-all"
+                  style={{ 
+                    left: `${easyMediumPercent}%`
+                  }}
+                />
+
+                {/* Handle 1 (Easy / Medium boundary) */}
+                {matrixTotals.totalQuestions > 0 && (
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-indigo-500 shadow-md cursor-pointer hover:scale-110 active:scale-95 transition-transform z-10 flex items-center justify-center text-[10px] font-bold text-indigo-700"
+                    style={{ left: `${easyPercent}%` }}
+                    onMouseDown={(e) => handleStartDrag(e, 1)}
+                    onTouchStart={(e) => handleStartDrag(e, 1)}
+                  >
+                    {easyCount}
+                  </div>
+                )}
+
+                {/* Handle 2 (Medium / Hard boundary) */}
+                {matrixTotals.totalQuestions > 0 && (
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-orange-500 shadow-md cursor-pointer hover:scale-110 active:scale-95 transition-transform z-10 flex items-center justify-center text-[10px] font-bold text-orange-700"
+                    style={{ left: `${easyMediumPercent}%` }}
+                    onMouseDown={(e) => handleStartDrag(e, 2)}
+                    onTouchStart={(e) => handleStartDrag(e, 2)}
+                  >
+                    {easyCount + mediumCount}
+                  </div>
+                )}
+              </div>
+
+              {/* Legend with question count */}
+              <div className="grid grid-cols-3 gap-3 text-center text-xs mt-3">
+                <div className="rounded-[12px] bg-blue-500/10 border border-blue-500/20 p-2.5">
+                  <span className="block font-semibold text-blue-500">Dễ (Easy)</span>
+                  <span className="block text-sm font-bold text-primary mt-1">{easyCount} câu</span>
+                </div>
+                <div className="rounded-[12px] bg-orange-500/10 border border-orange-500/20 p-2.5">
+                  <span className="block font-semibold text-orange-500">Trung bình (Medium)</span>
+                  <span className="block text-sm font-bold text-primary mt-1">{mediumCount} câu</span>
+                </div>
+                <div className="rounded-[12px] bg-purple-500/10 border border-purple-500/20 p-2.5">
+                  <span className="block font-semibold text-purple-500">Khó (Hard)</span>
+                  <span className="block text-sm font-bold text-primary mt-1">{hardCount} câu</span>
+                </div>
+              </div>
+            </div>
+
             <div className="rounded-[18px] border border-info/20 bg-info-muted p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -1380,18 +1650,18 @@ export default function QuestionBankPage() {
                 </div>
               </div>
             </div>
+
             {matrixForm.items.map((item, index) => (
               <div key={index} className="rounded-[18px] border border-border bg-neutral p-4">
                 <div className="mb-4 flex items-center justify-between">
                   <p className="text-sm font-semibold text-primary">Dòng ma trận {index + 1}</p>
                   {matrixForm.items.length > 1 ? <Button onClick={() => setMatrixForm((previous) => ({ ...previous, items: previous.items.filter((_, itemIndex) => itemIndex !== index) }))} variant="ghost">Xóa dòng</Button> : null}
                 </div>
-                <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+                <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
                   <TextInput id={`matrix-chapter-${index}`} label="Chương" onChange={(event) => updateMatrixItem(index, "chapter", event.target.value)} value={item.chapter} />
                   <TextInput id={`matrix-lesson-${index}`} label="Bài" onChange={(event) => updateMatrixItem(index, "lesson", event.target.value)} value={item.lesson} />
                   <TextInput id={`matrix-outcome-${index}`} label="Yêu cầu cần đạt" onChange={(event) => updateMatrixItem(index, "learningOutcome", event.target.value)} value={item.learningOutcome} />
                   <Select id={`matrix-type-${index}`} label="Loại câu" onChange={(event) => updateMatrixItem(index, "questionType", event.target.value)} options={MATRIX_QUESTION_TYPE_OPTIONS} value={item.questionType} />
-                  <Select id={`matrix-difficulty-${index}`} label="Độ khó" onChange={(event) => updateMatrixItem(index, "difficulty", event.target.value)} options={questionBankEnums.difficultyOptions} value={item.difficulty} />
                   <TextInput id={`matrix-count-${index}`} label="Số câu" min="1" onChange={(event) => updateMatrixItem(index, "questionCount", event.target.value)} type="number" value={item.questionCount} />
                 </div>
               </div>
@@ -1408,24 +1678,7 @@ export default function QuestionBankPage() {
           </form>
         </Card>
 
-        <div className="space-y-5">
-          <Card className="space-y-4">
-            <h3 className="text-lg font-semibold text-primary">Ma trận đã lưu</h3>
-            {matrices.length > 0 ? (
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {matrices.map((matrix) => (
-                  <div key={matrix.id} className={`rounded-[18px] border p-4 ${Number(selectedMatrixId) === matrix.id ? "border-tertiary bg-info-muted" : "border-border bg-neutral"}`}>
-                    <p className="text-sm font-semibold text-primary">{matrix.name}</p>
-                    <p className="mt-1 text-sm text-secondary">{matrix.totalQuestions} câu · {matrix.totalScore} điểm · {matrix.durationMinutes} phút</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button onClick={() => selectMatrix(String(matrix.id))} variant="secondary">Chọn</Button>
-                      <Button onClick={() => setMatrixForm(buildMatrixFormFromMatrix(matrix))} variant="ghost">Sửa</Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : <EmptyState title="Chưa có ma trận đề." />}
-          </Card>
+
 
           {renderMatrixDetailPanel()}
 
@@ -1438,25 +1691,14 @@ export default function QuestionBankPage() {
               <Badge variant={draftExamQuestions.length > 0 ? "info" : "neutral"}>{draftExamQuestions.length} câu nháp</Badge>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <Select
-                id="matrix-bank"
-                label="Ngân hàng"
-                onChange={(event) => {
-                  setSelectedBankId(event.target.value);
-                  setValidationResult(null);
-                  resetMatrixDraft();
-                }}
-                options={bankOptions}
-                value={selectedBankId}
-              />
-              <Select id="matrix-select" label="Ma trận" onChange={(event) => selectMatrix(event.target.value)} options={matrixOptions} value={selectedMatrixId} />
+            <div className="rounded-[16px] border border-border bg-neutral p-4 space-y-2 text-sm">
+              <p><span className="font-semibold text-secondary">Ngân hàng hiện tại:</span> <span className="font-bold text-primary">{selectedBank?.name || "Bất kỳ"}</span></p>
+              <p><span className="font-semibold text-secondary">Ma trận đang chọn:</span> <span className="font-bold text-primary">{selectedMatrix?.name || "Chưa lưu ma trận (Vui lòng điền thông tin và bấm Tạo ma trận ở trên)"}</span></p>
             </div>
 
-            {selectedMatrix ? <p className="text-sm text-secondary">Đang chọn: {selectedMatrix.name}</p> : null}
             <div className="flex flex-wrap gap-3">
               <Button disabled={isMatrixActionRunning || !selectedBankId || !selectedMatrixId} onClick={handleValidateMatrix} variant="secondary">Kiểm tra đủ câu</Button>
-              <Button disabled={isMatrixActionRunning || !canGenerateFromSelectedMatrix()} onClick={handleGeneratePreview} variant="secondary">{draftExamQuestions.length > 0 ? "Sinh lại đề nháp" : "Sinh đề nháp"}</Button>
+              <Button disabled={isMatrixActionRunning || !selectedBankId || !selectedMatrixId || !canGenerateFromSelectedMatrix()} onClick={handleGeneratePreview} variant="secondary">{draftExamQuestions.length > 0 ? "Sinh lại đề nháp" : "Sinh đề nháp"}</Button>
             </div>
 
             {validationResult ? (
@@ -1513,7 +1755,6 @@ export default function QuestionBankPage() {
               <EmptyState title="Chưa có đề nháp." description="Bấm Sinh đề nháp để hệ thống lấy câu từ ngân hàng theo ma trận đang chọn." />
             )}
           </Card>
-        </div>
       </div>
     );
   }
@@ -1539,18 +1780,6 @@ export default function QuestionBankPage() {
             <Button onClick={() => handleDeleteBank(selectedBank)} variant="ghost"><IconButtonContent icon={Trash2}>Xóa ngân hàng</IconButtonContent></Button>
           </div>
         </div>
-
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card><p className="text-sm text-secondary">Câu hỏi</p><p className="mt-2 text-3xl font-semibold text-primary">{questions.length}</p></Card>
-          <Card><p className="text-sm text-secondary">Sẵn sàng</p><p className="mt-2 text-3xl font-semibold text-primary">{approvedQuestionCount}</p></Card>
-          <Card><p className="text-sm text-secondary">Cần rà soát</p><p className="mt-2 text-3xl font-semibold text-primary">{reviewedQuestionCount}</p></Card>
-          <Card><p className="text-sm text-secondary">Ma trận</p><p className="mt-2 text-3xl font-semibold text-primary">{matrices.length}</p></Card>
-        </div>
-
-        <Card className="border-info/20 bg-info-muted">
-          <p className="text-sm font-semibold text-primary">Ngân hàng câu hỏi giúp giảng viên tiết kiệm thời gian</p>
-          <p className="mt-2 text-sm leading-6 text-secondary">Soạn hoặc nhập câu hỏi một lần, phân loại theo chương/bài/độ khó, rồi dùng ma trận để hệ thống tự kiểm tra đủ thiếu và sinh đề nhanh hơn thay vì chọn thủ công từng câu.</p>
-        </Card>
 
         {isBankFormOpen ? renderBankFormPanel() : null}
 
