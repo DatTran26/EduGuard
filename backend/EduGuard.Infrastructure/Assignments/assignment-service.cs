@@ -190,7 +190,7 @@ public class AssignmentService : IAssignmentService
         var assignment = await RequireAssignmentAsync(assignmentId, ct);
         await EnsureActiveStudentInClassroomAsync(assignment.ClassroomId, studentId, ct);
 
-        if (DateTime.UtcNow > assignment.Deadline)
+        if (DateTime.UtcNow > DateTime.SpecifyKind(assignment.Deadline, DateTimeKind.Utc))
             throw new InvalidOperationException("Đã quá hạn nộp bài.");
 
         var existing = await _assignmentRepository.GetSubmissionAsync(assignmentId, studentId, ct);
@@ -283,9 +283,9 @@ public class AssignmentService : IAssignmentService
         TeacherId = assignment.TeacherId,
         Title = assignment.Title,
         Description = assignment.Description,
-        Deadline = assignment.Deadline,
+        Deadline = DateTime.SpecifyKind(assignment.Deadline, DateTimeKind.Utc),
         MaxScore = assignment.MaxScore,
-        CreatedAt = assignment.CreatedAt,
+        CreatedAt = DateTime.SpecifyKind(assignment.CreatedAt, DateTimeKind.Utc),
         SubmissionCount = assignment.Submissions?.Count ?? 0
     };
 
@@ -299,7 +299,7 @@ public class AssignmentService : IAssignmentService
         Content = submission.Content,
         Score = submission.Score,
         Feedback = submission.Feedback,
-        SubmittedAt = submission.SubmittedAt,
-        GradedAt = submission.GradedAt
+        SubmittedAt = DateTime.SpecifyKind(submission.SubmittedAt, DateTimeKind.Utc),
+        GradedAt = submission.GradedAt.HasValue ? DateTime.SpecifyKind(submission.GradedAt.Value, DateTimeKind.Utc) : null
     };
 }
