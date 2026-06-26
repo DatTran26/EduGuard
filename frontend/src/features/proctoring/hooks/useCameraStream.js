@@ -119,7 +119,9 @@ export function useCameraStream({ enabled = true, audio = false } = {}) {
       if (videoRef.current) {
         videoRef.current.srcObject = null;
       }
+      setStatus("idle");
       setMicStatus(audio ? "idle" : "not-required");
+      setErrorMessage("");
       return undefined;
     }
 
@@ -128,6 +130,19 @@ export function useCameraStream({ enabled = true, audio = false } = {}) {
     startStream();
     return () => stopStream();
   }, [audio, enabled, startStream, stopStream]);
+
+  useEffect(() => {
+    const stream = streamRef.current;
+    const video = videoRef.current;
+    if (!enabled || !stream || !video || status !== "ready") {
+      return;
+    }
+
+    if (video.srcObject !== stream) {
+      video.srcObject = stream;
+      video.play().catch(() => {});
+    }
+  }, [enabled, status]);
 
   useEffect(() => {
     const stream = streamRef.current;

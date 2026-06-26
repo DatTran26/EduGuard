@@ -5,6 +5,7 @@ import {
   buildClientError,
   buildExamStatusLabel,
   getCurrentSessionUser,
+  normalizeAttemptStatus,
   normalizeUserId,
   normalizeQuestionType,
   requestApi,
@@ -160,6 +161,10 @@ function normalizeExamDto(exam, currentUser, classroom = null, extraData = {}) {
     totalQuestionScore:
       typeof extraData.totalQuestionScore === "number" ? extraData.totalQuestionScore : null,
     attemptCount: Number(exam?.attemptCount) || 0,
+    myAttemptId: Number(exam?.myAttemptId) > 0 ? Number(exam.myAttemptId) : null,
+    myAttemptStatus: exam?.myAttemptStatus != null ? normalizeAttemptStatus(exam.myAttemptStatus) : null,
+    myLatestScore:
+      typeof exam?.myLatestScore === "number" ? roundToOneDecimal(exam.myLatestScore) : null,
     averageScore:
       typeof extraData.averageScore === "number" ? roundToOneDecimal(extraData.averageScore) : null,
     settings: normalizeExamSetting(exam?.settings),

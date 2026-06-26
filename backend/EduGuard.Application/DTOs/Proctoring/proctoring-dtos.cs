@@ -10,6 +10,7 @@ public class ProctoringRoomDto
     public DateTime? StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public bool EnableLiveProctoring { get; set; }
+    public bool CameraMonitoringEnabled { get; set; }
     public int MaxActiveLiveTiles { get; set; }
     public int InProgressCount { get; set; }
     public int SubmittedCount { get; set; }

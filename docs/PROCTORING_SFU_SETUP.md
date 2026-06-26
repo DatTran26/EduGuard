@@ -4,13 +4,15 @@
 > **Stack:** [LiveKit](https://livekit.io/) self-host + ASP.NET Core token API + React `livekit-client`.  
 > **SignalR:** Giữ cho control events (warn / pause / terminate); media đi qua LiveKit.
 
+> **Chọn chế độ mạng (LAN / Tailscale / Tunnel):** xem [`docs/PROCTORING_NETWORK_MODES.md`](PROCTORING_NETWORK_MODES.md).
+
 ## 1. Hiện trạng TURN/STUN trong repo
 
 | Thành phần | Trạng thái | Ghi chú |
 |------------|-----------|---------|
 | STUN Google | **Có** | Mặc định `stun:stun.l.google.com:19302` trong `appsettings.json` → `WebRtc:IceServers` |
-| TURN (coturn) | **Chưa cài** | Chỉ có hướng dẫn trong `docs/proctoring-webrtc-nat.md` và mẫu comment trong `infra/livekit/docker-compose.yml` |
-| SFU LiveKit | **Mới thêm** | Docker `infra/livekit/`, bật qua `LiveKit:Enabled` |
+| TURN (coturn) | **Có** | `infra/livekit/docker-compose.yml` — bật khi tunnel + internet |
+| SFU LiveKit | **Có** | Docker `infra/livekit/`, bật qua `LiveKit:Enabled` |
 | API ICE | `GET /api/proctoring/webrtc-config` | Trả `iceServers` cho P2P fallback |
 | API SFU | `GET /api/proctoring/sfu-config` | `enabled`, `url`, `iceServers` |
 | Token GV | `GET /api/exams/{examId}/proctoring/sfu-token` | Subscribe-only |
@@ -18,8 +20,8 @@
 
 ### Khi nào cần TURN
 
-- Dev local (cùng máy / LAN): STUN + LiveKit local thường đủ.
-- GV và SV khác mạng / symmetric NAT: **bật TURN** (coturn hoặc LiveKit built-in TURN) và thêm vào `WebRtc:IceServers`.
+- **LAN / Tailscale:** STUN thường đủ — xem `docs/PROCTORING_NETWORK_MODES.md`.
+- GV và SV khác mạng qua internet (tunnel): **bật TURN** (coturn) và port forward UDP.
 
 ## 2. Vì sao chọn LiveKit (Option B)
 
@@ -82,6 +84,23 @@ Dev API key / secret (trong `livekit.yaml`): `devkey` / `secret`
 
 ### Biến môi trường (gợi ý production)
 
+**Backend** — copy `backend/EduGuard.Api/.env.example` → `.env` (hoặc set env trên server):
+
+```powershell
+Copy-Item backend\EduGuard.Api\.env.example backend\EduGuard.Api\.env
+# Sửa LiveKit__Url, ConnectionStrings__Redis trong .env
+```
+
+**Frontend** — copy `frontend/.env.example` → `.env`, bật khi host khác máy API:
+
+```env
+VITE_LIVEKIT_URL=ws://192.168.1.100:7880
+```
+
+Ưu tiên URL LiveKit trên browser: `VITE_LIVEKIT_URL` → API `sfu-config` → `ws://localhost:7880`.
+
+Hoặc set biến môi trường shell (không commit secret):
+
 ```powershell
 $env:LiveKit__Enabled = "true"
 $env:LiveKit__Url = "wss://livekit.your-domain.com"
@@ -95,9 +114,35 @@ $env:WebRtc__IceServers__1__Credential = "REPLACE_TURN_SECRET"
 
 > Không commit secret TURN/LiveKit vào repo — dùng User Secrets hoặc secret store.
 
-### TURN với coturn (tùy chọn)
+### TURN với coturn (khuyến nghị khi GV/SV khác mạng)
 
-Bỏ comment service `coturn` trong `infra/livekit/docker-compose.yml`, thay `REPLACE_TURN_SECRET`, rồi thêm ICE server vào `WebRtc:IceServers` như trên.
+1. Copy env và chỉnh secret (khớp backend `WebRtc__IceServers__1__*`):
+
+```powershell
+Set-Location D:\Projects\EduGuard\infra\livekit
+Copy-Item .env.example .env
+# Sửa TURN_SECRET; nếu client khác mạng: set TURN_EXTERNAL_IP=<public IPv4>
+```
+
+2. Bật coturn (đã có trong `docker-compose.yml`):
+
+```powershell
+docker compose up -d
+docker compose ps
+```
+
+3. Backend `EduGuard.Api/.env` (đã mẫu trong `.env.example`):
+
+```env
+WebRtc__IceServers__1__Urls__0=turn:livekit.wpcteam.homes:3478?transport=udp
+WebRtc__IceServers__1__Urls__1=turn:livekit.wpcteam.homes:3478?transport=tcp
+WebRtc__IceServers__1__Username=eduguard
+WebRtc__IceServers__1__Credential=<TURN_SECRET>
+```
+
+4. **Firewall / router:** forward **UDP+TCP 3478** tới máy chạy Docker. TURN **không** đi qua Cloudflare HTTP tunnel — DNS `livekit.wpcteam.homes` cho TURN nên **DNS only** (grey cloud) hoặc A record trỏ IP public, song song với tunnel `http://localhost:7880` cho signaling.
+
+5. Restart API; `GET /api/proctoring/sfu-config` (Bearer) trả `iceServers` có mục `turn:`.
 
 Chi tiết thêm: `docs/proctoring-webrtc-nat.md`.
 

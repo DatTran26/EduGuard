@@ -144,6 +144,26 @@ public class ExamAttemptsController : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(ApiResponse<ExamResultDto>.CreateFailure(ex.Message)); }
     }
 
+    [HttpGet("api/exams/{examId:int}/my-attempt")]
+    [Authorize(Roles = "Student")]
+    public async Task<ActionResult<ApiResponse<ExamAttemptDto?>>> GetMyAttempt(int examId, CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+            return Unauthorized(ApiResponse<ExamAttemptDto?>.CreateFailure("Token không hợp lệ."));
+
+        try
+        {
+            var data = await _attemptService.GetMyAttemptAsync(examId, userId, ct);
+            return Ok(ApiResponse<ExamAttemptDto?>.CreateSuccess(data));
+        }
+        catch (KeyNotFoundException ex) { return NotFound(ApiResponse<ExamAttemptDto?>.CreateFailure(ex.Message)); }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<ExamAttemptDto?>.CreateFailure(ex.Message));
+        }
+    }
+
     [HttpGet("api/exams/{examId:int}/attempts")]
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ExamAttemptDto>>>> GetAttemptsByExam(int examId, CancellationToken ct)

@@ -523,8 +523,9 @@ export default function TeacherClassroomWorkspace({
       ) : null}
 
       {resolvedActiveTab === "notifications" ? (
-        <TeacherNotificationTab 
-          classroom={classroom} 
+        <TeacherNotificationTab
+          classroom={classroom}
+          members={members}
           onNotificationCreated={onNotificationCreated}
         />
       ) : null}

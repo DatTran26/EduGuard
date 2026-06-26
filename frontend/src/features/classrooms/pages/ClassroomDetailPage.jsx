@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { areUserIdsEqual } from "../../../api/apiHelpers";
 import { classroomApi } from "../../../api/classroomApi";
@@ -143,6 +143,35 @@ export default function ClassroomDetailPage() {
   const shouldShowTeacherWorkspace = user?.role === "Teacher" && Boolean(classroom?.canEdit);
   const activeTeacherTab = normalizeTeacherClassroomTab(searchParams.get("tab"));
   const highlightedStudentId = searchParams.get("studentId") || "";
+  const hasMountedTeacherTabRef = useRef(false);
+
+  useEffect(() => {
+    if (!shouldShowTeacherWorkspace) {
+      return;
+    }
+
+    if (!hasMountedTeacherTabRef.current) {
+      hasMountedTeacherTabRef.current = true;
+      return;
+    }
+
+    const tabBar = document.getElementById("teacher-classroom-tab-bar");
+    const main = tabBar?.closest("main");
+    if (!tabBar || !main) {
+      return;
+    }
+
+    const mainRect = main.getBoundingClientRect();
+    const tabBarRect = tabBar.getBoundingClientRect();
+    const delta = tabBarRect.top - mainRect.top;
+
+    if (Math.abs(delta) > 1) {
+      main.scrollTo({
+        top: main.scrollTop + delta,
+        behavior: "smooth",
+      });
+    }
+  }, [activeTeacherTab, shouldShowTeacherWorkspace]);
 
   // Data reloads on callbacks
   async function reloadNotifications() {

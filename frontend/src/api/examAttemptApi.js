@@ -148,6 +148,15 @@ export const examAttemptApi = {
     };
   },
 
+  async getMyAttemptForExam(examId) {
+    const apiResponse = await requestApi(() => axiosClient.get(`/exams/${examId}/my-attempt`));
+
+    return {
+      ...apiResponse,
+      data: apiResponse.data ? normalizeAttemptDto(apiResponse.data) : null,
+    };
+  },
+
   async getByExam(examId) {
     const apiResponse = await requestApi(() => axiosClient.get(`/exams/${examId}/attempts`));
 

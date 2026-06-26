@@ -621,7 +621,12 @@ export default function ExamListPage() {
       showToast({
         tone: "success",
         title: shouldAutoPublish ? "Đã lưu và publish đề thi" : "Đã lưu đề thi nháp",
-        message: publishResponse?.message || response.message,
+        message:
+          publishResponse?.message ||
+          response.message ||
+          (shouldAutoPublish
+            ? "Sinh viên trong lớp sẽ nhận thông báo về đề thi mới."
+            : "Bạn có thể tiếp tục thêm câu hỏi và publish sau."),
       });
       return false;
     } catch (error) {
@@ -695,7 +700,10 @@ export default function ExamListPage() {
       showToast({
         tone: "success",
         title: shouldAutoPublish ? "Đã lưu và publish đề thi" : "Đã cập nhật đề thi",
-        message: publishResponse?.message || response.message,
+        message:
+          publishResponse?.message ||
+          response.message ||
+          (shouldAutoPublish ? "Sinh viên trong lớp sẽ nhận thông báo về đề thi mới." : undefined),
       });
       return false;
     } catch (error) {

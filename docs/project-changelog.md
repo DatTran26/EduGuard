@@ -1,5 +1,233 @@
 # Project Changelog
 
+## Feature: Exam and assignment student notifications
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Exam and assignment student notifications.
+- Purpose and user/business impact: When a teacher publishes an exam or creates an assignment, active students in the classroom now receive in-app notifications and realtime SignalR alerts instead of discovering new tasks only by browsing lists. Teachers see clearer success toasts confirming the class was notified.
+- Files or modules changed: `i-notification-service.cs`, `notification-service.cs`, `exam-service.cs`, `assignment-service.cs`; `notificationUtils.js`, `ExamListPage.jsx`, `ExamDetailPage.jsx`, `AssignmentSection.jsx`, `TeacherAssignmentListPage.jsx`.
+- Technical summary: Added `CreateExamPublishedNotificationAsync` (on first publish, type `ExamPublished`, link `/student/exams/{id}`) and `CreateAssignmentCreatedNotificationAsync` (on create, type `AssignmentNew`, link `/student/classrooms/{id}?assignmentId={id}`); shared helper delivers `UserNotification` rows and SignalR push to active classroom members; dedupe via `SourceKey`; frontend maps new notification types and improves teacher success copy.
+- Validation: `dotnet build` on `EduGuard.Infrastructure` succeeded; frontend linter clean on touched files.
+- Known risks: Draft exams do not notify until publish; classrooms with zero active students skip notification silently; deadline text uses server local timezone.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Proctoring camera heartbeat and live stream fixes (bug fix)
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring camera heartbeat and live stream fixes (bug fix).
+- Purpose and user/business impact: Teachers in the proctoring room now receive student camera/network/live status instead of perpetual **Chưa rõ**; students with `enableCameraProctoring` can publish heartbeats; camera preview attaches reliably during exam attempts; SFU can connect on tunnel deploys without manual `VITE_LIVEKIT_URL` when LiveKit is on `livekit.{domain}`.
+- Files or modules changed: `proctoring-settings-helper.cs`, `student-proctoring-service.cs`, `exam-lobby-service.cs`, `notification-service.cs`; `useCameraStream.js`, `useProctoringHeartbeat.js`, `useStudentSfuPublisher.js`, `livekitConfig.js`, `ExamAttemptPage.jsx`, `TeacherProctoringRoomPage.jsx`.
+- Technical summary: Centralized `IsCameraMonitoringEnabled` (live proctoring, require camera, camera proctoring); heartbeat sets `LiveStatus=Active` when camera on; frontend re-binds `MediaStream` when video mounts; heartbeat bootstraps `startProctoring`; LiveKit URL derives `wss://livekit.wpcteam.homes` from `class.wpcteam.homes` when API returns localhost; teacher watch effect keys on `attemptId` to reduce START/STOP spam.
+- Validation: Frontend linter clean on touched files; backend build attempted (`dotnet build`) — blocked by running API file lock on `EduGuard.Infrastructure.dll`.
+- Known risks: LiveKit subdomain derivation assumes `livekit.{parentDomain}`; set `VITE_LIVEKIT_URL` explicitly if your tunnel uses a different hostname. Redeploy backend + rebuild frontend for production (`class.wpcteam.homes`).
+
+Unresolved questions:
+
+- Confirm production `LiveKit:Enabled=true` and tunnel `wss://livekit.wpcteam.homes` after deploy.
+
+## Feature: Classroom notification colors and recipient picker
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Classroom notification colors and recipient picker.
+- Purpose and user/business impact: Teachers see correct banner colors per notification type (emergency red, warning yellow, general blue) and can send announcements to one or many selected class members instead of always broadcasting to the whole class.
+- Files or modules changed: `TeacherNotificationTab.jsx`, `TeacherClassroomWorkspace.jsx`, `ClassOverviewPanel.jsx`, `classroomNotificationUtils.js`, `notificationApi.js`, `notificationUtils.js`; `CreateNotificationRequest.cs`, `notification-service.cs`, `notifications-controller.cs`.
+- Technical summary: Replaced misused `Success` type with `Emergency` for khẩn cấp; shared classroom notification meta for consistent tones; form layout adds right-side member checklist with select-all; API/backend filter active students by `recipientIds` when provided; legacy `Success` entries still render as khẩn cấp red.
+- Validation: Frontend linter clean on touched files; backend build blocked by running `EduGuard.Api` process file lock (code review).
+- Known risks: Existing notifications stored as `Success` remain in DB but display as khẩn cấp; new sends use `Emergency`.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Student paused exam resume flow (bug fix)
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Student paused exam resume flow (bug fix).
+- Purpose and user/business impact: When a teacher pauses a student mid-exam, the student can return to the waiting room, see correct **Tạm dừng** status (not **Đã thi**), and continue when the teacher resumes — without losing their attempt or being blocked by max-attempt limits.
+- Files or modules changed: `exam-attempt-service.cs`, `exam-repository.cs`, `exam-service.cs`, `exam-dto.cs`, `exam-mapper.cs`, `exam-attempts-controller.cs`; `ExamPausedPage.jsx`, `ExamDetailPage.jsx`, `StudentExamCard.jsx`, `proctoringRouting.js`, `useStudentProctoringEvents.js`, `examApi.js`, `examAttemptApi.js`.
+- Technical summary: Backend treats `PausedByProctor` as resumable (same as `InProgress` for start); only submitted attempts count toward max attempts; student exam DTO includes latest attempt status; paused page removes exit link, polls every 3s, enables continue button on resume; list/detail route students to paused or attempt pages by status.
+- Validation: Linter clean on touched frontend files; backend build blocked by running API process (file lock), code review only.
+- Known risks: Student must keep paused tab open or revisit exam detail/list to re-enter waiting room after navigation away.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Exam attempt header countdown prominence
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Exam attempt header countdown prominence.
+- Purpose and user/business impact: Students can see remaining exam time clearly at the center of the sticky header while taking a test, with visual urgency when time is running low.
+- Files or modules changed: `ExamAttemptHeaderCountdown.jsx`, `ExamAttemptPage.jsx`.
+- Technical summary: Replaced small time badge with a centered header countdown component (segmented digit boxes, `MM:SS` when under one hour, amber under 5 minutes, rose under 1 minute); fixed header grid overlap and removed full-timer pulse animation.
+- Validation: Linter clean on touched files.
+- Known risks: None identified.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Exam lobby UI refresh and countdown performance
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Exam lobby UI refresh and countdown performance.
+- Purpose and user/business impact: Students waiting before an exam see a clearer, more polished lobby and a countdown that updates every second instead of feeling laggy between server polls.
+- Files or modules changed: `useLobbyOpenCountdown.js`, `ExamLobbyCountdown.jsx`, `ExamLobbyPage.jsx`; removed `ExamLobbyCountdown.css`.
+- Technical summary: Countdown derives remaining time from `startTime` on the client (same pattern as proctoring room header); lobby page layout uses gradient hero, device/waiting status pills, and segmented digit cards with urgency coloring under 5 minutes / 1 minute.
+- Validation: Linter clean on touched files.
+- Known risks: Countdown requires a valid `startTime` from lobby status or exam detail; falls back to “Đang mở đề” when time has passed.
+
+Unresolved questions:
+
+- None.
+
+## Feature: System run guide (all modes)
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: System run guide — all startup modes.
+- Purpose and user/business impact: Developers can start EduGuard using any supported method from one document (basic dev, VS/IIS, Redis, SFU, AI, network modes, full stack). Clarifies that `use-tunnel.cmd` run as Administrator already opens LAN firewall (no separate `open-lan-firewall.cmd` unless LAN-only mode or non-Admin run).
+- Files or modules changed: `docs/HUONG_DAN_CHAY_HE_THONG.md`, `docs/PROCTORING_NETWORK_MODES.md`, `docs/README.md`, `CHANGELOG.md`.
+- Technical summary: Consolidated run instructions; added per-script firewall table; merged hybrid tunnel steps 2–3 into single Admin `use-tunnel.cmd` flow; comparison table column for auto firewall in `PROCTORING_NETWORK_MODES.md`.
+- Validation: Doc review against `apply-proctoring-network.ps1` (`Enable-LanFirewallRules` when `-Mode tunnel`).
+- Known risks: None — documentation only.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Proctoring network modes (LAN / Tailscale / Tunnel)
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring network modes documentation.
+- Purpose and user/business impact: School Wi-Fi without port forward can use LAN; remote GV/dev can use Tailscale; production uses tunnel + TURN later.
+- Files or modules changed: `docs/PROCTORING_NETWORK_MODES.md`, `frontend/.env`, `backend/EduGuard.Api/.env`, `docs/PROCTORING_SFU_SETUP.md`, `.env.example`.
+- Technical summary: Three-mode guide with IP examples (LAN `10.20.4.154`, Tailscale `100.86.244.117`, tunnel `wss://livekit.wpcteam.homes`).
+- Validation: Doc review; `tailscale ip -4` on host.
+- Known risks: Tailscale requires client install per machine; not for large exam halls without IT.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Coturn TURN for cross-network proctoring
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Coturn TURN for cross-network live proctoring.
+- Purpose and user/business impact: Relay WebRTC when GV/SV are on different networks; signaling via Cloudflare tunnel `wss://livekit.wpcteam.homes`, media via TURN/UDP 3478 and LiveKit UDP 50000–50100.
+- Files or modules changed: `infra/livekit/docker-compose.yml`, `.env.example`, `backend/EduGuard.Api/.env`, `livekitRtcConfig.js`, SFU hooks, `docs/PROCTORING_SFU_SETUP.md`.
+- Technical summary: coturn container; backend `WebRtc__IceServers` credentials; frontend injects `rtcConfig` only when API returns `turn:` URLs.
+- Validation: `docker compose up -d` — `livekit-coturn-1` Up on 3478.
+- Known risks: UDP 3478 and 50000–50100 must be port-forwarded on router; set `TURN_EXTERNAL_IP` in `infra/livekit/.env` on NAT.
+
+Unresolved questions:
+
+- Confirm router forwards UDP 3478 and UDP 50000–50100.
+
+## Feature: LiveKit / Redis .env configuration
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: LiveKit / Redis .env configuration.
+- Purpose and user/business impact: Easier deploy/host tuning without editing `appsettings.json`; frontend can point browsers at reachable LiveKit host when API still returns `localhost`.
+- Files or modules changed: `frontend/.env.example`, `frontend/src/config/livekitConfig.js`, `useTeacherSfuViewer.js`, `useStudentSfuPublisher.js`, `devLogger.js`, `backend/EduGuard.Api/.env.example`, `Program.cs`, `EduGuard.Api.csproj` (DotNetEnv), `.gitignore`.
+- Technical summary: `VITE_LIVEKIT_URL` priority over API url then `ws://localhost:7880`; backend `DotNetEnv.Env.TraversePath().Load()` before `WebApplication.CreateBuilder`.
+- Validation: Code review; API build blocked by running `EduGuard.Api` process (file lock) — restart API to pick up DotNetEnv.
+- Known risks: `.env` secrets must not be committed; production HTTPS needs `wss://` for LiveKit.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Proctoring student tile status UX
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring student tile status UX.
+- Purpose and user/business impact: Teachers can understand what **Unknown** meant (no heartbeat yet), see Vietnamese attempt status, and get clearer guidance when live camera is unavailable (submitted vs waiting vs P2P single-view).
+- Files or modules changed: `proctoringStudentStatus.js`, `StudentLiveTile.jsx`, `StudentCameraGrid.jsx`, `AttemptProctorDrawer.jsx`, `TeacherProctoringRoomPage.jsx`.
+- Technical summary: Added status label helpers; redesigned tile signal chips (Camera/Mạng/Live); contextual video placeholders; P2P re-watch on same tile; auto-select first watchable student.
+- Validation: Linter clean on touched files.
+- Known risks: Live video still requires student to publish (SFU) or teacher to select tile (P2P); **Đã nộp bài** students cannot stream by design.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Proctoring room pre-start session status
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring room pre-start session status (bug fix).
+- Purpose and user/business impact: Teachers opening the proctoring room before the scheduled start no longer see a false **Phiên đã kết thúc** badge while the countdown still shows time remaining; the room now shows **Chờ mở đề** and counts down to start time until the exam window opens.
+- Files or modules changed: `proctoringRoomHelpers.js`, `useExamEndCountdown.js`, `ProctoringRoomHeader.jsx`, `TeacherProctoringRoomPage.jsx`.
+- Technical summary: Split session phase into `upcoming` / `live` / `ended`; only `ended` disables realtime and shows session-ended badge; countdown uses `startTime` before open and `endTime` after.
+- Validation: Manual logic review; linter clean on touched files.
+- Known risks: None identified; timezone handling unchanged (same `Date` parsing as before).
+
+Unresolved questions:
+
+- None.
+
 ## Release: v1.3.0-rc.1
 
 Date: 2026-06-26

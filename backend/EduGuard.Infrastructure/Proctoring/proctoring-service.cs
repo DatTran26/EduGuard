@@ -51,6 +51,7 @@ public class ProctoringService : IProctoringService
             StartTime = ExamDateTimeHelper.MarkNullableAsUtc(exam.StartTime),
             EndTime = ExamDateTimeHelper.MarkNullableAsUtc(exam.EndTime),
             EnableLiveProctoring = exam.Setting?.EnableLiveProctoring ?? false,
+            CameraMonitoringEnabled = ProctoringSettingsHelper.IsCameraMonitoringEnabled(exam.Setting),
             MaxActiveLiveTiles = exam.Setting?.MaxActiveLiveTiles ?? 9,
             InProgressCount = attempts.Count(x => x.Status == ExamAttemptStatus.InProgress),
             SubmittedCount = attempts.Count(x => x.Status == ExamAttemptStatus.Submitted),

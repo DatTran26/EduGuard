@@ -1,14 +1,15 @@
 using EduGuard.Application.DTOs.Exams;
 using EduGuard.Domain.Entities;
+using EduGuard.Domain.Enums;
 
 namespace EduGuard.Infrastructure.Exams;
 
 public static class ExamMapper
 {
-    public static ExamDto MapExam(Exam exam, ExamSetting? setting = null)
+    public static ExamDto MapExam(Exam exam, ExamSetting? setting = null, ExamAttempt? studentAttempt = null)
     {
         setting ??= exam.Setting;
-        return new ExamDto
+        var dto = new ExamDto
         {
             Id = exam.Id,
             ClassroomId = exam.ClassroomId,
@@ -25,6 +26,17 @@ public static class ExamMapper
             AttemptCount = exam.Attempts?.Count ?? 0,
             Settings = MapSetting(setting)
         };
+
+        if (studentAttempt is not null)
+        {
+            dto.MyAttemptId = studentAttempt.Id;
+            dto.MyAttemptStatus = studentAttempt.Status;
+            dto.MyLatestScore = studentAttempt.Status == ExamAttemptStatus.Submitted
+                ? studentAttempt.Score
+                : null;
+        }
+
+        return dto;
     }
 
     public static ExamSettingDto MapSetting(ExamSetting? setting) => ExamSettingMapper.MapDto(setting);

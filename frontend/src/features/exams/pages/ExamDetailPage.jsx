@@ -17,9 +17,16 @@ import {
   buildStudentExamAttemptPath,
   buildStudentDeviceCheckPath,
   buildStudentExamLobbyPath,
+  buildStudentExamPausedPath,
 } from "../../../routes/routeConfig";
 import ProctoringRoomLink from "../../proctoring/components/ProctoringRoomLink";
-import { isExamLobbyRequired, isLiveProctoringRoomAvailable, isProctoringRequired, shouldRequireDeviceCheckBeforeAttempt } from "../../proctoring/utils/proctoringRouting";
+import {
+  buildStudentExamPrimaryAction,
+  isExamLobbyRequired,
+  isLiveProctoringRoomAvailable,
+  isProctoringRequired,
+  shouldRequireDeviceCheckBeforeAttempt,
+} from "../../proctoring/utils/proctoringRouting";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import AttemptMonitorPanel from "../../anti-cheat/components/AttemptMonitorPanel";
 import ExamForm from "../components/ExamForm";
@@ -710,7 +717,7 @@ export default function ExamDetailPage() {
       showToast({
         tone: "success",
         title: "Đã publish đề thi",
-        message: response.message,
+        message: response.message || "Sinh viên trong lớp sẽ nhận thông báo về đề thi mới.",
       });
     } catch (error) {
       const nextServerIssues = splitPublishErrorMessage(error.message);
@@ -767,7 +774,12 @@ export default function ExamDetailPage() {
       }
 
       const response = await examAttemptApi.start(examId);
-      navigate(buildStudentExamAttemptPath(response.data.attempt.id));
+      const attempt = response.data.attempt;
+      const targetPath =
+        attempt.status === "PausedByProctor"
+          ? buildStudentExamPausedPath(attempt.id)
+          : buildStudentExamAttemptPath(attempt.id);
+      navigate(targetPath);
     } catch (error) {
       showToast({
         tone: "danger",
@@ -932,6 +944,8 @@ export default function ExamDetailPage() {
       ? "Ẩn workspace câu hỏi"
       : "Xem workspace câu hỏi";
 
+  const studentPrimaryAction = user?.role === "Student" ? buildStudentExamPrimaryAction(exam) : null;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -939,9 +953,19 @@ export default function ExamDetailPage() {
         title={exam.title}
         actions={
           user?.role === "Student" ? (
-            <Button disabled={isStartingAttempt} onClick={handleStartAttempt}>
-              {isStartingAttempt ? "Đang vào phòng thi..." : "Bắt đầu làm bài"}
-            </Button>
+            studentPrimaryAction ? (
+              <Button
+                as={Link}
+                disabled={isStartingAttempt}
+                to={studentPrimaryAction.actionPath}
+              >
+                {studentPrimaryAction.actionLabel}
+              </Button>
+            ) : (
+              <Button disabled={isStartingAttempt} onClick={handleStartAttempt}>
+                {isStartingAttempt ? "Đang vào phòng thi..." : "Bắt đầu làm bài"}
+              </Button>
+            )
           ) : (
             <div className="flex flex-wrap gap-2">
               {isLiveProctoringRoomAvailable(exam) ? (
@@ -958,6 +982,16 @@ export default function ExamDetailPage() {
           )
         }
       />
+
+      {studentPrimaryAction?.statusLabel === "Tạm dừng" ? (
+        <Card className="border-caution/30 bg-caution-muted px-5 py-4">
+          <p className="text-sm font-semibold text-primary">Bài làm đang tạm dừng</p>
+          <p className="mt-1 text-sm leading-6 text-secondary">
+            Giáo viên đã tạm dừng phiên làm bài của bạn. Bài chưa được nộp — hãy quay lại phòng chờ
+            và đợi giáo viên cho phép tiếp tục.
+          </p>
+        </Card>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-6">

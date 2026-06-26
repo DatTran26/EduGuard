@@ -10,6 +10,8 @@ using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 
+DotNetEnv.Env.TraversePath().Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
 var jwtKey = builder.Configuration["Jwt:Key"];

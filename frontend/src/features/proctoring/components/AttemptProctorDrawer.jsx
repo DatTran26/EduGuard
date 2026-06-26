@@ -1,6 +1,13 @@
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import { cn } from "../../../utils/cn";
+import {
+  getAttemptStatusMeta,
+  getCameraStatusMeta,
+  getConnectionStatusMeta,
+  getLiveStatusMeta,
+  resolveTileVideoPlaceholder,
+} from "../utils/proctoringStudentStatus";
 import AuthenticatedEvidenceMedia from "./AuthenticatedEvidenceMedia";
 import RiskBadge from "./RiskBadge";
 
@@ -29,6 +36,17 @@ export default function AttemptProctorDrawer({
 
   const isRoom = variant === "room";
   const isPaused = student.attemptStatus === "PausedByProctor";
+  const attemptMeta = getAttemptStatusMeta(student.attemptStatus);
+  const cameraMeta = getCameraStatusMeta(student.cameraStatus);
+  const connectionMeta = getConnectionStatusMeta(student.connectionStatus);
+  const liveMeta = getLiveStatusMeta(student.liveStatus);
+  const videoPlaceholder = resolveTileVideoPlaceholder({
+    student,
+    remoteStatus,
+    showLiveVideo: remoteStatus === "connected",
+    sfuEnabled: false,
+    isActive: true,
+  });
 
   return (
     <aside
@@ -49,7 +67,7 @@ export default function AttemptProctorDrawer({
               {student.studentName}
             </h2>
             <p className={cn("text-sm", isRoom ? "text-slate-400" : "text-secondary")}>
-              Attempt #{student.attemptId}
+              {attemptMeta.label} · #{student.attemptId}
             </p>
           </div>
           <Button onClick={onClose} variant="ghost">
@@ -74,19 +92,33 @@ export default function AttemptProctorDrawer({
             {remoteStatus !== "connected" ? (
               <div
                 className={cn(
-                  "absolute inset-0 flex items-center justify-center text-sm",
+                  "absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center text-sm",
                   isRoom ? "bg-[#060b14]/90 text-slate-400" : "bg-surface/80 text-secondary",
                 )}
               >
-                {remoteStatus === "connecting" ? "Đang kết nối live…" : "Chưa có live stream"}
+                <p className="font-semibold text-slate-300">
+                  {remoteStatus === "connecting"
+                    ? "Đang kết nối live…"
+                    : videoPlaceholder?.title ?? "Chưa có live stream"}
+                </p>
+                {videoPlaceholder?.detail ? (
+                  <p className="text-xs leading-relaxed opacity-80">{videoPlaceholder.detail}</p>
+                ) : null}
               </div>
             ) : null}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <RiskBadge riskLevel={student.riskLevel} score={student.suspicionScore} />
-            <Badge variant="neutral">{student.cameraStatus}</Badge>
-            <Badge variant="neutral">{remoteStatus}</Badge>
+            <Badge title={cameraMeta.hint} variant={cameraMeta.variant}>
+              Camera: {cameraMeta.label}
+            </Badge>
+            <Badge title={connectionMeta.hint} variant={connectionMeta.variant}>
+              Mạng: {connectionMeta.label}
+            </Badge>
+            <Badge title={liveMeta.hint} variant={liveMeta.variant}>
+              Live: {liveMeta.label}
+            </Badge>
           </div>
 
           <div className="flex flex-wrap gap-2">

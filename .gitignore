@@ -212,8 +212,11 @@ ClientBin/
 node_modules/
 .env
 .env.*
+!.env.example
+!**/.env.example
 frontend/.env
 frontend/.env.local
+backend/EduGuard.Api/.env
 orleans.codegen.cs
 
 # Since there are multiple workflows, uncomment next line to ignore bower_components

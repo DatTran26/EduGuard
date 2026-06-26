@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Frontend
+
+- **Exam and assignment notifications:** Students receive in-app and SignalR alerts when a teacher publishes an exam or creates an assignment; teacher success toasts note that the class was notified; notification inbox supports `ExamPublished` and `AssignmentNew` types with deep links.
+
+### Backend
+
+- **Exam and assignment notifications:** `PublishAsync` notifies active classroom students (`ExamPublished`); `AssignmentService.CreateAsync` notifies students (`AssignmentNew`) with dedupe via `SourceKey` and realtime push.
+
+### Frontend
+
+- **Bug fix (proctoring camera):** Proctoring room shows a warning when the exam has anti-cheat only (no camera flags); anti-cheat monitoring panel links to log view instead of live camera room when camera monitoring is disabled.
+
+### Backend
+
+- **Bug fix (exam settings):** Updating an exam now persists all monitoring settings (camera, live proctoring, AI detection, snapshots); previously only shuffle/fullscreen fields were saved to SQL.
+
+- **Exam and assignment notifications:** Publishing an exam or creating an assignment pushes notifications to all active students in the classroom (persisted + SignalR).
+
+### Docs
+
+- **Run guide:** Clarified that `use-tunnel.cmd` (Admin) already opens LAN firewall — `open-lan-firewall.cmd` only needed for `use-lan` / `use-tailscale`, or when tunnel script was not run as Administrator. Updated [`docs/HUONG_DAN_CHAY_HE_THONG.md`](docs/HUONG_DAN_CHAY_HE_THONG.md) and [`docs/PROCTORING_NETWORK_MODES.md`](docs/PROCTORING_NETWORK_MODES.md).
+- **Run guide:** Added [`docs/HUONG_DAN_CHAY_HE_THONG.md`](docs/HUONG_DAN_CHAY_HE_THONG.md) — consolidated guide for all ways to run EduGuard (localhost dev, Visual Studio, Redis, LiveKit SFU, AI service, LAN/Tailscale/Tunnel network modes, full stack).
+
+### Infra
+
+- **TURN (coturn):** Enabled coturn in `infra/livekit` (UDP/TCP `3478`) with `.env.example` for credentials; for cross-network proctoring alongside tunneled `wss://livekit.wpcteam.homes`.
+
+### Frontend
+
+- **Classroom notifications:** Fixed notification type colors (khẩn cấp = đỏ, cảnh báo = vàng, chung = xanh); create form adds recipient picker with **Chọn hết** for one or many students. — waiting room no longer links back to exam list; shows **Tiếp tục làm bài** when teacher resumes; exam list/detail show **Tạm dừng** / **Tiếp tục làm bài** instead of **Đã thi** for `PausedByProctor`.
+- **Exam lobby UI:** Redesigned student waiting room with gradient layout, status pills, flip-style countdown digits, and urgency states; countdown now ticks client-side from `startTime` every second instead of waiting on 5s lobby polling.
+- **Exam attempt header:** Prominent centered countdown timer in the sticky header (segmented digit boxes, hides leading `00:` hours, urgency coloring under 5 minutes / 1 minute) instead of a small badge.
+- **Config:** `VITE_LIVEKIT_URL` in `.env` overrides LiveKit WebSocket URL for browser SFU connections (fallback: API `sfu-config` url → `ws://localhost:7880`).
+- **LiveKit RTC:** SFU connect passes explicit `iceServers` only when API includes TURN entries.
+- **Bug fix:** Proctoring room no longer shows **Phiên đã kết thúc** before the scheduled start time; badge shows **Chờ mở đề** and the header countdown counts down to exam start instead of end.
+- **Proctoring student tiles:** Camera/network/live signals now show Vietnamese labels with hints instead of raw **Unknown**; attempt status uses **Đang làm bài** / **Đã nộp bài**; submitted students explain why live camera is unavailable; P2P mode shows a one-student-at-a-time viewing hint.
+
+### Backend
+
+- **Classroom notifications:** `POST /api/notifications/classroom` accepts optional `recipientIds` to target specific active students; realtime tone follows notification type. `PausedByProctor` attempts instead of treating them as finished; max-attempt check counts only **Submitted** attempts; exam list/detail for students expose `myAttemptId`, `myAttemptStatus`, `myLatestScore`.
+- **TURN ICE:** `WebRtc__IceServers__*` env vars for coturn (`turn:livekit.wpcteam.homes:3478`).
+
 ## [1.3.0-rc.1] - 2026-06-26
 
 ### Security

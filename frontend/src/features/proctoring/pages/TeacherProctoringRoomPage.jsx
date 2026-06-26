@@ -22,9 +22,11 @@ import {
 import {
   computeRoomStats,
   filterStudents,
+  getProctoringRoomSessionPhase,
   isProctoringRoomSessionLive,
   sortStudentsByRisk,
 } from "../utils/proctoringRoomHelpers";
+import { canWatchStudentLive } from "../utils/proctoringStudentStatus";
 
 export default function TeacherProctoringRoomPage() {
   const { examId } = useParams();
@@ -50,6 +52,7 @@ export default function TeacherProctoringRoomPage() {
   const stopWatchRef = useRef(null);
 
   const activeAttemptId = selectedStudent?.attemptId ?? null;
+  const sessionPhase = useMemo(() => getProctoringRoomSessionPhase(room), [room]);
   const sessionLive = useMemo(() => isProctoringRoomSessionLive(room), [room]);
 
   const refreshRoom = useCallback(async () => {
@@ -211,9 +214,10 @@ export default function TeacherProctoringRoomPage() {
       return undefined;
     }
 
+    const attemptId = selectedStudent.attemptId;
     let isMounted = true;
     proctoringApi
-      .getAttemptDetail(selectedStudent.attemptId)
+      .getAttemptDetail(attemptId)
       .then((response) => {
         if (isMounted) {
           setDetail(response.data);
@@ -221,7 +225,7 @@ export default function TeacherProctoringRoomPage() {
       })
       .catch(() => {});
 
-    if (!sfuEnabled && isRoomHubConnected) {
+    if (isRoomHubConnected && canWatchStudentLive(selectedStudent)) {
       requestWatchRef.current?.().catch((error) => {
         showToast({
           tone: "danger",
@@ -233,20 +237,18 @@ export default function TeacherProctoringRoomPage() {
 
     return () => {
       isMounted = false;
-      if (!sfuEnabled) {
-        stopWatchRef.current?.().catch(() => {});
-      }
+      stopWatchRef.current?.().catch(() => {});
     };
-  }, [isRoomHubConnected, selectedStudent?.attemptId, sfuEnabled, showToast]);
+  }, [isRoomHubConnected, selectedStudent?.attemptId, showToast]);
 
   useEffect(() => {
     if (!isRoomHubConnected || isRoomLoading || selectedStudent || students.length === 0 || isDrawerDismissed) {
       return;
     }
 
-    const firstInProgress = students.find((student) => student.attemptStatus === "InProgress");
-    if (firstInProgress) {
-      setSelectedStudent(firstInProgress);
+    const firstWatchable = students.find((student) => canWatchStudentLive(student));
+    if (firstWatchable) {
+      setSelectedStudent(firstWatchable);
     }
   }, [isDrawerDismissed, isRoomHubConnected, isRoomLoading, selectedStudent, students]);
 
@@ -273,9 +275,7 @@ export default function TeacherProctoringRoomPage() {
   }
 
   function handleCloseDrawer() {
-    if (!sfuEnabled) {
-      stopWatch().catch(() => {});
-    }
+    stopWatch().catch(() => {});
     setSelectedStudent(null);
     setDetail(null);
     setIsDrawerDismissed(true);
@@ -288,22 +288,19 @@ export default function TeacherProctoringRoomPage() {
 
   async function handleRequestWatch(student) {
     setIsDrawerDismissed(false);
+    const isSameStudent = selectedStudent?.attemptId === student.attemptId;
     setSelectedStudent(student);
-  }
 
-  function handleViewHighRisk() {
-    setActiveFilter("highRisk");
-    setIsDrawerDismissed(false);
-    const firstCritical = sortedStudents.find((student) => student.riskLevel === "Critical");
-    if (firstCritical) {
-      setSelectedStudent(firstCritical);
-      return;
-    }
-    const firstHighRisk = sortedStudents.find(
-      (student) => student.riskLevel === "Warning" || student.riskLevel === "Critical",
-    );
-    if (firstHighRisk) {
-      setSelectedStudent(firstHighRisk);
+    if (isRoomHubConnected && canWatchStudentLive(student) && isSameStudent) {
+      try {
+        await requestWatch();
+      } catch (error) {
+        showToast({
+          tone: "danger",
+          title: "Không thể xem live",
+          message: error.message,
+        });
+      }
     }
   }
 
@@ -461,12 +458,27 @@ export default function TeacherProctoringRoomPage() {
         onCloseExam={() => setIsCloseExamDialogOpen(true)}
         onRefresh={handleManualRefresh}
         onOpenCoProctor={() => setIsCoProctorOpen(true)}
-        onViewHighRisk={handleViewHighRisk}
         room={room}
         sessionLive={sessionLive}
+        sessionPhase={sessionPhase}
       />
 
       <div className="mx-auto w-full max-w-[1600px] flex-1 space-y-5 px-4 py-5 md:px-6 md:py-6">
+        {room && room.cameraMonitoringEnabled === false ? (
+          <div
+            className="rounded-[16px] border border-amber-400/30 bg-amber-500/10 px-4 py-4 text-sm leading-6 text-amber-50"
+            role="alert"
+          >
+            <p className="font-semibold text-amber-100">Đề thi chưa bật giám sát camera</p>
+            <p className="mt-1 text-amber-100/90">
+              Đề này chỉ bật anti-cheat. Học sinh không gửi heartbeat camera nên trạng thái luôn hiển thị{" "}
+              <strong>Chưa rõ</strong>. Vào chỉnh sửa đề và bật{" "}
+              <strong>Phòng giám sát live</strong> hoặc <strong>Giám sát camera trong lúc thi</strong>, rồi yêu
+              cầu học sinh tải lại trang làm bài.
+            </p>
+          </div>
+        ) : null}
+
         <ProctoringStatusBar stats={roomStats} />
 
         <ProctoringFilterBar

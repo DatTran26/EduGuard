@@ -18,6 +18,12 @@ export default defineConfig({
     },
   },
   server: {
+    host: true,
+    allowedHosts: [
+      "class.wpcteam.homes",
+      "localhost",
+      ".wpcteam.homes",
+    ],
     proxy: {
       "/api": createDevProxyOptions(backendTarget),
       "/hubs": createDevProxyOptions(backendTarget, { webSocket: true }),

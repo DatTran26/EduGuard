@@ -5,6 +5,7 @@ using EduGuard.Domain.Enums;
 using EduGuard.Infrastructure.AntiCheat;
 using EduGuard.Infrastructure.Data;
 using EduGuard.Infrastructure.Exams;
+using EduGuard.Infrastructure.Proctoring;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -45,10 +46,28 @@ public class NotificationService : INotificationService
         }
 
         // 3. Lấy danh sách học sinh đang active trong lớp học
-        var studentIds = await _context.ClassroomMembers
+        var activeStudentIds = await _context.ClassroomMembers
             .Where(cm => cm.ClassroomId == request.ClassroomId && cm.Status == ClassroomMemberStatus.Active)
             .Select(cm => cm.StudentId)
             .ToListAsync(ct);
+
+        var studentIds = activeStudentIds;
+        if (request.RecipientIds is { Count: > 0 })
+        {
+            var requestedRecipientIds = request.RecipientIds
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            studentIds = activeStudentIds
+                .Where(id => requestedRecipientIds.Contains(id))
+                .ToList();
+
+            if (studentIds.Count == 0)
+            {
+                throw new ArgumentException("Không có học sinh hợp lệ trong danh sách người nhận.");
+            }
+        }
 
         // 4. Tạo Notification gốc
         var notification = new Notification
@@ -81,7 +100,7 @@ public class NotificationService : INotificationService
         {
             Title = request.Title.Trim(),
             Message = $"Lớp {classroomName}: {request.Content.Trim()}",
-            Tone = "info",
+            Tone = ResolveClassroomNotificationTone(request.Type),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -97,6 +116,14 @@ public class NotificationService : INotificationService
             }
         }
     }
+
+    private static string ResolveClassroomNotificationTone(string type) =>
+        type.Trim() switch
+        {
+            "Emergency" or "Success" => "danger",
+            "Warning" => "warning",
+            _ => "info",
+        };
 
     public async Task CreateProctorInviteNotificationAsync(
         string senderId,
@@ -270,7 +297,7 @@ public class NotificationService : INotificationService
         if (recipientIds.Count == 0)
             return;
 
-        var actionUrl = exam.Setting?.EnableLiveProctoring == true || exam.Setting?.RequireCamera == true
+        var actionUrl = ProctoringSettingsHelper.IsCameraMonitoringEnabled(exam.Setting)
             ? $"/teacher/exams/{exam.Id}/proctoring"
             : $"/teacher/monitoring?examId={exam.Id}";
 
@@ -386,6 +413,157 @@ public class NotificationService : INotificationService
             }
         }
     }
+
+    public async Task CreateExamPublishedNotificationAsync(
+        int examId,
+        string teacherId,
+        CancellationToken ct = default)
+    {
+        var sourceKey = $"exam-published:{examId}";
+        if (await _context.Notifications.AnyAsync(n => n.SourceKey == sourceKey, ct))
+            return;
+
+        var exam = await _context.Exams
+            .Include(e => e.Classroom)
+            .FirstOrDefaultAsync(e => e.Id == examId, ct);
+        if (exam is null)
+            return;
+
+        var teacher = await _context.Users.FirstOrDefaultAsync(u => u.Id == teacherId, ct);
+        var teacherName = teacher?.FullName ?? "Giảng viên";
+        var classroomName = exam.Classroom?.Name ?? "lớp học";
+        var examTitle = exam.Title.Trim();
+        var actionUrl = $"/student/exams/{exam.Id}";
+        var content = $"{teacherName} đã xuất bản đề thi «{examTitle}» trong lớp {classroomName}.";
+
+        var studentIds = await GetActiveClassroomStudentIdsAsync(exam.ClassroomId, ct);
+        if (studentIds.Count == 0)
+            return;
+
+        var notification = new Notification
+        {
+            Title = "Đề thi mới",
+            Content = content,
+            Type = "ExamPublished",
+            SenderId = teacherId,
+            ClassroomId = exam.ClassroomId,
+            RelatedExamId = examId,
+            ActionUrl = actionUrl,
+            SourceKey = sourceKey,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await DeliverClassroomStudentNotificationAsync(
+            notification,
+            studentIds,
+            $"Lớp {classroomName}: {content}",
+            "success",
+            actionUrl,
+            ct);
+    }
+
+    public async Task CreateAssignmentCreatedNotificationAsync(
+        int assignmentId,
+        string teacherId,
+        CancellationToken ct = default)
+    {
+        var sourceKey = $"assignment-created:{assignmentId}";
+        if (await _context.Notifications.AnyAsync(n => n.SourceKey == sourceKey, ct))
+            return;
+
+        var assignment = await _context.Assignments
+            .Include(a => a.Classroom)
+            .FirstOrDefaultAsync(a => a.Id == assignmentId, ct);
+        if (assignment is null)
+            return;
+
+        var teacher = await _context.Users.FirstOrDefaultAsync(u => u.Id == teacherId, ct);
+        var teacherName = teacher?.FullName ?? "Giảng viên";
+        var classroomName = assignment.Classroom?.Name ?? "lớp học";
+        var assignmentTitle = assignment.Title.Trim();
+        var deadlineLabel = FormatNotificationDeadline(assignment.Deadline);
+        var actionUrl = $"/student/classrooms/{assignment.ClassroomId}?assignmentId={assignment.Id}";
+        var content =
+            $"{teacherName} đã giao bài tập «{assignmentTitle}» — hạn nộp {deadlineLabel}.";
+
+        var studentIds = await GetActiveClassroomStudentIdsAsync(assignment.ClassroomId, ct);
+        if (studentIds.Count == 0)
+            return;
+
+        var notification = new Notification
+        {
+            Title = "Bài tập mới",
+            Content = content,
+            Type = "AssignmentNew",
+            SenderId = teacherId,
+            ClassroomId = assignment.ClassroomId,
+            ActionUrl = actionUrl,
+            SourceKey = sourceKey,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await DeliverClassroomStudentNotificationAsync(
+            notification,
+            studentIds,
+            $"Lớp {classroomName}: {content}",
+            "info",
+            actionUrl,
+            ct);
+    }
+
+    private async Task<List<string>> GetActiveClassroomStudentIdsAsync(int classroomId, CancellationToken ct) =>
+        await _context.ClassroomMembers
+            .Where(cm => cm.ClassroomId == classroomId && cm.Status == ClassroomMemberStatus.Active)
+            .Select(cm => cm.StudentId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToListAsync(ct);
+
+    private async Task DeliverClassroomStudentNotificationAsync(
+        Notification notification,
+        IReadOnlyList<string> studentIds,
+        string realtimeMessage,
+        string tone,
+        string? actionUrl,
+        CancellationToken ct)
+    {
+        foreach (var studentId in studentIds)
+        {
+            notification.UserNotifications.Add(new UserNotification
+            {
+                UserId = studentId,
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        _context.Notifications.Add(notification);
+        await _context.SaveChangesAsync(ct);
+
+        var realtimeDto = new RealtimeNotificationDto
+        {
+            Title = notification.Title,
+            Message = realtimeMessage,
+            Tone = tone,
+            Url = actionUrl,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        foreach (var studentId in studentIds)
+        {
+            try
+            {
+                await _notifier.SendToUserAsync(studentId, realtimeDto, ct);
+            }
+            catch
+            {
+                // Bỏ qua lỗi gửi realtime để tránh làm gián đoạn luồng chính
+            }
+        }
+    }
+
+    private static string FormatNotificationDeadline(DateTime deadlineUtc) =>
+        deadlineUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
 
     private async Task<List<string>> GetExamMonitorTeacherIdsAsync(
         int examId,

@@ -1,5 +1,7 @@
 namespace EduGuard.Application.DTOs.Exams;
 
+using EduGuard.Domain.Enums;
+
 public class ExamDto
 {
     public int Id { get; set; }
@@ -16,4 +18,7 @@ public class ExamDto
     public int QuestionCount { get; set; }
     public int AttemptCount { get; set; }
     public ExamSettingDto Settings { get; set; } = new();
+    public int? MyAttemptId { get; set; }
+    public ExamAttemptStatus? MyAttemptStatus { get; set; }
+    public decimal? MyLatestScore { get; set; }
 }

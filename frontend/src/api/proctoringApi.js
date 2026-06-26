@@ -116,7 +116,20 @@ export const proctoringApi = {
 
   async getRoom(examId) {
     const apiResponse = await requestApi(() => axiosClient.get(`/exams/${examId}/proctoring/room`));
-    return { ...apiResponse, data: apiResponse.data };
+    const data = apiResponse.data ?? {};
+    return {
+      ...apiResponse,
+      data: {
+        ...data,
+        cameraMonitoringEnabled:
+          data.cameraMonitoringEnabled ??
+          Boolean(
+            data.enableLiveProctoring ||
+              data.requireCamera ||
+              data.enableCameraProctoring,
+          ),
+      },
+    };
   },
 
   async getStates(examId) {

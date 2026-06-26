@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, Room, RoomEvent, Track } from "livekit-client";
 import { proctoringApi } from "../../../api/proctoringApi";
+import { resolveLiveKitUrl } from "../../../config/livekitConfig";
+import { buildLiveKitConnectOptions } from "../utils/livekitRtcConfig";
 import {
   buildMediaStreamFromTrack,
   mergeTrackIntoStream,
@@ -167,10 +169,12 @@ export function useTeacherSfuViewer({ examId, enabled, maxTiles = 9, enableAudio
           }
         });
 
-        await room.connect(tokenResponse.data.url, tokenResponse.data.token, {
-          autoSubscribe: true,
-          rtcConfig: { iceServers: iceServersRef.current },
-        });
+        const liveKitUrl = resolveLiveKitUrl(tokenResponse.data.url);
+        await room.connect(
+          liveKitUrl,
+          tokenResponse.data.token,
+          buildLiveKitConnectOptions(iceServersRef.current),
+        );
 
         room.remoteParticipants.forEach((participant) => {
           handleParticipantConnected(participant);

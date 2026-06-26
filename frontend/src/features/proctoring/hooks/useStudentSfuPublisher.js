@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Room, RoomEvent } from "livekit-client";
 import { proctoringApi } from "../../../api/proctoringApi";
+import { resolveLiveKitUrl } from "../../../config/livekitConfig";
+import { buildLiveKitPublisherConnectOptions } from "../utils/livekitRtcConfig";
 
 export function useStudentSfuPublisher({
   attemptId,
@@ -80,14 +82,22 @@ export function useStudentSfuPublisher({
           publishedTrackIdsRef.current = [];
         });
 
-        await room.connect(tokenResponse.data.url, tokenResponse.data.token, {
-          autoSubscribe: false,
-          rtcConfig: { iceServers: iceServersRef.current },
-        });
+        const liveKitUrl = resolveLiveKitUrl(tokenResponse.data.url);
+        await room.connect(
+          liveKitUrl,
+          tokenResponse.data.token,
+          buildLiveKitPublisherConnectOptions(iceServersRef.current),
+        );
 
         if (!isDisposed) {
           setIsConnected(true);
           await publishLocalTracks();
+          await proctoringApi
+            .heartbeatProctoring(attemptId, {
+              cameraStatus: "On",
+              connectionStatus: "Online",
+            })
+            .catch(() => {});
         }
       } catch {
         cleanupRoom();

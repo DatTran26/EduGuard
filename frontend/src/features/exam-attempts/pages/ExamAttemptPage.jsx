@@ -37,7 +37,6 @@ import { formatShortDateTime } from "../../../utils/formatDate";
 import { getStoredAccessToken } from "../../../utils/tokenStorage";
 import {
   ANTI_CHEAT_EVENT_TYPES,
-  getAntiCheatEventMeta,
   getSuspicionScoreMeta,
 } from "../../anti-cheat/antiCheatHelpers";
 import {
@@ -47,9 +46,9 @@ import {
   formatRemainingDuration,
   formatSaveBanner,
   getAttemptAnswerPayload,
-  getRemainingTimeVariant,
   isQuestionAnswered,
 } from "../attemptHelpers";
+import ExamAttemptHeaderCountdown from "../components/ExamAttemptHeaderCountdown";
 import { getQuestionTypeLabel } from "../../exams/examHelpers";
 
 const QUESTION_SAVE_DELAY_MS = 700;
@@ -189,7 +188,6 @@ export default function ExamAttemptPage() {
       ? false
       : Boolean(document.fullscreenElement),
   );
-  const [lastWarning, setLastWarning] = useState(null);
   const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false);
   const [clockTickMs, setClockTickMs] = useState(Date.now());
   const [showLateJoinCameraGate, setShowLateJoinCameraGate] = useState(false);
@@ -228,9 +226,7 @@ export default function ExamAttemptPage() {
     () => buildUnansweredQuestionIndexes(questions, answersByQuestionId),
     [answersByQuestionId, questions],
   );
-  const timeBadgeVariant = getRemainingTimeVariant(remainingTimeMs);
   const suspicionMeta = getSuspicionScoreMeta(attempt?.suspicionScore ?? 0);
-  const latestWarningMeta = getAntiCheatEventMeta(lastWarning?.type);
   const attemptSettingItems = useMemo(() => buildAttemptSettingItems(exam), [exam]);
   const proctoringEnabled =
     attempt?.status === "InProgress" && isLiveProctoringRoomAvailable(exam);
@@ -373,11 +369,6 @@ export default function ExamAttemptPage() {
       }
 
       antiCheatThrottleRef.current.set(type, now);
-      setLastWarning({
-        type,
-        description,
-        occurredAt: new Date().toISOString(),
-      });
 
       try {
         const response = await antiCheatApi.log({
@@ -648,7 +639,6 @@ export default function ExamAttemptPage() {
         setResult(nextResult);
         setCurrentQuestionIndex(0);
         setSaveState(buildDefaultSaveState());
-        setLastWarning(null);
         setLoadErrorMessage("");
       } catch (error) {
         if (!isMounted) {
@@ -1160,54 +1150,73 @@ export default function ExamAttemptPage() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(15,118,110,0.08),_transparent_44%),linear-gradient(180deg,#f8fafc_0%,#eef4f7_100%)] pb-24">
-      <div className="sticky top-0 z-30 border-b border-border bg-surface/92 backdrop-blur">
-        <div className="mx-auto flex max-w-[1360px] flex-wrap items-center justify-between gap-4 px-4 py-4 md:px-6 lg:px-8">
-          <div className="space-y-2">
+      <div className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur-md">
+        <div className="mx-auto max-w-[1360px] px-4 py-3 md:px-6 lg:px-8">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={timeBadgeVariant}>
-                {formatRemainingDuration(remainingTimeMs)}
-              </Badge>
               <Badge variant={isOnline ? "success" : "danger"}>
                 {isOnline ? "Đang kết nối" : "Đang mất kết nối"}
               </Badge>
               <Badge variant={saveState.status === "error" ? "danger" : "info"}>
                 {formatSaveBanner(saveState)}
               </Badge>
-              {exam.enableAntiCheat ? (
-                <Badge variant={suspicionMeta.variant}>
-                  {suspicionMeta.label}
-                </Badge>
-              ) : null}
             </div>
 
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-primary md:text-[2rem]">
-                {exam.title}
-              </h1>
-              <p className="text-sm text-secondary">
-                Câu {currentQuestionIndex + 1}/{questions.length} • Đã trả lời{" "}
-                {answeredQuestionCount}/{questions.length} câu • Bắt đầu{" "}
-                {formatShortDateTime(attempt.startedAt)}
-              </p>
+            <div className="flex items-center gap-2 sm:hidden">
+              <Button
+                disabled={isSubmitting}
+                onClick={() => setIsConfirmingSubmit(true)}
+              >
+                {isSubmitting ? "Đang nộp..." : "Nộp bài"}
+              </Button>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {exam.settings.requireFullscreen ? (
+          <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+            <div className="min-w-0 md:pr-4">
+              <h1 className="truncate text-lg font-semibold tracking-tight text-primary sm:text-xl md:text-2xl">
+                {exam.title}
+              </h1>
+              <p className="mt-0.5 truncate text-sm text-secondary">
+                Câu {currentQuestionIndex + 1}/{questions.length} • Đã trả lời{" "}
+                {answeredQuestionCount}/{questions.length} • Bắt đầu{" "}
+                {formatShortDateTime(attempt.startedAt)}
+              </p>
+            </div>
+
+            <div className="flex justify-center md:px-2">
+              <ExamAttemptHeaderCountdown remainingMs={remainingTimeMs} />
+            </div>
+
+            <div className="hidden items-center justify-end gap-2 sm:flex">
+              {exam.settings.requireFullscreen ? (
+                <Button
+                  onClick={() => handleStartFullscreen()}
+                  variant="secondary"
+                >
+                  {isFullscreen ? "Đang toàn màn hình" : "Bật toàn màn hình"}
+                </Button>
+              ) : null}
               <Button
+                disabled={isSubmitting}
+                onClick={() => setIsConfirmingSubmit(true)}
+              >
+                {isSubmitting ? "Đang nộp..." : "Nộp bài"}
+              </Button>
+            </div>
+          </div>
+
+          {exam.settings.requireFullscreen ? (
+            <div className="mt-3 flex justify-center sm:hidden">
+              <Button
+                className="w-full max-w-xs"
                 onClick={() => handleStartFullscreen()}
                 variant="secondary"
               >
                 {isFullscreen ? "Đang toàn màn hình" : "Bật toàn màn hình"}
               </Button>
-            ) : null}
-            <Button
-              disabled={isSubmitting}
-              onClick={() => setIsConfirmingSubmit(true)}
-            >
-              {isSubmitting ? "Đang nộp..." : "Nộp bài"}
-            </Button>
-          </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -1218,22 +1227,6 @@ export default function ExamAttemptPage() {
           ) : null}
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-6">
-            {lastWarning ? (
-              <Card className="space-y-3 border-caution/28 bg-caution-muted">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={latestWarningMeta.variant}>
-                    {latestWarningMeta.label}
-                  </Badge>
-                  <span className="text-sm text-secondary">
-                    {formatShortDateTime(lastWarning.occurredAt)}
-                  </span>
-                </div>
-                <p className="text-sm leading-6 text-secondary">
-                  {lastWarning.description}
-                </p>
-              </Card>
-            ) : null}
-
             {currentQuestion ? (
               <Card className="space-y-6 border-white/70 bg-white/92 shadow-[0_24px_64px_-40px_rgba(15,23,42,0.45)]">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1505,10 +1498,10 @@ export default function ExamAttemptPage() {
         </div>
       </div>
 
-      {proctoringEnabled ? (
+      {proctoringEnabled && !showLateJoinCameraGate ? (
         <div className="fixed bottom-4 right-4 z-40 w-[240px] rounded-[16px] border border-border bg-surface p-3 shadow-lg">
           <CameraPreview
-            errorMessage=""
+            errorMessage={cameraErrorMessage}
             label="Camera giám sát"
             status={cameraStatus}
             videoRef={videoRef}

@@ -71,6 +71,7 @@ public class ExamService : IExamService
     private readonly IValidator<PatchAnswerRequest> _patchAnswerValidator;
     private readonly ICacheService _cacheService;
     private readonly IExamCacheInvalidator _cacheInvalidator;
+    private readonly INotificationService _notificationService;
     private readonly RedisOptions _redisOptions;
 
     public ExamService(
@@ -88,6 +89,7 @@ public class ExamService : IExamService
         IValidator<PatchAnswerRequest> patchAnswerValidator,
         ICacheService cacheService,
         IExamCacheInvalidator cacheInvalidator,
+        INotificationService notificationService,
         IOptions<RedisOptions> redisOptions)
     {
         _examRepository = examRepository;
@@ -104,6 +106,7 @@ public class ExamService : IExamService
         _patchAnswerValidator = patchAnswerValidator;
         _cacheService = cacheService;
         _cacheInvalidator = cacheInvalidator;
+        _notificationService = notificationService;
         _redisOptions = redisOptions.Value;
     }
 
@@ -150,16 +153,36 @@ public class ExamService : IExamService
         var exams = await _examRepository.GetByClassroomIdAsync(classroomId, ct);
         var isTeacher = classroom.TeacherId == userId || roles.Contains("Admin");
 
-        return exams
-            .Where(exam => isTeacher || exam.IsPublished)
-            .Select(exam => ExamMapper.MapExam(exam))
+        if (isTeacher)
+        {
+            return exams
+                .Select(exam => ExamMapper.MapExam(exam))
+                .ToList();
+        }
+
+        var publishedExams = exams.Where(exam => exam.IsPublished).ToList();
+        var studentAttempts = await _examRepository.GetLatestAttemptsByStudentForExamsAsync(
+            publishedExams.Select(exam => exam.Id).ToList(),
+            userId,
+            ct);
+
+        return publishedExams
+            .Select(exam => ExamMapper.MapExam(
+                exam,
+                studentAttempt: studentAttempts.GetValueOrDefault(exam.Id)))
             .ToList();
     }
 
     public async Task<ExamDto> GetByIdAsync(int examId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
     {
         var exam = await RequireAccessibleExamAsync(examId, userId, roles, ct);
-        return ExamMapper.MapExam(exam);
+        var isTeacher = exam.TeacherId == userId || roles.Contains("Admin");
+
+        if (isTeacher)
+            return ExamMapper.MapExam(exam);
+
+        var studentAttempt = await _examRepository.GetLatestStudentAttemptAsync(examId, userId, ct);
+        return ExamMapper.MapExam(exam, studentAttempt: studentAttempt);
     }
 
     public async Task<ExamDto> UpdateAsync(int examId, UpdateExamRequest request, string teacherId, CancellationToken ct = default)
@@ -227,11 +250,18 @@ public class ExamService : IExamService
         var exam = await RequireTeacherOwnedExamAsync(examId, teacherId, ct);
         EnsureCanPublishExam(exam);
 
+        var wasAlreadyPublished = exam.IsPublished;
         exam.IsPublished = true;
         exam.UpdatedAt = DateTime.UtcNow;
         _examRepository.Update(exam);
         await _examRepository.SaveChangesAsync(ct);
         await _cacheInvalidator.InvalidateExamQuestionsAsync(examId, ct);
+
+        if (!wasAlreadyPublished)
+        {
+            await _notificationService.CreateExamPublishedNotificationAsync(examId, teacherId, ct);
+        }
+
         return ExamMapper.MapExam(exam);
     }
 
@@ -689,14 +719,7 @@ public class ExamService : IExamService
     private static int CountFailedRows(IEnumerable<QuestionImportErrorDto> errors) =>
         errors.Select(x => x.RowNumber).Distinct().Count();
 
-    private static ExamSetting BuildSetting(ExamSettingDto dto) => new()
-    {
-        ShuffleQuestions = dto.ShuffleQuestions,
-        ShuffleAnswers = dto.ShuffleAnswers,
-        MaxAttempts = dto.MaxAttempts,
-        ShowResultAfterSubmit = dto.ShowResultAfterSubmit,
-        RequireFullscreen = dto.RequireFullscreen
-    };
+    private static ExamSetting BuildSetting(ExamSettingDto dto) => ExamSettingMapper.BuildEntity(dto);
 
     private static void ApplyExamFields(Exam exam, UpdateExamRequest request)
     {
@@ -711,31 +734,13 @@ public class ExamService : IExamService
     private static void UpsertSetting(Exam exam, ExamSettingDto dto)
     {
         exam.Setting ??= new ExamSetting { ExamId = exam.Id };
-        exam.Setting.ShuffleQuestions = dto.ShuffleQuestions;
-        exam.Setting.ShuffleAnswers = dto.ShuffleAnswers;
-        exam.Setting.MaxAttempts = dto.MaxAttempts;
-        exam.Setting.ShowResultAfterSubmit = dto.ShowResultAfterSubmit;
-        exam.Setting.RequireFullscreen = dto.RequireFullscreen;
+        ExamSettingMapper.ApplyDto(exam.Setting, dto);
     }
 
     private static void PatchExamSetting(Exam exam, PatchExamSettingDto patch)
     {
         exam.Setting ??= new ExamSetting { ExamId = exam.Id };
-
-        if (patch.ShuffleQuestions.IsSpecified)
-            exam.Setting.ShuffleQuestions = patch.ShuffleQuestions.Value;
-
-        if (patch.ShuffleAnswers.IsSpecified)
-            exam.Setting.ShuffleAnswers = patch.ShuffleAnswers.Value;
-
-        if (patch.MaxAttempts.IsSpecified)
-            exam.Setting.MaxAttempts = patch.MaxAttempts.Value;
-
-        if (patch.ShowResultAfterSubmit.IsSpecified)
-            exam.Setting.ShowResultAfterSubmit = patch.ShowResultAfterSubmit.Value;
-
-        if (patch.RequireFullscreen.IsSpecified)
-            exam.Setting.RequireFullscreen = patch.RequireFullscreen.Value;
+        ExamSettingMapper.ApplyPatch(exam.Setting, patch);
     }
 
     private static void EnsureExamWindowValid(DateTime? startTime, DateTime? endTime)

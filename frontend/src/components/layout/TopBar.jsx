@@ -11,7 +11,9 @@ import { getProfileRouteByRole, getRoleLabel } from "../../routes/roleRoutes";
 import { routeConfig } from "../../routes/routeConfig";
 import { notificationApi } from "../../api/notificationApi";
 import {
-  getNotificationTypeMeta,
+  getNotificationCardClasses,
+  getNotificationDotClasses,
+  getNotificationTitleClasses,
   resolveNotificationPath,
 } from "../../features/notifications/utils/notificationUtils";
 import TeacherQuickCreateButton from "./TeacherQuickCreateButton";
@@ -422,7 +424,7 @@ export default function TopBar({
   const shouldCondenseSearch = classroomBreadcrumbLabel.length > 18;
 
   return (
-    <header className="z-10 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 py-3 md:gap-4 md:px-6">
+    <header className="relative z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 py-3 md:gap-4 md:px-6">
       <div
         className={cn(
           "flex min-w-0 items-center gap-3 lg:flex-1",
@@ -554,18 +556,15 @@ export default function TopBar({
                 {notificationItems.length > 0 ? (
                   <div className="space-y-1">
                     {notificationItems.map((item) => {
-                      const typeMeta = getNotificationTypeMeta(item.type);
                       return (
                       <div
                         key={item.userNotificationId}
                         onClick={() => handleNotificationClick(item)}
-                        className={`cursor-pointer rounded-[16px] border p-3 text-left transition-all hover:bg-surface-sunken ${
-                          !item.isRead ? "border-brand/20 bg-brand/5" : "border-border bg-surface"
-                        }`}
+                        className={`cursor-pointer rounded-[16px] border p-3 text-left transition-all ${getNotificationCardClasses(item.type, item.isRead, item)}`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
-                            <p className={`truncate text-xs font-semibold ${!item.isRead ? "text-brand" : "text-primary"}`}>
+                            <p className={`truncate text-xs font-semibold ${getNotificationTitleClasses(item.type, item.isRead, item)}`}>
                               {item.title || "Thông báo"}
                             </p>
                             <p className="pt-1 text-[11px] leading-relaxed text-secondary line-clamp-2">
@@ -573,17 +572,7 @@ export default function TopBar({
                             </p>
                           </div>
                           <span
-                            className={`mt-1 inline-flex h-2 w-2 shrink-0 rounded-full ${
-                              !item.isRead
-                                ? "bg-brand ring-4 ring-brand/10"
-                                : typeMeta.tone === "danger"
-                                  ? "bg-rose-500"
-                                  : typeMeta.tone === "warning"
-                                    ? "bg-amber-500"
-                                  : item.type === "Success"
-                                    ? "bg-emerald-500"
-                                    : "bg-sky-500"
-                            }`}
+                            className={`mt-1 inline-flex h-2 w-2 shrink-0 rounded-full ${getNotificationDotClasses(item.type, item.isRead, item)}`}
                             aria-hidden="true"
                           />
                         </div>
