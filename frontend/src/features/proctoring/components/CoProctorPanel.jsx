@@ -241,9 +241,11 @@ export default function CoProctorPanel({ examId, isOpen = true, variant = "defau
             </select>
           </label>
 
-          <Button disabled={!selectedTeacherId || isSubmitting} onClick={handleAdd}>
-            {isSubmitting ? "Đang mời…" : "Mời co-proctor"}
-          </Button>
+          <div className="flex justify-end">
+            <Button disabled={!selectedTeacherId || isSubmitting} onClick={handleAdd}>
+              {isSubmitting ? "Đang gửi…" : "Gửi lời mời"}
+            </Button>
+          </div>
         </div>
       ) : (
         <p className={cn("text-sm leading-6", isRoom ? "text-slate-500" : "text-secondary")}>

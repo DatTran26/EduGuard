@@ -118,8 +118,15 @@ Mặc định đủ cho dev:
 
 - `VITE_API_BASE_URL=/api` — Vite proxy tới `http://127.0.0.1:5157`
 - `VITE_DEV_LOG=true` — log dev (tùy chọn tắt)
+- `VITE_LIVEKIT_URL` — **tùy chọn**; khi host web từ máy khác, set `ws://IP_SERVER:7880` (hoặc `wss://` production). Bỏ trống → lấy từ API, fallback `ws://localhost:7880`.
 
-Không cần cấu hình LiveKit URL trên frontend — client lấy từ API `GET /api/proctoring/sfu-config`.
+**Backend `.env`** (tùy chọn, Redis + LiveKit URL phía API):
+
+```powershell
+Copy-Item backend\EduGuard.Api\.env.example backend\EduGuard.Api\.env
+```
+
+Không cần cấu hình LiveKit URL trên frontend nếu API đã trả URL đúng — `VITE_LIVEKIT_URL` chỉ override phía browser.
 
 ### Bước 6 — Chạy API + Frontend
 

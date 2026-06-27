@@ -27,7 +27,7 @@ Default base URL in `ProctoringAiSettings.AiServiceBaseUrl`: `http://127.0.0.1:8
 Copy `.env.example` to `.env` in this folder. `python-dotenv` loads it on startup.
 
 ```env
-PROCTORING_MODEL=yolo26s.pt
+PROCTORING_MODEL=yolo11n.pt
 ```
 
 Admin UI (`/admin/proctoring-ai`) configures **service URL and thresholds only**, not the `.pt` file.
@@ -47,6 +47,9 @@ Environment:
 | `PROCTORING_MODEL` | `yolo11n.pt` | Ultralytics weights (tải lần đầu vào volume) |
 | `PROCTORING_HOST` | `0.0.0.0` | Bind host |
 | `PROCTORING_PORT` | `8800` | Port |
+| `PROCTORING_LOG_LEVEL` | `INFO` | Mức log (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `PROCTORING_DETECT_CONF` | `0.25` | Ngưỡng confidence YOLO |
+| `PROCTORING_DETECT_IMGSZ` | `640` | Kích thước ảnh inference |
 
 Point the API admin AI settings (or DB `ProctoringAiSettings`) at the service URL reachable from the backend (same VPC, not public internet unless secured).
 

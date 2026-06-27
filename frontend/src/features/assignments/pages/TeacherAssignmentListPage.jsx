@@ -212,7 +212,7 @@ export default function TeacherAssignmentListPage() {
 
     try {
       const response = await assignmentApi.create(payload.classroomId, payload);
-      showToast({ tone: "success", title: "Đã tạo bài tập", message: response.message });
+      showToast({ tone: "success", title: "Đã tạo bài tập", message: response.message || "Sinh viên trong lớp sẽ nhận thông báo về bài tập mới." });
       window.location.reload();
       return true;
     } catch (error) {

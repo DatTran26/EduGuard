@@ -4,29 +4,29 @@ import Badge from "../../../components/common/Badge";
 import Card from "../../../components/common/Card";
 import { buildExamDetailPathByRole } from "../../../routes/routeConfig";
 import { formatShortDateTime } from "../../../utils/formatDate";
+import { buildStudentExamPrimaryAction } from "../../proctoring/utils/proctoringRouting";
 
 function buildExamStatusMeta(exam) {
-  const myAttemptCount = Number(exam.myAttemptCount ?? exam.studentAttemptCount ?? 0) || 0;
-  const myScore =
-    typeof exam.latestScore === "number"
-      ? exam.latestScore
-      : typeof exam.score === "number"
-        ? exam.score
-        : null;
-
-  if (myAttemptCount > 0 || myScore !== null) {
+  const primaryAction = buildStudentExamPrimaryAction(exam);
+  if (primaryAction) {
     return {
-      actionLabel: "Xem kết quả",
-      actionClassName: "eg-button eg-button-secondary min-w-[128px]",
-      label: "Đã thi",
-      score: myScore,
-      variant: "success",
+      actionLabel: primaryAction.actionLabel,
+      actionPath: primaryAction.actionPath,
+      actionClassName: primaryAction.statusVariant === "success"
+        ? "eg-button eg-button-secondary min-w-[128px]"
+        : primaryAction.statusVariant === "caution"
+          ? "eg-button eg-button-primary min-w-[128px]"
+          : "eg-button eg-button-primary min-w-[128px]",
+      label: primaryAction.statusLabel,
+      score: primaryAction.score ?? null,
+      variant: primaryAction.statusVariant,
     };
   }
 
   if (exam.statusLabel === "Đang mở") {
     return {
       actionLabel: "Vào thi",
+      actionPath: buildExamDetailPathByRole("Student", exam.id),
       actionClassName: "eg-button eg-button-primary min-w-[128px]",
       label: "Đang mở",
       score: null,
@@ -37,6 +37,7 @@ function buildExamStatusMeta(exam) {
   if (exam.statusLabel === "Sắp mở") {
     return {
       actionLabel: "Chi tiết",
+      actionPath: buildExamDetailPathByRole("Student", exam.id),
       actionClassName: "eg-button eg-button-secondary min-w-[128px]",
       label: "Sắp mở",
       score: null,
@@ -47,6 +48,7 @@ function buildExamStatusMeta(exam) {
   if (exam.statusLabel === "Đã đóng") {
     return {
       actionLabel: "Chi tiết",
+      actionPath: buildExamDetailPathByRole("Student", exam.id),
       actionClassName: "eg-button eg-button-secondary min-w-[128px]",
       label: "Hết hạn",
       score: null,
@@ -56,6 +58,7 @@ function buildExamStatusMeta(exam) {
 
   return {
     actionLabel: "Chi tiết",
+    actionPath: buildExamDetailPathByRole("Student", exam.id),
     actionClassName: "eg-button eg-button-secondary min-w-[128px]",
     label: "Chưa thi",
     score: null,
@@ -64,7 +67,6 @@ function buildExamStatusMeta(exam) {
 }
 
 export default function StudentExamCard({ exam }) {
-  const detailPath = buildExamDetailPathByRole("Student", exam.id);
   const statusMeta = buildExamStatusMeta(exam);
   const durationLabel = `${exam.durationMinutes || 0} phút`;
   const scheduleLabel = exam.startTime ? formatShortDateTime(exam.startTime) : "Chưa đặt lịch";
@@ -108,7 +110,7 @@ export default function StudentExamCard({ exam }) {
       </div>
 
       <div className="mt-auto pt-5">
-        <Link className={statusMeta.actionClassName} to={detailPath}>
+        <Link className={statusMeta.actionClassName} to={statusMeta.actionPath}>
           <span>{statusMeta.actionLabel}</span>
           <FiArrowRight className="h-4 w-4" />
         </Link>

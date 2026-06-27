@@ -728,6 +728,87 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.ToTable("ExamSettings", (string)null);
                 });
 
+            modelBuilder.Entity("EduGuard.Domain.Entities.EmailSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("FromAddress")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("FromName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Host")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("OtpExpiryMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OtpLength")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Password")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Port")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("RequireOnRegister")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ResendCooldownSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("UseSsl")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EmailSettings", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Enabled = false,
+                            FromAddress = "noreply@eduguard.local",
+                            FromName = "EduGuard",
+                            Host = "smtp.gmail.com",
+                            OtpExpiryMinutes = 10,
+                            OtpLength = 6,
+                            Password = "",
+                            Port = 587,
+                            RequireOnRegister = true,
+                            ResendCooldownSeconds = 60,
+                            UpdatedAt = new DateTime(2026, 6, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UseSsl = true,
+                            Username = ""
+                        });
+                });
+
             modelBuilder.Entity("EduGuard.Domain.Entities.LiveProctoringSession", b =>
                 {
                     b.Property<int>("Id")

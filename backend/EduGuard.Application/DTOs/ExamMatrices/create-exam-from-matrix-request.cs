@@ -12,6 +12,7 @@ public class CreateExamFromMatrixRequest
     public DateTime? StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public bool EnableAntiCheat { get; set; }
+    public bool IsPublished { get; set; } = true;
     public ExamSettingDto Settings { get; set; } = new();
     public List<CreateExamFromMatrixQuestionRequest> Questions { get; set; } = [];
 }

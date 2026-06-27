@@ -15,4 +15,5 @@ public interface IExamAttemptService
         string userId,
         IReadOnlyList<string> roles,
         CancellationToken ct = default);
+    Task<ExamAttemptDto?> GetMyAttemptAsync(int examId, string studentId, CancellationToken ct = default);
 }

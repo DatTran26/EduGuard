@@ -10,6 +10,7 @@ export const notificationApi = {
         title: payload.title?.trim() ?? "",
         content: payload.content?.trim() ?? "",
         type: payload.type?.trim() ?? "Info",
+        recipientIds: Array.isArray(payload.recipientIds) ? payload.recipientIds : undefined,
       })
     );
   },

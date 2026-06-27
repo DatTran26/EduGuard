@@ -46,16 +46,17 @@ public class ExamAttemptService : IExamAttemptService
         EnsureExamWindowOpen(exam);
         var setting = exam.Setting;
         var maxAttempts = setting?.MaxAttempts ?? 1;
-        var attemptCount = await _examRepository.CountAttemptsAsync(examId, studentId, ct);
-        var inProgress = await _examRepository.GetInProgressAttemptAsync(examId, studentId, ct);
+        var resumable = await _examRepository.GetResumableAttemptAsync(examId, studentId, ct);
 
-        if (inProgress is not null)
+        if (resumable is not null)
         {
-            await _presenceService.TouchAsync(inProgress.Id, studentId, examId, ct: ct);
-            return BuildStartResponse(exam, inProgress, isNewAttempt: false);
+            await _presenceService.TouchAsync(resumable.Id, studentId, examId, ct: ct);
+            return BuildStartResponse(exam, resumable, isNewAttempt: false);
         }
 
-        if (attemptCount >= maxAttempts)
+        var submittedCount = await _examRepository.CountSubmittedAttemptsAsync(examId, studentId, ct);
+
+        if (submittedCount >= maxAttempts)
             throw new InvalidOperationException("Bạn đã hết lượt làm bài.");
 
         var attempt = new ExamAttempt
@@ -184,6 +185,17 @@ public class ExamAttemptService : IExamAttemptService
 
         var attempts = await _examRepository.GetAttemptsByExamIdAsync(examId, ct);
         return attempts.Select(ExamMapper.MapAttempt).ToList();
+    }
+
+    public async Task<ExamAttemptDto?> GetMyAttemptAsync(int examId, string studentId, CancellationToken ct = default)
+    {
+        var exam = await _examRepository.GetByIdAsync(examId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
+
+        await EnsureStudentCanTakeExamAsync(exam, studentId, ct);
+
+        var attempt = await _examRepository.GetLatestStudentAttemptAsync(examId, studentId, ct);
+        return attempt is null ? null : ExamMapper.MapAttempt(attempt);
     }
 
     private async Task EnsureStudentCanTakeExamAsync(Exam exam, string studentId, CancellationToken ct)

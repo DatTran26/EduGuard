@@ -254,7 +254,7 @@ export default function AssignmentSection({ classroom, user, showToast, onAssign
       showToast({
         tone: "success",
         title: "Đã tạo bài tập",
-        message: response.message,
+        message: response.message || "Sinh viên trong lớp sẽ nhận thông báo về bài tập mới.",
       });
       return true;
     } catch (error) {

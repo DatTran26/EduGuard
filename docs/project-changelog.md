@@ -1,5 +1,704 @@
 # Project Changelog
 
+## Feature: Proctoring AI service logging
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring AI service logging.
+- Purpose and user/business impact: Operators can trace AI detection requests and failures in service logs when debugging proctoring issues (slow inference, bad frames, YOLO stub mode).
+- Files or modules changed: `ai-services/proctoring-ai-service/main.py`, `.env.example`, `README.md`.
+- Technical summary: Added structured Python logging with `PROCTORING_LOG_LEVEL`; startup/shutdown lifecycle logs; HTTP middleware for `/health` and `/detect` timing; per-request detect logs with image size, detection type, confidence, label count, inference duration; exception logs for decode/inference failures with safe fallback responses.
+- Validation: `python -m py_compile ai-services/proctoring-ai-service/main.py` — passed.
+- Known risks: Verbose `DEBUG` logs may grow quickly under high frame rates — keep default `INFO` in production.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Admin Gmail email settings screen
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Admin Gmail email settings screen.
+- Purpose and user/business impact: Admin can configure Gmail/SMTP sender account and OTP verification rules from the UI without editing appsettings; settings apply immediately to registration emails.
+- Files or modules changed: `EmailSettings` entity/migration, `EmailSettingsService`, `AdminEmailSettingsController`, `smtp-mail-transport.cs`, auth/email services wired to DB settings, `AdminEmailSettingsPage.jsx`, `adminSettingsApi.js`, routes/sidebar.
+- Technical summary: Singleton `EmailSettings` row in database replaces appsettings as runtime source; password never returned in GET; optional password on PUT keeps existing secret; test email endpoint validates SMTP config.
+- Validation: `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -c Debug -o .\temp-build-email-admin` — passed.
+- Known risks: SMTP password stored in database plaintext — restrict admin access and plan encryption for production hardening.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Email verification on registration
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Email verification on registration.
+- Purpose and user/business impact: New accounts must verify email via OTP before login when enabled; reduces fake signups and aligns register wizard step 4 with real backend flow.
+- Files or modules changed: `email-options.cs`, `email-verification-options.cs`, `smtp-email-sender.cs`, `email-verification-service.cs`, `auth-service.cs`, `auth-controller.cs`, `dependency-injection.cs`, `appsettings.json`, `appsettings.Development.example.json`, `.env.example`, auth DTOs/validators, `authApi.js`, `useAuth.jsx`, `RegisterPage.jsx`, `axiosClient.js`.
+- Technical summary: Added `Email` SMTP config and `EmailVerification` OTP settings; register sets `EmailConfirmed=false` when required, sends 6-digit OTP (logged in Development if SMTP off), exposes verify/resend endpoints; frontend creates account at wizard step 3 and verifies OTP at step 4.
+- Validation: `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -c Debug -o .\temp-build-email-verify` — passed.
+- Known risks: OTP stored in in-memory cache (lost on API restart); configure real SMTP for production email delivery.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Proctoring room manual student detail and violation history button
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring room manual student detail and violation history button.
+- Purpose and user/business impact: Teachers monitoring a live exam room are no longer forced into a student detail drawer when a student joins; they can open violation/AI behavior history on demand from each student tile or from the alert feed.
+- Files or modules changed: `TeacherProctoringRoomPage.jsx`, `AttemptProctorDrawer.jsx`, `StudentCameraGrid.jsx`, `StudentLiveTile.jsx`.
+- Technical summary: Removed auto-select `useEffect` for the first watchable student; added `drawerInitialTab` and `onViewViolationHistory` flow; violations tab shows **AI** / **Hành vi** sub-tabs via `isAiViolationLog`; alert feed clicks open violations on AI sub-tab; AI alert feed collapsed by default.
+- Validation: Frontend linter clean on touched files.
+- Known risks: None identified.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Student device check redesign and auto fullscreen
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Student device check redesign and auto fullscreen.
+- Purpose and user/business impact: Device check is clearer with a readiness checklist and camera preview; students no longer click a separate fullscreen button — the app auto-requests fullscreen on load and again when starting the attempt.
+- Files or modules changed: `StudentDeviceCheckPage.jsx`.
+- Technical summary: Redesigned layout (checklist + preview columns); removed fullscreen from `canStart` gate and manual button; auto `requestFullscreen` after exam load and on **Bắt đầu làm bài** click; wired `mediaStream`/`setVideoElement` for reliable preview.
+- Validation: Frontend linter clean on touched file.
+- Known risks: Browsers may still block fullscreen without user gesture; fallback retry on start button click.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Student exam camera layout and late-join preview fix (bug fix)
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Student exam camera layout and late-join preview fix (bug fix).
+- Purpose and user/business impact: Students see the surveillance camera next to the countdown timer during exams; late join or F5 reload no longer leaves a blank white preview on the student screen while the teacher still receives video.
+- Files or modules changed: `useCameraStream.js`, `CameraPreview.jsx`, `ExamAttemptPage.jsx`.
+- Technical summary: Moved compact `CameraPreview` into the sticky header beside `ExamAttemptHeaderCountdown`; removed duplicate bottom-right and modal previews; expose `mediaStream` state and bind in `useLayoutEffect` (with rAF retry); cancel stale `getUserMedia` on unmount; late-join gate reuses the header preview with elevated header z-index.
+- Validation: Frontend linter clean on touched files.
+- Known risks: None identified.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Exam and assignment student notifications
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Exam and assignment student notifications.
+- Purpose and user/business impact: When a teacher publishes an exam or creates an assignment, active students in the classroom now receive in-app notifications and realtime SignalR alerts instead of discovering new tasks only by browsing lists. Teachers see clearer success toasts confirming the class was notified.
+- Files or modules changed: `i-notification-service.cs`, `notification-service.cs`, `exam-service.cs`, `assignment-service.cs`; `notificationUtils.js`, `ExamListPage.jsx`, `ExamDetailPage.jsx`, `AssignmentSection.jsx`, `TeacherAssignmentListPage.jsx`.
+- Technical summary: Added `CreateExamPublishedNotificationAsync` (on first publish, type `ExamPublished`, link `/student/exams/{id}`) and `CreateAssignmentCreatedNotificationAsync` (on create, type `AssignmentNew`, link `/student/classrooms/{id}?assignmentId={id}`); shared helper delivers `UserNotification` rows and SignalR push to active classroom members; dedupe via `SourceKey`; frontend maps new notification types and improves teacher success copy.
+- Validation: `dotnet build` on `EduGuard.Infrastructure` succeeded; frontend linter clean on touched files.
+- Known risks: Draft exams do not notify until publish; classrooms with zero active students skip notification silently; deadline text uses server local timezone.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Proctoring camera heartbeat and live stream fixes (bug fix)
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring camera heartbeat and live stream fixes (bug fix).
+- Purpose and user/business impact: Teachers in the proctoring room now receive student camera/network/live status instead of perpetual **Chưa rõ**; students with `enableCameraProctoring` can publish heartbeats; camera preview attaches reliably during exam attempts; SFU can connect on tunnel deploys without manual `VITE_LIVEKIT_URL` when LiveKit is on `livekit.{domain}`.
+- Files or modules changed: `proctoring-settings-helper.cs`, `student-proctoring-service.cs`, `exam-lobby-service.cs`, `notification-service.cs`; `useCameraStream.js`, `useProctoringHeartbeat.js`, `useStudentSfuPublisher.js`, `livekitConfig.js`, `ExamAttemptPage.jsx`, `TeacherProctoringRoomPage.jsx`.
+- Technical summary: Centralized `IsCameraMonitoringEnabled` (live proctoring, require camera, camera proctoring); heartbeat sets `LiveStatus=Active` when camera on; frontend re-binds `MediaStream` when video mounts; heartbeat bootstraps `startProctoring`; LiveKit URL derives `wss://livekit.wpcteam.homes` from `class.wpcteam.homes` when API returns localhost; teacher watch effect keys on `attemptId` to reduce START/STOP spam.
+- Validation: Frontend linter clean on touched files; backend build attempted (`dotnet build`) — blocked by running API file lock on `EduGuard.Infrastructure.dll`.
+- Known risks: LiveKit subdomain derivation assumes `livekit.{parentDomain}`; set `VITE_LIVEKIT_URL` explicitly if your tunnel uses a different hostname. Redeploy backend + rebuild frontend for production (`class.wpcteam.homes`).
+
+Unresolved questions:
+
+- Confirm production `LiveKit:Enabled=true` and tunnel `wss://livekit.wpcteam.homes` after deploy.
+
+## Feature: Classroom notification colors and recipient picker
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Classroom notification colors and recipient picker.
+- Purpose and user/business impact: Teachers see correct banner colors per notification type (emergency red, warning yellow, general blue) and can send announcements to one or many selected class members instead of always broadcasting to the whole class.
+- Files or modules changed: `TeacherNotificationTab.jsx`, `TeacherClassroomWorkspace.jsx`, `ClassOverviewPanel.jsx`, `classroomNotificationUtils.js`, `notificationApi.js`, `notificationUtils.js`; `CreateNotificationRequest.cs`, `notification-service.cs`, `notifications-controller.cs`.
+- Technical summary: Replaced misused `Success` type with `Emergency` for khẩn cấp; shared classroom notification meta for consistent tones; form layout adds right-side member checklist with select-all; API/backend filter active students by `recipientIds` when provided; legacy `Success` entries still render as khẩn cấp red.
+- Validation: Frontend linter clean on touched files; backend build blocked by running `EduGuard.Api` process file lock (code review).
+- Known risks: Existing notifications stored as `Success` remain in DB but display as khẩn cấp; new sends use `Emergency`.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Student paused exam resume flow (bug fix)
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Student paused exam resume flow (bug fix).
+- Purpose and user/business impact: When a teacher pauses a student mid-exam, the student can return to the waiting room, see correct **Tạm dừng** status (not **Đã thi**), and continue when the teacher resumes — without losing their attempt or being blocked by max-attempt limits.
+- Files or modules changed: `exam-attempt-service.cs`, `exam-repository.cs`, `exam-service.cs`, `exam-dto.cs`, `exam-mapper.cs`, `exam-attempts-controller.cs`; `ExamPausedPage.jsx`, `ExamDetailPage.jsx`, `StudentExamCard.jsx`, `proctoringRouting.js`, `useStudentProctoringEvents.js`, `examApi.js`, `examAttemptApi.js`.
+- Technical summary: Backend treats `PausedByProctor` as resumable (same as `InProgress` for start); only submitted attempts count toward max attempts; student exam DTO includes latest attempt status; paused page removes exit link, polls every 3s, enables continue button on resume; list/detail route students to paused or attempt pages by status.
+- Validation: Linter clean on touched frontend files; backend build blocked by running API process (file lock), code review only.
+- Known risks: Student must keep paused tab open or revisit exam detail/list to re-enter waiting room after navigation away.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Exam attempt header countdown prominence
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Exam attempt header countdown prominence.
+- Purpose and user/business impact: Students can see remaining exam time clearly at the center of the sticky header while taking a test, with visual urgency when time is running low.
+- Files or modules changed: `ExamAttemptHeaderCountdown.jsx`, `ExamAttemptPage.jsx`.
+- Technical summary: Replaced small time badge with a centered header countdown component (segmented digit boxes, `MM:SS` when under one hour, amber under 5 minutes, rose under 1 minute); fixed header grid overlap and removed full-timer pulse animation.
+- Validation: Linter clean on touched files.
+- Known risks: None identified.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Exam lobby UI refresh and countdown performance
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Exam lobby UI refresh and countdown performance.
+- Purpose and user/business impact: Students waiting before an exam see a clearer, more polished lobby and a countdown that updates every second instead of feeling laggy between server polls.
+- Files or modules changed: `useLobbyOpenCountdown.js`, `ExamLobbyCountdown.jsx`, `ExamLobbyPage.jsx`; removed `ExamLobbyCountdown.css`.
+- Technical summary: Countdown derives remaining time from `startTime` on the client (same pattern as proctoring room header); lobby page layout uses gradient hero, device/waiting status pills, and segmented digit cards with urgency coloring under 5 minutes / 1 minute.
+- Validation: Linter clean on touched files.
+- Known risks: Countdown requires a valid `startTime` from lobby status or exam detail; falls back to “Đang mở đề” when time has passed.
+
+Unresolved questions:
+
+- None.
+
+## Feature: System run guide (all modes)
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: System run guide — all startup modes.
+- Purpose and user/business impact: Developers can start EduGuard using any supported method from one document (basic dev, VS/IIS, Redis, SFU, AI, network modes, full stack). Clarifies that `use-tunnel.cmd` run as Administrator already opens LAN firewall (no separate `open-lan-firewall.cmd` unless LAN-only mode or non-Admin run).
+- Files or modules changed: `docs/HUONG_DAN_CHAY_HE_THONG.md`, `docs/PROCTORING_NETWORK_MODES.md`, `docs/README.md`, `CHANGELOG.md`.
+- Technical summary: Consolidated run instructions; added per-script firewall table; merged hybrid tunnel steps 2–3 into single Admin `use-tunnel.cmd` flow; comparison table column for auto firewall in `PROCTORING_NETWORK_MODES.md`.
+- Validation: Doc review against `apply-proctoring-network.ps1` (`Enable-LanFirewallRules` when `-Mode tunnel`).
+- Known risks: None — documentation only.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Proctoring network modes (LAN / Tailscale / Tunnel)
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring network modes documentation.
+- Purpose and user/business impact: School Wi-Fi without port forward can use LAN; remote GV/dev can use Tailscale; production uses tunnel + TURN later.
+- Files or modules changed: `docs/PROCTORING_NETWORK_MODES.md`, `frontend/.env`, `backend/EduGuard.Api/.env`, `docs/PROCTORING_SFU_SETUP.md`, `.env.example`.
+- Technical summary: Three-mode guide with IP examples (LAN `10.20.4.154`, Tailscale `100.86.244.117`, tunnel `wss://livekit.wpcteam.homes`).
+- Validation: Doc review; `tailscale ip -4` on host.
+- Known risks: Tailscale requires client install per machine; not for large exam halls without IT.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Coturn TURN for cross-network proctoring
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Coturn TURN for cross-network live proctoring.
+- Purpose and user/business impact: Relay WebRTC when GV/SV are on different networks; signaling via Cloudflare tunnel `wss://livekit.wpcteam.homes`, media via TURN/UDP 3478 and LiveKit UDP 50000–50100.
+- Files or modules changed: `infra/livekit/docker-compose.yml`, `.env.example`, `backend/EduGuard.Api/.env`, `livekitRtcConfig.js`, SFU hooks, `docs/PROCTORING_SFU_SETUP.md`.
+- Technical summary: coturn container; backend `WebRtc__IceServers` credentials; frontend injects `rtcConfig` only when API returns `turn:` URLs.
+- Validation: `docker compose up -d` — `livekit-coturn-1` Up on 3478.
+- Known risks: UDP 3478 and 50000–50100 must be port-forwarded on router; set `TURN_EXTERNAL_IP` in `infra/livekit/.env` on NAT.
+
+Unresolved questions:
+
+- Confirm router forwards UDP 3478 and UDP 50000–50100.
+
+## Feature: LiveKit / Redis .env configuration
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: LiveKit / Redis .env configuration.
+- Purpose and user/business impact: Easier deploy/host tuning without editing `appsettings.json`; frontend can point browsers at reachable LiveKit host when API still returns `localhost`.
+- Files or modules changed: `frontend/.env.example`, `frontend/src/config/livekitConfig.js`, `useTeacherSfuViewer.js`, `useStudentSfuPublisher.js`, `devLogger.js`, `backend/EduGuard.Api/.env.example`, `Program.cs`, `EduGuard.Api.csproj` (DotNetEnv), `.gitignore`.
+- Technical summary: `VITE_LIVEKIT_URL` priority over API url then `ws://localhost:7880`; backend `DotNetEnv.Env.TraversePath().Load()` before `WebApplication.CreateBuilder`.
+- Validation: Code review; API build blocked by running `EduGuard.Api` process (file lock) — restart API to pick up DotNetEnv.
+- Known risks: `.env` secrets must not be committed; production HTTPS needs `wss://` for LiveKit.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Proctoring student tile status UX
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring student tile status UX.
+- Purpose and user/business impact: Teachers can understand what **Unknown** meant (no heartbeat yet), see Vietnamese attempt status, and get clearer guidance when live camera is unavailable (submitted vs waiting vs P2P single-view).
+- Files or modules changed: `proctoringStudentStatus.js`, `StudentLiveTile.jsx`, `StudentCameraGrid.jsx`, `AttemptProctorDrawer.jsx`, `TeacherProctoringRoomPage.jsx`.
+- Technical summary: Added status label helpers; redesigned tile signal chips (Camera/Mạng/Live); contextual video placeholders; P2P re-watch on same tile; auto-select first watchable student.
+- Validation: Linter clean on touched files.
+- Known risks: Live video still requires student to publish (SFU) or teacher to select tile (P2P); **Đã nộp bài** students cannot stream by design.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Proctoring room pre-start session status
+
+Date: 2026-06-26
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring room pre-start session status (bug fix).
+- Purpose and user/business impact: Teachers opening the proctoring room before the scheduled start no longer see a false **Phiên đã kết thúc** badge while the countdown still shows time remaining; the room now shows **Chờ mở đề** and counts down to start time until the exam window opens.
+- Files or modules changed: `proctoringRoomHelpers.js`, `useExamEndCountdown.js`, `ProctoringRoomHeader.jsx`, `TeacherProctoringRoomPage.jsx`.
+- Technical summary: Split session phase into `upcoming` / `live` / `ended`; only `ended` disables realtime and shows session-ended badge; countdown uses `startTime` before open and `endTime` after.
+- Validation: Manual logic review; linter clean on touched files.
+- Known risks: None identified; timezone handling unchanged (same `Date` parsing as before).
+
+Unresolved questions:
+
+- None.
+
+## Feature: Split draft exam confirmation into Save Draft and Create Exam flows
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Split draft exam confirmation into Save Draft and Create Exam flows.
+- Purpose and user/business impact: Allows teachers to save a draft exam as unpublished (IsPublished = false) without forcing a start time, or directly jump to the full exam creation workspace with all matrix information (questions, classroom, settings, etc.) prefilled and ready for manual edits.
+- Files or modules changed: backend exam matrix service, frontend question bank API, question bank matrix page, exam list page, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/ExamMatrices/exam-matrix-service.cs`
+- `frontend/src/api/questionBankApi.js`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Updated `CreateExamAsync` to set the created `Exam`'s `IsPublished` state from the request payload instead of forcing `true`.
+- Frontend API: Passed `isPublished` into the request payload in `buildCreateExamFromMatrixPayload`.
+- Frontend Matrix Page: Replaced the single "Xác nhận đề nháp và đặt lịch" button with "Lưu đề nháp" and "Tạo đề" buttons.
+- Frontend Save Dialog: Customized `GenerateExamConfirmDialog` to be for saving drafts, updating labels, headers, and making `startTime` / `endTime` inputs optional.
+- Frontend Create Page: Enhanced `useEffect` triggered by `fromMatrixDraft` to map/autofill all parameters like classroom, title, settings, and questions from the matrix draft.
+
+Validation:
+
+- Tested build with `dotnet build` successfully on `EduGuard.Infrastructure` library.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Feature: Case-insensitive subject comparison and robust chapter matching in matrix generation
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Case-insensitive subject comparison and robust chapter matching in matrix generation.
+- Purpose and user/business impact: Allows filtering by multiple chapters simultaneously even if they are typed as text (e.g. "chương 1, 4, 2" will match questions in chapter 1, 4, or 2), and ensures subject matching is completely case-insensitive and synonym-tolerant (e.g. "Toán học" matches "toán").
+- Files or modules changed: backend exam matrix service, frontend QuestionBankPage, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/ExamMatrices/exam-matrix-service.cs`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Added `ExtractChapterDigits` helper in `ExamMatrixService` and used it in `ChapterOptionalTextMatches` to strip letters and extract numbers before comparing chapter lists.
+- Backend: Updated `SubjectMatches` in `ExamMatrixService` to lower-case, remove diacritics, and map synonyms like "Toán học" to "toán" to perform extremely robust subject matching.
+- Frontend: Updated the regular expression constraint for the chapter input field in `QuestionBankPage.jsx` to allow standard letters (such as "Chương", "Chapter") alongside digits and commas/semicolons.
+
+Validation:
+
+- Tested build with `dotnet build` successfully.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Feature: Numeric chapter constraint and exam matrix substitution confirmation dialog
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Numeric chapter constraint and exam matrix substitution confirmation dialog.
+- Purpose and user/business impact: Restricts chapter fields to only chapter numbers (e.g. 1, 2, 3) representing the chapter sequence for lessons, and asks the user for consent before applying substitutions when generating an exam from a matrix.
+- Files or modules changed: backend question bank service, AI generator service implementation, frontend QuestionBankPage, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/QuestionBanks/OpenAiQuestionGeneratorService.cs`
+- `backend/EduGuard.Infrastructure/QuestionBanks/question-bank-service.cs`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Updated system prompts in OpenAI service to explicitly restrict the chapter field to numeric sequence strings (e.g. "1", "2"). Added `ExtractChapterNumber` helper to strip non-digit characters from the chapter field and used it in both OpenAI service and QuestionBankService mappings.
+- Backend: Fixed `BuildCreateRequest` in `QuestionBankService` to correctly prioritize and fall back to parsed question fields rather than discarding them.
+- Frontend: Implemented `SubstitutionConfirmDialog` in `QuestionBankPage.jsx` to show a modal confirmation when a matrix has substitutions. If agreed, the substitutions are applied; if not, the draft exam is discarded and matrix errors are shown.
+
+Validation:
+
+- Tested build with `dotnet build` successfully.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Feature: Extended AI metadata auto-fill for bulk and single save flows
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Extended AI metadata auto-fill for bulk and single save flows.
+- Purpose and user/business impact: Automatically infers and populates missing Subject, Chapter, and Lesson fields based on question content during single question creation, update, and bulk save flows.
+- Files or modules changed: backend question bank service, AI generator service implementation, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/QuestionBanks/OpenAiQuestionGeneratorService.cs`
+- `backend/EduGuard.Infrastructure/QuestionBanks/question-bank-service.cs`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Modified index matching in `AutoFillMetadataAsync` (OpenAiQuestionGeneratorService) to support robust sequential matching fallbacks (to handle AI model hallucinations of indices).
+- Backend: Added helper `AutoFillRequestsMetadataAsync` in `QuestionBankService` supporting generics constraint `where T : CreateBankQuestionRequest`. Called it in `CreateQuestionAsync`, `UpdateQuestionAsync`, and `CreateQuestionsBulkAsync` to auto-fill any empty fields before saving.
+
+Validation:
+
+- Tested build with `dotnet build` successfully.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Feature: Auto-fill missing question metadata using AI
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Auto-fill missing question metadata using AI.
+- Purpose and user/business impact: Automatically infers and populates missing Subject, Chapter, and Lesson fields based on question content during file import and AI generation.
+- Files or modules changed: backend question bank service, AI generator service interface and implementation, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Application/Services/Interfaces/IAiQuestionGeneratorService.cs`
+- `backend/EduGuard.Infrastructure/QuestionBanks/OpenAiQuestionGeneratorService.cs`
+- `backend/EduGuard.Infrastructure/QuestionBanks/question-bank-service.cs`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Added `AutoFillMetadataAsync` method to `IAiQuestionGeneratorService` and implemented it in `OpenAiQuestionGeneratorService` using OpenAI JSON Schema output to classify questions and fill in their missing subject, chapter, and lesson.
+- Backend: Added helper `AutoFillMissingMetadataAsync` in `QuestionBankService` to filter questions with missing fields, invoke the OpenAI classifier, and apply the results. Called it in `ImportQuestionsAsync`, `GenerateQuestionsAiAsync`, and `GenerateQuestionsAiPreviewAsync`.
+
+Validation:
+
+- Tested build with `dotnet build` successfully.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Feature: Block multiple subjects in AI question generation
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Block multiple subjects in AI question generation.
+- Purpose and user/business impact: Restricts AI question generation to a single subject that must match the question bank's subject.
+- Files or modules changed: backend question bank service, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/QuestionBanks/question-bank-service.cs`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Added validation helper `ValidateSingleSubjectAndBankMatch` to check that the subjects in the AI-generated questions all match each other and match the target bank's subject. Added Vietnamese normalization and standard matching helpers for robust comparison.
+
+Validation:
+
+- Tested build with `dotnet build` successfully.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Feature: Matrix detail tables highlighting
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Matrix detail tables highlighting.
+- Purpose and user/business impact: Enhances readability of matrix results by highlighting sufficient and insufficient question categories with distinct colored backgrounds and styled table headers.
+- Files or modules changed: frontend question bank matrix page, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Frontend: Highlighted the matrix item tables and availability status tables with custom colors, header backgrounds, row highlights, and status coloring (green for OK, red for missing questions).
+
+Validation:
+
+- `npm.cmd run build` from `frontend/` passed with zero build errors.
+
+Known risks / rollback / follow-up:
+
+- None.
+- Rollback: Revert page changes to restore native table styles.
+
+## Feature: Folder-tab UI wrapper, auto-filtering, and tab highlighting
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Folder-tab UI wrapper, auto-filtering, and tab highlighting.
+- Purpose and user/business impact: Enhances question bank management layout by introducing folder-tab styled action buttons that connect seamlessly to the active card form, applying filters instantly on dropdown change, relocating the filter box to the top of the question list, styling navigation sections as tab controls, and distributing new matrix questions equally by default.
+- Files or modules changed: frontend question bank matrix page, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Frontend: Added folder-tab styled toggle buttons (Thêm câu hỏi, Tạo bằng AI, Nhập từ tệp) whose borders merge seamlessly with the card container below them when active.
+- Frontend: Added auto-filtering dependencies (difficulty, type, status) to reload questions immediately on dropdown selection.
+- Frontend: Relocated the filter box from the general manager component to the top of renderQuestionList.
+- Frontend: Initialized matrix default questions to 10 split equally (3-3-4), updated resetMatrixForm, and adjusted updateMatrixForm to distribute questions equally.
+- Frontend: Highlighted "Câu hỏi trong ngân hàng" and "Ma trận đề thi" options as custom visual tab buttons.
+
+Validation:
+
+- `npm.cmd run build` from `frontend/` passed with zero build errors.
+
+Known risks / rollback / follow-up:
+
+- None.
+- Rollback: Revert page changes to restore original layout buttons and native select styles.
+
+## Feature: Folder-tab UI wrapper, auto-filtering, and tab highlighting
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Folder-tab UI wrapper, auto-filtering, and tab highlighting.
+- Purpose and user/business impact: Enhances question bank management layout by introducing folder-tab styled action buttons that connect seamlessly to the active card form, applying filters instantly on dropdown change, relocating the filter box to the top of the question list, styling navigation sections as tab controls, and distributing new matrix questions equally by default.
+- Files or modules changed: frontend question bank matrix page, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Frontend: Added folder-tab styled toggle buttons (Thêm câu hỏi, Tạo bằng AI, Nhập từ tệp) whose borders merge seamlessly with the card container below them when active.
+- Frontend: Added auto-filtering dependencies (difficulty, type, status) to reload questions immediately on dropdown selection.
+- Frontend: Relocated the filter box from the general manager component to the top of renderQuestionList.
+- Frontend: Initialized matrix default questions to 10 split equally (3-3-4), updated resetMatrixForm, and adjusted updateMatrixForm to distribute questions equally.
+- Frontend: Highlighted "Câu hỏi trong ngân hàng" and "Ma trận đề thi" options as custom visual tab buttons.
+
+Validation:
+
+- `npm.cmd run build` from `frontend/` passed with zero build errors.
+
+Known risks / rollback / follow-up:
+
+- None.
+- Rollback: Revert page changes to restore original layout buttons and native select styles.
+
+## Feature: AI question generation in Question Bank
+
+Date: 2026-06-26
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: AI question generation in Question Bank.
+- Purpose and user/business impact: Enables teachers to generate test questions instantly using OpenAI's structured outputs (`gpt-5.5` with strict JSON schema) directly from the Question Bank and Exam workspaces. This replaces a multi-step manual guide and streamlines test prep by automatically inserting correctly structured questions (type, difficulty, answers) into the bank.
+- Files or modules changed: backend request DTOs, service interfaces/implementations, API controllers, configurations, frontend API adapters, import resource UI components, question bank page, and exam workspace integration.
+
+Changed files:
+
+- `backend/EduGuard.Application/DTOs/QuestionBanks/generate-bank-questions-ai-request.cs`
+- `backend/EduGuard.Application/Services/Interfaces/IAiQuestionGeneratorService.cs`
+- `backend/EduGuard.Infrastructure/QuestionBanks/OpenAiQuestionGeneratorService.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-question-bank-service.cs`
+- `backend/EduGuard.Infrastructure/QuestionBanks/question-bank-service.cs`
+- `backend/EduGuard.Infrastructure/dependency-injection.cs`
+- `backend/EduGuard.Api/Controllers/question-banks-controller.cs`
+- `backend/EduGuard.Api/appsettings.json`
+- `frontend/src/api/questionBankApi.js`
+- `frontend/src/features/exams/components/QuestionImportResources.jsx`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `frontend/src/features/exams/components/TeacherQuestionWorkspace.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Added `GenerateBankQuestionsAiRequest` DTO and defined `IAiQuestionGeneratorService` interface.
+- Backend: Implemented `OpenAiQuestionGeneratorService` making HTTP POST requests to the OpenAI completions endpoint with strict `json_schema` response formatting to get well-structured questions.
+- Backend: Updated `IQuestionBankService` and `QuestionBankService` to call the generator and store the questions in the repository, mapping fields to native schema.
+- Backend: Added the controller endpoint `/api/question-banks/{bankId}/questions/generate-ai` and dependency-injected the HTTP client and service.
+- Frontend: Rewrote `QuestionImportResources.jsx` into a tabbed layout, introducing a "Tạo câu hỏi bằng AI" tab with prompt fields, local storage key backup, configuration defaults, and a loading/success state.
+- Frontend: Connected API callbacks to reload data on parent views (`QuestionBankPage.jsx`, `TeacherQuestionWorkspace.jsx`) when questions are generated.
+
+Validation:
+
+- Backend project successfully built using `dotnet build` with zero compile/build errors.
+- Frontend files successfully integrated.
+
+Known risks / rollback / follow-up:
+
+- Needs a valid OpenAI API key (either set in `appsettings.json` or provided dynamically by the user).
+
 ## Feature: Matrix difficulty redesign and bank import enhancements
 
 Date: 2026-06-26
@@ -1536,6 +2235,42 @@ Validation:
 
 - `dotnet build` — pending in merge commit
 - `docker compose config` — optional local
+
+Unresolved questions: None.
+
+---
+
+## Feature: Proctoring Evidence Gallery
+
+Date: 2026-06-27
+
+Branch/source: local dev
+
+Description:
+
+- Feature name: Proctoring Evidence Gallery (Bằng chứng vi phạm).
+- Purpose and user/business impact: Teachers and admins can browse saved proctoring snapshots and video clips in the app instead of opening `wwwroot/uploads/proctoring` on the server; supports filters by exam, evidence type, and student/exam search.
+- Files or modules changed: `ProctoringEvidenceList*` DTOs, `ProctoringService.GetEvidenceListAsync`, `GET /api/proctoring/evidence`, `ProctoringEvidencePage`, `EvidenceCard`, `EvidenceLightbox`, sidebar/routes, `proctoringApi.getEvidenceList`.
+
+Changed files (high level):
+
+- `backend/EduGuard.Application/DTOs/Proctoring/proctoring-dtos.cs`
+- `backend/EduGuard.Application/Services/Interfaces/i-proctoring-service.cs`
+- `backend/EduGuard.Infrastructure/Proctoring/proctoring-service.cs`
+- `backend/EduGuard.Api/Controllers/proctoring-controller.cs`
+- `frontend/src/features/proctoring/pages/ProctoringEvidencePage.jsx`
+- `frontend/src/features/proctoring/components/EvidenceCard.jsx`
+- `frontend/src/features/proctoring/components/EvidenceLightbox.jsx`
+- `frontend/src/features/proctoring/utils/evidenceHelpers.js`
+- `frontend/src/api/proctoringApi.js`
+- `frontend/src/routes/*`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `docs/apiList.md`
+
+Validation:
+
+- `dotnet build` (EduGuard.Infrastructure) — pass
+- Frontend lint on new proctoring evidence files — no diagnostics
 
 Unresolved questions: None.
 

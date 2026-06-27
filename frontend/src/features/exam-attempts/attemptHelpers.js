@@ -75,16 +75,31 @@ export function calculateAttemptEndTime(attempt, durationMinutes) {
 }
 
 export function formatRemainingDuration(remainingMs) {
-  if (remainingMs <= 0) {
-    return "00:00:00";
-  }
+  return splitRemainingDuration(remainingMs).timeDisplay;
+}
 
-  const totalSeconds = Math.floor(remainingMs / 1000);
-  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
-  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
-  const seconds = String(totalSeconds % 60).padStart(2, "0");
+export function splitRemainingDuration(remainingMs) {
+  const totalSeconds = Math.max(0, Math.floor(Number(remainingMs) / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (value) => String(value).padStart(2, "0");
 
-  return `${hours}:${minutes}:${seconds}`;
+  const hoursText = pad(hours);
+  const minutesText = pad(minutes);
+  const secondsText = pad(seconds);
+
+  return {
+    hours: hoursText,
+    minutes: minutesText,
+    seconds: secondsText,
+    showHours: hours > 0,
+    totalSeconds,
+    timeDisplay:
+      hours > 0
+        ? `${hoursText}:${minutesText}:${secondsText}`
+        : `${minutesText}:${secondsText}`,
+  };
 }
 
 export function getRemainingTimeVariant(remainingMs) {

@@ -67,6 +67,7 @@ public class StudentProctoringService : IStudentProctoringService
         state.FullscreenStatus = string.IsNullOrWhiteSpace(request.FullscreenStatus) ? state.FullscreenStatus : request.FullscreenStatus.Trim();
         state.ConnectionStatus = string.IsNullOrWhiteSpace(request.ConnectionStatus) ? "Online" : request.ConnectionStatus.Trim();
         state.EnvironmentStatus = attempt.Status == ExamAttemptStatus.PausedByProctor ? "PausedByTeacher" : "Normal";
+        state.LiveStatus = ResolveLiveStatus(attempt.Status, state.CameraStatus, state.LiveStatus);
 
         state = await _proctoringPolicyService.ApplyHeartbeatPolicyAsync(attempt, state, request, ct);
         attempt.SuspicionScore = state.SuspicionScore;
@@ -202,10 +203,28 @@ public class StudentProctoringService : IStudentProctoringService
         return attempt;
     }
 
-    private static void EnsureProctoringEnabled(Exam exam)
+    private static void EnsureProctoringEnabled(Exam exam) =>
+        ProctoringSettingsHelper.EnsureCameraMonitoringEnabled(exam);
+
+    private static string ResolveLiveStatus(
+        ExamAttemptStatus attemptStatus,
+        string cameraStatus,
+        string currentLiveStatus)
     {
-        if (exam.Setting?.EnableLiveProctoring != true && exam.Setting?.RequireCamera != true)
-            throw new InvalidOperationException("Đề thi này không bật giám sát camera.");
+        if (attemptStatus != ExamAttemptStatus.InProgress)
+            return "Inactive";
+
+        if (string.Equals(cameraStatus, "On", StringComparison.OrdinalIgnoreCase))
+            return "Active";
+
+        if (string.Equals(cameraStatus, "Off", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(cameraStatus, "Denied", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(cameraStatus, "Error", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Inactive";
+        }
+
+        return string.IsNullOrWhiteSpace(currentLiveStatus) ? "Inactive" : currentLiveStatus;
     }
 
     private static bool IsDisconnectedStatus(string? status) =>

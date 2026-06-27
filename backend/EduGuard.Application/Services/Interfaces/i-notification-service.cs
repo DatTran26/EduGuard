@@ -24,6 +24,8 @@ public interface INotificationService
         int suspicionScore,
         CancellationToken ct = default);
     Task CreateLateJoinNotificationAsync(ExamAttempt attempt, CancellationToken ct = default);
+    Task CreateExamPublishedNotificationAsync(int examId, string teacherId, CancellationToken ct = default);
+    Task CreateAssignmentCreatedNotificationAsync(int assignmentId, string teacherId, CancellationToken ct = default);
     Task<IReadOnlyList<NotificationDto>> GetMyNotificationsAsync(string userId, CancellationToken ct = default);
     Task<IReadOnlyList<ClassroomNotificationDto>> GetClassroomNotificationsAsync(int classroomId, string userId, CancellationToken ct = default);
     Task<UnreadCountDto> GetUnreadCountAsync(string userId, CancellationToken ct = default);

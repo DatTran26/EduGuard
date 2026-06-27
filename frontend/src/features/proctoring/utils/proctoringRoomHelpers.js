@@ -89,7 +89,51 @@ export function computeRoomStats(students = [], room = null) {
   };
 }
 
-export function getExamCountdownState(endTime, now = Date.now()) {
+function formatCountdownTimeDisplay(totalSeconds) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (value) => String(value).padStart(2, "0");
+
+  return hours > 0
+    ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+    : `${pad(minutes)}:${pad(seconds)}`;
+}
+
+function buildCountdownState(diffMs, { labelPrefix, mode, urgentThresholdSeconds = 300 }) {
+  if (diffMs <= 0) {
+    return {
+      label: "Đã hết giờ",
+      timeDisplay: "00:00",
+      isExpired: true,
+      isUrgent: false,
+      totalSeconds: 0,
+      mode,
+    };
+  }
+
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const timeDisplay = formatCountdownTimeDisplay(totalSeconds);
+
+  return {
+    label: `${labelPrefix} ${timeDisplay}`,
+    timeDisplay,
+    isExpired: false,
+    isUrgent: mode === "untilEnd" && totalSeconds <= urgentThresholdSeconds,
+    totalSeconds,
+    mode,
+  };
+}
+
+export function getExamCountdownState({ startTime, endTime } = {}, now = Date.now()) {
+  const start = startTime ? new Date(startTime) : null;
+  if (start && !Number.isNaN(start.getTime()) && start.getTime() > now) {
+    return buildCountdownState(start.getTime() - now, {
+      labelPrefix: "Bắt đầu sau",
+      mode: "untilStart",
+    });
+  }
+
   if (!endTime) {
     return null;
   }
@@ -99,58 +143,49 @@ export function getExamCountdownState(endTime, now = Date.now()) {
     return null;
   }
 
-  const diffMs = end.getTime() - now;
-  if (diffMs <= 0) {
-    return {
-      label: "Đã hết giờ",
-      timeDisplay: "00:00",
-      isExpired: true,
-      isUrgent: false,
-      totalSeconds: 0,
-    };
-  }
-
-  const totalSeconds = Math.floor(diffMs / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const pad = (value) => String(value).padStart(2, "0");
-  const timeDisplay = hours > 0
-    ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
-    : `${pad(minutes)}:${pad(seconds)}`;
-
-  return {
-    label: `Còn ${timeDisplay}`,
-    timeDisplay,
-    isExpired: false,
-    isUrgent: totalSeconds <= 300,
-    totalSeconds,
-  };
+  return buildCountdownState(end.getTime() - now, {
+    labelPrefix: "Còn",
+    mode: "untilEnd",
+  });
 }
 
-export function isProctoringRoomSessionLive(room) {
+export function getProctoringRoomSessionPhase(room, now = Date.now()) {
   if (!room) {
     return null;
   }
 
   if ((room.inProgressCount ?? 0) > 0 || (room.liveSessionCount ?? 0) > 0) {
-    return true;
+    return "live";
   }
 
   const endTime = room.endTime ? new Date(room.endTime) : null;
-  if (endTime && !Number.isNaN(endTime.getTime()) && endTime.getTime() <= Date.now()) {
-    return false;
+  if (endTime && !Number.isNaN(endTime.getTime()) && endTime.getTime() <= now) {
+    return "ended";
   }
 
   const startTime = room.startTime ? new Date(room.startTime) : null;
-  if (startTime && !Number.isNaN(startTime.getTime()) && startTime.getTime() > Date.now()) {
-    return false;
+  if (startTime && !Number.isNaN(startTime.getTime()) && startTime.getTime() > now) {
+    return "upcoming";
   }
 
-  return true;
+  return "live";
 }
 
-export function resolveProctoringRealtimeBadge({ isRoomLoading, sessionLive, isHubConnected }) {
+export function isProctoringRoomSessionLive(room, now = Date.now()) {
+  const phase = getProctoringRoomSessionPhase(room, now);
+  if (phase === null) {
+    return null;
+  }
+
+  return phase !== "ended";
+}
+
+export function resolveProctoringRealtimeBadge({
+  isRoomLoading,
+  sessionPhase = null,
+  sessionLive,
+  isHubConnected,
+}) {
   if (isRoomLoading) {
     return {
       label: "Đang tải phòng…",
@@ -159,11 +194,21 @@ export function resolveProctoringRealtimeBadge({ isRoomLoading, sessionLive, isH
     };
   }
 
-  if (sessionLive === false) {
+  const phase = sessionPhase ?? (sessionLive === false ? "ended" : "live");
+
+  if (phase === "ended") {
     return {
       label: "Phiên đã kết thúc",
       pulse: false,
       tone: "neutral",
+    };
+  }
+
+  if (phase === "upcoming") {
+    return {
+      label: isHubConnected ? "Chờ mở đề" : "Đang kết nối realtime…",
+      pulse: isHubConnected,
+      tone: "connecting",
     };
   }
 

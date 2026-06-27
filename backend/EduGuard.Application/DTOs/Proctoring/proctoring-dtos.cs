@@ -10,6 +10,7 @@ public class ProctoringRoomDto
     public DateTime? StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public bool EnableLiveProctoring { get; set; }
+    public bool CameraMonitoringEnabled { get; set; }
     public int MaxActiveLiveTiles { get; set; }
     public int InProgressCount { get; set; }
     public int SubmittedCount { get; set; }
@@ -37,6 +38,7 @@ public class ProctoringStateSummaryDto
     public DateTime? LatestWarningAt { get; set; }
     public bool IsLateJoin { get; set; }
     public int LateByMinutes { get; set; }
+    public string? LatestDetectionType { get; set; }
 }
 
 public class ProctoringAttemptDetailDto
@@ -87,6 +89,43 @@ public class ProctoringEvidenceDto
     public string? TriggerEventType { get; set; }
     public decimal? Confidence { get; set; }
     public DateTime CapturedAt { get; set; }
+}
+
+public class ProctoringEvidenceListItemDto
+{
+    public int Id { get; set; }
+    public int AttemptId { get; set; }
+    public int ExamId { get; set; }
+    public string ExamTitle { get; set; } = string.Empty;
+    public string StudentId { get; set; } = string.Empty;
+    public string StudentName { get; set; } = string.Empty;
+    public string EvidenceType { get; set; } = string.Empty;
+    public string FileUrl { get; set; } = string.Empty;
+    public string CaptureSource { get; set; } = string.Empty;
+    public string? TriggerEventType { get; set; }
+    public decimal? Confidence { get; set; }
+    public DateTime CapturedAt { get; set; }
+}
+
+public class ProctoringEvidenceListQuery
+{
+    public int? ExamId { get; set; }
+    public int? AttemptId { get; set; }
+    public string? EvidenceType { get; set; }
+    public string? Search { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 24;
+}
+
+public class ProctoringEvidenceListResultDto
+{
+    public IReadOnlyList<ProctoringEvidenceListItemDto> Items { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int SnapshotCount { get; set; }
+    public int ClipCount { get; set; }
+    public int AutoCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
 }
 
 public class ExamLobbyStatusDto
@@ -160,4 +199,18 @@ public class ProctoringHeartbeatRequest
 public class ProctoringReasonRequest
 {
     public string Reason { get; set; } = string.Empty;
+}
+
+public class AiDetectionEventDto
+{
+    public int ExamId { get; set; }
+    public int ExamAttemptId { get; set; }
+    public string StudentId { get; set; } = string.Empty;
+    public string StudentName { get; set; } = string.Empty;
+    public string DetectionType { get; set; } = string.Empty;
+    public decimal Confidence { get; set; }
+    public bool IsFlagged { get; set; }
+    public string? Message { get; set; }
+    public IReadOnlyList<string> Labels { get; set; } = [];
+    public DateTime OccurredAt { get; set; }
 }

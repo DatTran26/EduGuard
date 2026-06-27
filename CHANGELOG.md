@@ -7,13 +7,124 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-27
+
+### AI Services
+
+- **Proctoring AI logging:** FastAPI service logs startup config, request timing, detection results (type, confidence, labels, inference ms), and errors for bad images or failed inference. Configurable via `PROCTORING_LOG_LEVEL`.
+
 ### Backend
 
+- **Admin email settings:** Gmail/SMTP and OTP verification settings stored in DB; admin APIs `GET/PUT /api/admin/email-settings` and `POST /api/admin/email-settings/test`. Runtime auth email flow reads from DB instead of appsettings only.
+
+### Frontend
+
+- **Admin email settings page:** New `/admin/email-settings` screen for Admin role to configure Gmail account, sender info, OTP rules, and send test email.
+
+### Backend
+
+### Frontend
+
+- **Register email verification:** Step 4 OTP flow wired to backend verify/resend APIs; account is created at step 3, verification completes registration and signs in.
+
+### Frontend
+
+- **Proctoring room UX:** Stopped auto-opening student detail when someone joins the live room; added **Lịch sử vi phạm** on each student tile (opens drawer with AI / Hành vi sub-tabs); **Cảnh báo AI & vi phạm** feed is collapsed by default.
+
+### Frontend
+
+- **Bug fix (student exam camera):** Surveillance camera preview sits beside the countdown in the exam header; fixed blank local preview after late join or page refresh (F5) when the teacher still received the stream — single preview element, `mediaStream` state binding, and cancel-safe `getUserMedia`.
+- **Device check redesign:** New two-column readiness checklist with camera preview; fullscreen is requested automatically (no manual button); fullscreen also triggers on **Bắt đầu làm bài** via user gesture.
+
+### Frontend
+
+- **Proctoring evidence gallery:** Added sidebar tab **Bằng chứng vi phạm** (`/teacher/proctoring-evidence`, `/admin/proctoring-evidence`) with filterable grid, lightbox viewer, and stats for snapshots/clips/auto evidence — no need to browse server folders.
+
+### Backend
+
+- **Proctoring evidence list API:** `GET /api/proctoring/evidence` returns paginated evidence with exam/student context; teachers see owned/co-proctor exams only, admins see all.
+
+### Frontend
+
+- **Exam and assignment notifications:** Students receive in-app and SignalR alerts when a teacher publishes an exam or creates an assignment; teacher success toasts note that the class was notified; notification inbox supports `ExamPublished` and `AssignmentNew` types with deep links.
+
+### Backend
+
+- **Exam and assignment notifications:** `PublishAsync` notifies active classroom students (`ExamPublished`); `AssignmentService.CreateAsync` notifies students (`AssignmentNew`) with dedupe via `SourceKey` and realtime push.
+
+### Frontend
+
+- **Bug fix (proctoring camera):** Proctoring room shows a warning when the exam has anti-cheat only (no camera flags); anti-cheat monitoring panel links to log view instead of live camera room when camera monitoring is disabled.
+
+### Backend
+
+- **Bug fix (exam settings):** Updating an exam now persists all monitoring settings (camera, live proctoring, AI detection, snapshots); previously only shuffle/fullscreen fields were saved to SQL.
+
+- **Exam and assignment notifications:** Publishing an exam or creating an assignment pushes notifications to all active students in the classroom (persisted + SignalR).
+
+### Docs
+
+- **Run guide:** Clarified that `use-tunnel.cmd` (Admin) already opens LAN firewall — `open-lan-firewall.cmd` only needed for `use-lan` / `use-tailscale`, or when tunnel script was not run as Administrator. Updated [`docs/HUONG_DAN_CHAY_HE_THONG.md`](docs/HUONG_DAN_CHAY_HE_THONG.md) and [`docs/PROCTORING_NETWORK_MODES.md`](docs/PROCTORING_NETWORK_MODES.md).
+- **Run guide:** Added [`docs/HUONG_DAN_CHAY_HE_THONG.md`](docs/HUONG_DAN_CHAY_HE_THONG.md) — consolidated guide for all ways to run EduGuard (localhost dev, Visual Studio, Redis, LiveKit SFU, AI service, LAN/Tailscale/Tunnel network modes, full stack).
+
+### Infra
+
+- **TURN (coturn):** Enabled coturn in `infra/livekit` (UDP/TCP `3478`) with `.env.example` for credentials; for cross-network proctoring alongside tunneled `wss://livekit.wpcteam.homes`.
+
+### Frontend
+
+- **Classroom notifications:** Fixed notification type colors (khẩn cấp = đỏ, cảnh báo = vàng, chung = xanh); create form adds recipient picker with **Chọn hết** for one or many students. — waiting room no longer links back to exam list; shows **Tiếp tục làm bài** when teacher resumes; exam list/detail show **Tạm dừng** / **Tiếp tục làm bài** instead of **Đã thi** for `PausedByProctor`.
+- **Exam lobby UI:** Redesigned student waiting room with gradient layout, status pills, flip-style countdown digits, and urgency states; countdown now ticks client-side from `startTime` every second instead of waiting on 5s lobby polling.
+- **Exam attempt header:** Prominent centered countdown timer in the sticky header (segmented digit boxes, hides leading `00:` hours, urgency coloring under 5 minutes / 1 minute) instead of a small badge.
+- **Config:** `VITE_LIVEKIT_URL` in `.env` overrides LiveKit WebSocket URL for browser SFU connections (fallback: API `sfu-config` url → `ws://localhost:7880`).
+- **LiveKit RTC:** SFU connect passes explicit `iceServers` only when API includes TURN entries.
+- **Bug fix:** Proctoring room no longer shows **Phiên đã kết thúc** before the scheduled start time; badge shows **Chờ mở đề** and the header countdown counts down to exam start instead of end.
+- **Proctoring student tiles:** Camera/network/live signals now show Vietnamese labels with hints instead of raw **Unknown**; attempt status uses **Đang làm bài** / **Đã nộp bài**; submitted students explain why live camera is unavailable; P2P mode shows a one-student-at-a-time viewing hint.
+
+### Backend
+
+- **Classroom notifications:** `POST /api/notifications/classroom` accepts optional `recipientIds` to target specific active students; realtime tone follows notification type. `PausedByProctor` attempts instead of treating them as finished; max-attempt check counts only **Submitted** attempts; exam list/detail for students expose `myAttemptId`, `myAttemptStatus`, `myLatestScore`.
+- **TURN ICE:** `WebRtc__IceServers__*` env vars for coturn (`turn:livekit.wpcteam.homes:3478`).
+### Backend
+
+- Cập nhật API `createExamFromMatrix` hỗ trợ nhận tham số `isPublished` để xác định trạng thái xuất bản của đề thi tạo từ ma trận (nháp hay chính thức).
+- Điều chỉnh `ExamMatrixService` gán giá trị `IsPublished` của `Exam` được sinh từ ma trận theo tham số `request.IsPublished` từ client thay vì cố định gán bằng `true`.
+- Cải tiến thuật toán khớp môn học trong ma trận (`SubjectMatches`) trở nên không phân biệt hoa thường và hỗ trợ chuẩn hóa xóa dấu/so sánh cụm từ (ví dụ: "Toán học" khớp với "toán").
+- Nâng cấp bộ lọc chương học (`ChapterOptionalTextMatches`) hỗ trợ bóc tách số tự động từ cả chuỗi ký tự (ví dụ: "chương 1, 4, 2" sẽ khớp với các câu hỏi thuộc chương 1, 4 hoặc 2).
+- Ràng buộc trường chương học (Chapter) chỉ hiển thị số thứ tự chương (dạng chữ số đơn thuần, ví dụ: 1, 2, 3) tương ứng với bài học được suy luận từ nội dung câu hỏi (ví dụ: bài CSS cơ bản thuộc chương 1). Tích hợp helper chuẩn hóa `ExtractChapterNumber` tự động lọc lấy số từ các phản hồi của AI hoặc từ dữ liệu nhập vào của giảng viên.
+- Cải tiến cơ chế tự động điền các thông tin môn học, chương học, bài học còn thiếu bằng AI cho cả luồng lưu câu hỏi đơn lẻ, cập nhật câu hỏi, và lưu câu hỏi hàng loạt (CreateQuestionsBulk) để bảo đảm dữ liệu luôn được điền đầy đủ và chính xác khi lưu vào cơ sở dữ liệu.
+- Tích hợp cơ chế tự động điền các thông tin môn học (Subject), chương học (Chapter), bài học (Lesson) còn thiếu bằng AI (OpenAI) khi sinh câu hỏi hoặc import tệp Excel/CSV/PDF/Docx/Txt của giảng viên.
+- Bổ sung validate chặn sinh câu hỏi cho nhiều môn học hoặc khác môn học của ngân hàng trong cùng một yêu cầu API sinh bằng AI (trả về 400 Bad Request kèm thông báo lỗi tiếng Việt cụ thể).
+- Added a direct AI question generation endpoint `POST api/question-banks/{bankId}/questions/generate-ai` that calls OpenAI using structured JSON outputs (`gpt-5.5` with reasoning_effort medium).
+- Added `OpenAiQuestionGeneratorService` to call the OpenAI completion API and deserialize generated questions directly matching the database schema.
+- Extended `IQuestionBankService` with `GenerateQuestionsAiAsync` to automatically parse and save AI-generated questions into the database.
 - Added difficulty parsing to the question import parser from Excel/CSV columns ("difficulty", "do kho", "muc do") and structured text metadata ("difficulty", "Mức độ", "Do khó").
 - Mapped question-specific difficulty into bank question import requests, falling back to defaults if not specified.
 
 ### Frontend
 
+- Tách nút "Xác nhận đề nháp và đặt lịch" thành 2 nút: "Lưu đề nháp" và "Tạo đề" trên trang ma trận đề thi ngân hàng câu hỏi.
+- Điều chỉnh hộp thoại `GenerateExamConfirmDialog` (thành hộp thoại Lưu đề nháp) phù hợp cho luồng lưu bản nháp: gỡ bỏ bắt buộc nhập giờ mở đề/đóng đề và cập nhật thông báo/nút hành động phù hợp.
+- Nút "Lưu đề nháp" thực hiện tạo đề thi trên backend với trạng thái nháp (`isPublished: false`).
+- Nút "Tạo đề" thực hiện chuyển hướng sang trang tạo đề thi đầy đủ (`ExamListPage`), chuyển tiếp toàn bộ thông tin đề nháp (lớp, tiêu đề, thời gian làm bài, giám sát, cài đặt trộn đề/đáp án, tối đa số lần làm bài và danh sách câu hỏi) để tự động điền (autofill) các trường thông tin tương ứng.
+- Bổ sung hộp thoại xác nhận thay thế câu hỏi (`SubstitutionConfirmDialog`) khi sinh đề thi từ ma trận mà ngân hàng thiếu câu hỏi có độ khó tương ứng. Đưa ra lựa chọn đồng ý tự động bù câu hỏi có độ khó khác hoặc không đồng ý để hủy và hiển thị thông báo các dòng ma trận thiếu câu.
+- Cải tiến giao diện bảng chi tiết ma trận và trạng thái ngân hàng câu hỏi: Thêm highlight tiêu đề xanh, hiệu ứng hover dòng, và tô màu nền phân biệt dòng đủ câu (xanh lá nhạt) và thiếu câu (đỏ nhạt) trực quan.
+
+- Bổ dung tự động lọc câu hỏi trong ngân hàng khi chọn các bộ lọc dropdown (độ khó, loại câu, trạng thái).
+- Thiết kế thanh điều hướng thêm câu hỏi dạng các tab thư mục (folder tabs) gồm: "Thêm câu hỏi", "Tạo câu hỏi với AI", và "Nhập câu hỏi từ tệp". Khung viền của tab đang chọn kết nối liền mạch với viền của card nội dung phía dưới, mang lại giao diện trực quan và chuyên nghiệp.
+- Di chuyển bộ lọc câu hỏi vào đầu component danh sách câu hỏi ngân hàng câu hỏi.
+- Thiết lập số lượng câu hỏi mặc định của ma trận đề thi là 10 câu và cấu hình phân bổ đều (3 dễ, 3 trung bình, 4 khó) khi khởi tạo hoặc khi thay đổi tổng số câu.
+- Cải tiến giao diện bằng cách highlight nổi bật hai tab điều hướng "Câu hỏi trong ngân hàng" và "Ma trận đề thi" theo kiểu tab tròn đồng bộ.
+
+- Bổ sung tự động lọc câu hỏi trong ngân hàng khi chọn các bộ lọc dropdown (độ khó, loại câu, trạng thái).
+- Thiết kế thanh điều hướng thêm câu hỏi dạng các tab thư mục (folder tabs) gồm: "Thêm câu hỏi", "Tạo câu hỏi với AI", và "Nhập câu hỏi từ tệp". Khung viền của tab đang chọn kết nối liền mạch với viền của card nội dung phía dưới, mang lại giao diện trực quan và chuyên nghiệp.
+- Di chuyển bộ lọc câu hỏi vào đầu component danh sách câu hỏi ngân hàng câu hỏi.
+- Thiết lập số lượng câu hỏi mặc định của ma trận đề thi là 10 câu và cấu hình phân bổ đều (3 dễ, 3 trung bình, 4 khó) khi khởi tạo hoặc khi thay đổi tổng số câu.
+- Cải tiến giao diện bằng cách highlight nổi bật hai tab điều hướng "Câu hỏi trong ngân hàng" và "Ma trận đề thi" theo kiểu tab tròn đồng bộ.
+
+- Replaced the static manual instructions box in `QuestionImportResources.jsx` with a tabbed UI, introducing an interactive "Tạo câu hỏi bằng AI" panel alongside the manual Excel import instructions.
+- Added prompt text inputs, optional local-storage saved OpenAI API Key inputs, and advanced configuration defaults (difficulty, status, subject, chapter) directly into the AI Question Generator.
+- Integrated AI generation directly in `QuestionBankPage.jsx` and `TeacherQuestionWorkspace.jsx` to refresh lists upon successful question generation.
 - Moved exam matrix filters (Chapter, Lesson, LearningOutcome, QuestionType) to top-level fields in the matrix editor form, and removed row-level grids and "Thêm dòng" button entirely.
 - Redesigned the exam matrix difficulty configuration with a global multi-range interactive slider mapping to Easy, Medium, and Hard counts.
 - Replaced the custom file upload form in the question bank page with the reusable `QuestionImportPanel` and `QuestionImportResources` components.
@@ -264,6 +375,7 @@ Stable release promoted from `v1.1.0-rc.1` after RC validation (auth + classroom
 - `GET /api/classrooms/{id}` (classroom detail) deferred
 - Members endpoint returns email for active members; tighten for production if needed
 
+[1.3.0]: https://github.com/DatTran26/EduGuard/compare/v1.3.0-rc.1...v1.3.0
 [1.3.0-rc.1]: https://github.com/DatTran26/EduGuard/compare/v1.2.0...v1.3.0-rc.1
 [1.2.0]: https://github.com/DatTran26/EduGuard/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/DatTran26/EduGuard/compare/v1.0.0...v1.1.0

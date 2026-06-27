@@ -12,7 +12,13 @@ const axiosClient = axios.create({
   },
 });
 
-const AUTH_BYPASS_PATHS = ["/auth/login", "/auth/register", "/auth/refresh-token"];
+const AUTH_BYPASS_PATHS = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/verify-email",
+  "/auth/resend-verification",
+  "/auth/refresh-token",
+];
 
 let isRefreshing = false;
 let refreshWaitQueue = [];

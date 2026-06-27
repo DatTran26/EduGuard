@@ -99,6 +99,8 @@ Tài liệu sâu: [`docs/03_BACKEND_ARCHITECTURE.md`](docs/03_BACKEND_ARCHITECTU
 
 *Redis và Docker Compose — tùy chọn cho cache và triển khai tập trung; xem [`docs/02_SETUP_AND_PROJECT_STRUCTURE.md`](docs/02_SETUP_AND_PROJECT_STRUCTURE.md).*
 
+**Chạy đủ các cách (dev, SFU, AI, LAN/Tailscale/Tunnel):** [`docs/HUONG_DAN_CHAY_HE_THONG.md`](docs/HUONG_DAN_CHAY_HE_THONG.md)
+
 ---
 
 ## Cài đặt & chạy local

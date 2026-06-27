@@ -33,7 +33,7 @@ export default function CoProctorDialog({ examId, isOpen, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       <button
-        aria-label="Đóng hộp thoại co-proctor"
+        aria-label="Đóng hộp thoại giám thị phụ"
         className="absolute inset-0 bg-[#020617]/75 backdrop-blur-[2px]"
         onClick={onClose}
         type="button"
@@ -54,7 +54,7 @@ export default function CoProctorDialog({ examId, isOpen, onClose }) {
               Phòng giám sát
             </p>
             <h2 className="text-lg font-semibold text-white" id="co-proctor-dialog-title">
-              Quản lý co-proctor
+              Quản lý giám thị phụ
             </h2>
             <p className="text-sm leading-6 text-slate-400">
               Mời giáo viên khác cùng giám sát. Mỗi học sinh chỉ một giáo viên xem live tại một thời điểm.

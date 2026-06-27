@@ -39,7 +39,6 @@ import { ensureFullscreenExited } from "../../../utils/fullscreen";
 import { getStoredAccessToken } from "../../../utils/tokenStorage";
 import {
   ANTI_CHEAT_EVENT_TYPES,
-  getAntiCheatEventMeta,
   getSuspicionScoreMeta,
 } from "../../anti-cheat/antiCheatHelpers";
 import {
@@ -49,9 +48,9 @@ import {
   formatRemainingDuration,
   formatSaveBanner,
   getAttemptAnswerPayload,
-  getRemainingTimeVariant,
   isQuestionAnswered,
 } from "../attemptHelpers";
+import ExamAttemptHeaderCountdown from "../components/ExamAttemptHeaderCountdown";
 import { getQuestionTypeLabel } from "../../exams/examHelpers";
 
 const QUESTION_SAVE_DELAY_MS = 700;
@@ -162,7 +161,6 @@ export default function ExamAttemptPage() {
       ? false
       : Boolean(document.fullscreenElement),
   );
-  const [lastWarning, setLastWarning] = useState(null);
   const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false);
   const [clockTickMs, setClockTickMs] = useState(Date.now());
   const [showLateJoinCameraGate, setShowLateJoinCameraGate] = useState(false);
@@ -202,15 +200,15 @@ export default function ExamAttemptPage() {
     () => buildUnansweredQuestionIndexes(questions, answersByQuestionId),
     [answersByQuestionId, questions],
   );
-  const timeBadgeVariant = getRemainingTimeVariant(remainingTimeMs);
   const suspicionMeta = getSuspicionScoreMeta(attempt?.suspicionScore ?? 0);
   const latestWarningMeta = getAntiCheatEventMeta(lastWarning?.type);
+  const attemptSettingItems = useMemo(() => buildAttemptSettingItems(exam), [exam]);
   const proctoringEnabled =
     attempt?.status === "InProgress" && isLiveProctoringRoomAvailable(exam);
   const realtimeControlEnabled =
     attempt?.status === "InProgress" && isStudentRealtimeControlEnabled(exam);
   const proctoringAudioEnabled = proctoringEnabled && requiresProctoringMicrophone(exam);
-  const { videoRef, status: cameraStatus, streamRef, isReady: isCameraReady, startStream, errorMessage: cameraErrorMessage } = useCameraStream({
+  const { videoRef, setVideoElement, mediaStream, status: cameraStatus, streamRef, isReady: isCameraReady, startStream, errorMessage: cameraErrorMessage } = useCameraStream({
     audio: proctoringAudioEnabled,
     enabled: proctoringEnabled,
   });
@@ -346,11 +344,6 @@ export default function ExamAttemptPage() {
       }
 
       antiCheatThrottleRef.current.set(type, now);
-      setLastWarning({
-        type,
-        description,
-        occurredAt: new Date().toISOString(),
-      });
 
       try {
         const response = await antiCheatApi.log({
@@ -672,7 +665,6 @@ export default function ExamAttemptPage() {
         setResult(nextResult);
         setCurrentQuestionIndex(0);
         setSaveState(buildDefaultSaveState());
-        setLastWarning(null);
         setLoadErrorMessage("");
       } catch (error) {
         if (!isMounted) {
@@ -1245,53 +1237,93 @@ export default function ExamAttemptPage() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(15,118,110,0.08),_transparent_44%),linear-gradient(180deg,#f8fafc_0%,#eef4f7_100%)] pb-24">
-      <div className="sticky top-0 z-30 border-b border-border bg-surface/92 backdrop-blur">
-        <div className="mx-auto flex max-w-[1360px] flex-wrap items-center justify-between gap-4 px-4 py-4 md:px-6 lg:px-8">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={timeBadgeVariant}>
-                {formatRemainingDuration(remainingTimeMs)}
-              </Badge>
-              <Badge variant={isOnline ? "success" : "danger"}>
-                {isOnline ? "Đang kết nối" : "Đang mất kết nối"}
-              </Badge>
-              <Badge variant={saveState.status === "error" ? "danger" : "info"}>
-                {formatSaveBanner(saveState)}
-              </Badge>
-              {exam.enableAntiCheat ? (
-                <Badge variant={suspicionMeta.variant}>
-                  {suspicionMeta.label}
+      <div
+        className={`sticky top-0 border-b border-border bg-surface/95 backdrop-blur-md ${
+          showLateJoinCameraGate ? "z-[60]" : "z-30"
+        }`}
+      >
+        <div className="mx-auto max-w-[1360px] px-4 py-2 md:px-6 lg:px-8">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                <Badge variant={isOnline ? "success" : "danger"}>
+                  {isOnline ? "Đang kết nối" : "Mất kết nối"}
                 </Badge>
-              ) : null}
+                <Badge variant={saveState.status === "error" ? "danger" : "info"}>
+                  {formatSaveBanner(saveState)}
+                </Badge>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2 sm:hidden">
+                <Button
+                  className="!px-3 !py-1.5 text-sm"
+                  disabled={isSubmitting}
+                  onClick={() => setIsConfirmingSubmit(true)}
+                >
+                  {isSubmitting ? "Đang nộp..." : "Nộp bài"}
+                </Button>
+              </div>
             </div>
 
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-primary md:text-[2rem]">
-                {exam.title}
-              </h1>
-              <p className="text-sm text-secondary">
-                Câu {currentQuestionIndex + 1}/{questions.length} • Đã trả lời{" "}
-                {answeredQuestionCount}/{questions.length} câu • Bắt đầu{" "}
-                {formatShortDateTime(attempt.startedAt)}
-              </p>
-            </div>
-          </div>
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0 lg:max-w-[42%] lg:pr-3">
+                <h1 className="truncate text-base font-semibold tracking-tight text-primary sm:text-lg">
+                  {exam.title}
+                </h1>
+                <p className="mt-0.5 truncate text-xs text-secondary">
+                  Câu {currentQuestionIndex + 1}/{questions.length} • Đã trả lời{" "}
+                  {answeredQuestionCount}/{questions.length} •{" "}
+                  {formatShortDateTime(attempt.startedAt)}
+                </p>
+              </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+              <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 lg:justify-center">
+                <ExamAttemptHeaderCountdown compact remainingMs={remainingTimeMs} />
+                {proctoringEnabled ? (
+                  <CameraPreview
+                    compact
+                    header
+                    errorMessage={cameraErrorMessage}
+                    label="Camera"
+                    mediaStream={mediaStream}
+                    setVideoElement={setVideoElement}
+                    status={cameraStatus}
+                    videoRef={videoRef}
+                  />
+                ) : null}
+              </div>
+
+              <div className="hidden shrink-0 items-center justify-end gap-2 sm:flex lg:min-w-[180px]">
+                {exam.settings.requireFullscreen ? (
+                  <Button
+                    className="!px-3 !py-1.5 text-sm"
+                    onClick={() => handleStartFullscreen()}
+                    variant="secondary"
+                  >
+                    {isFullscreen ? "Toàn màn hình" : "Bật toàn màn hình"}
+                  </Button>
+                ) : null}
+                <Button
+                  className="!px-3 !py-1.5 text-sm"
+                  disabled={isSubmitting}
+                  onClick={() => setIsConfirmingSubmit(true)}
+                >
+                  {isSubmitting ? "Đang nộp..." : "Nộp bài"}
+                </Button>
+              </div>
+            </div>
+
             {exam.settings.requireFullscreen ? (
-              <Button
-                onClick={() => handleStartFullscreen()}
-                variant="secondary"
-              >
-                {isFullscreen ? "Đang toàn màn hình" : "Bật toàn màn hình"}
-              </Button>
+              <div className="flex justify-center sm:hidden">
+                <Button
+                  className="w-full max-w-xs !py-1.5 text-sm"
+                  onClick={() => handleStartFullscreen()}
+                  variant="secondary"
+                >
+                  {isFullscreen ? "Toàn màn hình" : "Bật toàn màn hình"}
+                </Button>
+              </div>
             ) : null}
-            <Button
-              disabled={isSubmitting}
-              onClick={() => setIsConfirmingSubmit(true)}
-            >
-              {isSubmitting ? "Đang nộp..." : "Nộp bài"}
-            </Button>
           </div>
         </div>
       </div>
@@ -1303,22 +1335,6 @@ export default function ExamAttemptPage() {
           ) : null}
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-6">
-            {lastWarning ? (
-              <Card className="space-y-3 border-caution/28 bg-caution-muted">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={latestWarningMeta.variant}>
-                    {latestWarningMeta.label}
-                  </Badge>
-                  <span className="text-sm text-secondary">
-                    {formatShortDateTime(lastWarning.occurredAt)}
-                  </span>
-                </div>
-                <p className="text-sm leading-6 text-secondary">
-                  {lastWarning.description}
-                </p>
-              </Card>
-            ) : null}
-
             {currentQuestion ? (
               <Card className="space-y-6 border-white/70 bg-white/92 shadow-[0_24px_64px_-40px_rgba(15,23,42,0.45)]">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1471,7 +1487,7 @@ export default function ExamAttemptPage() {
           </div>
 
           <aside className="hidden xl:block">
-            <Card className="sticky top-24 space-y-5 border-white/70 bg-white/92 shadow-[0_24px_64px_-40px_rgba(15,23,42,0.45)]">
+            <Card className="sticky top-[5.5rem] space-y-5 border-white/70 bg-white/92 shadow-[0_24px_64px_-40px_rgba(15,23,42,0.45)]">
               <div className="space-y-2">
                 <h2 className="text-lg font-semibold text-primary">
                   Tổng quan phiên làm bài
@@ -1590,14 +1606,32 @@ export default function ExamAttemptPage() {
         </div>
       </div>
 
-      {proctoringEnabled ? (
-        <div className="fixed bottom-4 right-4 z-40 w-[240px] rounded-[16px] border border-border bg-surface p-3 shadow-lg">
-          <CameraPreview
-            errorMessage=""
-            label="Camera giám sát"
-            status={cameraStatus}
-            videoRef={videoRef}
-          />
+      {showLateJoinCameraGate ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 px-4">
+          <div className="w-full max-w-[560px] rounded-[28px] border border-caution/25 bg-surface p-6 shadow-[0_36px_90px_-45px_rgba(15,23,42,0.75)]">
+            <div className="space-y-4">
+              <Badge variant="caution">Vào thi trễ · Yêu cầu camera</Badge>
+              <h2 className="text-2xl font-semibold tracking-tight text-primary">
+                Bật camera để tiếp tục làm bài
+              </h2>
+              <p className="text-sm leading-6 text-secondary">
+                Bạn vào đề sau giờ mở. Đề này yêu cầu camera trong suốt quá trình
+                làm bài và giảng viên đã được thông báo bạn vào trễ. Hãy kiểm tra
+                khung camera giám sát bên cạnh đồng hồ đếm ngược trước khi tiếp tục.
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              {!isCameraReady ? (
+                <Button onClick={() => startStream()} type="button" variant="secondary">
+                  Thử bật camera lại
+                </Button>
+              ) : null}
+              <Button disabled={!isCameraReady} onClick={() => setShowLateJoinCameraGate(false)} type="button">
+                Tiếp tục làm bài
+              </Button>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -1619,40 +1653,6 @@ export default function ExamAttemptPage() {
             <div className="mt-6 flex flex-wrap justify-end gap-3">
               <Button onClick={() => handleStartFullscreen()}>
                 Bật toàn màn hình
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {showLateJoinCameraGate ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 px-4">
-          <div className="w-full max-w-[560px] rounded-[28px] border border-caution/25 bg-surface p-6 shadow-[0_36px_90px_-45px_rgba(15,23,42,0.75)]">
-            <div className="space-y-4">
-              <Badge variant="caution">Vào thi trễ · Yêu cầu camera</Badge>
-              <h2 className="text-2xl font-semibold tracking-tight text-primary">
-                Bật camera để tiếp tục làm bài
-              </h2>
-              <p className="text-sm leading-6 text-secondary">
-                Bạn vào đề sau giờ mở. Đề này yêu cầu camera trong suốt quá trình
-                làm bài và giảng viên đã được thông báo bạn vào trễ.
-              </p>
-              <CameraPreview
-                errorMessage={cameraErrorMessage}
-                label="Camera giám sát"
-                status={cameraStatus}
-                videoRef={videoRef}
-              />
-            </div>
-
-            <div className="mt-6 flex flex-wrap justify-end gap-3">
-              {!isCameraReady ? (
-                <Button onClick={() => startStream()} type="button" variant="secondary">
-                  Thử bật camera lại
-                </Button>
-              ) : null}
-              <Button disabled={!isCameraReady} onClick={() => setShowLateJoinCameraGate(false)} type="button">
-                Tiếp tục làm bài
               </Button>
             </div>
           </div>

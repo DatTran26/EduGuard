@@ -284,14 +284,36 @@ export function AuthProvider({ children }) {
     return applyAuthResponse(response);
   }
 
-  // Hàm này đăng ký qua backend rồi đăng nhập ngay để giữ nguyên trải nghiệm hiện tại của frontend.
+  // Hàm này đăng ký qua backend; nếu bật xác thực email thì trả về cờ chờ OTP.
   async function register(payload) {
-    await authApi.register(payload);
-    const response = await authApi.login({
+    const response = await authApi.register(payload);
+    if (response.data.requiresEmailVerification) {
+      return {
+        requiresEmailVerification: true,
+        user: response.data.user,
+      };
+    }
+
+    const loginResponse = await authApi.login({
       email: payload.email,
       password: payload.password,
     });
-    return applyAuthResponse(response);
+    const session = applyAuthResponse(loginResponse);
+    return {
+      requiresEmailVerification: false,
+      session,
+    };
+  }
+
+  // Hàm này xác thực OTP email rồi đăng nhập user sau khi đăng ký thành công.
+  async function verifyEmailRegistration(payload) {
+    const response = await authApi.verifyEmail(payload);
+    const session = applyAuthResponse(response);
+    return session;
+  }
+
+  async function resendVerificationEmail(payload) {
+    return authApi.resendVerification(payload);
   }
 
   // Hàm này cập nhật hồ sơ cá nhân xong thì đồng bộ lại session user đang lưu ở local.
@@ -350,7 +372,9 @@ export function AuthProvider({ children }) {
         logout,
         refreshToken: session.refreshToken,
         register,
+        resendVerificationEmail,
         updateProfile,
+        verifyEmailRegistration,
         user: session.user,
       }}
     >

@@ -52,6 +52,10 @@ public class NotificationsController : ControllerBase
         {
             return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object>.CreateFailure(ex.Message));
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.CreateFailure(ex.Message));
+        }
     }
 
     [HttpGet("me")]

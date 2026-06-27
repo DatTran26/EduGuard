@@ -5,6 +5,7 @@ import {
   FiBookOpen,
   FiBell,
   FiBarChart2,
+  FiCamera,
   FiClipboard,
   FiFileText,
   FiHome,
@@ -58,6 +59,9 @@ function getNavigationIconByLabel(label) {
   }
   if (label === "Giám sát" || label === "Giám sát thi") {
     return FiShield;
+  }
+  if (label === "Kho hình ảnh/ Video") {
+    return FiCamera;
   }
   if (label === "Kết quả") {
     return FiBarChart2;
@@ -129,6 +133,10 @@ function getNavigationItemIsActive(itemPath, pathname) {
     );
   }
 
+  if (itemPath === routeConfig.teacherProctoringEvidence) {
+    return pathname === routeConfig.teacherProctoringEvidence;
+  }
+
   if (itemPath === routeConfig.teacherResults) {
     return pathname === routeConfig.teacherResults;
   }
@@ -143,6 +151,14 @@ function getNavigationItemIsActive(itemPath, pathname) {
 
   if (itemPath === routeConfig.adminProctoringAi) {
     return pathname === routeConfig.adminProctoringAi;
+  }
+
+  if (itemPath === routeConfig.adminEmailSettings) {
+    return pathname === routeConfig.adminEmailSettings;
+  }
+
+  if (itemPath === routeConfig.adminProctoringEvidence) {
+    return pathname === routeConfig.adminProctoringEvidence;
   }
 
   return pathname === itemPath;

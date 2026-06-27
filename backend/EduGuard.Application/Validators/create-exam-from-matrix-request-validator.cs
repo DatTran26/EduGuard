@@ -12,6 +12,7 @@ public class CreateExamFromMatrixRequestValidator : AbstractValidator<CreateExam
         RuleFor(x => x.Title).NotEmpty().MaximumLength(300);
         RuleFor(x => x.StartTime)
             .NotNull()
+            .When(x => x.IsPublished)
             .WithMessage("Vui lòng chọn thời gian mở đề.");
         RuleFor(x => x.Settings).NotNull();
         RuleFor(x => x.Questions)

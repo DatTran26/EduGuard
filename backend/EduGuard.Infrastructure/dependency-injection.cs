@@ -15,6 +15,7 @@ using EduGuard.Infrastructure.Proctoring;
 using EduGuard.Infrastructure.QuestionBanks;
 using EduGuard.Infrastructure.Redis;
 using EduGuard.Infrastructure.Repositories;
+using EduGuard.Infrastructure.Email;
 using EduGuard.Infrastructure.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Logging;
@@ -39,10 +40,15 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
+        services.AddMemoryCache();
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+        services.Configure<EmailVerificationOptions>(configuration.GetSection(EmailVerificationOptions.SectionName));
+
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>
         {
             options.Password.RequiredLength = 8;
             options.User.RequireUniqueEmail = true;
+            options.SignIn.RequireConfirmedEmail = false;
         })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
@@ -99,6 +105,9 @@ public static class DependencyInjection
         services.AddAuthorization();
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IEmailSettingsService, EmailSettingsService>();
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddScoped<IEmailVerificationService, EmailVerificationService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IClassroomRepository, ClassroomRepository>();
@@ -158,6 +167,7 @@ public static class DependencyInjection
 
         services.AddScoped<IExamCacheInvalidator, ExamCacheInvalidator>();
         services.AddHttpClient("ProctoringAi");
+        services.AddHttpClient<IAiQuestionGeneratorService, OpenAiQuestionGeneratorService>();
 
         return services;
     }

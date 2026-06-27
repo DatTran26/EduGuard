@@ -1,24 +1,24 @@
 import { useEffect, useState } from "react";
 import { getExamCountdownState } from "../utils/proctoringRoomHelpers";
 
-export function useExamEndCountdown(endTime) {
-  const [countdown, setCountdown] = useState(() => getExamCountdownState(endTime));
+export function useExamEndCountdown({ startTime, endTime } = {}) {
+  const [countdown, setCountdown] = useState(() => getExamCountdownState({ startTime, endTime }));
 
   useEffect(() => {
-    setCountdown(getExamCountdownState(endTime));
+    setCountdown(getExamCountdownState({ startTime, endTime }));
 
-    if (!endTime) {
+    if (!startTime && !endTime) {
       return undefined;
     }
 
     const intervalId = window.setInterval(() => {
-      setCountdown(getExamCountdownState(endTime));
+      setCountdown(getExamCountdownState({ startTime, endTime }));
     }, 1000);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [endTime]);
+  }, [endTime, startTime]);
 
   return countdown;
 }

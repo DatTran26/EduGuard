@@ -24,18 +24,23 @@ export default function ProctoringRoomHeader({
   isHubConnected,
   isRoomLoading = false,
   sessionLive = null,
+  sessionPhase = null,
   isRefreshing,
   canCloseExam = false,
   onRefresh,
   onOpenCoProctor,
-  onViewHighRisk,
+  onOpenClassReport,
   onCloseExam,
 }) {
-  const countdown = useExamEndCountdown(room?.endTime);
+  const countdown = useExamEndCountdown({
+    endTime: room?.endTime,
+    startTime: room?.startTime,
+  });
   const realtimeBadge = resolveProctoringRealtimeBadge({
     isHubConnected,
     isRoomLoading,
     sessionLive,
+    sessionPhase,
   });
 
   return (
@@ -82,32 +87,48 @@ export default function ProctoringRoomHeader({
               "flex shrink-0 flex-col items-center justify-center rounded-[16px] border px-5 py-2.5 sm:px-7 sm:py-3",
               countdown.isExpired
                 ? "border-slate-500/30 bg-slate-500/10"
-                : countdown.isUrgent
-                  ? "border-rose-400/40 bg-rose-500/15 shadow-[0_0_24px_rgba(244,63,94,0.15)]"
-                  : "border-amber-400/35 bg-amber-500/12 shadow-[0_0_24px_rgba(245,158,11,0.12)]",
+                : countdown.mode === "untilStart"
+                  ? "border-sky-400/35 bg-sky-500/12 shadow-[0_0_24px_rgba(56,189,248,0.12)]"
+                  : countdown.isUrgent
+                    ? "border-rose-400/40 bg-rose-500/15 shadow-[0_0_24px_rgba(244,63,94,0.15)]"
+                    : "border-amber-400/35 bg-amber-500/12 shadow-[0_0_24px_rgba(245,158,11,0.12)]",
             )}
-            title={countdown.isExpired ? countdown.label : `Thời gian còn lại: ${countdown.timeDisplay}`}
+            title={
+              countdown.isExpired
+                ? countdown.label
+                : countdown.mode === "untilStart"
+                  ? `Bắt đầu sau: ${countdown.timeDisplay}`
+                  : `Thời gian còn lại: ${countdown.timeDisplay}`
+            }
           >
             <span
               className={cn(
                 "text-[0.7rem] font-semibold uppercase tracking-[0.2em]",
                 countdown.isExpired
                   ? "text-slate-500"
-                  : countdown.isUrgent
-                    ? "text-rose-300/90"
-                    : "text-amber-300/90",
+                  : countdown.mode === "untilStart"
+                    ? "text-sky-300/90"
+                    : countdown.isUrgent
+                      ? "text-rose-300/90"
+                      : "text-amber-300/90",
               )}
             >
-              {countdown.isExpired ? "Hết giờ" : "Còn lại"}
+              {countdown.isExpired
+                ? "Hết giờ"
+                : countdown.mode === "untilStart"
+                  ? "Bắt đầu sau"
+                  : "Còn lại"}
             </span>
             <span
               className={cn(
                 "font-mono text-3xl font-bold leading-none tabular-nums tracking-tight sm:text-4xl md:text-5xl",
                 countdown.isExpired
                   ? "text-slate-400"
-                  : countdown.isUrgent
-                    ? "text-rose-100"
-                    : "text-amber-100",
+                  : countdown.mode === "untilStart"
+                    ? "text-sky-100"
+                    : countdown.isUrgent
+                      ? "text-rose-100"
+                      : "text-amber-100",
               )}
             >
               {countdown.isExpired ? "00:00" : countdown.timeDisplay}
@@ -118,17 +139,17 @@ export default function ProctoringRoomHeader({
         <div className="flex flex-wrap items-center gap-2">
           <Button
             className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10"
-            onClick={onViewHighRisk}
+            onClick={onOpenClassReport}
             variant="secondary"
           >
-            Xem rủi ro cao
+            Báo cáo lớp
           </Button>
           <Button
             className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10"
             onClick={onOpenCoProctor}
             variant="secondary"
           >
-            Co-proctor
+            Giám thị phụ
           </Button>
           <Button
             className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10"

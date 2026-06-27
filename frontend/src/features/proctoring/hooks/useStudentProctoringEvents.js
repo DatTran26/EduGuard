@@ -39,6 +39,7 @@ export function useStudentProctoringEvents({ attemptId, examId, enabled }) {
           title: "Được phép tiếp tục",
           message: payload?.reason ?? "Giáo viên đã cho bạn làm bài tiếp.",
         });
+        navigate(buildStudentExamAttemptPath(attemptId), { replace: true });
         return;
       }
 

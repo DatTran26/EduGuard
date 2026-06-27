@@ -10,11 +10,14 @@ public class ExamMatrixPreviewDto
     public decimal TotalScore { get; set; }
     public List<ExamMatrixValidationIssueDto> Errors { get; set; } = [];
     public List<ExamMatrixPreviewQuestionDto> Questions { get; set; } = [];
+    public bool HasSubstitutions { get; set; }
+    public string? SubstitutionMessage { get; set; }
 }
 
 public class ExamMatrixPreviewQuestionDto
 {
     public int MatrixItemId { get; set; }
     public decimal Score { get; set; }
+    public bool IsSubstitution { get; set; }
     public BankQuestionDto Question { get; set; } = new();
 }

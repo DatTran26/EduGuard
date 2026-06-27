@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { FiArrowLeft, FiCheckCircle, FiUsers, FiVideo } from "react-icons/fi";
 import { examApi } from "../../../api/examApi";
 import { examAttemptApi } from "../../../api/examAttemptApi";
 import { proctoringApi } from "../../../api/proctoringApi";
@@ -13,6 +14,7 @@ import {
   buildStudentExamDetailPath,
 } from "../../../routes/routeConfig";
 import { formatShortDateTime } from "../../../utils/formatDate";
+import { cn } from "../../../utils/cn";
 import CameraPreview from "../components/CameraPreview";
 import ExamLobbyCountdown from "../components/ExamLobbyCountdown";
 import MediaStreamControls from "../components/MediaStreamControls";
@@ -46,14 +48,34 @@ function LobbyRequirementNote({ requireCamera, requireMicrophone, isCameraOn, is
 
   return (
     <div
-      className="rounded-[var(--radius-md)] border border-danger/35 bg-danger-muted px-4 py-3 text-sm leading-6 text-danger"
+      className="rounded-2xl border border-rose-200/80 bg-gradient-to-r from-rose-50 to-orange-50 px-4 py-3.5 text-sm leading-6 text-rose-700 shadow-sm"
       role="alert"
     >
       <p className="font-semibold">
         Bắt buộc: Đề thi này yêu cầu bật {requirementParts.join(" và ")}.
       </p>
-      {messages.length > 0 ? <p className="mt-1">{messages.join(" ")}</p> : null}
+      {messages.length > 0 ? <p className="mt-1 text-rose-600">{messages.join(" ")}</p> : null}
     </div>
+  );
+}
+
+function StatusPill({ icon: Icon, label, tone = "neutral" }) {
+  const toneClasses = {
+    success: "border-emerald-200/80 bg-emerald-50 text-emerald-700",
+    caution: "border-amber-200/80 bg-amber-50 text-amber-700",
+    neutral: "border-slate-200 bg-white text-slate-600",
+  };
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium",
+        toneClasses[tone] ?? toneClasses.neutral,
+      )}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      {label}
+    </span>
   );
 }
 
@@ -89,6 +111,8 @@ export default function ExamLobbyPage() {
   });
 
   const cameraReadyForLobby = requireCamera && isCameraOn;
+  const deviceReady =
+    (!requireCamera || isCameraOn) && (!requireMicrophone || isMicOn) && (isReady || cameraStatus === "off");
 
   useEffect(() => {
     let isMounted = true;
@@ -179,7 +203,9 @@ export default function ExamLobbyPage() {
   }, [cameraReadyForLobby, examId]);
 
   const examTitle = exam?.title ?? lobbyStatus?.examTitle ?? "Phòng chờ bài thi";
-  const openTimeLabel = lobbyStatus?.startTime ? formatShortDateTime(lobbyStatus.startTime) : null;
+  const startTime = lobbyStatus?.startTime ?? exam?.startTime ?? null;
+  const openTimeLabel = startTime ? formatShortDateTime(startTime) : null;
+  const waitingCount = lobbyStatus?.waitingStudentCount ?? 0;
   const micToggleAvailable = micStatus !== "not-required" && micStatus !== "unsupported";
 
   if (isLoading) {
@@ -214,61 +240,102 @@ export default function ExamLobbyPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-4rem)] max-w-lg flex-col px-4 py-8 sm:py-10">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <p className="text-xs font-medium uppercase tracking-[0.08em] text-secondary">Phòng chờ</p>
-        <Button as={Link} className="text-sm" to={buildStudentExamDetailPath(examId)} variant="ghost">
-          Quay lại
-        </Button>
-      </div>
+    <div className="relative min-h-[calc(100dvh-4rem)] overflow-hidden bg-gradient-to-b from-sky-50/80 via-slate-50 to-white">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(56,189,248,0.18),transparent)]"
+      />
 
-      <div className="flex flex-1 flex-col gap-6">
-        <div className="space-y-2 text-center">
-          <h1 className="text-xl font-semibold leading-snug text-primary sm:text-2xl">{examTitle}</h1>
-          {openTimeLabel ? (
-            <p className="text-sm text-secondary">Mở đề lúc {openTimeLabel}</p>
-          ) : null}
+      <div className="relative mx-auto max-w-2xl px-4 py-6 sm:py-10">
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <Button
+            as={Link}
+            className="gap-2 text-sm text-slate-600 hover:bg-white/70"
+            to={buildStudentExamDetailPath(examId)}
+            variant="ghost"
+          >
+            <FiArrowLeft className="h-4 w-4" />
+            Quay lại
+          </Button>
+          <span className="rounded-full border border-sky-200/80 bg-white/80 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-sky-700 shadow-sm backdrop-blur-sm">
+            Phòng chờ
+          </span>
         </div>
 
-        <ExamLobbyCountdown secondsUntilOpen={lobbyStatus?.secondsUntilOpen ?? 0} />
+        <div className="space-y-6">
+          <header className="space-y-4 text-center">
+            <div className="space-y-2">
+              <h1 className="text-2xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-3xl">
+                {examTitle}
+              </h1>
+              {openTimeLabel ? (
+                <p className="text-sm text-slate-500">
+                  Mở đề lúc <span className="font-medium text-slate-700">{openTimeLabel}</span>
+                </p>
+              ) : null}
+            </div>
 
-        <LobbyRequirementNote
-          isCameraOn={isCameraOn}
-          isMicOn={isMicOn}
-          requireCamera={requireCamera}
-          requireMicrophone={requireMicrophone}
-        />
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <StatusPill
+                icon={deviceReady ? FiCheckCircle : FiVideo}
+                label={deviceReady ? "Thiết bị sẵn sàng" : "Đang chuẩn bị thiết bị"}
+                tone={deviceReady ? "success" : "caution"}
+              />
+              {waitingCount > 0 ? (
+                <StatusPill icon={FiUsers} label={`${waitingCount} thí sinh đang chờ`} />
+              ) : null}
+            </div>
+          </header>
 
-        <Card className="space-y-4 p-5">
-          <CameraPreview
-            errorMessage={errorMessage}
-            label="Camera phòng chờ"
-            status={cameraStatus}
-            videoRef={videoRef}
-          />
+          <ExamLobbyCountdown startTime={startTime} />
 
-          <MediaStreamControls
+          <LobbyRequirementNote
             isCameraOn={isCameraOn}
             isMicOn={isMicOn}
-            onToggleCamera={toggleCamera}
-            onToggleMicrophone={toggleMicrophone}
-            showMicrophone={micToggleAvailable}
+            requireCamera={requireCamera}
+            requireMicrophone={requireMicrophone}
           />
 
-          {!isReady && cameraStatus !== "off" ? (
-            <Button className="w-full" onClick={startStream} type="button" variant="secondary">
-              Thử bật lại thiết bị
-            </Button>
-          ) : null}
-        </Card>
+          <Card className="overflow-hidden border-slate-200/80 bg-white/90 p-0 shadow-[0_20px_50px_-24px_rgba(15,23,42,0.25)] backdrop-blur-sm">
+            <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-5 py-4">
+              <p className="text-sm font-semibold text-slate-800">Kiểm tra thiết bị</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Xác nhận camera và micro hoạt động trước giờ mở đề
+              </p>
+            </div>
 
-        <p className="text-center text-sm leading-6 text-secondary">
-          {cameraReadyForLobby
-            ? "Thiết bị đã sẵn sàng. Hệ thống sẽ tự chuyển bạn khi đến giờ mở đề."
-            : "Giữ tab này mở. Khi đến giờ, hệ thống sẽ tự chuyển bạn" +
-              (needsDeviceCheck ? " sang kiểm tra thiết bị" : " vào làm bài") +
-              "."}
-        </p>
+            <div className="space-y-4 p-5">
+              <CameraPreview
+                errorMessage={errorMessage}
+                label="Camera phòng chờ"
+                status={cameraStatus}
+                videoRef={videoRef}
+              />
+
+              <MediaStreamControls
+                isCameraOn={isCameraOn}
+                isMicOn={isMicOn}
+                onToggleCamera={toggleCamera}
+                onToggleMicrophone={toggleMicrophone}
+                showMicrophone={micToggleAvailable}
+              />
+
+              {!isReady && cameraStatus !== "off" ? (
+                <Button className="w-full" onClick={startStream} type="button" variant="secondary">
+                  Thử bật lại thiết bị
+                </Button>
+              ) : null}
+            </div>
+          </Card>
+
+          <p className="rounded-2xl border border-slate-200/70 bg-white/70 px-4 py-3 text-center text-sm leading-6 text-slate-500 backdrop-blur-sm">
+            {cameraReadyForLobby
+              ? "Thiết bị đã sẵn sàng. Hệ thống sẽ tự chuyển bạn khi đến giờ mở đề."
+              : "Giữ tab này mở. Khi đến giờ, hệ thống sẽ tự chuyển bạn" +
+                (needsDeviceCheck ? " sang kiểm tra thiết bị" : " vào làm bài") +
+                "."}
+          </p>
+        </div>
       </div>
     </div>
   );

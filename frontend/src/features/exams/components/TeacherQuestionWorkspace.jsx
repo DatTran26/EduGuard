@@ -264,10 +264,18 @@ export default function TeacherQuestionWorkspace({
               {showManualImportGuide ? "Ẩn hướng dẫn tạo file import bằng AI" : "Xem hướng dẫn tạo file import bằng AI"}
             </Button>
           </div>
-          {showManualImportGuide && <QuestionImportResources />}
+          {showManualImportGuide && (
+            <QuestionImportResources
+              bankId={selectedBankId}
+              onQuestionsGenerated={onRefreshBankQuestions}
+            />
+          )}
         </div>
       ) : (
-        <QuestionImportResources />
+        <QuestionImportResources
+          bankId={selectedBankId}
+          onQuestionsGenerated={onRefreshBankQuestions}
+        />
       )}
 
       <div

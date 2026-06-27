@@ -18,6 +18,10 @@ import {
   normalizeAntiCheatEventType,
 } from "../antiCheatHelpers";
 import ProctoringRoomLink from "../../proctoring/components/ProctoringRoomLink";
+import {
+  buildTeacherExamMonitoringPath,
+  isLiveProctoringRoomAvailable,
+} from "../../proctoring/utils/proctoringRouting";
 
 function buildAttemptSummaryItems(attempts = [], antiCheatSummary = null) {
   const submittedCount = attempts.filter((attempt) => attempt.status === "Submitted").length;
@@ -299,9 +303,15 @@ export default function AttemptMonitorPanel({
                 <Badge variant={realtimeStatusMeta.variant}>{realtimeStatusMeta.label}</Badge>
               ) : null}
               {exam.isPublished ? (
-                <Button as={ProctoringRoomLink} examId={exam.id}>
-                  Vào phòng giám sát
-                </Button>
+                isLiveProctoringRoomAvailable(exam) ? (
+                  <Button as={ProctoringRoomLink} examId={exam.id}>
+                    Vào phòng giám sát
+                  </Button>
+                ) : (
+                  <Button as={Link} to={buildTeacherExamMonitoringPath(exam)} variant="secondary">
+                    Xem log anti-cheat
+                  </Button>
+                )
               ) : null}
             </div>
           </div>

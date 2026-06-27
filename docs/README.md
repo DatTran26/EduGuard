@@ -58,6 +58,8 @@ Hệ thống theo kiến trúc **Client – Server**:
 | `09_QUESTION_BANK_FILE_IMPORT_STANDARD.md` | Định chuẩn import file ngân hàng câu hỏi / tạo câu hỏi bài kiểm tra |
 | `10_QUESTION_BANK_IMPORT_TEMPLATES.md` | Bộ file mẫu import theo 4 loại câu hỏi và 5 định dạng backend hỗ trợ |
 | `11_QUESTION_IMPORT_TEMPLATE_USAGE.md` | Hướng dẫn giáo viên chọn, sửa và test file mẫu import đề |
+| `HUONG_DAN_CHAY_HE_THONG.md` | **Hướng dẫn chạy** — mọi cách khởi động hệ thống (dev, SFU, AI, LAN/Tailscale/Tunnel) |
+| `LOCAL_DEV_SETUP_CHECKLIST.md` | Checklist cấu hình máy mới (fresh clone) |
 | `design-guidelines.md` | **Bắt buộc cho UI** — design system Apple-inspired, tokens, component, checklist merge |
 | `../CHANGELOG.md` | Changelog chính theo release và thay đổi user-facing |
 | `project-changelog.md` | Lịch sử chi tiết theo feature |

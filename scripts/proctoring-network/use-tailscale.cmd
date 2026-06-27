@@ -1,0 +1,4 @@
+@echo off
+cd /d "%~dp0"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0apply-proctoring-network.ps1" -Mode tailscale
+pause

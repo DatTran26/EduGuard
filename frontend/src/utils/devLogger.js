@@ -160,6 +160,7 @@ export function logDevBanner() {
   devLog.app("Frontend dev mode", {
     apiBaseUrl: import.meta.env.VITE_API_BASE_URL || "/api",
     signalrUrl: import.meta.env.VITE_SIGNALR_URL || "/hubs",
+    liveKitUrl: import.meta.env.VITE_LIVEKIT_URL || "(from API → ws://localhost:7880)",
     apiTarget: import.meta.env.VITE_DEV_API_TARGET || "http://127.0.0.1:5157 (vite proxy default)",
   });
 }

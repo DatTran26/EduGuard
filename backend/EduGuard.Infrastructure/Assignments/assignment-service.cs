@@ -17,6 +17,7 @@ public class AssignmentService : IAssignmentService
     private readonly IValidator<PatchAssignmentRequest> _patchValidator;
     private readonly IValidator<SubmitAssignmentRequest> _submitValidator;
     private readonly IValidator<GradeSubmissionRequest> _gradeValidator;
+    private readonly INotificationService _notificationService;
 
     public AssignmentService(
         IAssignmentRepository assignmentRepository,
@@ -25,7 +26,8 @@ public class AssignmentService : IAssignmentService
         IValidator<UpdateAssignmentRequest> updateValidator,
         IValidator<PatchAssignmentRequest> patchValidator,
         IValidator<SubmitAssignmentRequest> submitValidator,
-        IValidator<GradeSubmissionRequest> gradeValidator)
+        IValidator<GradeSubmissionRequest> gradeValidator,
+        INotificationService notificationService)
     {
         _assignmentRepository = assignmentRepository;
         _classroomRepository = classroomRepository;
@@ -34,6 +36,7 @@ public class AssignmentService : IAssignmentService
         _patchValidator = patchValidator;
         _submitValidator = submitValidator;
         _gradeValidator = gradeValidator;
+        _notificationService = notificationService;
     }
 
     public async Task<AssignmentDto> CreateAsync(
@@ -60,6 +63,7 @@ public class AssignmentService : IAssignmentService
 
         await _assignmentRepository.AddAsync(assignment, ct);
         await _assignmentRepository.SaveChangesAsync(ct);
+        await _notificationService.CreateAssignmentCreatedNotificationAsync(assignment.Id, teacherId, ct);
         return MapAssignment(assignment);
     }
 

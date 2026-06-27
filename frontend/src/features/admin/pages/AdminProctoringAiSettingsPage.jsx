@@ -18,6 +18,31 @@ const defaultForm = {
   detectionIntervalSeconds: 4,
 };
 
+function parseDecimalFieldValue(raw) {
+  const cleaned = raw.replace(/[^\d.]/g, "");
+  const dotIndex = cleaned.indexOf(".");
+  const normalized =
+    dotIndex === -1
+      ? cleaned
+      : `${cleaned.slice(0, dotIndex + 1)}${cleaned.slice(dotIndex + 1).replace(/\./g, "")}`;
+
+  return normalized === "" ? "" : normalized;
+}
+
+function parseIntegerFieldValue(raw) {
+  const digits = raw.replace(/\D/g, "");
+  return digits === "" ? "" : Number(digits);
+}
+
+function clampConfidence(value, fallback) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) {
+    return fallback;
+  }
+
+  return Math.min(1, Math.max(0, num));
+}
+
 function SettingsSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
@@ -70,7 +95,23 @@ export default function AdminProctoringAiSettingsPage() {
     event.preventDefault();
     setIsSaving(true);
     try {
-      const response = await proctoringApi.updateAiSettings(form);
+      const payload = {
+        ...form,
+        phoneVisibleMinConfidence: clampConfidence(
+          form.phoneVisibleMinConfidence,
+          defaultForm.phoneVisibleMinConfidence,
+        ),
+        bookVisibleMinConfidence: clampConfidence(
+          form.bookVisibleMinConfidence,
+          defaultForm.bookVisibleMinConfidence,
+        ),
+        secondPersonMinConfidence: clampConfidence(
+          form.secondPersonMinConfidence,
+          defaultForm.secondPersonMinConfidence,
+        ),
+        detectionIntervalSeconds: Math.max(2, Number(form.detectionIntervalSeconds) || 2),
+      };
+      const response = await proctoringApi.updateAiSettings(payload);
       setForm({ ...defaultForm, ...response.data });
       showToast({ tone: "success", title: "Đã lưu cấu hình AI giám sát" });
     } catch (error) {
@@ -123,7 +164,6 @@ export default function AdminProctoringAiSettingsPage() {
             <TextInput
               id="proctoring-ai-service-url"
               label="URL dịch vụ AI"
-              helperText="Ví dụ: http://127.0.0.1:8800 (local) hoặc http://proctoring-ai:8800 (Docker)."
               onChange={(event) => updateField("aiServiceBaseUrl", event.target.value)}
               placeholder="http://127.0.0.1:8800"
               value={form.aiServiceBaseUrl}
@@ -167,44 +207,42 @@ export default function AdminProctoringAiSettingsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <TextInput
               id="proctoring-ai-phone-confidence"
+              inputMode="decimal"
               label="Ngưỡng điện thoại"
               helperText="Độ tin cậy tối thiểu để gắn nhãn phát hiện điện thoại."
-              max="1"
-              min="0"
-              onChange={(event) => updateField("phoneVisibleMinConfidence", Number(event.target.value))}
-              step="0.01"
-              type="number"
+              onChange={(event) =>
+                updateField("phoneVisibleMinConfidence", parseDecimalFieldValue(event.target.value))
+              }
               value={form.phoneVisibleMinConfidence}
             />
             <TextInput
               id="proctoring-ai-book-confidence"
+              inputMode="decimal"
               label="Ngưỡng sách / tài liệu"
               helperText="Độ tin cậy tối thiểu khi phát hiện sách hoặc tài liệu lận."
-              max="1"
-              min="0"
-              onChange={(event) => updateField("bookVisibleMinConfidence", Number(event.target.value))}
-              step="0.01"
-              type="number"
+              onChange={(event) =>
+                updateField("bookVisibleMinConfidence", parseDecimalFieldValue(event.target.value))
+              }
               value={form.bookVisibleMinConfidence}
             />
             <TextInput
               id="proctoring-ai-second-person-confidence"
+              inputMode="decimal"
               label="Ngưỡng người thứ hai"
               helperText="Độ tin cậy tối thiểu khi phát hiện thêm người trong khung hình."
-              max="1"
-              min="0"
-              onChange={(event) => updateField("secondPersonMinConfidence", Number(event.target.value))}
-              step="0.01"
-              type="number"
+              onChange={(event) =>
+                updateField("secondPersonMinConfidence", parseDecimalFieldValue(event.target.value))
+              }
               value={form.secondPersonMinConfidence}
             />
             <TextInput
               id="proctoring-ai-detection-interval"
+              inputMode="numeric"
               label="Chu kỳ phát hiện (giây)"
               helperText="Khoảng thời gian giữa hai lần gửi frame tới dịch vụ AI (tối thiểu 2 giây)."
-              min="2"
-              onChange={(event) => updateField("detectionIntervalSeconds", Number(event.target.value))}
-              type="number"
+              onChange={(event) =>
+                updateField("detectionIntervalSeconds", parseIntegerFieldValue(event.target.value))
+              }
               value={form.detectionIntervalSeconds}
             />
           </div>

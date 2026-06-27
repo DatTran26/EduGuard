@@ -22,6 +22,7 @@ public class QuestionBankService : IQuestionBankService
     private readonly IValidator<UpdateBankQuestionRequest> _updateQuestionValidator;
     private readonly IValidator<ImportBankQuestionsRequest> _importValidator;
     private readonly IValidator<SnapshotBankQuestionsRequest> _snapshotValidator;
+    private readonly IAiQuestionGeneratorService _aiQuestionGenerator;
 
     public QuestionBankService(
         IQuestionBankRepository questionBankRepository,
@@ -31,7 +32,8 @@ public class QuestionBankService : IQuestionBankService
         IValidator<CreateBankQuestionRequest> createQuestionValidator,
         IValidator<UpdateBankQuestionRequest> updateQuestionValidator,
         IValidator<ImportBankQuestionsRequest> importValidator,
-        IValidator<SnapshotBankQuestionsRequest> snapshotValidator)
+        IValidator<SnapshotBankQuestionsRequest> snapshotValidator,
+        IAiQuestionGeneratorService aiQuestionGenerator)
     {
         _questionBankRepository = questionBankRepository;
         _examRepository = examRepository;
@@ -41,6 +43,7 @@ public class QuestionBankService : IQuestionBankService
         _updateQuestionValidator = updateQuestionValidator;
         _importValidator = importValidator;
         _snapshotValidator = snapshotValidator;
+        _aiQuestionGenerator = aiQuestionGenerator;
     }
 
     public async Task<IReadOnlyList<QuestionBankDto>> GetBanksAsync(string userId, IReadOnlyList<string> roles, CancellationToken ct = default)
@@ -113,6 +116,9 @@ public class QuestionBankService : IQuestionBankService
     {
         await _createQuestionValidator.ValidateAndThrowAsync(request, ct);
         var bank = await RequireTeacherBankAsync(bankId, teacherId, ct);
+
+        await AutoFillRequestsMetadataAsync(new List<CreateBankQuestionRequest> { request }, bank, ct);
+
         var question = BuildBankQuestion(bank, request, teacherId);
 
         await _questionBankRepository.AddQuestionAsync(question, ct);
@@ -126,6 +132,9 @@ public class QuestionBankService : IQuestionBankService
     {
         await _updateQuestionValidator.ValidateAndThrowAsync(request, ct);
         var question = await RequireTeacherQuestionAsync(questionId, teacherId, ct);
+
+        await AutoFillRequestsMetadataAsync(new List<UpdateBankQuestionRequest> { request }, question.QuestionBank, ct);
+
         var snapshotCount = await _questionBankRepository.CountExamSnapshotsAsync(question.Id, ct);
 
         if (snapshotCount > 0)
@@ -182,7 +191,139 @@ public class QuestionBankService : IQuestionBankService
             return result;
         }
 
-        var imported = parsed.Questions.Select(question => BuildBankQuestion(bank, BuildCreateRequest(question, request), teacherId)).ToList();
+        var autoFilledQuestions = await AutoFillMissingMetadataAsync(parsed.Questions, bank, null, ct);
+
+        var imported = autoFilledQuestions.Select(question => BuildBankQuestion(bank, BuildCreateRequest(question, request), teacherId)).ToList();
+        await _questionBankRepository.AddQuestionsAsync(imported, ct);
+        bank.UpdatedAt = DateTime.UtcNow;
+        _questionBankRepository.UpdateBank(bank);
+        await _questionBankRepository.SaveChangesAsync(ct);
+
+        result.ImportedCount = imported.Count;
+        result.Questions = imported.Select(QuestionBankMapper.MapQuestion).ToList();
+        return result;
+    }
+    public async Task<BankQuestionImportResultDto> GenerateQuestionsAiAsync(int bankId, GenerateBankQuestionsAiRequest request, string teacherId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Prompt))
+            throw new ArgumentException("Prompt cannot be empty.", nameof(request));
+
+        var bank = await RequireTeacherBankAsync(bankId, teacherId, ct);
+        var bankContext = $"Môn học: {bank.Subject}, Tên ngân hàng: {bank.Name}";
+        var parsedQuestions = await _aiQuestionGenerator.GenerateQuestionsAsync(request.Prompt, request.UserApiKey, bankContext, ct);
+
+        parsedQuestions = await AutoFillMissingMetadataAsync(parsedQuestions, bank, request.UserApiKey, ct);
+
+        ValidateSingleSubjectAndBankMatch(parsedQuestions, bank);
+
+        var result = new BankQuestionImportResultDto { FileName = "AI_Generated" };
+        result.TotalRows = parsedQuestions.Count;
+
+        if (parsedQuestions.Count == 0)
+        {
+            result.FailedCount = 0;
+            return result;
+        }
+
+        var envDifficultyStr = Environment.GetEnvironmentVariable("GPT_DEFAULT_DIFFICULTY");
+        var envStatusStr = Environment.GetEnvironmentVariable("GPT_DEFAULT_STATUS");
+
+        var finalDifficulty = request.Difficulty;
+        if (finalDifficulty == DifficultyLevel.Medium && !string.IsNullOrWhiteSpace(envDifficultyStr) && Enum.TryParse<DifficultyLevel>(envDifficultyStr, true, out var parsedDiff))
+        {
+            finalDifficulty = parsedDiff;
+        }
+
+        var finalStatus = request.Status;
+        if (finalStatus == QuestionStatus.Approved && !string.IsNullOrWhiteSpace(envStatusStr) && Enum.TryParse<QuestionStatus>(envStatusStr, true, out var parsedStatus))
+        {
+            finalStatus = parsedStatus;
+        }
+
+        var defaults = new ImportBankQuestionsRequest
+        {
+            Difficulty = finalDifficulty,
+            Status = finalStatus,
+            Subject = !string.IsNullOrWhiteSpace(request.Subject) ? request.Subject : (Environment.GetEnvironmentVariable("GPT_DEFAULT_SUBJECT") ?? string.Empty),
+            Chapter = !string.IsNullOrWhiteSpace(request.Chapter) ? request.Chapter : (Environment.GetEnvironmentVariable("GPT_DEFAULT_CHAPTER") ?? string.Empty),
+            Lesson = !string.IsNullOrWhiteSpace(request.Lesson) ? request.Lesson : (Environment.GetEnvironmentVariable("GPT_DEFAULT_LESSON") ?? string.Empty),
+            LearningOutcome = request.LearningOutcome
+        };
+
+        var imported = parsedQuestions.Select(question => BuildBankQuestion(bank, BuildCreateRequest(question, defaults), teacherId)).ToList();
+        await _questionBankRepository.AddQuestionsAsync(imported, ct);
+        bank.UpdatedAt = DateTime.UtcNow;
+        _questionBankRepository.UpdateBank(bank);
+        await _questionBankRepository.SaveChangesAsync(ct);
+
+        result.ImportedCount = imported.Count;
+        result.Questions = imported.Select(QuestionBankMapper.MapQuestion).ToList();
+        return result;
+    }
+
+    public async Task<List<CreateBankQuestionRequest>> GenerateQuestionsAiPreviewAsync(int bankId, GenerateBankQuestionsAiRequest request, string teacherId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Prompt))
+            throw new ArgumentException("Prompt cannot be empty.", nameof(request));
+
+        var bank = await RequireTeacherBankAsync(bankId, teacherId, ct);
+        var bankContext = $"Môn học: {bank.Subject}, Tên ngân hàng: {bank.Name}";
+        var parsedQuestions = await _aiQuestionGenerator.GenerateQuestionsAsync(request.Prompt, request.UserApiKey, bankContext, ct);
+
+        parsedQuestions = await AutoFillMissingMetadataAsync(parsedQuestions, bank, request.UserApiKey, ct);
+
+        ValidateSingleSubjectAndBankMatch(parsedQuestions, bank);
+
+        var envDifficultyStr = Environment.GetEnvironmentVariable("GPT_DEFAULT_DIFFICULTY");
+        var envStatusStr = Environment.GetEnvironmentVariable("GPT_DEFAULT_STATUS");
+
+        var finalDifficulty = request.Difficulty;
+        if (finalDifficulty == DifficultyLevel.Medium && !string.IsNullOrWhiteSpace(envDifficultyStr) && Enum.TryParse<DifficultyLevel>(envDifficultyStr, true, out var parsedDiff))
+        {
+            finalDifficulty = parsedDiff;
+        }
+
+        var finalStatus = request.Status;
+        if (finalStatus == QuestionStatus.Approved && !string.IsNullOrWhiteSpace(envStatusStr) && Enum.TryParse<QuestionStatus>(envStatusStr, true, out var parsedStatus))
+        {
+            finalStatus = parsedStatus;
+        }
+
+        var defaults = new ImportBankQuestionsRequest
+        {
+            Difficulty = finalDifficulty,
+            Status = finalStatus,
+            Subject = !string.IsNullOrWhiteSpace(request.Subject) ? request.Subject : (Environment.GetEnvironmentVariable("GPT_DEFAULT_SUBJECT") ?? string.Empty),
+            Chapter = !string.IsNullOrWhiteSpace(request.Chapter) ? request.Chapter : (Environment.GetEnvironmentVariable("GPT_DEFAULT_CHAPTER") ?? string.Empty),
+            Lesson = !string.IsNullOrWhiteSpace(request.Lesson) ? request.Lesson : (Environment.GetEnvironmentVariable("GPT_DEFAULT_LESSON") ?? string.Empty),
+            LearningOutcome = request.LearningOutcome
+        };
+
+        var requests = parsedQuestions.Select(q => BuildCreateRequest(q, defaults)).ToList();
+        return requests;
+    }
+
+    public async Task<BankQuestionImportResultDto> CreateQuestionsBulkAsync(int bankId, List<CreateBankQuestionRequest> requests, string teacherId, CancellationToken ct = default)
+    {
+        var bank = await RequireTeacherBankAsync(bankId, teacherId, ct);
+
+        var result = new BankQuestionImportResultDto { FileName = "AI_Bulk_Created" };
+        result.TotalRows = requests.Count;
+
+        if (requests.Count == 0)
+        {
+            result.FailedCount = 0;
+            return result;
+        }
+
+        await AutoFillRequestsMetadataAsync(requests, bank, ct);
+
+        foreach (var req in requests)
+        {
+            await _createQuestionValidator.ValidateAndThrowAsync(req, ct);
+        }
+
+        var imported = requests.Select(request => BuildBankQuestion(bank, request, teacherId)).ToList();
         await _questionBankRepository.AddQuestionsAsync(imported, ct);
         bank.UpdatedAt = DateTime.UtcNow;
         _questionBankRepository.UpdateBank(bank);
@@ -208,6 +349,138 @@ public class QuestionBankService : IQuestionBankService
 
         var snapshots = await AddSnapshotsAsync(exam, request, bankQuestions, ct);
         return snapshots.Select(x => ExamMapper.MapQuestion(x)).ToList();
+    }
+
+    private async Task<List<CreateQuestionRequest>> AutoFillMissingMetadataAsync(List<CreateQuestionRequest> parsedQuestions, QuestionBank bank, string? userApiKey, CancellationToken ct)
+    {
+        if (parsedQuestions == null || parsedQuestions.Count == 0)
+            return [];
+
+        var needsAutoFill = parsedQuestions.Any(q => 
+            string.IsNullOrWhiteSpace(q.Subject) || 
+            string.IsNullOrWhiteSpace(q.Chapter) || 
+            string.IsNullOrWhiteSpace(q.Lesson));
+
+        if (!needsAutoFill)
+            return parsedQuestions;
+
+        var bankContext = $"Môn học: {bank.Subject}, Tên ngân hàng: {bank.Name}";
+        return await _aiQuestionGenerator.AutoFillMetadataAsync(parsedQuestions, userApiKey, bankContext, ct);
+    }
+
+    private async Task AutoFillRequestsMetadataAsync<T>(List<T> requests, QuestionBank bank, CancellationToken ct) where T : CreateBankQuestionRequest
+    {
+        if (requests == null || requests.Count == 0)
+            return;
+
+        var needsAutoFill = requests.Any(r => 
+            string.IsNullOrWhiteSpace(r.Subject) || 
+            string.IsNullOrWhiteSpace(r.Chapter) || 
+            string.IsNullOrWhiteSpace(r.Lesson));
+
+        if (!needsAutoFill)
+            return;
+
+        var tempQuestions = requests.Select((r, idx) => new CreateQuestionRequest
+        {
+            Content = r.Content,
+            Subject = r.Subject,
+            Chapter = r.Chapter,
+            Lesson = r.Lesson,
+            OrderIndex = idx
+        }).ToList();
+
+        var bankContext = $"Môn học: {bank.Subject}, Tên ngân hàng: {bank.Name}";
+        var filledQuestions = await _aiQuestionGenerator.AutoFillMetadataAsync(tempQuestions, null, bankContext, ct);
+
+        for (int i = 0; i < requests.Count; i++)
+        {
+            var req = requests[i];
+            var filled = filledQuestions[i];
+
+            if (string.IsNullOrWhiteSpace(req.Subject) && !string.IsNullOrWhiteSpace(filled.Subject))
+                req.Subject = filled.Subject.Trim();
+            if (string.IsNullOrWhiteSpace(req.Chapter) && !string.IsNullOrWhiteSpace(filled.Chapter))
+                req.Chapter = filled.Chapter.Trim();
+            if (string.IsNullOrWhiteSpace(req.Lesson) && !string.IsNullOrWhiteSpace(filled.Lesson))
+                req.Lesson = filled.Lesson.Trim();
+        }
+    }
+
+    private static void ValidateSingleSubjectAndBankMatch(List<CreateQuestionRequest> parsedQuestions, QuestionBank bank)
+    {
+        if (parsedQuestions == null || parsedQuestions.Count == 0)
+            return;
+
+        var effectiveSubjects = parsedQuestions
+            .Select(q => !string.IsNullOrWhiteSpace(q.Subject) ? q.Subject.Trim() : (bank.Subject ?? string.Empty))
+            .ToList();
+
+        if (effectiveSubjects.Count > 0)
+        {
+            var firstSubject = effectiveSubjects[0];
+            var hasMultipleSubjects = effectiveSubjects.Any(s => !IsSameSubject(s, firstSubject));
+            if (hasMultipleSubjects)
+            {
+                throw new ArgumentException("Yêu cầu sinh câu hỏi không hợp lệ: Không thể tạo câu hỏi cho nhiều môn học khác nhau trong cùng một lần yêu cầu.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(bank.Subject))
+            {
+                if (!IsSameSubject(firstSubject, bank.Subject))
+                {
+                    throw new ArgumentException($"Môn học được tạo ({firstSubject}) không khớp với môn học của ngân hàng câu hỏi ({bank.Subject}).");
+                }
+            }
+        }
+    }
+
+    private static bool IsSameSubject(string? subject1, string? subject2)
+    {
+        if (string.IsNullOrWhiteSpace(subject1) && string.IsNullOrWhiteSpace(subject2))
+            return true;
+        if (string.IsNullOrWhiteSpace(subject1) || string.IsNullOrWhiteSpace(subject2))
+            return false;
+
+        var s1 = NormalizeSubject(subject1);
+        var s2 = NormalizeSubject(subject2);
+
+        if (s1 == s2) return true;
+
+        s1 = StandardizeSubjectName(s1);
+        s2 = StandardizeSubjectName(s2);
+
+        if (s1 == s2) return true;
+
+        return s1.Contains(s2) || s2.Contains(s1);
+    }
+
+    private static string NormalizeSubject(string val)
+    {
+        var lower = val.Trim().ToLowerInvariant();
+        return RemoveDiacritics(lower);
+    }
+
+    private static string RemoveDiacritics(string text)
+    {
+        var normalizedString = text.Normalize(System.Text.NormalizationForm.FormD);
+        var stringBuilder = new System.Text.StringBuilder();
+
+        foreach (var c in normalizedString)
+        {
+            var unicodeCategory = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+            if (unicodeCategory != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                stringBuilder.Append(c);
+            }
+        }
+
+        return stringBuilder.ToString().Normalize(System.Text.NormalizationForm.FormC);
+    }
+
+    private static string StandardizeSubjectName(string name)
+    {
+        return name.Replace("hoc", "").Replace("ngu", "").Replace("lich", "").Replace("li", "ly").Trim();
     }
 
     private async Task<QuestionBank> RequireTeacherBankAsync(int bankId, string teacherId, CancellationToken ct)
@@ -298,7 +571,7 @@ public class QuestionBankService : IQuestionBankService
             Difficulty = request.Difficulty,
             DefaultScore = request.DefaultScore,
             Subject = NormalizeOptional(request.Subject) ?? bank.Subject,
-            Chapter = NormalizeOptional(request.Chapter),
+            Chapter = ExtractChapterNumber(NormalizeOptional(request.Chapter)),
             Lesson = NormalizeOptional(request.Lesson),
             LearningOutcome = NormalizeOptional(request.LearningOutcome),
             Status = request.Status,
@@ -314,7 +587,7 @@ public class QuestionBankService : IQuestionBankService
         question.Difficulty = request.Difficulty;
         question.DefaultScore = request.DefaultScore;
         question.Subject = NormalizeOptional(request.Subject);
-        question.Chapter = NormalizeOptional(request.Chapter);
+        question.Chapter = ExtractChapterNumber(NormalizeOptional(request.Chapter));
         question.Lesson = NormalizeOptional(request.Lesson);
         question.LearningOutcome = NormalizeOptional(request.LearningOutcome);
         question.Status = request.Status;
@@ -335,10 +608,10 @@ public class QuestionBankService : IQuestionBankService
         QuestionType = parsedQuestion.QuestionType,
         Difficulty = ParseDifficultyLevel(parsedQuestion.Difficulty, defaults.Difficulty),
         DefaultScore = parsedQuestion.Score,
-        Subject = NormalizeOptional(defaults.Subject),
-        Chapter = NormalizeOptional(defaults.Chapter),
-        Lesson = NormalizeOptional(defaults.Lesson),
-        LearningOutcome = NormalizeOptional(defaults.LearningOutcome),
+        Subject = !string.IsNullOrWhiteSpace(parsedQuestion.Subject) ? parsedQuestion.Subject : NormalizeOptional(defaults.Subject),
+        Chapter = !string.IsNullOrWhiteSpace(parsedQuestion.Chapter) ? ExtractChapterNumber(parsedQuestion.Chapter) : ExtractChapterNumber(NormalizeOptional(defaults.Chapter)),
+        Lesson = !string.IsNullOrWhiteSpace(parsedQuestion.Lesson) ? parsedQuestion.Lesson : NormalizeOptional(defaults.Lesson),
+        LearningOutcome = !string.IsNullOrWhiteSpace(parsedQuestion.LearningOutcome) ? parsedQuestion.LearningOutcome : NormalizeOptional(defaults.LearningOutcome),
         Status = defaults.Status,
         Answers = parsedQuestion.Answers
     };
@@ -426,5 +699,15 @@ public class QuestionBankService : IQuestionBankService
 
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string? ExtractChapterNumber(string? chapter)
+    {
+        if (string.IsNullOrWhiteSpace(chapter))
+            return null;
+
+        var trimmed = chapter.Trim();
+        var digits = new string(trimmed.Where(char.IsDigit).ToArray());
+        return !string.IsNullOrEmpty(digits) ? digits : trimmed;
+    }
 }
 

@@ -72,7 +72,19 @@ export function useProctoringHeartbeat({
       }
     }
 
-    sendHeartbeat();
+    async function bootstrap() {
+      try {
+        await proctoringApi.startProctoring(attemptId);
+      } catch (error) {
+        devLog.warn("proctoring", `Start proctoring failed attempt #${attemptId}`, error?.message);
+      }
+
+      if (!isDisposed) {
+        await sendHeartbeat();
+      }
+    }
+
+    bootstrap();
     const intervalId = window.setInterval(sendHeartbeat, intervalMs);
     return () => {
       isDisposed = true;

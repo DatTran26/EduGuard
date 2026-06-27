@@ -1,12 +1,18 @@
 using StackExchange.Redis;
 
-const string connectionString =
-    "language-courageous-superbright-81984.db.redis.io:13982,user=default,password=EIQIgXToFksEeRzvGgUXJWH09HlR2B4t,ssl=False,abortConnect=False";
+DotNetEnv.Env.TraversePath().Load();
+
+var connectionString =
+    Environment.GetEnvironmentVariable("ConnectionStrings__Redis")
+    ?? args.FirstOrDefault()
+    ?? "localhost:6379";
+
+Console.WriteLine($"Redis target: {connectionString}");
 
 try
 {
     var options = ConfigurationOptions.Parse(connectionString);
-    options.AbortOnConnectFail = false;
+    options.AbortOnConnectFail = true;
     options.ConnectTimeout = 10000;
 
     await using var mux = await ConnectionMultiplexer.ConnectAsync(options);
@@ -22,7 +28,8 @@ try
 }
 catch (Exception ex)
 {
-    Console.Error.WriteLine($"Redis connection: FAILED");
+    Console.Error.WriteLine("Redis connection: FAILED");
     Console.Error.WriteLine(ex.Message);
+    Console.Error.WriteLine("Kiem tra: docker start eduguard-redis hoac docker run -d --name eduguard-redis -p 6379:6379 redis:7-alpine");
     Environment.Exit(1);
 }

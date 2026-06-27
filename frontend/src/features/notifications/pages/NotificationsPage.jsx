@@ -9,6 +9,10 @@ import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import {
+  getNotificationBadgeClasses,
+  getNotificationCardClasses,
+  getNotificationDotClasses,
+  getNotificationTitleClasses,
   getNotificationTypeMeta,
   resolveNotificationPath,
 } from "../utils/notificationUtils";
@@ -160,13 +164,9 @@ export default function NotificationsPage() {
       ) : (
         <div className="space-y-4">
           {notifications.map((item) => {
-            const typeMeta = getNotificationTypeMeta(item.type);
-            const toneClasses = {
-              danger: "border-danger/25 bg-danger-muted text-danger",
-              warning: "border-amber-500/25 bg-amber-500/10 text-amber-700",
-              success: "border-success/25 bg-success-muted text-success",
-              info: "border-info/25 bg-info-muted text-info",
-            }[typeMeta.tone] || "border-info/25 bg-info-muted text-info";
+            const badgeClasses = getNotificationBadgeClasses(item.type, item);
+            const cardClasses = getNotificationCardClasses(item.type, item.isRead, item);
+            const titleClasses = getNotificationTitleClasses(item.type, item.isRead, item);
 
             return (
               <div
@@ -174,21 +174,21 @@ export default function NotificationsPage() {
                 onClick={() => handleNotificationClick(item)}
                 className={[
                   "group relative cursor-pointer border rounded-[20px] p-5 transition-all duration-200",
-                  item.isRead
-                    ? "border-border bg-surface hover:bg-surface-sunken"
-                    : "border-border bg-surface shadow-sm ring-1 ring-brand/10 hover:border-brand/35",
+                  cardClasses,
                 ].join(" ")}
               >
                 {/* Unread indicator */}
                 {!item.isRead && (
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 h-2.5 w-2.5 shrink-0 rounded-full bg-brand" />
+                  <span
+                    className={`absolute left-4 top-1/2 -translate-y-1/2 h-2.5 w-2.5 shrink-0 rounded-full ${getNotificationDotClasses(item.type, false, item)}`}
+                  />
                 )}
 
                 <div className={!item.isRead ? "pl-5" : ""}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${toneClasses}`}>
-                        {typeMeta.label}
+                      <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${badgeClasses}`}>
+                        {getNotificationTypeMeta(item.type, item).label}
                       </span>
                       {!item.isRead && (
                         <span className="rounded-full border border-brand/20 bg-brand/5 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand">
@@ -201,7 +201,7 @@ export default function NotificationsPage() {
                     </span>
                   </div>
 
-                  <h3 className={`mt-3 text-base font-bold tracking-tight text-primary transition-colors duration-150 ${!item.isRead ? "text-brand" : "group-hover:text-brand"}`}>
+                  <h3 className={`mt-3 text-base font-bold tracking-tight transition-colors duration-150 ${titleClasses}`}>
                     {item.title}
                   </h3>
 

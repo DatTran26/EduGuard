@@ -13,6 +13,15 @@ export default function TeacherClassroomTabBar({
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const activeTabRef = useRef(null);
+
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [activeTab]);
 
   useEffect(() => {
     if (!isMenuOpen) {
@@ -51,24 +60,34 @@ export default function TeacherClassroomTabBar({
   }
 
   return (
-    <div className="sticky top-[64px] z-10 -mx-4 px-4 py-3 bg-neutral/80 backdrop-blur-md border-b border-border/50 transition-all duration-150">
-      <div className="flex items-center justify-between gap-2">
-        <div className="max-w-fit rounded-full border border-border bg-surface p-1 shadow-sm overflow-x-auto scrollbar-none">
-          <div className="flex gap-1">
-            {TEACHER_CLASSROOM_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => onTabChange(tab.id)}
-                className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all duration-150 whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? "bg-brand text-white shadow-sm"
-                    : "text-secondary hover:bg-surface-sunken hover:text-primary"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+    <div
+      id="teacher-classroom-tab-bar"
+      className="sticky top-0 z-[5] -mx-4 px-4 py-3 bg-neutral border-b border-border/50 transition-all duration-150"
+    >
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1 overflow-x-auto scrollbar-none">
+          <div className="inline-flex rounded-full border border-border bg-surface p-1 shadow-sm">
+            <div className="flex flex-nowrap gap-1">
+              {TEACHER_CLASSROOM_TABS.map((tab) => {
+                const isActive = activeTab === tab.id;
+
+                return (
+                  <button
+                    key={tab.id}
+                    ref={isActive ? activeTabRef : null}
+                    type="button"
+                    onClick={() => onTabChange(tab.id)}
+                    className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all duration-150 whitespace-nowrap ${
+                      isActive
+                        ? "bg-brand text-white shadow-sm"
+                        : "text-secondary hover:bg-surface-sunken hover:text-primary"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

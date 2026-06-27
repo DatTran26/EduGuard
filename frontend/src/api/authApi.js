@@ -45,7 +45,37 @@ export const authApi = {
 
     return {
       ...apiResponse,
-      data: normalizeAuthUser(apiResponse.data),
+      data: {
+        user: normalizeAuthUser(apiResponse.data?.user ?? apiResponse.data),
+        requiresEmailVerification: Boolean(apiResponse.data?.requiresEmailVerification),
+      },
+    };
+  },
+
+  async verifyEmail(payload) {
+    const apiResponse = await requestAuthApi(() =>
+      axiosClient.post("/auth/verify-email", {
+        email: payload.email?.trim() ?? "",
+        code: payload.code?.trim() ?? "",
+      }),
+    );
+
+    return {
+      ...apiResponse,
+      data: normalizeLoginResponseData(apiResponse.data),
+    };
+  },
+
+  async resendVerification(payload) {
+    const apiResponse = await requestAuthApi(() =>
+      axiosClient.post("/auth/resend-verification", {
+        email: payload.email?.trim() ?? "",
+      }),
+    );
+
+    return {
+      ...apiResponse,
+      data: apiResponse.data ?? null,
     };
   },
 

@@ -51,6 +51,7 @@ public class ProctoringService : IProctoringService
             StartTime = ExamDateTimeHelper.MarkNullableAsUtc(exam.StartTime),
             EndTime = ExamDateTimeHelper.MarkNullableAsUtc(exam.EndTime),
             EnableLiveProctoring = exam.Setting?.EnableLiveProctoring ?? false,
+            CameraMonitoringEnabled = ProctoringSettingsHelper.IsCameraMonitoringEnabled(exam.Setting),
             MaxActiveLiveTiles = exam.Setting?.MaxActiveLiveTiles ?? 9,
             InProgressCount = attempts.Count(x => x.Status == ExamAttemptStatus.InProgress),
             SubmittedCount = attempts.Count(x => x.Status == ExamAttemptStatus.Submitted),
@@ -290,6 +291,74 @@ public class ProctoringService : IProctoringService
             .ToList();
     }
 
+    public async Task<ProctoringEvidenceListResultDto> GetEvidenceListAsync(
+        ProctoringEvidenceListQuery query,
+        string userId,
+        IReadOnlyList<string> roles,
+        CancellationToken ct = default)
+    {
+        var page = Math.Max(1, query.Page);
+        var pageSize = Math.Clamp(query.PageSize, 1, 100);
+
+        if (query.ExamId.HasValue)
+            await _examMonitoringService.EnsureCanMonitorExamAsync(query.ExamId.Value, userId, roles, ct);
+
+        var evidenceQuery = _db.ProctoringEvidences
+            .AsNoTracking()
+            .Include(x => x.ExamAttempt)
+                .ThenInclude(a => a.Student)
+            .Include(x => x.ExamAttempt)
+                .ThenInclude(a => a.Exam)
+            .AsQueryable();
+
+        if (!roles.Contains("Admin"))
+        {
+            var accessibleExamIds = await GetAccessibleExamIdsAsync(userId, ct);
+            evidenceQuery = evidenceQuery.Where(x => accessibleExamIds.Contains(x.ExamAttempt.ExamId));
+        }
+
+        if (query.ExamId.HasValue)
+            evidenceQuery = evidenceQuery.Where(x => x.ExamAttempt.ExamId == query.ExamId.Value);
+
+        if (query.AttemptId.HasValue)
+            evidenceQuery = evidenceQuery.Where(x => x.ExamAttemptId == query.AttemptId.Value);
+
+        if (!string.IsNullOrWhiteSpace(query.EvidenceType))
+            evidenceQuery = evidenceQuery.Where(x => x.EvidenceType == query.EvidenceType.Trim());
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var term = query.Search.Trim();
+            evidenceQuery = evidenceQuery.Where(x =>
+                (x.ExamAttempt.Student != null && x.ExamAttempt.Student.FullName.Contains(term)) ||
+                (x.ExamAttempt.Exam != null && x.ExamAttempt.Exam.Title.Contains(term)));
+        }
+
+        var totalCount = await evidenceQuery.CountAsync(ct);
+        var snapshotCount = await evidenceQuery.CountAsync(x => x.EvidenceType == "Snapshot", ct);
+        var clipCount = await evidenceQuery.CountAsync(x => x.EvidenceType == "Clip", ct);
+        var autoCount = await evidenceQuery.CountAsync(
+            x => x.EvidenceType == "AutoSnapshot" || x.EvidenceType == "AutoDetect",
+            ct);
+
+        var rows = await evidenceQuery
+            .OrderByDescending(x => x.CapturedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return new ProctoringEvidenceListResultDto
+        {
+            Items = rows.Select(MapEvidenceListItem).ToList(),
+            TotalCount = totalCount,
+            SnapshotCount = snapshotCount,
+            ClipCount = clipCount,
+            AutoCount = autoCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
     public async Task<ProctoringAiSettingsDto> GetAiSettingsAsync(CancellationToken ct = default)
     {
         var settings = await _proctoringRepository.GetAiSettingsAsync(ct);
@@ -350,7 +419,8 @@ public class ProctoringService : IProctoringService
                     WatchedByTeacherName = watch is null ? null : teacherNames.GetValueOrDefault(watch.TeacherId),
                     LatestWarningAt = state?.LatestWarningAt,
                     IsLateJoin = ExamJoinHelper.IsLateJoin(attempt.Exam, attempt.StartedAt),
-                    LateByMinutes = ExamJoinHelper.GetLateByMinutes(attempt.Exam, attempt.StartedAt)
+                    LateByMinutes = ExamJoinHelper.GetLateByMinutes(attempt.Exam, attempt.StartedAt),
+                    LatestDetectionType = state?.LatestDetectionType
                 };
             })
             .OrderByDescending(x => x.SuspicionScore)
@@ -425,6 +495,37 @@ public class ProctoringService : IProctoringService
         Confidence = evidence.Confidence,
         CapturedAt = evidence.CapturedAt
     };
+
+    private static ProctoringEvidenceListItemDto MapEvidenceListItem(ProctoringEvidence evidence) => new()
+    {
+        Id = evidence.Id,
+        AttemptId = evidence.ExamAttemptId,
+        ExamId = evidence.ExamAttempt.ExamId,
+        ExamTitle = evidence.ExamAttempt.Exam?.Title ?? string.Empty,
+        StudentId = evidence.ExamAttempt.StudentId,
+        StudentName = evidence.ExamAttempt.Student?.FullName ?? string.Empty,
+        EvidenceType = evidence.EvidenceType,
+        FileUrl = ProctoringEvidenceUrlHelper.ToDownloadApiPath(evidence.ExamAttemptId, evidence.Id),
+        CaptureSource = evidence.CaptureSource,
+        TriggerEventType = evidence.TriggerEventType,
+        Confidence = evidence.Confidence,
+        CapturedAt = evidence.CapturedAt
+    };
+
+    private async Task<List<int>> GetAccessibleExamIdsAsync(string userId, CancellationToken ct)
+    {
+        var ownedExamIds = await _db.Exams
+            .Where(x => x.TeacherId == userId)
+            .Select(x => x.Id)
+            .ToListAsync(ct);
+
+        var assignedExamIds = await _db.ExamProctorAssignments
+            .Where(x => x.TeacherId == userId)
+            .Select(x => x.ExamId)
+            .ToListAsync(ct);
+
+        return ownedExamIds.Concat(assignedExamIds).Distinct().ToList();
+    }
 
     private static ProctoringAiSettingsDto MapAiSettings(ProctoringAiSettings settings) => new()
     {

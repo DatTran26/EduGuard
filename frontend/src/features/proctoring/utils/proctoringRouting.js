@@ -113,3 +113,50 @@ export function openTeacherProctoringRoom(examId, role = "Teacher") {
   const path = buildProctoringPathByRole(role, examId);
   window.open(path, "_blank", "noopener,noreferrer");
 }
+
+export function resolveStudentAttemptEntryPath(attempt) {
+  if (!attempt?.id) {
+    return null;
+  }
+
+  if (attempt.status === "PausedByProctor") {
+    return `/student/attempts/${attempt.id}/paused`;
+  }
+
+  return `/student/attempts/${attempt.id}`;
+}
+
+export function buildStudentExamPrimaryAction(exam) {
+  const attemptId = exam?.myAttemptId;
+  const status = exam?.myAttemptStatus;
+
+  if (status === "PausedByProctor" && attemptId) {
+    return {
+      actionLabel: "Quay lại phòng chờ",
+      actionPath: `/student/attempts/${attemptId}/paused`,
+      statusLabel: "Tạm dừng",
+      statusVariant: "caution",
+    };
+  }
+
+  if (status === "InProgress" && attemptId) {
+    return {
+      actionLabel: "Tiếp tục làm bài",
+      actionPath: `/student/attempts/${attemptId}`,
+      statusLabel: "Đang làm",
+      statusVariant: "info",
+    };
+  }
+
+  if (status === "Submitted" && attemptId) {
+    return {
+      actionLabel: "Xem kết quả",
+      actionPath: `/student/attempts/${attemptId}`,
+      statusLabel: "Đã nộp",
+      statusVariant: "success",
+      score: exam?.myLatestScore ?? null,
+    };
+  }
+
+  return null;
+}

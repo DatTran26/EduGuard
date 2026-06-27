@@ -116,7 +116,20 @@ export const proctoringApi = {
 
   async getRoom(examId) {
     const apiResponse = await requestApi(() => axiosClient.get(`/exams/${examId}/proctoring/room`));
-    return { ...apiResponse, data: apiResponse.data };
+    const data = apiResponse.data ?? {};
+    return {
+      ...apiResponse,
+      data: {
+        ...data,
+        cameraMonitoringEnabled:
+          data.cameraMonitoringEnabled ??
+          Boolean(
+            data.enableLiveProctoring ||
+              data.requireCamera ||
+              data.enableCameraProctoring,
+          ),
+      },
+    };
   },
 
   async getStates(examId) {
@@ -193,6 +206,34 @@ export const proctoringApi = {
     return requestApi(() =>
       axiosClient.post(`/attempts/${attemptId}/proctoring/terminate`, { reason }),
     );
+  },
+
+  async getEvidenceList({ examId, attemptId, evidenceType, search, page = 1, pageSize = 24 } = {}) {
+    const params = new URLSearchParams();
+    if (examId) params.set("examId", String(examId));
+    if (attemptId) params.set("attemptId", String(attemptId));
+    if (evidenceType) params.set("evidenceType", evidenceType);
+    if (search) params.set("search", search);
+    params.set("page", String(page));
+    params.set("pageSize", String(pageSize));
+
+    const apiResponse = await requestApi(() =>
+      axiosClient.get(`/proctoring/evidence?${params.toString()}`),
+    );
+    const data = apiResponse.data ?? {};
+    return {
+      ...apiResponse,
+      data: {
+        ...data,
+        items: Array.isArray(data.items) ? data.items : [],
+        totalCount: Number(data.totalCount) || 0,
+        snapshotCount: Number(data.snapshotCount) || 0,
+        clipCount: Number(data.clipCount) || 0,
+        autoCount: Number(data.autoCount) || 0,
+        page: Number(data.page) || page,
+        pageSize: Number(data.pageSize) || pageSize,
+      },
+    };
   },
 
   async uploadEvidence(attemptId, file, options = {}) {

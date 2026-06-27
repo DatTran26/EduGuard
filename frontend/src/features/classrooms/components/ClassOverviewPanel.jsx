@@ -15,6 +15,11 @@ import Card from "../../../components/common/Card";
 import Button from "../../../components/common/Button";
 import Badge from "../../../components/common/Badge";
 import { formatShortDate, formatShortDateTime } from "../../../utils/formatDate";
+import {
+  getClassroomNotificationCardClasses,
+  getClassroomNotificationToneClasses,
+  getClassroomNotificationTypeMeta,
+} from "../utils/classroomNotificationUtils";
 
 export default function ClassOverviewPanel({
   members,
@@ -354,17 +359,15 @@ export default function ClassOverviewPanel({
           ) : (
             <div className="space-y-3">
               {notifications.slice(0, 3).map((notif) => {
-                const typeStyles = {
-                  Warning: "text-red-500 border-red-200 bg-red-50/50 dark:bg-red-950/20",
-                  Success: "text-emerald-500 border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20",
-                  Info: "text-blue-500 border-blue-200 bg-blue-50/50 dark:bg-blue-950/20",
-                }[notif.type] || "text-blue-500 border-blue-200 bg-blue-50/50 dark:bg-blue-950/20";
+                const typeMeta = getClassroomNotificationTypeMeta(notif.type);
+                const typeStyles = getClassroomNotificationToneClasses(notif.type);
+                const cardStyles = getClassroomNotificationCardClasses(notif.type);
 
                 return (
-                  <div key={notif.id} className="rounded-xl border border-border/70 p-3 space-y-1.5">
+                  <div key={notif.id} className={`rounded-xl border p-3 space-y-1.5 ${cardStyles}`}>
                     <div className="flex items-center justify-between gap-2">
                       <span className={`inline-flex rounded-full border px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.1em] ${typeStyles}`}>
-                        {notif.type === "Warning" ? "Cảnh báo" : notif.type === "Success" ? "Thành công" : "Thông báo"}
+                        {typeMeta.badgeLabel}
                       </span>
                       <span className="text-[9px] text-secondary">
                         {formatShortDate(notif.createdAt)}

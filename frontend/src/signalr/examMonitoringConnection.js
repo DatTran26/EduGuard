@@ -16,6 +16,7 @@ export const EXAM_MONITORING_EVENTS = {
   studentAttemptResumed: "StudentAttemptResumed",
   studentAttemptTerminated: "StudentAttemptTerminated",
   studentJoinedExamLate: "StudentJoinedExamLate",
+  receiveAiDetection: "ReceiveAiDetection",
 };
 
 export const EXAM_MONITORING_METHODS = {
