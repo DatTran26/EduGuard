@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-27
+
 ### AI Services
 
 - **Proctoring AI logging:** FastAPI service logs startup config, request timing, detection results (type, confidence, labels, inference ms), and errors for bad images or failed inference. Configurable via `PROCTORING_LOG_LEVEL`.
@@ -354,6 +356,7 @@ Stable release promoted from `v1.1.0-rc.1` after RC validation (auth + classroom
 - `GET /api/classrooms/{id}` (classroom detail) deferred
 - Members endpoint returns email for active members; tighten for production if needed
 
+[1.3.0]: https://github.com/DatTran26/EduGuard/compare/v1.3.0-rc.1...v1.3.0
 [1.3.0-rc.1]: https://github.com/DatTran26/EduGuard/compare/v1.2.0...v1.3.0-rc.1
 [1.2.0]: https://github.com/DatTran26/EduGuard/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/DatTran26/EduGuard/compare/v1.0.0...v1.1.0
