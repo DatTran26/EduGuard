@@ -4,6 +4,7 @@ import Avatar from "../common/Avatar";
 import Button from "../common/Button";
 import { cn } from "../../utils/cn";
 import { classroomApi } from "../../api/classroomApi";
+import { examApi } from "../../api/examApi";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
 import { useToast } from "../../hooks/useToast";
@@ -44,6 +45,7 @@ const breadcrumbLabelBySegment = {
   classrooms: "Lớp học",
   exams: "Đề thi",
   dashboard: "Dashboard",
+  tasks: "Hoạt động học tập",
   profile: "Hồ sơ",
   results: "Kết quả",
   users: "Người dùng",
@@ -70,9 +72,23 @@ const classroomBreadcrumbRoutePatterns = [
   routeConfig.studentClassroomDetail,
 ];
 
+const examBreadcrumbRoutePatterns = [
+  routeConfig.adminExamDetail,
+  routeConfig.teacherExamDetail,
+  routeConfig.studentExamDetail,
+];
+
 function getClassroomBreadcrumbMatch(pathname) {
   return (
     classroomBreadcrumbRoutePatterns
+      .map((path) => matchPath({ path, end: true }, pathname || "/"))
+      .find(Boolean) ?? null
+  );
+}
+
+function getExamBreadcrumbMatch(pathname) {
+  return (
+    examBreadcrumbRoutePatterns
       .map((path) => matchPath({ path, end: true }, pathname || "/"))
       .find(Boolean) ?? null
   );
@@ -194,11 +210,18 @@ export default function TopBar({
     classroomId: "",
     label: "",
   });
+  const [examBreadcrumbState, setExamBreadcrumbState] = useState({
+    examId: "",
+    label: "",
+  });
   const userMenuItems = buildUserMenuItems(isDarkMode);
   const isTeacherView = user?.role === "Teacher";
   const classroomBreadcrumbMatch = getClassroomBreadcrumbMatch(location?.pathname);
   const classroomBreadcrumbPath = classroomBreadcrumbMatch?.pathname || "";
   const classroomBreadcrumbId = classroomBreadcrumbMatch?.params?.classroomId || "";
+  const examBreadcrumbMatch = getExamBreadcrumbMatch(location?.pathname);
+  const examBreadcrumbPath = examBreadcrumbMatch?.pathname || "";
+  const examBreadcrumbId = examBreadcrumbMatch?.params?.examId || "";
 
   useEffect(() => {
     if (!isUserMenuOpen && !isNotificationOpen) {
@@ -303,6 +326,44 @@ export default function TopBar({
       isMounted = false;
     };
   }, [classroomBreadcrumbId, classroomBreadcrumbPath]);
+
+  useEffect(() => {
+    if (!examBreadcrumbId || !examBreadcrumbPath) {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadExamBreadcrumbLabel() {
+      try {
+        const response = await examApi.getById(examBreadcrumbId);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setExamBreadcrumbState({
+          examId: examBreadcrumbId,
+          label: response.data?.title || `Bài kiểm tra ${examBreadcrumbId}`,
+        });
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setExamBreadcrumbState({
+          examId: examBreadcrumbId,
+          label: `Bài kiểm tra ${examBreadcrumbId}`,
+        });
+      }
+    }
+
+    loadExamBreadcrumbLabel();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [examBreadcrumbId, examBreadcrumbPath]);
 
   // Hàm này đóng dropdown menu người dùng để các thao tác điều hướng phía sau gọn hơn.
   function closeUserMenu() {
@@ -410,10 +471,18 @@ export default function TopBar({
       ? classroomBreadcrumbState.label
       : "Đang tải lớp..."
     : "";
+  const examBreadcrumbLabel = examBreadcrumbId
+    ? examBreadcrumbState.examId === examBreadcrumbId
+      ? examBreadcrumbState.label
+      : "Đang tải bài kiểm tra..."
+    : "";
   const breadcrumbLabelOverrides = {
     ...(user?.role === "Student" ? { [routeConfig.studentExams]: "Bài kiểm tra" } : {}),
     ...(classroomBreadcrumbPath && classroomBreadcrumbLabel
       ? { [classroomBreadcrumbPath]: classroomBreadcrumbLabel }
+      : {}),
+    ...(examBreadcrumbPath && examBreadcrumbLabel
+      ? { [examBreadcrumbPath]: examBreadcrumbLabel }
       : {}),
   };
   const breadcrumbItems = buildBreadcrumbTrail(

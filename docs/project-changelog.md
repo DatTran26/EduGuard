@@ -175,6 +175,293 @@ Changed files:
 - `frontend/src/features/question-banks/question-bank-helpers.js`
 - `frontend/src/api/questionBankApi.js`
 - `frontend/src/components/layout/TopBar.jsx`
+## Feature: Dark blue login-matched sidebar palette across all authenticated roles
+
+Date: 2026-06-27
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Đổi sidebar của toàn bộ role về lại màu xanh đậm đồng bộ với login.
+- Purpose and user/business impact: Khôi phục shell tối hơn để điều hướng nổi bật và nhất quán với panel branding ở trang đăng nhập. Người dùng đi từ login vào workspace sẽ thấy cùng một tông màu chủ đạo, giảm cảm giác lệch theme giữa màn public và khu vực đăng nhập.
+- Files or modules changed: `frontend/src/components/layout/Sidebar.jsx`, `frontend/src/index.css`, `CHANGELOG.md`, `docs/project-changelog.md`.
+- Technical summary: Cập nhật `Sidebar.jsx` để thay nền gradient sáng bằng gradient xanh đậm trùng với `eg-auth-hero-content` của login (`#0f2f57 -> #0a2545`), đổi lại toàn bộ border/header/footer về tông tối với chữ trắng hoặc slate sáng, và phối lại icon chip theo nền dark glass nhẹ. Trong `index.css`, cập nhật `.eg-sidebar-link-active` và `.eg-sidebar-link-idle` để active state dùng nền xanh dương đậm có ánh sáng nhẹ, idle/hover trở về hệ màu chữ sáng trên nền tối. Thay đổi áp dụng cho mọi role vì sidebar nằm trong `AppShell` dùng chung.
+- Validation: Chạy `npm run build` trong `frontend/` thành công. Chạy `npx eslint src/components/layout/Sidebar.jsx` thành công. Vite vẫn còn warning cũ về Rolldown `INVALID_ANNOTATION` từ `@microsoft/signalr` và cảnh báo bundle size.
+
+Changed files:
+
+- `frontend/src/components/layout/Sidebar.jsx` [MODIFY]
+- `frontend/src/index.css` [MODIFY]
+- `CHANGELOG.md` [MODIFY]
+- `docs/project-changelog.md` [MODIFY]
+
+Validation:
+
+- `npm run build` in `frontend/` succeeds.
+- `npx eslint src/components/layout/Sidebar.jsx` succeeds.
+
+Unresolved questions:
+
+- Không có.
+
+## Feature: Redesign Admin Monitoring tab layout and collapsible filters
+
+Date: 2026-06-27
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Thiết kế lại trang Giám sát thi hệ thống (Admin Monitoring) dùng tabs ngang và bộ lọc ẩn/hiện dạng panel, tối ưu các thẻ KPI và cách trình bày tab.
+- Purpose and user/business impact: Giúp giao diện trang Giám sát thi của Admin tối giản, khoa học và tập trung cao độ. Loại bỏ chỉ số điểm nghi ngờ thừa, làm nổi bật và thu gọn 3 thẻ KPI cốt lõi (Tổng log, Lượt cảnh báo, Nguy cơ cao) bằng cách rút bớt padding/margin thừa để tránh chiếm nhiều diện tích. Đồng thời bo tròn sâu các tab thành dạng viên nhộng (capsule), phân cách bằng ký tự "|" và ẩn số lượng bản ghi để thanh tab thanh thoát hơn, cuộn nội bộ tối đa 10 dòng.
+- Files or modules changed: `frontend/src/features/admin/pages/AdminMonitoringPage.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`.
+- Technical summary: Tích hợp state quản lý tab hiện hoạt (`activeTab`) và trạng thái mở bộ lọc (`isFilterOpen`). Dọn dẹp Card Bộ lọc cố định thành nút kích hoạt bộ lọc ở góc phải cùng hàng với thanh tab ngang. Khi bật bộ lọc, hiển thị panel dạng card ở ngay phía dưới thanh tab. Nội dung chi tiết các bảng được chuyển thành tab tương ứng và bọc bằng thẻ div giới hạn chiều cao `max-h-[500px]` cùng thanh cuộn mượt `overflow-y-auto pr-2 scrollbar-thin`. Loại bỏ KPI "Điểm nghi ngờ", cập nhật StatCards thành 3 Card tự thiết kế siêu gọn có màu viền trái và nền pastel nổi bật, triệt tiêu padding/khoảng trống thừa. Đổi bo góc các nút tab sang `rounded-full`, chèn dấu phân tách `|` và xóa số lượng ghi trên nhãn tab.
+- Validation: Chạy build thành công, kiểm tra trực quan hoạt động chuyển đổi tab, thu gọn bộ lọc hoạt động mượt mà và cuộn dọc chính xác.
+
+Changed files:
+
+- `frontend/src/features/admin/pages/AdminMonitoringPage.jsx` [MODIFY]
+- `CHANGELOG.md` [MODIFY]
+- `docs/project-changelog.md` [MODIFY]
+
+Validation:
+
+- Verified build compilation, visual tab switching, filters toggling, and max height overflow scrolling behaviors.
+
+Unresolved questions:
+
+- Không có.
+
+## Feature: Aggregate Student list modal on Teacher Dashboard KPI 2
+
+Date: 2026-06-27
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Hiển thị danh sách tất cả sinh viên tham gia các lớp học mà giảng viên quản lý khi click vào KPI "Tổng sinh viên".
+- Purpose and user/business impact: Giúp giảng viên có thể xem nhanh danh sách toàn bộ sinh viên từ tất cả các lớp họ quản lý mà không cần phải vào từng lớp riêng lẻ. Danh sách hiển thị chi tiết tên, email và danh sách các lớp học mà sinh viên đã tham gia, hỗ trợ lọc nhanh theo tên hoặc email.
+- Files or modules changed: `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`.
+- Technical summary: Bổ sung các state quản lý modal danh sách sinh viên (`isStudentModalOpen`, `isModalLoading`, `modalStudents`, `studentSearchQuery`). Khi click vào card KPI "Tổng sinh viên", hàm `handleOpenStudentModal` sẽ gọi API lấy toàn bộ danh sách lớp của giảng viên, sau đó song song lấy thành viên của từng lớp học. Hệ thống tự động gộp các học sinh trùng lặp dựa trên `studentId`/`email`, lưu lại danh sách tên lớp học tham gia. Modal hỗ trợ hiển thị danh sách dạng bảng, lọc tìm kiếm phía client-side và có nút đóng nhanh.
+- Validation: Chạy build thành công, xác minh trực quan danh sách sinh viên hiển thị chính xác các lớp đã tham gia và tìm kiếm hoạt động bình thường.
+
+Changed files:
+
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx` [MODIFY]
+- `CHANGELOG.md` [MODIFY]
+- `docs/project-changelog.md` [MODIFY]
+
+Validation:
+
+- Visual validation of dashboard KPI click behavior, student aggregation loader, and modal search filter.
+
+Unresolved questions:
+
+- Không có.
+
+## Feature: Student exam fullscreen auto-exit after attempt end
+
+Date: 2026-06-27
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Tự thoát fullscreen cho học sinh khi kết thúc bài thi.
+- Purpose and user/business impact: Học sinh không còn bị kẹt trong chế độ toàn màn hình sau khi nộp bài, hết giờ hệ thống tự nộp, giảng viên tạm dừng, hoặc giảng viên kết thúc bài làm. Trải nghiệm kết thúc bài thi rõ ràng hơn và tránh buộc người dùng phải tự bấm thoát fullscreen thủ công.
+- Files or modules changed: `frontend/src/utils/fullscreen.js`, `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx`, `frontend/src/features/proctoring/hooks/useStudentAttemptProctoring.js`, `CHANGELOG.md`, `docs/project-changelog.md`.
+- Technical summary: Tạo helper dùng chung `ensureFullscreenExited()` để thoát fullscreen an toàn. Trong `ExamAttemptPage.jsx`, thêm luồng thoát fullscreen chủ động sau khi submit thành công, trước khi redirect khỏi attempt đã nộp nhưng không hiện kết quả, và khi tải/polling thấy attempt đã bị chuyển sang trạng thái tạm dừng. Bổ sung cờ `suppressNextFullscreenExitLogRef` để lần thoát fullscreen do hệ thống chủ động không bị ghi nhầm thành sự kiện anti-cheat `EXIT_FULLSCREEN`. Trong `useStudentAttemptProctoring.js`, thêm `ensureFullscreenExited()` trước khi điều hướng học sinh sang màn hình paused hoặc khi giảng viên ép kết thúc bài làm.
+- Validation: Chạy `npm run build` trong `frontend/` thành công. Chạy `npx eslint src/features/exam-attempts/pages/ExamAttemptPage.jsx src/features/proctoring/hooks/useStudentAttemptProctoring.js src/utils/fullscreen.js` thành công. Vite vẫn còn warning cũ về Rolldown `INVALID_ANNOTATION` từ `@microsoft/signalr` và cảnh báo bundle size.
+
+Changed files:
+
+- `frontend/src/utils/fullscreen.js` [NEW]
+- `frontend/src/features/exam-attempts/pages/ExamAttemptPage.jsx` [MODIFY]
+- `frontend/src/features/proctoring/hooks/useStudentAttemptProctoring.js` [MODIFY]
+- `CHANGELOG.md` [MODIFY]
+- `docs/project-changelog.md` [MODIFY]
+
+Validation:
+
+- `npm run build` in `frontend/` succeeds.
+- `npx eslint src/features/exam-attempts/pages/ExamAttemptPage.jsx src/features/proctoring/hooks/useStudentAttemptProctoring.js src/utils/fullscreen.js` succeeds.
+
+Unresolved questions:
+
+- Không có.
+
+## Feature: Modal form layout for Teacher assignment and exam creation
+
+Date: 2026-06-27
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Chuyển đổi form tạo bài tập và đề thi của giáo viên sang dạng modal hội thoại ở giữa màn hình.
+- Purpose and user/business impact: Giúp giáo viên tập trung tối đa vào việc nhập liệu cấu hình bài tập/đề thi mới mà không bị phân tâm bởi các thông tin nền của trang. Giao diện mờ (dimmed) và nhòe (blurred) xung quanh làm nổi bật form tạo. Sau khi lưu thành công, form tự động ẩn đi đem lại trải nghiệm mượt mà, trực quan.
+- Files or modules changed: `frontend/src/features/learning-tasks/pages/TeacherLearningTasksPage.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`.
+- Technical summary: Tái cấu trúc hàm `renderCreateForm` trong `TeacherLearningTasksPage.jsx` để bọc các form `AssignmentForm` và `ExamForm` vào trong container modal (`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-[2px]`). Thêm nút đóng nhanh ở góc trên bên phải bằng biểu tượng `FiX` từ `react-icons/fi` và lắng nghe sự kiện click vào phần overlay xung quanh để đóng modal. Sau khi lưu thành công, logic gọi `nextParams.delete("create")` tự động xóa cờ trên URL và ẩn modal đi.
+- Validation: Xác minh trực quan modal căn giữa chính xác, có backdrop mờ mịn và đóng mở ổn định sau khi submit.
+
+Changed files:
+
+- `frontend/src/features/learning-tasks/pages/TeacherLearningTasksPage.jsx` [MODIFY]
+- `CHANGELOG.md` [MODIFY]
+- `docs/project-changelog.md` [MODIFY]
+
+Validation:
+
+- Visual validation of exam and assignment creation modal dialog layout, close triggers, and auto-dismiss workflow.
+
+Unresolved questions:
+
+- Không có.
+
+## Feature: Teacher assignment submission progress pill states
+
+Date: 2026-06-27
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Điều chỉnh màu badge tiến độ nộp bài ở cột `Đã nộp` của bảng bài tập giáo viên.
+- Purpose and user/business impact: Giảng viên phân biệt nhanh bài tập đã đủ bài nộp với các bài vẫn còn thiếu, tránh hiểu nhầm trạng thái hoàn tất khi mới có một phần sinh viên nộp bài.
+- Files or modules changed: `frontend/src/features/learning-tasks/components/AssignmentTaskTable.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`.
+- Technical summary: Mở rộng `AssignmentCountPill` để hỗ trợ tone vàng cảnh báo và đổi logic render cột `Đã nộp` trong `AssignmentTaskTable.jsx` sang so sánh `submissionCount` với `totalStudents`. Badge chỉ dùng màu xanh khi số bài nộp đã đạt hoặc vượt tổng số sinh viên; mọi tiến độ chưa đủ sẽ hiển thị vàng. Đồng thời chuẩn hóa hai giá trị này về số không âm trước khi render nhãn `đã nộp / tổng`.
+- Validation: Chạy `npm run build` trong `frontend/` thành công. Chỉ còn các warning sẵn có của Vite/Rolldown về `@microsoft/signalr` pure annotation và bundle size.
+
+Changed files:
+
+- `frontend/src/features/learning-tasks/components/AssignmentTaskTable.jsx` [MODIFY]
+- `CHANGELOG.md` [MODIFY]
+- `docs/project-changelog.md` [MODIFY]
+
+Validation:
+
+- `npm run build` in `frontend/` succeeds.
+
+Unresolved questions:
+
+- Không có.
+
+## Feature: Refined Teacher Dashboard KPI Cards for Light Mode Harmony
+
+Date: 2026-06-27
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Tinh chỉnh giao diện 6 card KPI Dashboard giảng viên hài hòa với chế độ sáng.
+- Purpose and user/business impact: Khắc phục lỗi tương phản màu sắc khi ở chế độ sáng, cải thiện tính thẩm mỹ và độ chuyên nghiệp của giao diện dashboard. Các thẻ KPI hiển thị trực quan, có chiều sâu với tông trắng tinh tế, độ tương phản văn bản cao và khoảng cách thông thoáng hơn.
+- Files or modules changed: `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`, `frontend/src/index.css`, `CHANGELOG.md`, `docs/project-changelog.md`.
+- Technical summary: Cấu hình chiến lược dark mode của Tailwind CSS v4 trong `index.css` bằng quy tắc `@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));` để đồng bộ hóa hoàn toàn các lớp `dark:` của Tailwind với thuộc tính `[data-theme]` của ứng dụng (tránh mismatch khi trình duyệt/OS bật chế độ tối nhưng app chạy chế độ sáng). Thay đổi nền thẻ KPI từ màu xám đồng nhất sang nền trắng tinh tế (`bg-white` / `dark:bg-slate-900`) kết hợp viền xám nhẹ (`border-slate-200/80` / `dark:border-slate-800/80`) để hài hòa tối đa ở chế độ sáng, giữ nguyên viền nhấn trái dày (`border-l-4`) đồng bộ màu sắc với chức năng. Đồng bộ hóa màu sắc nhãn (label) sang tông màu xám trung tính (`text-slate-500`), tăng kích thước icon wrapper lên `h-9 w-9` và icon lên `h-4.5 w-4.5`. Tăng padding thẻ lên `p-[18px]` và đổi sang góc bo `rounded-2xl` mềm mại. Căn lề trái toàn bộ nội dung trong thẻ để tạo trục dọc thống nhất.
+- Validation: Xác minh trực quan các thẻ hiển thị đẹp, rõ ràng ở chế độ sáng, có hiệu ứng hover nhấc nhẹ kèm đổ bóng mịn và xoay nhẹ icon.
+
+Changed files:
+
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx` [MODIFY]
+- `frontend/src/index.css` [MODIFY]
+- `CHANGELOG.md` [MODIFY]
+- `docs/project-changelog.md` [MODIFY]
+
+Validation:
+
+- Visual validation of light mode dashboard KPI cards layout, colors, and margins.
+
+Unresolved questions:
+
+- Không có.
+
+## Feature: Redesigned and colorized Teacher Dashboard KPI cards
+
+Date: 2026-06-27
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Thiết kế lại 6 card KPI thống kê trên Dashboard giảng viên sặc sỡ và sinh động hơn.
+- Purpose and user/business impact: Mang lại giao diện Dashboard giảng viên rực rỡ và chuyên nghiệp hơn, với màu sắc phản ánh đúng tính chất từng loại card và icon sắc nét từ thư viện uy tín `lucide-react`. Ngoài ra, card cảnh báo có hiệu ứng micro-animations nhấp nháy bắt mắt để giáo viên dễ chú ý.
+- Files or modules changed: `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`, `frontend/src/index.css`, `CHANGELOG.md`, `Todo List.md`, `docs/project-changelog.md`.
+- Technical summary: Tái cấu trúc component `KPICard` sang dạng thẻ dọc (vertical layout). Áp dụng phong cách Flat Premium Card với nền phẳng pastel dịu nhẹ và viền nhấn trái dày (border-l-4) đồng bộ màu sắc với chức năng (Indigo, Violet, Emerald, Sky, Amber, Rose) cho từng sắc độ tone màu mới (`classes`, `students`, `exams`, `assignments`, `submissions`, `warnings`). Thay thế các icon cũ bằng icon Lucide (`School`, `Users`, `ClipboardCheck`, `NotebookPen`, `TrendingUp`, `ShieldAlert`). Bổ sung keyframes và class animation `.animate-pulse-subtle` cho thẻ cảnh báo và `.animate-bounce-subtle` cho icon cảnh báo trong `index.css`.
+- Validation: Xác nhận giao diện hiển thị đúng chuẩn Institutional Slate, có hiệu ứng hover mượt mà và tương thích tốt ở cả Light và Dark mode.
+
+Changed files:
+
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx` [MODIFY]
+- `frontend/src/index.css` [MODIFY]
+- `CHANGELOG.md` [MODIFY]
+- `Todo List.md` [MODIFY]
+- `docs/project-changelog.md` [MODIFY]
+
+Validation:
+
+- Checked layout matches visual hierarchy and colors scale nicely in both Light and Dark mode.
+
+Unresolved questions:
+
+- Không có.
+
+## Feature: Refined Teacher assignment management table and exam-detail breadcrumb titles
+
+Date: 2026-06-27
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Sửa breadcrumb chi tiết bài kiểm tra hiển thị tên đề thật và đổi danh sách bài tập của giảng viên sang bảng quản lí có icon thao tác.
+- Purpose and user/business impact: Teacher và Student không còn thấy `examId` thô ở phần breadcrumb khi mở chi tiết bài kiểm tra, giúp điều hướng rõ ràng hơn. Teacher cũng quản lí bài tập nhanh hơn nhờ bảng tóm tắt đúng các cột nghiệp vụ, và khi bắt đầu chấm bài sẽ chuyển sang workspace riêng sạch hơn thay vì phải nhìn đồng thời cả bảng danh sách lẫn khu phản hồi.
+- Files or modules changed: `frontend/src/components/layout/TopBar.jsx`, `frontend/src/features/learning-tasks/pages/TeacherLearningTasksPage.jsx`, `frontend/src/features/learning-tasks/components/AssignmentTaskTable.jsx`, `frontend/src/features/learning-tasks/components/ExamGridCard.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`, `Todo List.md`.
+- Technical summary: Bổ sung logic resolve breadcrumb exam theo `examApi.getById()` trong `TopBar.jsx` cho các route exam detail của Admin/Teacher/Student để segment `:examId` được thay bằng `exam.title`. Tại workspace `/teacher/tasks?type=assignment`, thay cột danh sách card bằng component bảng mới `AssignmentTaskTable.jsx`, hiển thị các cột `Tên bài tập`, `Tên lớp`, `Hạn nộp`, `Chưa chấm`, `Đã nộp`, và thêm 3 icon action để mở khu chấm bài, bật form chỉnh sửa, hoặc xóa bài tập. Khi teacher bấm vào tên bài tập hoặc icon mắt, trang sẽ ẩn bảng và mở `Workspace chấm bài` riêng với nút quay lại danh sách; khi bấm icon bút, trang mở màn chỉnh sửa bài tập riêng và không còn render `Workspace chấm bài` ở phía dưới. Trong danh sách bài nộp của workspace chấm bài, mỗi sinh viên giờ có thêm badge `Đã chấm` hoặc `Chưa chấm` dựa trên dữ liệu `gradedAt/score`. Cột `Đã nộp` của bảng assignment cũng được đổi từ số tuyệt đối sang tiến độ `đã nộp / tổng sinh viên`, trong đó mẫu số được suy ra từ lớp học nhưng loại trừ giảng viên để ví dụ hiển thị đúng dạng `15/30`. Ngoài ra, danh sách assignment của Teacher nay mặc định sắp xếp theo `createdAt` giảm dần; query cũ `sort=deadline-asc` cũng được tự chuyển về sort mới để bài vừa tạo xuất hiện trên cùng. Song song đó, card exam ở tab `Bài thi / Đề thi` đã được làm lại hierarchy hiển thị theo hướng gọn hơn: tên lớp được căn trái theo mép nội dung card trong khi tên bài kiểm tra và cụm thống kê vẫn canh giữa rõ hơn; tên bài kiểm tra được ép về một dòng để giữ trục card ổn định hơn; bỏ dòng `Tạo: ...`, bỏ nhãn phụ `Lớp học/Câu hỏi/Lượt làm`, phần lịch chuyển thành timeline 2 dòng `Mở` / `Đóng` rộng hơn do bỏ icon lịch nhưng vẫn giữ vạch dọc thể hiện khoảng thời gian, CTA `Kết quả` được tăng độ nổi nhẹ để teacher nhận ra nhanh hơn, và các slot nội dung chính của card được cố định chiều cao để các card nằm cùng trục nhìn ổn định hơn.
+- Validation: Chạy `npm run build` trong `frontend/` thành công. Vite chỉ còn warning cũ về Rolldown `INVALID_ANNOTATION` từ `@microsoft/signalr` và cảnh báo bundle size lớn.
+
+Changed files:
+
+- `frontend/src/components/layout/TopBar.jsx` [MODIFY]
+- `frontend/src/features/learning-tasks/pages/TeacherLearningTasksPage.jsx` [MODIFY]
+- `frontend/src/features/learning-tasks/components/AssignmentTaskTable.jsx` [NEW]
+- `CHANGELOG.md` [MODIFY]
+- `docs/project-changelog.md` [MODIFY]
+- `Todo List.md` [MODIFY]
+
+Validation:
+
+- `npm run build` in `frontend/` succeeds.
+
+Unresolved questions:
+
+- Chưa có kiểm thử UI tự động cho thao tác icon trong bảng bài tập; hiện mới verify bằng build và giữ nguyên handler grading/edit/delete sẵn có.
+
+## Feature: Redesigned Teacher Exam/Test list to compact 4-column grid
+
+Date: 2026-06-26
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Thiết kế lại danh sách Đề thi/Bài thi của giáo viên thành dạng lưới 4x4 compact và đồng bộ header. Vá lỗi trắng màn hình ở ClassroomDetailPage.
+- Purpose and user/business impact: Giúp giáo viên quản lý danh sách bài kiểm tra hiệu quả hơn và khắc phục hoàn toàn sự cố trắng màn hình khi người dùng truy cập chi tiết lớp học.
+- Files or modules changed: `frontend/src/features/learning-tasks/components/ExamGridCard.jsx`, `frontend/src/features/learning-tasks/components/ExamGrid.jsx`, `frontend/src/features/learning-tasks/pages/TeacherLearningTasksPage.jsx`, `frontend/src/features/learning-tasks/components/LearningTaskStats.jsx`, `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`.
+- Technical summary: Kết xuất danh sách đề thi theo lưới responsive 4 cột. Thu gọn thông tin trên card. Đồng bộ hóa cấu trúc compact cho cả hai tab Bài tập và Đề thi. Cập nhật `compact` mode cho `LearningTaskStats`. Triển khai form chỉnh sửa thông tin đề thi `ExamForm` trong modal overlay. Import bổ sung hằng số định tuyến `TEACHER_CLASSROOM_TABS` bị thiếu vào `ClassroomDetailPage.jsx`.
+- Validation: `npm run build` trong `frontend/` chạy thành công không có lỗi biên dịch.
+
+Changed files:
+
+- `frontend/src/features/learning-tasks/components/ExamGridCard.jsx` [NEW]
+- `frontend/src/features/learning-tasks/components/ExamGrid.jsx` [NEW]
+- `frontend/src/features/learning-tasks/pages/TeacherLearningTasksPage.jsx` [MODIFY]
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx` [MODIFY]
+- `CHANGELOG.md` [MODIFY]
+- `Todo List.md` [MODIFY]
+- `docs/project-changelog.md` [MODIFY]
+
 ## Release: v1.3.0-rc.1
 
 Date: 2026-06-26
@@ -193,6 +480,51 @@ Description:
 Unresolved questions:
 
 - RC deploy target: local tunnel vs cloud — confirm LiveKit stack per `docs/PROCTORING_SFU_SETUP.md`.
+
+## Feature: Unified teacher learning tasks workspace
+
+Date: 2026-06-26
+
+Branch/source: `devH`
+
+Description:
+
+- Feature or fix name: Hợp nhất quản lý Bài tập + Đề thi thành Hoạt động học tập.
+- Purpose and user/business impact: Teacher không còn phải đi qua hai màn hình gần giống nhau để quản lý bài tập và đề thi. Tất cả thao tác list/filter/create/select nay đi qua một workspace thống nhất, giảm trùng lặp UI và làm rõ điều hướng trong shell giáo viên.
+- Files or modules changed: `frontend/src/features/learning-tasks/*`, `frontend/src/routes/AppRoutes.jsx`, `frontend/src/routes/roleRoutes.js`, `frontend/src/routes/routeConfig.js`, `frontend/src/components/layout/{Sidebar,TeacherQuickCreateButton,TeacherShellSearch,TopBar}.jsx`, `frontend/src/features/{dashboard,classrooms,question-banks,results}/**`.
+- Technical summary: Tạo feature mới `learning-tasks` với mapper chuẩn hóa assignment/exam về một schema UI chung, page `TeacherLearningTasksPage.jsx`, type switch `assignment|exam`, stats/list/detail panel dùng lại theo type. Panel filter riêng đã được bỏ khỏi UI; thay vào đó teacher bấm trực tiếp vào stat card như `Đang mở`, `Sắp đến hạn`, `Cần chấm`, `Đã publish` để lọc danh sách ngay trên cùng màn hình. Route mới `/teacher/tasks` thay cho list routes cũ; `/teacher/assignments` và `/teacher/exams` được giữ dưới dạng redirect tương thích query cũ. Sidebar giáo viên được gộp còn một mục **Hoạt động học tập**; quick-create, shell search, dashboard, classroom detail/workspace và question bank đều đổi sang route chung. Đề thi vẫn dùng API exam hiện tại và phần chỉnh sâu/question workspace tiếp tục ở `ExamDetailPage`. Sau phản hồi UX, phần đầu trang của workspace này được nén lại: bỏ `PageHeader` lồng trong hero, giảm padding/decoration thừa, rút gọn segmented control chỉ còn nhãn loại nội dung để tiết kiệm chiều cao mà không thêm nút mới. Pass tiếp theo làm rõ tách biệt giữa danh sách và workspace bằng hai khối riêng, bỏ nút `Mở chi tiết` dư thừa, cho phép bấm trực tiếp vào card để chọn hoạt động, và tự cuộn xuống workspace khi teacher bấm `Mở chấm bài` ở danh sách bài tập. Pass mới nhất tiếp tục bỏ phần mô tả dư trong header của workspace, chỉ giữ lại title, xóa hẳn block giới thiệu `Danh sách hoạt động`, và rút gọn panel chi tiết bài tập để bỏ phần header/tóm tắt lặp lại phía trên `Workspace chấm bài`.
+
+Changed files:
+
+- `frontend/src/features/learning-tasks/learningTaskMapper.js`
+- `frontend/src/features/learning-tasks/components/LearningTaskTypeTabs.jsx`
+- `frontend/src/features/learning-tasks/components/LearningTaskStats.jsx`
+- `frontend/src/features/learning-tasks/components/LearningTaskFilters.jsx`
+- `frontend/src/features/learning-tasks/components/LearningTaskCard.jsx`
+- `frontend/src/features/learning-tasks/components/LearningTaskList.jsx`
+- `frontend/src/features/learning-tasks/pages/TeacherLearningTasksPage.jsx`
+- `frontend/src/routes/AppRoutes.jsx`
+- `frontend/src/routes/roleRoutes.js`
+- `frontend/src/routes/routeConfig.js`
+- `frontend/src/components/layout/Sidebar.jsx`
+- `frontend/src/components/layout/TeacherQuickCreateButton.jsx`
+- `frontend/src/components/layout/TeacherShellSearch.jsx`
+- `frontend/src/components/layout/TopBar.jsx`
+- `frontend/src/features/dashboard/pages/TeacherDashboardPage.jsx`
+- `frontend/src/features/classrooms/components/TeacherClassroomWorkspace.jsx`
+- `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `frontend/src/features/results/pages/TeacherResultsPage.jsx`
+- `CHANGELOG.md`, `Todo List.md`, `docs/project-changelog.md`
+
+Validation:
+
+- `npm run build` in `frontend/` passes successfully after the refactor, compact-header pass, list/workspace UX pass, workspace-header simplification, and assignment-workspace collapse.
+- `npm run lint` still reports many pre-existing repository issues outside this feature area (dashboard, proctoring, classrooms, etc.); no new build blocker was introduced by the unified tasks page.
+
+Unresolved questions:
+
+- Exam creation/editing in the unified page now covers metadata/schedule/config, while question authoring and publish checklist details remain in `/teacher/exams/:examId` by design.
 
 ## Feature: Late exam join notifications and camera gate
 
@@ -4023,6 +4355,7 @@ Validation:
 Unresolved questions:
 
 - None.
+
 
 
 

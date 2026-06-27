@@ -1,16 +1,27 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FiActivity,
   FiAlertTriangle,
-  FiBookOpen,
   FiCalendar,
-  FiClipboard,
-  FiUsers,
   FiRefreshCw,
+  FiUsers,
+  FiX,
+  FiSearch,
+  FiActivity,
+  FiBookOpen,
+  FiClipboard,
 } from "react-icons/fi";
+import {
+  School,
+  Users,
+  ClipboardCheck,
+  NotebookPen,
+  TrendingUp,
+  ShieldAlert
+} from "lucide-react";
 import { dashboardApi } from "../../../api/dashboardApi";
-import { routeConfig } from "../../../routes/routeConfig";
+import { classroomApi } from "../../../api/classroomApi";
+import { buildTeacherTasksPath, routeConfig } from "../../../routes/routeConfig";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
 import Badge from "../../../components/common/Badge";
@@ -24,30 +35,76 @@ import {
 import Skeleton from "../../../components/common/Skeleton";
 import Button from "../../../components/common/Button";
 
-function KPICard({ label, value, icon, tone }) {
-  const toneStyles = {
-    info: "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30",
-    success: "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30",
-    warning: "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30",
-    danger: "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30",
-    neutral: "bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-900/40 dark:text-slate-400 dark:border-slate-800/30",
+function KPICard({ label, value, icon, tone, to, onClick }) {
+  const navigate = useNavigate();
+  
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else if (to) {
+      navigate(to);
+    }
   };
-  
-  const currentStyle = toneStyles[tone] || toneStyles.neutral;
-  
+
+  const toneStyles = {
+    classes: {
+      card: "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-indigo-500 dark:border-l-indigo-400 hover:bg-slate-50/50 dark:hover:bg-slate-900/60 hover:shadow-indigo-500/5",
+      iconWrapper: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-300",
+      value: "text-slate-900 dark:text-slate-50 font-extrabold",
+      label: "text-slate-500 dark:text-slate-400 font-bold"
+    },
+    students: {
+      card: "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-violet-500 dark:border-l-violet-400 hover:bg-slate-50/50 dark:hover:bg-slate-900/60 hover:shadow-violet-500/5",
+      iconWrapper: "bg-violet-100 text-violet-600 dark:bg-violet-900/50 dark:text-violet-300",
+      value: "text-slate-900 dark:text-slate-50 font-extrabold",
+      label: "text-slate-500 dark:text-slate-400 font-bold"
+    },
+    exams: {
+      card: "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-emerald-500 dark:border-l-emerald-400 hover:bg-slate-50/50 dark:hover:bg-slate-900/60 hover:shadow-emerald-500/5",
+      iconWrapper: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-300",
+      value: "text-slate-900 dark:text-slate-50 font-extrabold",
+      label: "text-slate-500 dark:text-slate-400 font-bold"
+    },
+    assignments: {
+      card: "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-sky-500 dark:border-l-sky-400 hover:bg-slate-50/50 dark:hover:bg-slate-900/60 hover:shadow-sky-500/5",
+      iconWrapper: "bg-sky-100 text-sky-600 dark:bg-sky-900/50 dark:text-sky-300",
+      value: "text-slate-900 dark:text-slate-50 font-extrabold",
+      label: "text-slate-500 dark:text-slate-400 font-bold"
+    },
+    submissions: {
+      card: "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-amber-500 dark:border-l-amber-400 hover:bg-slate-50/50 dark:hover:bg-slate-900/60 hover:shadow-amber-500/5",
+      iconWrapper: "bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-300",
+      value: "text-slate-900 dark:text-slate-50 font-extrabold",
+      label: "text-slate-500 dark:text-slate-400 font-bold"
+    },
+    warnings: {
+      card: "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 border-l-4 border-l-rose-500 dark:border-l-rose-400 hover:bg-slate-50/50 dark:hover:bg-slate-900/60 hover:shadow-rose-500/5 animate-pulse-subtle",
+      iconWrapper: "bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-300 animate-bounce-subtle",
+      value: "text-rose-700 dark:text-rose-400 font-extrabold",
+      label: "text-rose-700/80 dark:text-rose-400/80 font-bold"
+    }
+  };
+
+  const currentStyle = toneStyles[tone] || toneStyles.classes;
+
   return (
-    <div className="flex items-center justify-between gap-4 p-4 border border-border bg-surface rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 min-w-0">
-      <div className="flex items-center gap-3 min-w-0">
-        <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border ${currentStyle}`}>
-          {icon}
-        </span>
-        <span className="text-xs font-semibold text-secondary whitespace-nowrap truncate select-none">
+    <div 
+      onClick={handleClick}
+      className={`group cursor-pointer flex flex-col justify-between p-3.5 border rounded-2xl transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg min-w-0 ${currentStyle.card}`}
+    >
+      <div className="flex items-start justify-between gap-2 min-w-0">
+        <span className={`text-[10px] font-bold uppercase tracking-wider select-none truncate mt-0.5 ${currentStyle.label}`}>
           {label}
         </span>
+        <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 ${currentStyle.iconWrapper}`}>
+          {icon}
+        </span>
       </div>
-      <span className="text-xl font-bold text-primary whitespace-nowrap">
-        {value}
-      </span>
+      <div className="mt-1 flex justify-center items-center min-w-0">
+        <span className={`text-2xl font-extrabold tracking-tight whitespace-nowrap ${currentStyle.value}`}>
+          {value}
+        </span>
+      </div>
     </div>
   );
 }
@@ -127,6 +184,67 @@ export default function TeacherDashboardPage() {
   const [loadErrorMessage, setLoadErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
+  const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+  const [isModalLoading, setIsModalLoading] = useState(false);
+  const [modalStudents, setModalStudents] = useState([]);
+  const [studentSearchQuery, setStudentSearchQuery] = useState("");
+
+  const handleOpenStudentModal = useCallback(async () => {
+    setIsStudentModalOpen(true);
+    setIsModalLoading(true);
+    setStudentSearchQuery("");
+    try {
+      const classroomsRes = await classroomApi.getAll();
+      const classrooms = classroomsRes.data || [];
+
+      const memberPromises = classrooms.map(async (cls) => {
+        try {
+          const membersRes = await classroomApi.getMembers(cls.id);
+          return {
+            classroomName: cls.name,
+            members: membersRes.data || [],
+          };
+        } catch {
+          return { classroomName: cls.name, members: [] };
+        }
+      });
+
+      const classroomsWithMembers = await Promise.all(memberPromises);
+      const studentMap = new Map();
+
+      classroomsWithMembers.forEach(({ classroomName, members }) => {
+        members.forEach((m) => {
+          const isStudent = m.role === "Sinh viên" || m.role === "Student" || !m.role;
+          if (isStudent && m.status !== "Removed") {
+            const key = m.studentId || m.email || m.fullName;
+            if (studentMap.has(key)) {
+              const existing = studentMap.get(key);
+              if (!existing.classrooms.includes(classroomName)) {
+                existing.classrooms.push(classroomName);
+              }
+            } else {
+              studentMap.set(key, {
+                studentId: m.studentId,
+                fullName: m.fullName,
+                email: m.email,
+                classrooms: [classroomName],
+              });
+            }
+          }
+        });
+      });
+
+      setModalStudents(Array.from(studentMap.values()));
+    } catch (error) {
+      showToast({
+        tone: "danger",
+        title: "Lỗi tải danh sách sinh viên",
+        message: "Không thể lấy thông tin sinh viên từ các lớp học.",
+      });
+    } finally {
+      setIsModalLoading(false);
+    }
+  }, [showToast]);
 
   async function loadDashboard() {
     setIsLoading(true);
@@ -243,42 +361,158 @@ export default function TeacherDashboardPage() {
 
   const kpiData = [
     {
-      label: "Lớp đang quản lý",
+      label: "Lớp quản lí",
       value: summary.managedClassrooms,
-      icon: <FiBookOpen className="h-4 w-4" />,
-      tone: "info",
+      icon: <School className="h-4.5 w-4.5" />,
+      tone: "classes",
+      to: routeConfig.teacherClassrooms,
     },
     {
-      label: "Sinh viên đang theo học",
+      label: "Tổng sinh viên",
       value: summary.totalStudents,
-      icon: <FiUsers className="h-4 w-4" />,
-      tone: "neutral",
+      icon: <Users className="h-4.5 w-4.5" />,
+      tone: "students",
+      onClick: handleOpenStudentModal,
     },
     {
       label: "Bài kiểm tra",
       value: summary.totalExams,
-      icon: <FiClipboard className="h-4 w-4" />,
-      tone: "success",
+      icon: <ClipboardCheck className="h-4.5 w-4.5" />,
+      tone: "exams",
+      to: buildTeacherTasksPath("exam"),
     },
     {
       label: "Bài tập",
       value: summary.totalAssignments,
-      icon: <FiBookOpen className="h-4 w-4" />,
-      tone: "info",
+      icon: <NotebookPen className="h-4.5 w-4.5" />,
+      tone: "assignments",
+      to: buildTeacherTasksPath("assignment"),
     },
     {
       label: "Tỉ lệ nộp bài",
       value: `${summary.submissionRate}%`,
-      icon: <FiActivity className="h-4 w-4" />,
-      tone: "warning",
+      icon: <TrendingUp className="h-4.5 w-4.5" />,
+      tone: "submissions",
+      to: routeConfig.teacherResults,
     },
     {
-      label: "Cảnh báo bất thường",
+      label: "Cảnh báo",
       value: totalWarnings,
-      icon: <FiAlertTriangle className="h-4 w-4" />,
-      tone: "danger",
+      icon: <ShieldAlert className="h-4.5 w-4.5" />,
+      tone: "warnings",
+      to: routeConfig.teacherMonitoring,
     },
   ];
+
+  const filteredModalStudents = modalStudents.filter((s) => {
+    const q = studentSearchQuery.toLowerCase();
+    return (
+      (s.fullName && s.fullName.toLowerCase().includes(q)) ||
+      (s.email && s.email.toLowerCase().includes(q))
+    );
+  });
+
+  function renderStudentModal() {
+    if (!isStudentModalOpen) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-[2px] animate-fadeIn">
+        {/* Backdrop click to close */}
+        <div className="absolute inset-0 bg-transparent" onClick={() => setIsStudentModalOpen(false)} />
+
+        {/* Modal Box */}
+        <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden max-h-[85vh] flex flex-col animate-slideUp">
+          {/* Header */}
+          <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-primary">Danh sách sinh viên</h3>
+              <p className="text-xs text-secondary mt-0.5">
+                {isModalLoading
+                  ? "Đang tải dữ liệu sinh viên..."
+                  : `Tổng cộng ${modalStudents.length} sinh viên tham gia các lớp bạn quản lý.`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsStudentModalOpen(false)}
+              className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
+            >
+              <FiX className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Search bar */}
+          {!isModalLoading && modalStudents.length > 0 && (
+            <div className="px-5 pt-4">
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <FiSearch className="h-4 w-4" />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm sinh viên theo tên hoặc email..."
+                  value={studentSearchQuery}
+                  onChange={(e) => setStudentSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-950/50 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-primary transition-all"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
+            {isModalLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-3">
+                <FiRefreshCw className="h-8 w-8 text-primary animate-spin" />
+                <p className="text-sm text-secondary animate-pulse">Đang tải và tổng hợp dữ liệu sinh viên...</p>
+              </div>
+            ) : filteredModalStudents.length === 0 ? (
+              <div className="text-center py-12 text-secondary">
+                {modalStudents.length === 0
+                  ? "Chưa có sinh viên nào tham gia các lớp học của bạn."
+                  : "Không tìm thấy sinh viên phù hợp với từ khóa."}
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-slate-100 dark:border-slate-800/60 rounded-2xl">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800/60 text-xs font-bold text-secondary uppercase tracking-wider">
+                      <th className="p-3 pl-4">Họ và tên</th>
+                      <th className="p-3">Email</th>
+                      <th className="p-3 pr-4">Lớp học</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                    {filteredModalStudents.map((student, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/40 dark:hover:bg-slate-900/30 text-primary">
+                        <td className="p-3 pl-4 font-semibold whitespace-nowrap">{student.fullName}</td>
+                        <td className="p-3 text-secondary text-xs break-all">{student.email || "—"}</td>
+                        <td className="p-3 pr-4">
+                          <div className="flex flex-wrap gap-1 max-w-[240px]">
+                            {student.classrooms.map((cName, cIdx) => (
+                              <Badge key={cIdx} variant="neutral" className="text-[10px] py-0.5 px-1.5 font-medium whitespace-nowrap bg-slate-100 dark:bg-slate-800 border-none text-slate-600 dark:text-slate-300">
+                                {cName}
+                              </Badge>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+            <Button onClick={() => setIsStudentModalOpen(false)} variant="neutral" className="px-4 py-2 text-sm rounded-xl">
+              Đóng
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-[1280px] space-y-6">
@@ -290,13 +524,13 @@ export default function TeacherDashboardPage() {
         <div className="flex flex-wrap gap-3">
           <Button
             variant="secondary"
-            onClick={() => navigate(`${routeConfig.teacherAssignments}?create=1`)}
+            onClick={() => navigate(buildTeacherTasksPath("assignment", { create: 1 }))}
           >
             Tạo bài tập
           </Button>
           <Button
             variant="secondary"
-            onClick={() => navigate(`${routeConfig.teacherExams}?create=1`)}
+            onClick={() => navigate(buildTeacherTasksPath("exam", { create: 1 }))}
           >
             Tạo đề thi
           </Button>
@@ -318,6 +552,8 @@ export default function TeacherDashboardPage() {
             value={kpi.value}
             icon={kpi.icon}
             tone={kpi.tone}
+            to={kpi.to}
+            onClick={kpi.onClick}
           />
         ))}
       </div>
@@ -440,6 +676,8 @@ export default function TeacherDashboardPage() {
           )}
         </Card>
       </div>
+
+      {renderStudentModal()}
     </div>
   );
 }

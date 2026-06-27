@@ -17,6 +17,7 @@ export const routeConfig = {
   teacherDashboard: "/teacher/dashboard",
   teacherClassrooms: "/teacher/classrooms",
   teacherClassroomDetail: "/teacher/classrooms/:classroomId",
+  teacherTasks: "/teacher/tasks",
   teacherAssignments: "/teacher/assignments",
   teacherExams: "/teacher/exams",
   teacherQuestionBanks: "/teacher/question-banks",
@@ -39,6 +40,22 @@ export const routeConfig = {
   studentProfile: "/student/profile",
 };
 
+export function buildTeacherTasksPath(type = "assignment", extraParams = {}) {
+  const searchParams = new URLSearchParams();
+
+  searchParams.set("type", type === "exam" ? "exam" : "assignment");
+
+  Object.entries(extraParams).forEach(([key, value]) => {
+    if (value === null || typeof value === "undefined" || value === "") {
+      return;
+    }
+
+    searchParams.set(key, String(value));
+  });
+
+  return `${routeConfig.teacherTasks}?${searchParams.toString()}`;
+}
+
 export function getDashboardPathByRole(role) {
   if (role === "Admin") return routeConfig.adminDashboard;
   if (role === "Teacher") return routeConfig.teacherDashboard;
@@ -57,12 +74,20 @@ export function buildClassroomDetailPathByRole(role, classroomId) {
 
 export function getExamListPathByRole(role) {
   if (role === "Admin") return routeConfig.adminExams;
-  if (role === "Teacher") return routeConfig.teacherExams;
+  if (role === "Teacher") return buildTeacherTasksPath("exam");
   return routeConfig.studentExams;
 }
 
 export function buildExamDetailPathByRole(role, examId) {
-  return `${getExamListPathByRole(role)}/${examId}`;
+  if (role === "Admin") {
+    return `${routeConfig.adminExams}/${examId}`;
+  }
+
+  if (role === "Teacher") {
+    return `${routeConfig.teacherExams}/${examId}`;
+  }
+
+  return `${routeConfig.studentExams}/${examId}`;
 }
 
 export function buildStudentExamAttemptPath(attemptId) {

@@ -29,7 +29,7 @@ import Select from "../../../components/forms/Select";
 import TextInput from "../../../components/forms/TextInput";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useToast } from "../../../hooks/useToast";
-import { routeConfig } from "../../../routes/routeConfig";
+import { buildTeacherTasksPath } from "../../../routes/routeConfig";
 import { QUESTION_TYPE_OPTIONS, calculateEndTimeInputValue, toVietnamISOString } from "../../exams/examHelpers";
 import BankQuestionForm from "../components/BankQuestionForm";
 import QuestionImportPanel from "../../exams/components/QuestionImportPanel";
@@ -1174,7 +1174,7 @@ export default function QuestionBankPage() {
           title="Ngân hàng câu hỏi"
           actions={
             <div className="flex flex-wrap gap-2">
-              <Link className="eg-button eg-button-secondary" to={routeConfig.teacherExams}>Đi tới đề thi</Link>
+                  <Link className="eg-button eg-button-secondary" to={buildTeacherTasksPath("exam")}>Đi tới đề thi</Link>
               <Button onClick={() => openBankForm()}>
                 <IconButtonContent icon={Plus}>Tạo ngân hàng mới</IconButtonContent>
               </Button>
@@ -1776,7 +1776,7 @@ export default function QuestionBankPage() {
           <div className="flex flex-wrap justify-end gap-2">
             <Button onClick={() => openBankForm(selectedBank)} variant="secondary"><IconButtonContent icon={Pencil}>Sửa ngân hàng</IconButtonContent></Button>
             <Button onClick={openMatrixSection}><IconButtonContent icon={Table2}>Tạo ma trận đề thi</IconButtonContent></Button>
-            <Link className="eg-button eg-button-secondary" to={routeConfig.teacherExams}>Tạo đề kiểm tra</Link>
+            <Link className="eg-button eg-button-secondary" to={buildTeacherTasksPath("exam")}>Tạo đề kiểm tra</Link>
             <Button onClick={() => handleDeleteBank(selectedBank)} variant="ghost"><IconButtonContent icon={Trash2}>Xóa ngân hàng</IconButtonContent></Button>
           </div>
         </div>
@@ -1865,3 +1865,6 @@ export default function QuestionBankPage() {
     </>
   );
 }
+
+
+

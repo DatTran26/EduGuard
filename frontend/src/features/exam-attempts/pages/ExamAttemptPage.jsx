@@ -35,6 +35,7 @@ import {
   shouldRequireDeviceCheckBeforeAttempt,
 } from "../../proctoring/utils/proctoringRouting";
 import { formatShortDateTime } from "../../../utils/formatDate";
+import { ensureFullscreenExited } from "../../../utils/fullscreen";
 import { getStoredAccessToken } from "../../../utils/tokenStorage";
 import {
   ANTI_CHEAT_EVENT_TYPES,
@@ -108,35 +109,6 @@ function buildUnansweredQuestionIndexes(
   }, []);
 }
 
-function buildAttemptSettingItems(exam) {
-  if (!exam?.settings) {
-    return [];
-  }
-
-  return [
-    {
-      label: "Random câu hỏi",
-      value: exam.settings.shuffleQuestions ? "Bật" : "Tắt",
-    },
-    {
-      label: "Random đáp án",
-      value: exam.settings.shuffleAnswers ? "Bật" : "Tắt",
-    },
-    {
-      label: "Hiện kết quả",
-      value: exam.settings.showResultAfterSubmit ? "Có" : "Ẩn",
-    },
-    {
-      label: "Toàn màn hình",
-      value: exam.settings.requireFullscreen ? "Bắt buộc" : "Không bắt buộc",
-    },
-    {
-      label: "Anti-cheat",
-      value: exam.enableAntiCheat ? "Bật" : "Tắt",
-    },
-  ];
-}
-
 function getQuestionSelectionHint(questionType) {
   if (questionType === "MultipleChoice") {
     return "Có thể chọn nhiều đáp án.";
@@ -205,6 +177,7 @@ export default function ExamAttemptPage() {
   const hasAutoSubmittedRef = useRef(false);
   const isSubmittingRef = useRef(false);
   const fullscreenRequestAttemptedRef = useRef(false);
+  const suppressNextFullscreenExitLogRef = useRef(false);
   const proctoringStartedRef = useRef(false);
   const lateJoinNoticeShownRef = useRef(false);
   const previousFullscreenStateRef = useRef(
@@ -232,7 +205,6 @@ export default function ExamAttemptPage() {
   const timeBadgeVariant = getRemainingTimeVariant(remainingTimeMs);
   const suspicionMeta = getSuspicionScoreMeta(attempt?.suspicionScore ?? 0);
   const latestWarningMeta = getAntiCheatEventMeta(lastWarning?.type);
-  const attemptSettingItems = useMemo(() => buildAttemptSettingItems(exam), [exam]);
   const proctoringEnabled =
     attempt?.status === "InProgress" && isLiveProctoringRoomAvailable(exam);
   const realtimeControlEnabled =
@@ -457,6 +429,33 @@ export default function ExamAttemptPage() {
     [showToast],
   );
 
+  const handleExitFullscreen = useCallback(async () => {
+    if (typeof document === "undefined") {
+      return true;
+    }
+
+    const wasFullscreen = Boolean(document.fullscreenElement);
+    if (!wasFullscreen) {
+      previousFullscreenStateRef.current = false;
+      suppressNextFullscreenExitLogRef.current = false;
+      setIsFullscreen(false);
+      return true;
+    }
+
+    suppressNextFullscreenExitLogRef.current = true;
+    const didExit = await ensureFullscreenExited();
+    const nextIsFullscreen = Boolean(document.fullscreenElement);
+
+    previousFullscreenStateRef.current = nextIsFullscreen;
+    setIsFullscreen(nextIsFullscreen);
+
+    if (!didExit && nextIsFullscreen) {
+      suppressNextFullscreenExitLogRef.current = false;
+    }
+
+    return didExit;
+  }, []);
+
   const handleSubmitAttempt = useCallback(
     async ({ isAutoSubmit = false } = {}) => {
       if (!attemptRef.current) {
@@ -468,6 +467,7 @@ export default function ExamAttemptPage() {
       try {
         await flushDirtyAnswers();
         const response = await examAttemptApi.submit(attemptRef.current.id);
+        await handleExitFullscreen();
 
         setAttempt(response.data.attempt);
         setResult(response.data);
@@ -495,7 +495,7 @@ export default function ExamAttemptPage() {
         setIsSubmitting(false);
       }
     },
-    [flushDirtyAnswers, showToast],
+    [flushDirtyAnswers, handleExitFullscreen, showToast],
   );
 
   function scheduleQuestionSave(questionId) {
@@ -561,9 +561,31 @@ export default function ExamAttemptPage() {
       exam &&
       !exam.settings?.showResultAfterSubmit
     ) {
-      navigate(getExamListPathByRole(user?.role), { replace: true });
+      let isDisposed = false;
+
+      async function leaveSubmittedAttempt() {
+        await handleExitFullscreen();
+
+        if (!isDisposed) {
+          navigate(getExamListPathByRole(user?.role), { replace: true });
+        }
+      }
+
+      leaveSubmittedAttempt();
+
+      return () => {
+        isDisposed = true;
+      };
     }
-  }, [attempt?.status, exam, navigate, user?.role]);
+  }, [attempt?.status, exam, handleExitFullscreen, navigate, user?.role]);
+
+  useEffect(() => {
+    if (attempt?.status !== "Submitted") {
+      return;
+    }
+
+    void handleExitFullscreen();
+  }, [attempt?.status, handleExitFullscreen]);
 
   useEffect(() => {
     attemptRef.current = attempt;
@@ -606,6 +628,7 @@ export default function ExamAttemptPage() {
         const attemptData = attemptResponse.data;
 
         if (attemptData.status === "PausedByProctor") {
+          await handleExitFullscreen();
           navigate(buildStudentExamPausedPath(attemptId), { replace: true });
           return;
         }
@@ -678,7 +701,7 @@ export default function ExamAttemptPage() {
     return () => {
       isMounted = false;
     };
-  }, [attemptId, navigate, showToast]);
+  }, [attemptId, handleExitFullscreen, navigate, showToast]);
 
   useEffect(() => {
     if (attempt?.status !== "InProgress" || !exam || !attemptId || proctoringStartedRef.current) {
@@ -744,6 +767,7 @@ export default function ExamAttemptPage() {
         }
 
         if (response.data.status === "PausedByProctor") {
+          await handleExitFullscreen();
           navigate(buildStudentExamPausedPath(attemptId), { replace: true });
         }
       } catch {
@@ -755,7 +779,7 @@ export default function ExamAttemptPage() {
       isMounted = false;
       window.clearInterval(intervalId);
     };
-  }, [attempt?.status, attemptId, navigate]);
+  }, [attempt?.status, attemptId, handleExitFullscreen, navigate]);
 
   useEffect(() => {
     if (attempt?.status !== "InProgress") {
@@ -876,13 +900,23 @@ export default function ExamAttemptPage() {
     function handleFullscreenChange() {
       const nextIsFullscreen = Boolean(document.fullscreenElement);
       const previousIsFullscreen = previousFullscreenStateRef.current;
+      const isSuppressedExit =
+        suppressNextFullscreenExitLogRef.current &&
+        previousIsFullscreen &&
+        !nextIsFullscreen;
+
+      if (isSuppressedExit || nextIsFullscreen) {
+        suppressNextFullscreenExitLogRef.current = false;
+      }
+
       previousFullscreenStateRef.current = nextIsFullscreen;
       setIsFullscreen(nextIsFullscreen);
 
       if (
         previousIsFullscreen &&
         !nextIsFullscreen &&
-        examRef.current?.enableAntiCheat
+        examRef.current?.enableAntiCheat &&
+        !isSuppressedExit
       ) {
         logAntiCheatEvent({
           type: ANTI_CHEAT_EVENT_TYPES.exitFullscreen,

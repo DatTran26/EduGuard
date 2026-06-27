@@ -17,8 +17,7 @@ const ROLE_NAVIGATION_ITEMS = {
   Teacher: [
     { label: "Dashboard", path: routeConfig.teacherDashboard },
     { label: "Lớp học", path: routeConfig.teacherClassrooms },
-    { label: "Bài tập", path: routeConfig.teacherAssignments },
-    { label: "Đề thi", path: routeConfig.teacherExams },
+    { label: "Hoạt động học tập", path: routeConfig.teacherTasks },
     { label: "Ngân hàng câu hỏi", path: routeConfig.teacherQuestionBanks },
     { label: "Giám sát thi", path: routeConfig.teacherMonitoring },
     { label: "Kết quả", path: routeConfig.teacherResults },

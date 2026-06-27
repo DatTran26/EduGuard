@@ -21,8 +21,8 @@ import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
 import Skeleton from "../../../components/common/Skeleton";
 import {
+  buildTeacherTasksPath,
   buildExamDetailPathByRole,
-  routeConfig,
 } from "../../../routes/routeConfig";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import { buildTeacherExamMonitoringPath, isLiveProctoringRoomAvailable } from "../../proctoring/utils/proctoringRouting";
@@ -561,7 +561,7 @@ export default function TeacherClassroomWorkspace({
 
             <Link
               className="eg-button eg-button-primary"
-              to={`${routeConfig.teacherExams}?create=1&classroomId=${classroom.id}`}
+              to={buildTeacherTasksPath("exam", { create: 1, classroomId: classroom.id })}
             >
               Tạo bài thi
             </Link>
@@ -575,7 +575,7 @@ export default function TeacherClassroomWorkspace({
                   action={
                     <Link
                       className="eg-button eg-button-primary"
-                      to={`${routeConfig.teacherExams}?create=1&classroomId=${classroom.id}`}
+                      to={buildTeacherTasksPath("exam", { create: 1, classroomId: classroom.id })}
                     >
                       Tạo bài thi
                     </Link>

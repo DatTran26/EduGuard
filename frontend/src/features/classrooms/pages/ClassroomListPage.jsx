@@ -7,23 +7,19 @@ import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { resolveApiErrorMessage } from "../../../utils/apiErrorMessage";
-import { getRoleLabel } from "../../../routes/roleRoutes";
 import { routeConfig } from "../../../routes/routeConfig";
 import ClassroomCard from "../components/ClassroomCard";
 import CreateClassroomForm from "../components/CreateClassroomForm";
 import { SkeletonClassroomCard } from "../../../components/common/Skeleton";
 import ClassroomListAdminFilters from "./classroom-list-admin-filters";
 import {
-  buildSummaryItems,
   getPageCopyByRole,
   filterAndSortAdminClassrooms,
 } from "./classroom-list-helpers";
 import { assignmentApi } from "../../../api/assignmentApi";
 import { examApi } from "../../../api/examApi";
 import { examAttemptApi } from "../../../api/examAttemptApi";
-import ClassroomSummary from "../components/ClassroomSummary";
-import ClassroomToolbar from "../components/ClassroomToolbar";
-import TeacherClassroomCard from "../components/TeacherClassroomCard";
+import TeacherClassroomListView from "../components/TeacherClassroomListPreview";
 import StudentClassroomCard from "../components/StudentClassroomCard";
 import StudentClassroomSummary from "../components/StudentClassroomSummary";
 import StudentClassroomToolbar from "../components/StudentClassroomToolbar";
@@ -163,54 +159,19 @@ export default function ClassroomListPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [adminSearchTerm, setAdminSearchTerm] = useState("");
   const [adminSortOption, setAdminSortOption] = useState("name-asc");
-  const [teacherSearchTerm, setTeacherSearchTerm] = useState("");
-  const [teacherStatusFilter, setTeacherStatusFilter] = useState("all");
-  const [teacherSortOption, setTeacherSortOption] = useState("newest");
   const [pendingTasksCount, setPendingTasksCount] = useState(0);
   const [studentSearchTerm, setStudentSearchTerm] = useState("");
   const [studentStatusFilter, setStudentStatusFilter] = useState("all");
   const isCreateFormVisible = searchParams.get("create") === "1";
   const pageCopy = getPageCopyByRole(user?.role);
-  const summaryItems = buildSummaryItems(classrooms);
   const isAdminView = user?.role === "Admin";
   const isTeacherView = user?.role === "Teacher";
   const isStudentView = user?.role === "Student";
-  const totalClassroomsSummary = summaryItems[0] ?? {
-    label: "Tổng số lớp học",
-    value: classrooms.length,
-  };
-  const isCompactGridView = isTeacherView || isStudentView;
+  const isCompactGridView = isStudentView;
   const classroomGridClassName = isStudentView
     ? "grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-    : isTeacherView
-    ? "grid gap-6 md:grid-cols-2"
-    : isCompactGridView
-    ? "grid gap-4 md:grid-cols-2 xl:grid-cols-4"
     : "grid gap-6";
   const classroomCardLayout = isCompactGridView ? "tile" : "default";
-
-  const getVisibleTeacherClassrooms = () => {
-    let result = [...classrooms];
-    if (teacherSearchTerm.trim()) {
-      const term = teacherSearchTerm.toLowerCase().trim();
-      result = result.filter(
-        (cls) =>
-          cls.name.toLowerCase().includes(term) ||
-          (cls.joinCode && cls.joinCode.toLowerCase().includes(term))
-      );
-    }
-    if (teacherStatusFilter !== "all") {
-      result = result.filter((cls) => cls.status === teacherStatusFilter);
-    }
-    if (teacherSortOption === "newest") {
-      result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    } else if (teacherSortOption === "name-az") {
-      result.sort((a, b) => a.name.localeCompare(b.name, "vi"));
-    } else if (teacherSortOption === "most-students") {
-      result.sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0));
-    }
-    return result;
-  };
 
   const getVisibleStudentClassrooms = () => {
     let result = [...classrooms];
@@ -233,8 +194,6 @@ export default function ClassroomListPage() {
 
   const visibleClassrooms = isAdminView
     ? filterAndSortAdminClassrooms(classrooms, adminSearchTerm, adminSortOption)
-    : isTeacherView
-    ? getVisibleTeacherClassrooms()
     : isStudentView
     ? getVisibleStudentClassrooms()
     : classrooms;
@@ -257,6 +216,16 @@ export default function ClassroomListPage() {
       { replace: true, state: null },
     );
   }, [location.pathname, location.search, location.state, navigate, showToast]);
+
+  useEffect(() => {
+    if (!isTeacherView || !searchParams.has("ui")) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("ui");
+    setSearchParams(nextParams, { replace: true });
+  }, [isTeacherView, searchParams, setSearchParams]);
 
   function toggleCreateForm() {
     const nextParams = new URLSearchParams(searchParams);
@@ -400,18 +369,36 @@ export default function ClassroomListPage() {
     return <EmptyState title="Chưa có lớp học nào được trả về." />;
   }
 
+  if (isTeacherView) {
+    return (
+      <div className="space-y-6">
+        <TeacherClassroomListView
+          classrooms={classrooms}
+          createForm={
+            isCreateFormVisible ? (
+              <CreateClassroomForm
+                isSubmitting={isSubmitting}
+                onSubmitClassroom={handleCreateClassroom}
+                submitLabel="Tạo lớp học"
+                title="Tạo lớp học mới"
+              />
+            ) : null
+          }
+          emptyState={renderEmptyState()}
+          isCreateFormVisible={isCreateFormVisible}
+          isLoading={isLoading}
+          onCopyCode={handleCopyCode}
+          onToggleCreateForm={toggleCreateForm}
+          role={user?.role}
+          visibleClassrooms={classrooms}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {isTeacherView ? (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-2xl font-bold text-primary">
-            Lớp học của giảng viên
-          </h1>
-          <Button onClick={toggleCreateForm} variant={isCreateFormVisible ? "secondary" : "primary"}>
-            {isCreateFormVisible ? "Ẩn form tạo lớp" : "Tạo lớp học"}
-          </Button>
-        </div>
-      ) : isStudentView ? (
+      {isStudentView ? (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
           <h1 className="text-2xl font-bold text-[#0F172A]">
             Lớp của tôi
@@ -432,27 +419,6 @@ export default function ClassroomListPage() {
           }
         />
       )}
-
-      {isTeacherView ? (
-        <>
-          <ClassroomSummary classrooms={classrooms} />
-          <div className="flex justify-end mt-2 pr-1">
-            <ClassroomToolbar
-              searchTerm={teacherSearchTerm}
-              onSearchTermChange={setTeacherSearchTerm}
-              statusFilter={teacherStatusFilter}
-              onStatusFilterChange={setTeacherStatusFilter}
-              sortOption={teacherSortOption}
-              onSortOptionChange={setTeacherSortOption}
-              onResetFilters={() => {
-                setTeacherSearchTerm("");
-                setTeacherStatusFilter("all");
-                setTeacherSortOption("newest");
-              }}
-            />
-          </div>
-        </>
-      ) : null}
 
       {isStudentView ? (
         <>
@@ -480,15 +446,6 @@ export default function ClassroomListPage() {
         />
       ) : null}
 
-      {user?.role === "Teacher" && isCreateFormVisible ? (
-        <CreateClassroomForm
-          isSubmitting={isSubmitting}
-          onSubmitClassroom={handleCreateClassroom}
-          submitLabel="Tạo lớp học"
-          title="Tạo lớp học mới"
-        />
-      ) : null}
-
       {isLoading ? (
         <div className={classroomGridClassName}>
           {Array.from({ length: isCompactGridView ? 8 : 3 }).map((_, index) => (
@@ -498,15 +455,6 @@ export default function ClassroomListPage() {
       ) : visibleClassrooms.length > 0 ? (
         <div className={classroomGridClassName}>
           {visibleClassrooms.map((classroom) => {
-            if (isTeacherView) {
-              return (
-                <TeacherClassroomCard
-                  key={classroom.id}
-                  classroom={classroom}
-                  onCopyCode={handleCopyCode}
-                />
-              );
-            }
             if (isStudentView) {
               return (
                 <StudentClassroomCard
@@ -530,22 +478,6 @@ export default function ClassroomListPage() {
           title="Không tìm thấy lớp học phù hợp."
           action={
             <Button variant="secondary" onClick={handleResetAdminFilters}>
-              Xóa bộ lọc
-            </Button>
-          }
-        />
-      ) : isTeacherView && classrooms.length > 0 ? (
-        <EmptyState
-          title="Không tìm thấy lớp học phù hợp."
-          action={
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setTeacherSearchTerm("");
-                setTeacherStatusFilter("all");
-                setTeacherSortOption("newest");
-              }}
-            >
               Xóa bộ lọc
             </Button>
           }
