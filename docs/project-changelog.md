@@ -1,5 +1,314 @@
 # Project Changelog
 
+## Feature: Split draft exam confirmation into Save Draft and Create Exam flows
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Split draft exam confirmation into Save Draft and Create Exam flows.
+- Purpose and user/business impact: Allows teachers to save a draft exam as unpublished (IsPublished = false) without forcing a start time, or directly jump to the full exam creation workspace with all matrix information (questions, classroom, settings, etc.) prefilled and ready for manual edits.
+- Files or modules changed: backend exam matrix service, frontend question bank API, question bank matrix page, exam list page, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/ExamMatrices/exam-matrix-service.cs`
+- `frontend/src/api/questionBankApi.js`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `frontend/src/features/exams/pages/ExamListPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Updated `CreateExamAsync` to set the created `Exam`'s `IsPublished` state from the request payload instead of forcing `true`.
+- Frontend API: Passed `isPublished` into the request payload in `buildCreateExamFromMatrixPayload`.
+- Frontend Matrix Page: Replaced the single "Xác nhận đề nháp và đặt lịch" button with "Lưu đề nháp" and "Tạo đề" buttons.
+- Frontend Save Dialog: Customized `GenerateExamConfirmDialog` to be for saving drafts, updating labels, headers, and making `startTime` / `endTime` inputs optional.
+- Frontend Create Page: Enhanced `useEffect` triggered by `fromMatrixDraft` to map/autofill all parameters like classroom, title, settings, and questions from the matrix draft.
+
+Validation:
+
+- Tested build with `dotnet build` successfully on `EduGuard.Infrastructure` library.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Feature: Case-insensitive subject comparison and robust chapter matching in matrix generation
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Case-insensitive subject comparison and robust chapter matching in matrix generation.
+- Purpose and user/business impact: Allows filtering by multiple chapters simultaneously even if they are typed as text (e.g. "chương 1, 4, 2" will match questions in chapter 1, 4, or 2), and ensures subject matching is completely case-insensitive and synonym-tolerant (e.g. "Toán học" matches "toán").
+- Files or modules changed: backend exam matrix service, frontend QuestionBankPage, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/ExamMatrices/exam-matrix-service.cs`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Added `ExtractChapterDigits` helper in `ExamMatrixService` and used it in `ChapterOptionalTextMatches` to strip letters and extract numbers before comparing chapter lists.
+- Backend: Updated `SubjectMatches` in `ExamMatrixService` to lower-case, remove diacritics, and map synonyms like "Toán học" to "toán" to perform extremely robust subject matching.
+- Frontend: Updated the regular expression constraint for the chapter input field in `QuestionBankPage.jsx` to allow standard letters (such as "Chương", "Chapter") alongside digits and commas/semicolons.
+
+Validation:
+
+- Tested build with `dotnet build` successfully.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Feature: Numeric chapter constraint and exam matrix substitution confirmation dialog
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Numeric chapter constraint and exam matrix substitution confirmation dialog.
+- Purpose and user/business impact: Restricts chapter fields to only chapter numbers (e.g. 1, 2, 3) representing the chapter sequence for lessons, and asks the user for consent before applying substitutions when generating an exam from a matrix.
+- Files or modules changed: backend question bank service, AI generator service implementation, frontend QuestionBankPage, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/QuestionBanks/OpenAiQuestionGeneratorService.cs`
+- `backend/EduGuard.Infrastructure/QuestionBanks/question-bank-service.cs`
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Updated system prompts in OpenAI service to explicitly restrict the chapter field to numeric sequence strings (e.g. "1", "2"). Added `ExtractChapterNumber` helper to strip non-digit characters from the chapter field and used it in both OpenAI service and QuestionBankService mappings.
+- Backend: Fixed `BuildCreateRequest` in `QuestionBankService` to correctly prioritize and fall back to parsed question fields rather than discarding them.
+- Frontend: Implemented `SubstitutionConfirmDialog` in `QuestionBankPage.jsx` to show a modal confirmation when a matrix has substitutions. If agreed, the substitutions are applied; if not, the draft exam is discarded and matrix errors are shown.
+
+Validation:
+
+- Tested build with `dotnet build` successfully.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Feature: Extended AI metadata auto-fill for bulk and single save flows
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Extended AI metadata auto-fill for bulk and single save flows.
+- Purpose and user/business impact: Automatically infers and populates missing Subject, Chapter, and Lesson fields based on question content during single question creation, update, and bulk save flows.
+- Files or modules changed: backend question bank service, AI generator service implementation, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/QuestionBanks/OpenAiQuestionGeneratorService.cs`
+- `backend/EduGuard.Infrastructure/QuestionBanks/question-bank-service.cs`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Modified index matching in `AutoFillMetadataAsync` (OpenAiQuestionGeneratorService) to support robust sequential matching fallbacks (to handle AI model hallucinations of indices).
+- Backend: Added helper `AutoFillRequestsMetadataAsync` in `QuestionBankService` supporting generics constraint `where T : CreateBankQuestionRequest`. Called it in `CreateQuestionAsync`, `UpdateQuestionAsync`, and `CreateQuestionsBulkAsync` to auto-fill any empty fields before saving.
+
+Validation:
+
+- Tested build with `dotnet build` successfully.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Feature: Auto-fill missing question metadata using AI
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Auto-fill missing question metadata using AI.
+- Purpose and user/business impact: Automatically infers and populates missing Subject, Chapter, and Lesson fields based on question content during file import and AI generation.
+- Files or modules changed: backend question bank service, AI generator service interface and implementation, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Application/Services/Interfaces/IAiQuestionGeneratorService.cs`
+- `backend/EduGuard.Infrastructure/QuestionBanks/OpenAiQuestionGeneratorService.cs`
+- `backend/EduGuard.Infrastructure/QuestionBanks/question-bank-service.cs`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Added `AutoFillMetadataAsync` method to `IAiQuestionGeneratorService` and implemented it in `OpenAiQuestionGeneratorService` using OpenAI JSON Schema output to classify questions and fill in their missing subject, chapter, and lesson.
+- Backend: Added helper `AutoFillMissingMetadataAsync` in `QuestionBankService` to filter questions with missing fields, invoke the OpenAI classifier, and apply the results. Called it in `ImportQuestionsAsync`, `GenerateQuestionsAiAsync`, and `GenerateQuestionsAiPreviewAsync`.
+
+Validation:
+
+- Tested build with `dotnet build` successfully.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Feature: Block multiple subjects in AI question generation
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Block multiple subjects in AI question generation.
+- Purpose and user/business impact: Restricts AI question generation to a single subject that must match the question bank's subject.
+- Files or modules changed: backend question bank service, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `backend/EduGuard.Infrastructure/QuestionBanks/question-bank-service.cs`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Backend: Added validation helper `ValidateSingleSubjectAndBankMatch` to check that the subjects in the AI-generated questions all match each other and match the target bank's subject. Added Vietnamese normalization and standard matching helpers for robust comparison.
+
+Validation:
+
+- Tested build with `dotnet build` successfully.
+
+Known risks / rollback / follow-up:
+
+- None.
+
+## Feature: Matrix detail tables highlighting
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Matrix detail tables highlighting.
+- Purpose and user/business impact: Enhances readability of matrix results by highlighting sufficient and insufficient question categories with distinct colored backgrounds and styled table headers.
+- Files or modules changed: frontend question bank matrix page, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Frontend: Highlighted the matrix item tables and availability status tables with custom colors, header backgrounds, row highlights, and status coloring (green for OK, red for missing questions).
+
+Validation:
+
+- `npm.cmd run build` from `frontend/` passed with zero build errors.
+
+Known risks / rollback / follow-up:
+
+- None.
+- Rollback: Revert page changes to restore native table styles.
+
+## Feature: Folder-tab UI wrapper, auto-filtering, and tab highlighting
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Folder-tab UI wrapper, auto-filtering, and tab highlighting.
+- Purpose and user/business impact: Enhances question bank management layout by introducing folder-tab styled action buttons that connect seamlessly to the active card form, applying filters instantly on dropdown change, relocating the filter box to the top of the question list, styling navigation sections as tab controls, and distributing new matrix questions equally by default.
+- Files or modules changed: frontend question bank matrix page, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Frontend: Added folder-tab styled toggle buttons (Thêm câu hỏi, Tạo bằng AI, Nhập từ tệp) whose borders merge seamlessly with the card container below them when active.
+- Frontend: Added auto-filtering dependencies (difficulty, type, status) to reload questions immediately on dropdown selection.
+- Frontend: Relocated the filter box from the general manager component to the top of renderQuestionList.
+- Frontend: Initialized matrix default questions to 10 split equally (3-3-4), updated resetMatrixForm, and adjusted updateMatrixForm to distribute questions equally.
+- Frontend: Highlighted "Câu hỏi trong ngân hàng" and "Ma trận đề thi" options as custom visual tab buttons.
+
+Validation:
+
+- `npm.cmd run build` from `frontend/` passed with zero build errors.
+
+Known risks / rollback / follow-up:
+
+- None.
+- Rollback: Revert page changes to restore original layout buttons and native select styles.
+
+## Feature: Folder-tab UI wrapper, auto-filtering, and tab highlighting
+
+Date: 2026-06-27
+
+Branch/source: `devB`
+
+Description:
+
+- Feature or fix name: Folder-tab UI wrapper, auto-filtering, and tab highlighting.
+- Purpose and user/business impact: Enhances question bank management layout by introducing folder-tab styled action buttons that connect seamlessly to the active card form, applying filters instantly on dropdown change, relocating the filter box to the top of the question list, styling navigation sections as tab controls, and distributing new matrix questions equally by default.
+- Files or modules changed: frontend question bank matrix page, main changelog, project changelog, and Todo List.
+
+Changed files:
+
+- `frontend/src/features/question-banks/pages/QuestionBankPage.jsx`
+- `CHANGELOG.md`
+- `docs/project-changelog.md`
+- `Todo List.md`
+
+Technical summary:
+
+- Frontend: Added folder-tab styled toggle buttons (Thêm câu hỏi, Tạo bằng AI, Nhập từ tệp) whose borders merge seamlessly with the card container below them when active.
+- Frontend: Added auto-filtering dependencies (difficulty, type, status) to reload questions immediately on dropdown selection.
+- Frontend: Relocated the filter box from the general manager component to the top of renderQuestionList.
+- Frontend: Initialized matrix default questions to 10 split equally (3-3-4), updated resetMatrixForm, and adjusted updateMatrixForm to distribute questions equally.
+- Frontend: Highlighted "Câu hỏi trong ngân hàng" and "Ma trận đề thi" options as custom visual tab buttons.
+
+Validation:
+
+- `npm.cmd run build` from `frontend/` passed with zero build errors.
+
+Known risks / rollback / follow-up:
+
+- None.
+- Rollback: Revert page changes to restore original layout buttons and native select styles.
+
 ## Feature: AI question generation in Question Bank
 
 Date: 2026-06-26

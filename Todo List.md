@@ -8,6 +8,18 @@
 **Ghi chú devH:** 2026-06-25 (thiết kế lại trang Student `Bài tập / Bài thi`, dashboard/sidebar giáo viên, classrooms, notifications realtime; đang merge `release` v1.2.0)
 **Cập nhật:** 2026-06-25 (`release` @ `f01399c` — PR #23 devB merged; `devD` sync `origin/release`; ship **v1.2.0** → `main` via PR #22)
 **Ghi chú devH:** 2026-06-25 (notifications + UI redesign đã merge `release` qua PR #21; thiết kế lại trang Student `Bài tập / Bài thi`, dashboard/sidebar giáo viên, classrooms, notifications realtime)
+**Ghi chú devB:** 2026-06-27 (tách nút xác nhận đề nháp ma trận thành 2 nút: Lưu đề nháp với IsPublished = false và Tạo đề điều hướng sang ExamListPage tự động điền đầy đủ dữ liệu).
+**Ghi chú devB:** 2026-06-27 (cải tiến khớp môn học ma trận không phân biệt hoa thường và từ đồng nghĩa; hỗ trợ bóc tách số tự động từ chuỗi chương nhập vào, ví dụ: "chương 1, 4, 2" để lọc câu hỏi thuộc chương 1, 4 hoặc 2).
+**Ghi chú devB:** 2026-06-27 (ràng buộc trường chương học chỉ hiển thị số thứ tự chương, thêm chuẩn hóa lọc số tự động; bổ sung SubstitutionConfirmDialog hỏi ý kiến người dùng khi sinh đề ma trận có câu hỏi thay thế).
+**Ghi chú devB:** 2026-06-27 (mở rộng cơ chế tự động điền thông tin môn học, chương học, bài học còn thiếu bằng AI cho cả các luồng lưu câu hỏi đơn lẻ, cập nhật câu hỏi, và lưu câu hỏi hàng loạt từ modal preview).
+**Ghi chú devB:** 2026-06-27 (tích hợp cơ chế tự động điền các thông tin môn học, chương học, bài học còn thiếu bằng AI cho cả luồng sinh câu hỏi AI lẫn import tệp đề thi Excel/CSV/PDF/Docx/Txt của giảng viên).
+**Ghi chú devB:** 2026-06-27 (bổ sung validate chặn sinh câu hỏi từ AI đối với các trường hợp có nhiều môn hoặc môn học không trùng khớp với môn học của ngân hàng câu hỏi hiện tại ở backend).
+**Ghi chú devB:** 2026-06-27 (highlight các bảng trong chi tiết ma trận với màu xanh lá nhạt cho dòng đủ câu, màu đỏ nhạt cho dòng thiếu câu và tiêu đề màu xanh.)
+
+**Ghi chú devB:** 2026-06-27 (áp dụng tự động lọc khi chọn dropdown bộ lọc; làm thanh tab tai thư mục bọc các khung nhập tạo tay/AI/File; đưa bộ lọc lên đầu danh sách câu hỏi; mặc định 10 câu ma trận chia đều 3-3-4; và highlight tab Câu hỏi ngân hàng / Ma trận đề thi.)
+
+**Ghi chú devB:** 2026-06-27 (áp dụng tự động lọc khi chọn dropdown bộ lọc; làm thanh tab tai thư mục bọc các khung nhập tạo tay/AI/File; đưa bộ lọc lên đầu danh sách câu hỏi; mặc định 10 câu ma trận chia đều 3-3-4; và highlight tab Câu hỏi ngân hàng / Ma trận đề thi.)
+
 **Ghi chú devB:** 2026-06-25 (đã hoàn tất Question Bank + Exam Matrix workspace theo integration devB: backend/frontend tách riêng, create-exam từ matrix chạy trong transaction và luôn tạo `ExamSetting`, Swagger dùng tag `QuestionBank`/`ExamMatrix`, `docs/apiList.md` có nhóm `API-QBK-*`/`API-MTX-*`, không thêm route/hub/entity proctoring.)
 **Ghi chú devB:** 2026-06-26 (đã bổ sung chức năng sinh câu hỏi tự động bằng AI trực tiếp trong Ngân hàng đề thi và Workspace, thay thế khung hướng dẫn tĩnh cũ bằng một UI tab động tuyệt đẹp hỗ trợ cấu hình độ khó, trạng thái, môn học, chương mặc định và nhập API Key cá nhân lưu local, kết nối trực tiếp với backend qua endpoint API sinh và import câu hỏi tuân thủ schema chuẩn.)
 **Ghi chú devB:** 2026-06-26 (đã thiết kế lại phần ma trận đề thi xử lý câu hỏi dễ, trung bình, khó: kéo thả thanh trượt số câu cho từng mức độ khó thay vì %, xóa dropdown chọn độ khó trên từng dòng ma trận; tái sử dụng QuestionImportPanel và QuestionImportResources cho import câu hỏi ngân hàng; ẩn hướng dẫn AI template ở tạo tay bằng collapsible panel toggle; xóa dashboard thống kê ngân hàng câu hỏi; tinh chỉnh luồng ma trận cho phép sao chép cấu hình ma trận sẵn có và bind kiểm tra đủ câu, sinh đề nháp trực tiếp theo ngân hàng + ma trận hiện tại.)

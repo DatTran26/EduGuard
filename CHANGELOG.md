@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Backend
 
+- Cập nhật API `createExamFromMatrix` hỗ trợ nhận tham số `isPublished` để xác định trạng thái xuất bản của đề thi tạo từ ma trận (nháp hay chính thức).
+- Điều chỉnh `ExamMatrixService` gán giá trị `IsPublished` của `Exam` được sinh từ ma trận theo tham số `request.IsPublished` từ client thay vì cố định gán bằng `true`.
+- Cải tiến thuật toán khớp môn học trong ma trận (`SubjectMatches`) trở nên không phân biệt hoa thường và hỗ trợ chuẩn hóa xóa dấu/so sánh cụm từ (ví dụ: "Toán học" khớp với "toán").
+- Nâng cấp bộ lọc chương học (`ChapterOptionalTextMatches`) hỗ trợ bóc tách số tự động từ cả chuỗi ký tự (ví dụ: "chương 1, 4, 2" sẽ khớp với các câu hỏi thuộc chương 1, 4 hoặc 2).
+- Ràng buộc trường chương học (Chapter) chỉ hiển thị số thứ tự chương (dạng chữ số đơn thuần, ví dụ: 1, 2, 3) tương ứng với bài học được suy luận từ nội dung câu hỏi (ví dụ: bài CSS cơ bản thuộc chương 1). Tích hợp helper chuẩn hóa `ExtractChapterNumber` tự động lọc lấy số từ các phản hồi của AI hoặc từ dữ liệu nhập vào của giảng viên.
+- Cải tiến cơ chế tự động điền các thông tin môn học, chương học, bài học còn thiếu bằng AI cho cả luồng lưu câu hỏi đơn lẻ, cập nhật câu hỏi, và lưu câu hỏi hàng loạt (CreateQuestionsBulk) để bảo đảm dữ liệu luôn được điền đầy đủ và chính xác khi lưu vào cơ sở dữ liệu.
+- Tích hợp cơ chế tự động điền các thông tin môn học (Subject), chương học (Chapter), bài học (Lesson) còn thiếu bằng AI (OpenAI) khi sinh câu hỏi hoặc import tệp Excel/CSV/PDF/Docx/Txt của giảng viên.
+- Bổ sung validate chặn sinh câu hỏi cho nhiều môn học hoặc khác môn học của ngân hàng trong cùng một yêu cầu API sinh bằng AI (trả về 400 Bad Request kèm thông báo lỗi tiếng Việt cụ thể).
 - Added a direct AI question generation endpoint `POST api/question-banks/{bankId}/questions/generate-ai` that calls OpenAI using structured JSON outputs (`gpt-5.5` with reasoning_effort medium).
 - Added `OpenAiQuestionGeneratorService` to call the OpenAI completion API and deserialize generated questions directly matching the database schema.
 - Extended `IQuestionBankService` with `GenerateQuestionsAiAsync` to automatically parse and save AI-generated questions into the database.
@@ -16,6 +24,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mapped question-specific difficulty into bank question import requests, falling back to defaults if not specified.
 
 ### Frontend
+
+- Tách nút "Xác nhận đề nháp và đặt lịch" thành 2 nút: "Lưu đề nháp" và "Tạo đề" trên trang ma trận đề thi ngân hàng câu hỏi.
+- Điều chỉnh hộp thoại `GenerateExamConfirmDialog` (thành hộp thoại Lưu đề nháp) phù hợp cho luồng lưu bản nháp: gỡ bỏ bắt buộc nhập giờ mở đề/đóng đề và cập nhật thông báo/nút hành động phù hợp.
+- Nút "Lưu đề nháp" thực hiện tạo đề thi trên backend với trạng thái nháp (`isPublished: false`).
+- Nút "Tạo đề" thực hiện chuyển hướng sang trang tạo đề thi đầy đủ (`ExamListPage`), chuyển tiếp toàn bộ thông tin đề nháp (lớp, tiêu đề, thời gian làm bài, giám sát, cài đặt trộn đề/đáp án, tối đa số lần làm bài và danh sách câu hỏi) để tự động điền (autofill) các trường thông tin tương ứng.
+- Bổ sung hộp thoại xác nhận thay thế câu hỏi (`SubstitutionConfirmDialog`) khi sinh đề thi từ ma trận mà ngân hàng thiếu câu hỏi có độ khó tương ứng. Đưa ra lựa chọn đồng ý tự động bù câu hỏi có độ khó khác hoặc không đồng ý để hủy và hiển thị thông báo các dòng ma trận thiếu câu.
+- Cải tiến giao diện bảng chi tiết ma trận và trạng thái ngân hàng câu hỏi: Thêm highlight tiêu đề xanh, hiệu ứng hover dòng, và tô màu nền phân biệt dòng đủ câu (xanh lá nhạt) và thiếu câu (đỏ nhạt) trực quan.
+
+- Bổ dung tự động lọc câu hỏi trong ngân hàng khi chọn các bộ lọc dropdown (độ khó, loại câu, trạng thái).
+- Thiết kế thanh điều hướng thêm câu hỏi dạng các tab thư mục (folder tabs) gồm: "Thêm câu hỏi", "Tạo câu hỏi với AI", và "Nhập câu hỏi từ tệp". Khung viền của tab đang chọn kết nối liền mạch với viền của card nội dung phía dưới, mang lại giao diện trực quan và chuyên nghiệp.
+- Di chuyển bộ lọc câu hỏi vào đầu component danh sách câu hỏi ngân hàng câu hỏi.
+- Thiết lập số lượng câu hỏi mặc định của ma trận đề thi là 10 câu và cấu hình phân bổ đều (3 dễ, 3 trung bình, 4 khó) khi khởi tạo hoặc khi thay đổi tổng số câu.
+- Cải tiến giao diện bằng cách highlight nổi bật hai tab điều hướng "Câu hỏi trong ngân hàng" và "Ma trận đề thi" theo kiểu tab tròn đồng bộ.
+
+- Bổ sung tự động lọc câu hỏi trong ngân hàng khi chọn các bộ lọc dropdown (độ khó, loại câu, trạng thái).
+- Thiết kế thanh điều hướng thêm câu hỏi dạng các tab thư mục (folder tabs) gồm: "Thêm câu hỏi", "Tạo câu hỏi với AI", và "Nhập câu hỏi từ tệp". Khung viền của tab đang chọn kết nối liền mạch với viền của card nội dung phía dưới, mang lại giao diện trực quan và chuyên nghiệp.
+- Di chuyển bộ lọc câu hỏi vào đầu component danh sách câu hỏi ngân hàng câu hỏi.
+- Thiết lập số lượng câu hỏi mặc định của ma trận đề thi là 10 câu và cấu hình phân bổ đều (3 dễ, 3 trung bình, 4 khó) khi khởi tạo hoặc khi thay đổi tổng số câu.
+- Cải tiến giao diện bằng cách highlight nổi bật hai tab điều hướng "Câu hỏi trong ngân hàng" và "Ma trận đề thi" theo kiểu tab tròn đồng bộ.
 
 - Replaced the static manual instructions box in `QuestionImportResources.jsx` with a tabbed UI, introducing an interactive "Tạo câu hỏi bằng AI" panel alongside the manual Excel import instructions.
 - Added prompt text inputs, optional local-storage saved OpenAI API Key inputs, and advanced configuration defaults (difficulty, status, subject, chapter) directly into the AI Question Generator.
