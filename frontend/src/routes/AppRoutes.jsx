@@ -10,6 +10,7 @@ import JoinClassroomPage from "../features/classrooms/pages/JoinClassroomPage";
 import AdminMonitoringPage from "../features/admin/pages/AdminMonitoringPage";
 import AdminProctoringAiSettingsPage from "../features/admin/pages/AdminProctoringAiSettingsPage";
 import AdminGptSettingsPage from "../features/admin/pages/AdminGptSettingsPage";
+import AdminEmailSettingsPage from "../features/admin/pages/AdminEmailSettingsPage";
 import TeacherMonitoringPage from "../features/anti-cheat/pages/TeacherMonitoringPage";
 import TeacherAssignmentListPage from "../features/assignments/pages/TeacherAssignmentListPage";
 import AdminDashboardPage from "../features/dashboard/pages/AdminDashboardPage";
@@ -77,6 +78,7 @@ export default function AppRoutes() {
             <Route element={<AdminMonitoringPage />} path={routeConfig.adminMonitoring} />
             <Route element={<TeacherMonitoringPage />} path={routeConfig.adminExamMonitoring} />
             <Route element={<AdminProctoringAiSettingsPage />} path={routeConfig.adminProctoringAi} />
+            <Route element={<AdminEmailSettingsPage />} path={routeConfig.adminEmailSettings} />
             <Route element={<ProctoringEvidencePage />} path={routeConfig.adminProctoringEvidence} />
             <Route element={<UserManagementPage />} path={routeConfig.adminUsers} />
             <Route element={<AdminGptSettingsPage />} path={routeConfig.adminGptModel} />

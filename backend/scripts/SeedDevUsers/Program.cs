@@ -73,7 +73,16 @@ foreach (var (email, fullName, role) in seedUsers)
         user.IsActive = true;
         user.EmailConfirmed = true;
         await userManager.UpdateAsync(user);
-        Console.WriteLine($"User exists, updated profile: {email}");
+
+        var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+        var resetResult = await userManager.ResetPasswordAsync(user, resetToken, DefaultPassword);
+        if (!resetResult.Succeeded)
+            throw new InvalidOperationException($"Cannot reset password for {email}: {string.Join("; ", resetResult.Errors.Select(e => e.Description))}");
+
+        await userManager.SetLockoutEndDateAsync(user, null);
+        await userManager.ResetAccessFailedCountAsync(user);
+
+        Console.WriteLine($"User exists, profile updated and password reset: {email}");
     }
 
     if (!await userManager.IsInRoleAsync(user, role))

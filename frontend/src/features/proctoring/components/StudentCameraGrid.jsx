@@ -13,6 +13,7 @@ export default function StudentCameraGrid({
   getStatusForAttempt,
   onSelectStudent,
   onRequestWatch,
+  onViewViolationHistory,
   viewMode = "auto",
 }) {
   if (!students.length) {
@@ -76,6 +77,7 @@ export default function StudentCameraGrid({
               isFocused
               onRequestWatch={onRequestWatch}
               onSelect={onSelectStudent}
+              onViewViolationHistory={onViewViolationHistory}
               remoteStatus={resolveTileStatus(activeStudent)}
               remoteStream={resolveTileStream(activeStudent)}
               sfuEnabled={sfuEnabled}
@@ -93,6 +95,7 @@ export default function StudentCameraGrid({
                   isAudioEnabled={isAudioEnabled}
                   onRequestWatch={onRequestWatch}
                   onSelect={onSelectStudent}
+                  onViewViolationHistory={onViewViolationHistory}
                   remoteStatus={resolveTileStatus(student)}
                   remoteStream={resolveTileStream(student)}
                   sfuEnabled={sfuEnabled}
@@ -124,6 +127,7 @@ export default function StudentCameraGrid({
             isAudioEnabled={isAudioEnabled}
             onRequestWatch={onRequestWatch}
             onSelect={onSelectStudent}
+            onViewViolationHistory={onViewViolationHistory}
             remoteStatus={resolveTileStatus(student)}
             remoteStream={resolveTileStream(student)}
             sfuEnabled={sfuEnabled}

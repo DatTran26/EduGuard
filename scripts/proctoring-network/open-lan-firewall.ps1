@@ -5,7 +5,7 @@ $firewallRules = @(
     @{ Name = "EduGuard Vite 5173"; Protocol = "TCP"; Port = 5173 },
     @{ Name = "EduGuard API 5157"; Protocol = "TCP"; Port = 5157 },
     @{ Name = "LiveKit WS 7880"; Protocol = "TCP"; Port = 7880 },
-    @{ Name = "LiveKit Media UDP"; Protocol = "UDP"; Port = "57000-57100" }
+    @{ Name = "LiveKit Media UDP"; Protocol = "UDP"; Port = "52000-52100" }
 )
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(

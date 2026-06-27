@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { antiCheatApi } from "../../../api/antiCheatApi";
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
@@ -8,6 +8,7 @@ import { getAntiCheatEventMeta } from "../../anti-cheat/antiCheatHelpers";
 import {
   formatAiConfidence,
   getAiDetectionMeta,
+  isAiViolationLog,
   parseAiDetectionMetadata,
 } from "../utils/proctoringAiHelpers";
 import {
@@ -19,6 +20,334 @@ import {
 } from "../utils/proctoringStudentStatus";
 import AuthenticatedEvidenceMedia from "./AuthenticatedEvidenceMedia";
 import RiskBadge from "./RiskBadge";
+
+const DETAIL_TABS = [
+  { id: "evidence", label: "Hình ảnh" },
+  { id: "violations", label: "Lịch sử vi phạm" },
+  { id: "timeline", label: "Timeline" },
+];
+
+const VIOLATION_SUB_TABS = [
+  { id: "ai", label: "AI" },
+  { id: "behavior", label: "Hành vi" },
+];
+
+function DetailTabBar({ activeTab, onTabChange, counts, isRoom }) {
+  return (
+    <div
+      className={cn(
+        "shrink-0 overflow-x-auto rounded-[12px] border p-1",
+        isRoom ? "border-white/10 bg-white/[0.03]" : "border-border bg-surface-sunken",
+      )}
+      role="tablist"
+    >
+      <div className="flex min-w-max gap-1">
+        {DETAIL_TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          const count = counts[tab.id];
+
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              className={cn(
+                "flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[8px] px-3 py-2 text-xs font-semibold transition-colors",
+                isActive
+                  ? isRoom
+                    ? "bg-white/10 text-white"
+                    : "bg-surface text-primary shadow-sm"
+                  : isRoom
+                    ? "text-slate-400 hover:text-slate-200"
+                    : "text-secondary hover:text-primary",
+              )}
+              onClick={() => onTabChange(tab.id)}
+            >
+              <span>{tab.label}</span>
+              {count > 0 ? (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
+                    isActive
+                      ? isRoom
+                        ? "bg-white/15 text-slate-200"
+                        : "bg-primary/10 text-primary"
+                      : isRoom
+                        ? "bg-white/5 text-slate-500"
+                        : "bg-neutral text-secondary",
+                  )}
+                >
+                  {count}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function EvidenceTabContent({ evidence, attemptId, isRoom }) {
+  if (!evidence.length) {
+    return (
+      <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>
+        Chưa có bằng chứng hình ảnh.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="grid grid-cols-2 gap-2">
+      {evidence.map((item) => (
+        <li
+          key={item.id}
+          className={cn(
+            "overflow-hidden rounded-[12px] border",
+            isRoom ? "border-white/10" : "border-border",
+          )}
+        >
+          <AuthenticatedEvidenceMedia
+            attemptId={attemptId}
+            className="aspect-video w-full object-cover"
+            evidenceId={item.id}
+            evidenceType={item.evidenceType}
+            fileUrl={item.fileUrl}
+          />
+          <p className={cn("px-2 py-1 text-[11px]", isRoom ? "text-slate-500" : "text-secondary")}>
+            {item.evidenceType}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ViolationSubTabBar({ activeSubTab, counts, isRoom, onSubTabChange }) {
+  return (
+    <div
+      className={cn(
+        "mb-3 flex gap-1 rounded-[10px] border p-1",
+        isRoom ? "border-white/10 bg-white/[0.02]" : "border-border bg-surface-sunken",
+      )}
+      role="tablist"
+      aria-label="Loại vi phạm"
+    >
+      {VIOLATION_SUB_TABS.map((tab) => {
+        const isActive = activeSubTab === tab.id;
+        const count = counts[tab.id];
+
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-[8px] px-3 py-1.5 text-xs font-semibold transition-colors",
+              isActive
+                ? isRoom
+                  ? "bg-white/10 text-white"
+                  : "bg-surface text-primary shadow-sm"
+                : isRoom
+                  ? "text-slate-400 hover:text-slate-200"
+                  : "text-secondary hover:text-primary",
+            )}
+            onClick={() => onSubTabChange(tab.id)}
+          >
+            <span>{tab.label}</span>
+            {count > 0 ? (
+              <span
+                className={cn(
+                  "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
+                  isActive
+                    ? isRoom
+                      ? "bg-white/15 text-slate-200"
+                      : "bg-primary/10 text-primary"
+                    : isRoom
+                      ? "bg-white/5 text-slate-500"
+                      : "bg-neutral text-secondary",
+                )}
+              >
+                {count}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ViolationsTabContent({ violationLogs, isLoadingLogs, isRoom, attemptId, initialSubTab = "behavior" }) {
+  const [activeSubTab, setActiveSubTab] = useState(initialSubTab);
+
+  const aiLogs = useMemo(
+    () => violationLogs.filter((log) => isAiViolationLog(log)),
+    [violationLogs],
+  );
+  const behaviorLogs = useMemo(
+    () => violationLogs.filter((log) => !isAiViolationLog(log)),
+    [violationLogs],
+  );
+  const subTabCounts = useMemo(
+    () => ({
+      ai: aiLogs.length,
+      behavior: behaviorLogs.length,
+    }),
+    [aiLogs.length, behaviorLogs.length],
+  );
+  const displayedLogs = activeSubTab === "ai" ? aiLogs : behaviorLogs;
+
+  useEffect(() => {
+    setActiveSubTab(initialSubTab);
+  }, [attemptId, initialSubTab]);
+
+  if (isLoadingLogs) {
+    return <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>Đang tải log…</p>;
+  }
+
+  if (!violationLogs.length) {
+    return (
+      <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>
+        Chưa có vi phạm ghi nhận.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <ViolationSubTabBar
+        activeSubTab={activeSubTab}
+        counts={subTabCounts}
+        isRoom={isRoom}
+        onSubTabChange={setActiveSubTab}
+      />
+
+      {!displayedLogs.length ? (
+        <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>
+          {activeSubTab === "ai" ? "Chưa có vi phạm AI." : "Chưa có vi phạm hành vi."}
+        </p>
+      ) : (
+        <ul className={cn("space-y-2 text-sm", isRoom ? "text-slate-400" : "text-secondary")}>
+          {displayedLogs.map((log) => {
+            const meta = getAntiCheatEventMeta(log.type);
+            const aiMeta = parseAiDetectionMetadata(log.metadata);
+            const aiDetectionMeta = aiMeta?.detectionType ? getAiDetectionMeta(aiMeta.detectionType) : null;
+            const badgeLabel = aiDetectionMeta ? `AI: ${aiDetectionMeta.label}` : meta.label;
+            const badgeVariant = aiDetectionMeta?.variant ?? meta.variant;
+
+            return (
+              <li
+                key={log.id}
+                className={cn(
+                  "rounded-[12px] border px-3 py-2",
+                  isRoom ? "border-white/10 bg-white/[0.03]" : "border-border bg-neutral",
+                )}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={badgeVariant}>{badgeLabel}</Badge>
+                  <span className="text-[11px] text-slate-500">{formatShortDateTime(log.occurredAt)}</span>
+                </div>
+                <p className={cn("mt-1", isRoom ? "text-slate-300" : "text-primary")}>{log.description}</p>
+                {aiMeta ? (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Độ tin cậy: {formatAiConfidence(aiMeta.confidence)}
+                    {aiMeta.labels?.length ? ` · ${aiMeta.labels.join(", ")}` : ""}
+                  </p>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
+  );
+}
+
+function TimelineTabContent({ recentActions, isRoom }) {
+  if (!recentActions.length) {
+    return (
+      <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>
+        Chưa có thao tác giáo viên.
+      </p>
+    );
+  }
+
+  return (
+    <ul className={cn("space-y-2 text-sm", isRoom ? "text-slate-400" : "text-secondary")}>
+      {recentActions.map((action) => (
+        <li
+          key={action.id}
+          className={cn(
+            "rounded-[12px] border px-3 py-2",
+            isRoom ? "border-white/10 bg-white/[0.03]" : "border-border bg-neutral",
+          )}
+        >
+          <p className={cn("font-medium", isRoom ? "text-slate-200" : "text-primary")}>
+            {action.actionType}
+          </p>
+          <p>{action.reason || "Không có ghi chú"}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function FocusCameraPanel({
+  student,
+  liveVideoRef,
+  remoteStatus,
+  videoPlaceholder,
+  attemptMeta,
+  isAudioEnabled,
+  isRoom,
+}) {
+  return (
+    <div
+      className={cn(
+        "relative h-full min-h-[220px] min-w-0 overflow-hidden",
+        isRoom ? "bg-[#060b14]" : "bg-surface-sunken",
+      )}
+    >
+      <video
+        ref={liveVideoRef}
+        autoPlay
+        className="absolute inset-0 h-full w-full object-contain md:object-cover"
+        muted={!isAudioEnabled}
+        playsInline
+      />
+
+      {remoteStatus !== "connected" ? (
+        <div
+          className={cn(
+            "absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center text-sm",
+            isRoom ? "bg-[#060b14]/90 text-slate-400" : "bg-surface/80 text-secondary",
+          )}
+        >
+          <p className={cn("max-w-md font-semibold", isRoom ? "text-slate-300" : "text-primary")}>
+            {remoteStatus === "connecting"
+              ? "Đang kết nối live…"
+              : videoPlaceholder?.title ?? "Chưa có live stream"}
+          </p>
+          {videoPlaceholder?.detail ? (
+            <p className="max-w-md text-xs leading-relaxed opacity-80">{videoPlaceholder.detail}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 via-black/30 to-transparent px-5 py-4 md:px-6">
+        <p className={cn("truncate text-lg font-semibold", isRoom ? "text-white" : "text-primary")}>
+          {student.studentName}
+        </p>
+        <p className={cn("truncate text-sm", isRoom ? "text-slate-300" : "text-secondary")}>
+          {attemptMeta.label} · #{student.attemptId}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function AttemptProctorDrawer({
   student,
@@ -39,9 +368,12 @@ export default function AttemptProctorDrawer({
   onToggleAudio,
   variant = "default",
   violationRefreshToken = 0,
+  initialTab = "evidence",
+  initialViolationSubTab = "behavior",
 }) {
   const [violationLogs, setViolationLogs] = useState([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [activeTab, setActiveTab] = useState("evidence");
 
   useEffect(() => {
     if (!student?.attemptId) {
@@ -74,6 +406,10 @@ export default function AttemptProctorDrawer({
     };
   }, [student?.attemptId, violationRefreshToken]);
 
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab, student?.attemptId]);
+
   if (!student) {
     return null;
   }
@@ -93,217 +429,166 @@ export default function AttemptProctorDrawer({
     sfuEnabled: false,
     isActive: true,
   });
+  const evidence = detail?.evidence ?? [];
+  const recentActions = detail?.recentActions ?? [];
+  const tabCounts = {
+    evidence: evidence.length,
+    violations: violationLogs.length,
+    timeline: recentActions.length,
+  };
 
   return (
-    <aside
-      className={cn(
-        "fixed inset-y-0 right-0 z-40 w-full max-w-[420px] border-l shadow-2xl",
-        isRoom ? "border-white/10 bg-[#0b1220]" : "border-border bg-surface",
-      )}
-    >
-      <div className="flex h-full flex-col">
-        <div
+    <>
+      <button
+        type="button"
+        aria-label="Đóng xem chi tiết"
+        className="fixed inset-0 z-30 bg-black/50 backdrop-blur-[1px]"
+        onClick={onClose}
+      />
+
+      <div
+        className="fixed inset-0 z-40 grid h-[100dvh] w-full grid-cols-1 grid-rows-[minmax(220px,1fr)_min(52dvh,480px)] md:grid-cols-[minmax(0,1fr)_min(480px,38vw)] md:grid-rows-1"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <FocusCameraPanel
+          attemptMeta={attemptMeta}
+          isAudioEnabled={isAudioEnabled}
+          isRoom={isRoom}
+          liveVideoRef={liveVideoRef}
+          remoteStatus={remoteStatus}
+          student={student}
+          videoPlaceholder={videoPlaceholder}
+        />
+
+        <aside
           className={cn(
-            "flex items-center justify-between border-b px-5 py-4",
-            isRoom ? "border-white/10" : "border-border",
+            "flex min-h-0 min-w-0 flex-col overflow-hidden border-t shadow-2xl md:border-l md:border-t-0",
+            isRoom ? "border-white/10 bg-[#0b1220]" : "border-border bg-surface",
           )}
         >
-          <div>
-            <h2 className={cn("text-lg font-semibold", isRoom ? "text-white" : "text-primary")}>
-              {student.studentName}
-            </h2>
-            <p className={cn("text-sm", isRoom ? "text-slate-400" : "text-secondary")}>
-              {attemptMeta.label} · #{student.attemptId}
-            </p>
-          </div>
-          <Button onClick={onClose} variant="ghost">
-            Đóng
-          </Button>
-        </div>
-
-        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
           <div
             className={cn(
-              "relative aspect-video overflow-hidden rounded-[16px] border",
-              isRoom ? "border-white/10 bg-[#060b14]" : "border-border bg-surface-sunken",
+              "grid shrink-0 grid-cols-[1fr_auto] items-center gap-3 border-b px-5 py-3",
+              isRoom ? "border-white/10" : "border-border",
             )}
           >
-            <video
-              ref={liveVideoRef}
-              autoPlay
-              className="h-full w-full object-cover"
-              muted={!isAudioEnabled}
-              playsInline
-            />
-            {remoteStatus !== "connected" ? (
-              <div
-                className={cn(
-                  "absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center text-sm",
-                  isRoom ? "bg-[#060b14]/90 text-slate-400" : "bg-surface/80 text-secondary",
-                )}
+            <p className={cn("truncate text-sm font-semibold", isRoom ? "text-slate-200" : "text-primary")}>
+              Chi tiết giám sát
+            </p>
+            <Button
+              className={cn(
+                "shrink-0",
+                isRoom &&
+                  "!border !border-white/15 !bg-white !text-slate-900 hover:!bg-slate-100 hover:!text-slate-900",
+              )}
+              onClick={onClose}
+              variant="ghost"
+            >
+              Đóng
+            </Button>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-5 py-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <RiskBadge riskLevel={student.riskLevel} score={student.suspicionScore} />
+              <Badge title={cameraMeta.hint} variant={cameraMeta.variant}>
+                Camera: {cameraMeta.label}
+              </Badge>
+              <Badge title={connectionMeta.hint} variant={connectionMeta.variant}>
+                Mạng: {connectionMeta.label}
+              </Badge>
+              <Badge title={liveMeta.hint} variant={liveMeta.variant}>
+                Live: {liveMeta.label}
+              </Badge>
+              {latestDetectionMeta ? (
+                <Badge variant={latestDetectionMeta.variant}>AI: {latestDetectionMeta.label}</Badge>
+              ) : null}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                className="!px-2 !py-2 text-xs sm:text-sm"
+                disabled={remoteStatus !== "connected"}
+                onClick={onSnapshot}
+                variant="secondary"
               >
-                <p className="font-semibold text-slate-300">
-                  {remoteStatus === "connecting"
-                    ? "Đang kết nối live…"
-                    : videoPlaceholder?.title ?? "Chưa có live stream"}
-                </p>
-                {videoPlaceholder?.detail ? (
-                  <p className="text-xs leading-relaxed opacity-80">{videoPlaceholder.detail}</p>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <RiskBadge riskLevel={student.riskLevel} score={student.suspicionScore} />
-            <Badge title={cameraMeta.hint} variant={cameraMeta.variant}>
-              Camera: {cameraMeta.label}
-            </Badge>
-            <Badge title={connectionMeta.hint} variant={connectionMeta.variant}>
-              Mạng: {connectionMeta.label}
-            </Badge>
-            <Badge title={liveMeta.hint} variant={liveMeta.variant}>
-              Live: {liveMeta.label}
-            </Badge>
-            {latestDetectionMeta ? (
-              <Badge variant={latestDetectionMeta.variant}>AI: {latestDetectionMeta.label}</Badge>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button disabled={remoteStatus !== "connected"} onClick={onSnapshot} variant="secondary">
-              Chụp ảnh
-            </Button>
-            {isClipRecording ? (
-              <Button onClick={onStopClip} variant="danger">
-                Dừng ghi ({clipElapsedSeconds}s)
+                Chụp ảnh
               </Button>
-            ) : (
-              <Button disabled={remoteStatus !== "connected"} onClick={onStartClip} variant="secondary">
-                Ghi clip
+              {isClipRecording ? (
+                <Button className="!px-2 !py-2 text-xs sm:text-sm" onClick={onStopClip} variant="danger">
+                  Dừng ghi ({clipElapsedSeconds}s)
+                </Button>
+              ) : (
+                <Button
+                  className="!px-2 !py-2 text-xs sm:text-sm"
+                  disabled={remoteStatus !== "connected"}
+                  onClick={onStartClip}
+                  variant="secondary"
+                >
+                  Ghi clip
+                </Button>
+              )}
+              <Button className="!px-2 !py-2 text-xs sm:text-sm" onClick={onToggleAudio} variant="secondary">
+                {isAudioEnabled ? "Tắt mic" : "Bật mic"}
               </Button>
-            )}
-            <Button onClick={onToggleAudio} variant="secondary">
-              {isAudioEnabled ? "Tắt mic" : "Bật mic"}
-            </Button>
-            <Button onClick={() => onWarn?.(student)} variant="secondary">
-              Nhắc nhở
-            </Button>
-            {isPaused ? (
-              <Button onClick={() => onResume?.(student)}>Cho tiếp tục</Button>
-            ) : (
-              <Button onClick={() => onPause?.(student)} variant="danger">
-                Tạm dừng thi
+              <Button
+                className="!px-2 !py-2 text-xs sm:text-sm"
+                onClick={() => onWarn?.(student)}
+                variant="secondary"
+              >
+                Nhắc nhở
               </Button>
-            )}
-            <Button onClick={() => onTerminate?.(student)} variant="danger">
-              Kết thúc bài
-            </Button>
-          </div>
+              {isPaused ? (
+                <Button className="!px-2 !py-2 text-xs sm:text-sm" onClick={() => onResume?.(student)}>
+                  Cho tiếp tục
+                </Button>
+              ) : (
+                <Button
+                  className="!px-2 !py-2 text-xs sm:text-sm"
+                  onClick={() => onPause?.(student)}
+                  variant="danger"
+                >
+                  Tạm dừng thi
+                </Button>
+              )}
+              <Button
+                className="!px-2 !py-2 text-xs sm:text-sm"
+                onClick={() => onTerminate?.(student)}
+                variant="danger"
+              >
+                Kết thúc bài
+              </Button>
+            </div>
 
-          <div className="space-y-3">
-            <h3 className={cn("text-sm font-semibold", isRoom ? "text-slate-200" : "text-primary")}>
-              Bằng chứng
-            </h3>
-            {(detail?.evidence ?? []).length ? (
-              <ul className="grid grid-cols-2 gap-2">
-                {detail.evidence.map((item) => (
-                  <li
-                    key={item.id}
-                    className={cn(
-                      "overflow-hidden rounded-[12px] border",
-                      isRoom ? "border-white/10" : "border-border",
-                    )}
-                  >
-                    <AuthenticatedEvidenceMedia
-                      attemptId={student.attemptId}
-                      className="aspect-video w-full object-cover"
-                      evidenceId={item.id}
-                      evidenceType={item.evidenceType}
-                      fileUrl={item.fileUrl}
-                    />
-                    <p className={cn("px-2 py-1 text-[11px]", isRoom ? "text-slate-500" : "text-secondary")}>
-                      {item.evidenceType}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>Chưa có bằng chứng.</p>
-            )}
-          </div>
+            <DetailTabBar
+              activeTab={activeTab}
+              counts={tabCounts}
+              isRoom={isRoom}
+              onTabChange={setActiveTab}
+            />
 
-          <div className="space-y-3">
-            <h3 className={cn("text-sm font-semibold", isRoom ? "text-slate-200" : "text-primary")}>
-              Lịch sử vi phạm
-            </h3>
-            {isLoadingLogs ? (
-              <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>Đang tải log…</p>
-            ) : violationLogs.length ? (
-              <ul className={cn("space-y-2 text-sm", isRoom ? "text-slate-400" : "text-secondary")}>
-                {violationLogs.map((log) => {
-                  const meta = getAntiCheatEventMeta(log.type);
-                  const aiMeta = parseAiDetectionMetadata(log.metadata);
-
-                  return (
-                    <li
-                      key={log.id}
-                      className={cn(
-                        "rounded-[12px] border px-3 py-2",
-                        isRoom ? "border-white/10 bg-white/[0.03]" : "border-border bg-neutral",
-                      )}
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={meta.variant}>{meta.label}</Badge>
-                        <span className="text-[11px] text-slate-500">{formatShortDateTime(log.occurredAt)}</span>
-                      </div>
-                      <p className={cn("mt-1", isRoom ? "text-slate-300" : "text-primary")}>{log.description}</p>
-                      {aiMeta ? (
-                        <p className="mt-1 text-xs text-slate-500">
-                          AI: {formatAiConfidence(aiMeta.confidence)}
-                          {aiMeta.labels?.length ? ` · ${aiMeta.labels.join(", ")}` : ""}
-                        </p>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>
-                Chưa có vi phạm ghi nhận.
-              </p>
-            )}
+            <div className="min-h-0 w-full flex-1 overflow-y-auto pb-1">
+              {activeTab === "evidence" ? (
+                <EvidenceTabContent attemptId={student.attemptId} evidence={evidence} isRoom={isRoom} />
+              ) : null}
+              {activeTab === "violations" ? (
+                <ViolationsTabContent
+                  attemptId={student.attemptId}
+                  initialSubTab={initialViolationSubTab}
+                  isLoadingLogs={isLoadingLogs}
+                  isRoom={isRoom}
+                  violationLogs={violationLogs}
+                />
+              ) : null}
+              {activeTab === "timeline" ? (
+                <TimelineTabContent isRoom={isRoom} recentActions={recentActions} />
+              ) : null}
+            </div>
           </div>
-
-          <div className="space-y-3">
-            <h3 className={cn("text-sm font-semibold", isRoom ? "text-slate-200" : "text-primary")}>
-              Timeline gần đây
-            </h3>
-            {(detail?.recentActions ?? []).length ? (
-              <ul className={cn("space-y-2 text-sm", isRoom ? "text-slate-400" : "text-secondary")}>
-                {detail.recentActions.map((action) => (
-                  <li
-                    key={action.id}
-                    className={cn(
-                      "rounded-[12px] border px-3 py-2",
-                      isRoom ? "border-white/10 bg-white/[0.03]" : "border-border bg-neutral",
-                    )}
-                  >
-                    <p className={cn("font-medium", isRoom ? "text-slate-200" : "text-primary")}>
-                      {action.actionType}
-                    </p>
-                    <p>{action.reason || "Không có ghi chú"}</p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className={cn("text-sm", isRoom ? "text-slate-500" : "text-secondary")}>
-                Chưa có thao tác giáo viên.
-              </p>
-            )}
-          </div>
-        </div>
+        </aside>
       </div>
-    </aside>
+    </>
   );
 }

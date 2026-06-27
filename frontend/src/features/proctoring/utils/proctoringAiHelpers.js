@@ -69,3 +69,24 @@ export function normalizeAiDetectionEvent(raw) {
 export function isAiViolationEvent(event) {
   return Boolean(event?.isFlagged) || (event?.detectionType && event.detectionType !== "Normal" && event.detectionType !== "Disabled");
 }
+
+const AI_VIOLATION_LOG_TYPES = new Set([
+  "PHONE_VISIBLE",
+  "BOOK_VISIBLE",
+  "SECOND_PERSON_VISIBLE",
+  "PERSON_NOT_VISIBLE",
+  "PhoneVisible",
+  "BookVisible",
+  "SecondPersonVisible",
+  "PersonNotVisible",
+  "MultipleFaces",
+]);
+
+export function isAiViolationLog(log) {
+  const aiMeta = parseAiDetectionMetadata(log?.metadata);
+  if (aiMeta?.detectionType) {
+    return true;
+  }
+
+  return AI_VIOLATION_LOG_TYPES.has(log?.type);
+}

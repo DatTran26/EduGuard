@@ -44,7 +44,7 @@ export default function ProctoringAiAlertFeed({
   onSelectStudent,
   className,
 }) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [showAllDetections, setShowAllDetections] = useState(false);
 
   const feedItems = useMemo(() => {

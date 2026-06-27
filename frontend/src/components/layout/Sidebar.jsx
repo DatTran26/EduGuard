@@ -50,7 +50,7 @@ function getNavigationIconByLabel(label) {
   if (label === "Giám sát" || label === "Giám sát thi") {
     return FiShield;
   }
-  if (label === "Bằng chứng vi phạm") {
+  if (label === "Kho hình ảnh/ Video") {
     return FiCamera;
   }
   if (label === "Kết quả") {
@@ -143,6 +143,10 @@ function getNavigationItemIsActive(itemPath, pathname) {
 
   if (itemPath === routeConfig.adminProctoringAi) {
     return pathname === routeConfig.adminProctoringAi;
+  }
+
+  if (itemPath === routeConfig.adminEmailSettings) {
+    return pathname === routeConfig.adminEmailSettings;
   }
 
   if (itemPath === routeConfig.adminProctoringEvidence) {

@@ -1,5 +1,119 @@
 # Project Changelog
 
+## Feature: Proctoring AI service logging
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring AI service logging.
+- Purpose and user/business impact: Operators can trace AI detection requests and failures in service logs when debugging proctoring issues (slow inference, bad frames, YOLO stub mode).
+- Files or modules changed: `ai-services/proctoring-ai-service/main.py`, `.env.example`, `README.md`.
+- Technical summary: Added structured Python logging with `PROCTORING_LOG_LEVEL`; startup/shutdown lifecycle logs; HTTP middleware for `/health` and `/detect` timing; per-request detect logs with image size, detection type, confidence, label count, inference duration; exception logs for decode/inference failures with safe fallback responses.
+- Validation: `python -m py_compile ai-services/proctoring-ai-service/main.py` — passed.
+- Known risks: Verbose `DEBUG` logs may grow quickly under high frame rates — keep default `INFO` in production.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Admin Gmail email settings screen
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Admin Gmail email settings screen.
+- Purpose and user/business impact: Admin can configure Gmail/SMTP sender account and OTP verification rules from the UI without editing appsettings; settings apply immediately to registration emails.
+- Files or modules changed: `EmailSettings` entity/migration, `EmailSettingsService`, `AdminEmailSettingsController`, `smtp-mail-transport.cs`, auth/email services wired to DB settings, `AdminEmailSettingsPage.jsx`, `adminSettingsApi.js`, routes/sidebar.
+- Technical summary: Singleton `EmailSettings` row in database replaces appsettings as runtime source; password never returned in GET; optional password on PUT keeps existing secret; test email endpoint validates SMTP config.
+- Validation: `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -c Debug -o .\temp-build-email-admin` — passed.
+- Known risks: SMTP password stored in database plaintext — restrict admin access and plan encryption for production hardening.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Email verification on registration
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Email verification on registration.
+- Purpose and user/business impact: New accounts must verify email via OTP before login when enabled; reduces fake signups and aligns register wizard step 4 with real backend flow.
+- Files or modules changed: `email-options.cs`, `email-verification-options.cs`, `smtp-email-sender.cs`, `email-verification-service.cs`, `auth-service.cs`, `auth-controller.cs`, `dependency-injection.cs`, `appsettings.json`, `appsettings.Development.example.json`, `.env.example`, auth DTOs/validators, `authApi.js`, `useAuth.jsx`, `RegisterPage.jsx`, `axiosClient.js`.
+- Technical summary: Added `Email` SMTP config and `EmailVerification` OTP settings; register sets `EmailConfirmed=false` when required, sends 6-digit OTP (logged in Development if SMTP off), exposes verify/resend endpoints; frontend creates account at wizard step 3 and verifies OTP at step 4.
+- Validation: `dotnet build backend\EduGuard.Api\EduGuard.Api.csproj -c Debug -o .\temp-build-email-verify` — passed.
+- Known risks: OTP stored in in-memory cache (lost on API restart); configure real SMTP for production email delivery.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Proctoring room manual student detail and violation history button
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring room manual student detail and violation history button.
+- Purpose and user/business impact: Teachers monitoring a live exam room are no longer forced into a student detail drawer when a student joins; they can open violation/AI behavior history on demand from each student tile or from the alert feed.
+- Files or modules changed: `TeacherProctoringRoomPage.jsx`, `AttemptProctorDrawer.jsx`, `StudentCameraGrid.jsx`, `StudentLiveTile.jsx`.
+- Technical summary: Removed auto-select `useEffect` for the first watchable student; added `drawerInitialTab` and `onViewViolationHistory` flow; violations tab shows **AI** / **Hành vi** sub-tabs via `isAiViolationLog`; alert feed clicks open violations on AI sub-tab; AI alert feed collapsed by default.
+- Validation: Frontend linter clean on touched files.
+- Known risks: None identified.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Student device check redesign and auto fullscreen
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Student device check redesign and auto fullscreen.
+- Purpose and user/business impact: Device check is clearer with a readiness checklist and camera preview; students no longer click a separate fullscreen button — the app auto-requests fullscreen on load and again when starting the attempt.
+- Files or modules changed: `StudentDeviceCheckPage.jsx`.
+- Technical summary: Redesigned layout (checklist + preview columns); removed fullscreen from `canStart` gate and manual button; auto `requestFullscreen` after exam load and on **Bắt đầu làm bài** click; wired `mediaStream`/`setVideoElement` for reliable preview.
+- Validation: Frontend linter clean on touched file.
+- Known risks: Browsers may still block fullscreen without user gesture; fallback retry on start button click.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Student exam camera layout and late-join preview fix (bug fix)
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Student exam camera layout and late-join preview fix (bug fix).
+- Purpose and user/business impact: Students see the surveillance camera next to the countdown timer during exams; late join or F5 reload no longer leaves a blank white preview on the student screen while the teacher still receives video.
+- Files or modules changed: `useCameraStream.js`, `CameraPreview.jsx`, `ExamAttemptPage.jsx`.
+- Technical summary: Moved compact `CameraPreview` into the sticky header beside `ExamAttemptHeaderCountdown`; removed duplicate bottom-right and modal previews; expose `mediaStream` state and bind in `useLayoutEffect` (with rAF retry); cancel stale `getUserMedia` on unmount; late-join gate reuses the header preview with elevated header z-index.
+- Validation: Frontend linter clean on touched files.
+- Known risks: None identified.
+
+Unresolved questions:
+
+- None.
+
 ## Feature: Exam and assignment student notifications
 
 Date: 2026-06-27

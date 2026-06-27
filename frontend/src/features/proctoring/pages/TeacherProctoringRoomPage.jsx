@@ -49,7 +49,8 @@ export default function TeacherProctoringRoomPage() {
   const [viewMode, setViewMode] = useState("auto");
   const [isCoProctorOpen, setIsCoProctorOpen] = useState(false);
   const [isRoomLoading, setIsRoomLoading] = useState(true);
-  const [isDrawerDismissed, setIsDrawerDismissed] = useState(false);
+  const [drawerInitialTab, setDrawerInitialTab] = useState("evidence");
+  const [drawerInitialViolationSubTab, setDrawerInitialViolationSubTab] = useState("behavior");
   const [isCloseExamDialogOpen, setIsCloseExamDialogOpen] = useState(false);
   const [isClosingExam, setIsClosingExam] = useState(false);
   const [isClassReportOpen, setIsClassReportOpen] = useState(false);
@@ -79,13 +80,6 @@ export default function TeacherProctoringRoomPage() {
         const event = normalizeAiDetectionEvent(payload);
         devLog.proctoring("AI detection result", event);
         setAiEvents((previous) => [event, ...previous].slice(0, 80));
-        if (event.isFlagged) {
-          showToast({
-            tone: "danger",
-            title: `AI: ${event.studentName}`,
-            message: `${event.detectionType} (${Math.round(event.confidence * 100)}%)`,
-          });
-        }
         refreshRoom().catch(() => {});
         setReportRefreshToken((value) => value + 1);
         return;
@@ -117,7 +111,7 @@ export default function TeacherProctoringRoomPage() {
         setReportRefreshToken((value) => value + 1);
       }
     },
-    [refreshRoom, showToast],
+    [refreshRoom],
   );
 
   const roomHub = useProctoringHubConnection({
@@ -282,17 +276,6 @@ export default function TeacherProctoringRoomPage() {
     };
   }, [isRoomHubConnected, selectedStudent?.attemptId, showToast]);
 
-  useEffect(() => {
-    if (!isRoomHubConnected || isRoomLoading || selectedStudent || students.length === 0 || isDrawerDismissed) {
-      return;
-    }
-
-    const firstWatchable = students.find((student) => canWatchStudentLive(student));
-    if (firstWatchable) {
-      setSelectedStudent(firstWatchable);
-    }
-  }, [isDrawerDismissed, isRoomHubConnected, isRoomLoading, selectedStudent, students]);
-
   const sortedStudents = useMemo(() => sortStudentsByRisk(students), [students]);
   const filteredStudents = useMemo(
     () => filterStudents(sortedStudents, activeFilter),
@@ -319,24 +302,31 @@ export default function TeacherProctoringRoomPage() {
     stopWatch().catch(() => {});
     setSelectedStudent(null);
     setDetail(null);
-    setIsDrawerDismissed(true);
+    setDrawerInitialTab("evidence");
+    setDrawerInitialViolationSubTab("behavior");
   }
 
   function handleSelectStudentFromFeed(attemptId) {
     const matchedStudent = students.find((student) => student.attemptId === attemptId);
     if (matchedStudent) {
-      handleSelectStudent(matchedStudent);
+      handleSelectStudent(matchedStudent, { tab: "violations", violationSubTab: "ai" });
     }
   }
 
-  function handleSelectStudent(student) {
-    setIsDrawerDismissed(false);
+  function handleSelectStudent(student, { tab = "evidence", violationSubTab = "behavior" } = {}) {
+    setDrawerInitialTab(tab);
+    setDrawerInitialViolationSubTab(violationSubTab);
     setSelectedStudent(student);
   }
 
+  function handleViewViolationHistory(student) {
+    handleSelectStudent(student, { tab: "violations", violationSubTab: "behavior" });
+  }
+
   async function handleRequestWatch(student) {
-    setIsDrawerDismissed(false);
     const isSameStudent = selectedStudent?.attemptId === student.attemptId;
+    setDrawerInitialTab("evidence");
+    setDrawerInitialViolationSubTab("behavior");
     setSelectedStudent(student);
 
     if (isRoomHubConnected && canWatchStudentLive(student) && isSameStudent) {
@@ -552,6 +542,7 @@ export default function TeacherProctoringRoomPage() {
           isAudioEnabled={isAudioEnabled}
           onRequestWatch={handleRequestWatch}
           onSelectStudent={handleSelectStudent}
+          onViewViolationHistory={handleViewViolationHistory}
           remoteStatus={selectedRemoteStatus}
           remoteStream={selectedRemoteStream}
           sfuConnectionStatus={sfuEnabled ? sfuConnectionStatus : null}
@@ -578,6 +569,8 @@ export default function TeacherProctoringRoomPage() {
       <AttemptProctorDrawer
         clipElapsedSeconds={clipElapsedSeconds}
         detail={detail}
+        initialTab={drawerInitialTab}
+        initialViolationSubTab={drawerInitialViolationSubTab}
         isAudioEnabled={isAudioEnabled}
         isClipRecording={isClipRecording}
         liveVideoRef={liveVideoRef}

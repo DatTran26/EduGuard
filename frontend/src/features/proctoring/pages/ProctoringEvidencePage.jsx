@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FiCamera, FiFilm, FiSearch, FiShield } from "react-icons/fi";
+import EvidenceSummaryStats from "../components/EvidenceSummaryStats";
 import { examApi } from "../../../api/examApi";
 import { proctoringApi } from "../../../api/proctoringApi";
 import Card from "../../../components/common/Card";
@@ -15,23 +15,6 @@ import EvidenceLightbox from "../components/EvidenceLightbox";
 import { EVIDENCE_TYPE_OPTIONS } from "../utils/evidenceHelpers";
 
 const PAGE_SIZE = 24;
-
-function SummaryTile({ icon: Icon, label, value, accentClass }) {
-  return (
-    <div className="relative overflow-hidden rounded-[18px] border border-border bg-surface px-4 py-4 shadow-sm">
-      <div className={`absolute inset-y-0 left-0 w-1 ${accentClass}`} />
-      <div className="flex items-center gap-3 pl-2">
-        <span className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-surface-sunken text-secondary">
-          <Icon className="h-4 w-4" />
-        </span>
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-secondary">{label}</p>
-          <p className="text-2xl font-bold tabular-nums text-primary">{value}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function ProctoringEvidencePage() {
   const { user } = useAuth();
@@ -191,16 +174,10 @@ export default function ProctoringEvidencePage() {
     <div className="space-y-6 pb-10">
       <PageHeader
         eyebrow="Giám sát thi"
-        title="Bằng chứng vi phạm"
-        description="Xem lại ảnh chụp, video clip và bằng chứng AI đã lưu trong hệ thống — không cần mở thư mục server."
+        title="Kho hình ảnh/ Video"
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryTile accentClass="bg-brand" icon={FiShield} label="Tổng bằng chứng" value={summary.totalCount} />
-        <SummaryTile accentClass="bg-info" icon={FiCamera} label="Ảnh chụp" value={summary.snapshotCount} />
-        <SummaryTile accentClass="bg-danger" icon={FiFilm} label="Video clip" value={summary.clipCount} />
-        <SummaryTile accentClass="bg-caution" icon={FiSearch} label="Tự động / AI" value={summary.autoCount} />
-      </div>
+      <EvidenceSummaryStats summary={summary} />
 
       <Card className="space-y-4 p-4 sm:p-5">
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
@@ -223,11 +200,11 @@ export default function ProctoringEvidencePage() {
             onChange={(event) => setSearchTerm(event.target.value)}
           />
         </div>
-        <p className="text-xs text-secondary">
-          {user?.role === "Admin"
-            ? "Quản trị viên xem toàn bộ bằng chứng trên hệ thống."
-            : "Giảng viên chỉ xem bằng chứng từ đề thi mình tạo hoặc được phân công co-giám sát."}
-        </p>
+        {user?.role === "Admin" ? (
+          <p className="text-xs text-secondary">
+            Quản trị viên xem toàn bộ bằng chứng trên hệ thống.
+          </p>
+        ) : null}
       </Card>
 
       {isLoading ? (

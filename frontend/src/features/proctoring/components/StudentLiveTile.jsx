@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { FiRadio, FiVideo, FiWifi } from "react-icons/fi";
+import { FiAlertTriangle, FiRadio, FiVideo, FiWifi } from "react-icons/fi";
 import Badge from "../../../components/common/Badge";
 import { cn } from "../../../utils/cn";
 import {
@@ -63,6 +63,7 @@ export default function StudentLiveTile({
   sfuEnabled = false,
   onSelect,
   onRequestWatch,
+  onViewViolationHistory,
 }) {
   const videoRef = useRef(null);
   const riskLevel = student.riskLevel ?? "Normal";
@@ -187,18 +188,32 @@ export default function StudentLiveTile({
           <Badge variant={latestDetectionMeta.variant}>AI: {latestDetectionMeta.label}</Badge>
         ) : null}
 
-        {watchable && !student.watchedByTeacherId ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {watchable && !student.watchedByTeacherId ? (
+            <span
+              className="inline-flex text-xs font-semibold text-sky-300 hover:text-sky-200"
+              onClick={(event) => {
+                event.stopPropagation();
+                onRequestWatch?.(student);
+              }}
+              role="presentation"
+            >
+              {isActive ? "Kết nối lại live" : sfuEnabled ? "Chọn để ưu tiên xem" : "Bật xem live"}
+            </span>
+          ) : null}
           <span
-            className="inline-flex text-xs font-semibold text-sky-300 hover:text-sky-200"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-amber-200/90 hover:text-amber-100"
             onClick={(event) => {
               event.stopPropagation();
-              onRequestWatch?.(student);
+              onViewViolationHistory?.(student);
             }}
             role="presentation"
+            title="Xem lịch sử vi phạm AI và hành vi"
           >
-            {isActive ? "Kết nối lại live" : sfuEnabled ? "Chọn để ưu tiên xem" : "Bật xem live"}
+            <FiAlertTriangle className="h-3 w-3" />
+            Lịch sử vi phạm
           </span>
-        ) : null}
+        </div>
       </div>
     </button>
   );

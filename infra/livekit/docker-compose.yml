@@ -6,7 +6,7 @@ services:
     ports:
       - "7880:7880"
       - "7881:7881"
-      - "57000-57100:57000-57100/udp"
+      - "52000-52100:52000-52100/udp"
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml:ro
 

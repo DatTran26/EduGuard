@@ -42,29 +42,41 @@ const TONE_STYLES = {
   },
 };
 
-function CountdownLabel({ tone, isExpired }) {
+function CountdownLabel({ tone, isExpired, compact = false }) {
   const styles = TONE_STYLES[tone];
 
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1",
+        "inline-flex items-center rounded-full border shadow-sm",
+        compact ? "gap-1 px-2 py-0.5" : "gap-1.5 px-3 py-1",
         styles.label,
       )}
     >
-      <FiClock aria-hidden="true" className={cn("h-3.5 w-3.5 shrink-0", styles.icon)} />
-      <span className="text-[0.72rem] font-semibold leading-none tracking-[0.02em]">
-        {isExpired ? "Hết giờ làm bài" : "Thời gian còn lại"}
+      <FiClock
+        aria-hidden="true"
+        className={cn("shrink-0", compact ? "h-3 w-3" : "h-3.5 w-3.5", styles.icon)}
+      />
+      <span
+        className={cn(
+          "font-semibold leading-none tracking-[0.02em]",
+          compact ? "text-[0.62rem]" : "text-[0.72rem]",
+        )}
+      >
+        {isExpired ? "Hết giờ" : compact ? "Còn lại" : "Thời gian còn lại"}
       </span>
     </div>
   );
 }
 
-function CountdownDigit({ value, tone }) {
+function CountdownDigit({ value, tone, compact = false }) {
   return (
     <div
       className={cn(
-        "flex h-12 w-[2.85rem] items-center justify-center rounded-xl border-2 font-mono text-[1.65rem] font-bold tabular-nums leading-none sm:h-14 sm:w-[3.15rem] sm:text-[1.9rem]",
+        "flex items-center justify-center rounded-lg border-2 font-mono font-bold tabular-nums leading-none",
+        compact
+          ? "h-8 w-[1.95rem] text-[1.05rem]"
+          : "h-12 w-[2.85rem] rounded-xl text-[1.65rem] sm:h-14 sm:w-[3.15rem] sm:text-[1.9rem]",
         TONE_STYLES[tone].digit,
       )}
     >
@@ -73,12 +85,13 @@ function CountdownDigit({ value, tone }) {
   );
 }
 
-function CountdownColon({ tone, blink }) {
+function CountdownColon({ tone, blink, compact = false }) {
   return (
     <span
       aria-hidden="true"
       className={cn(
-        "pb-0.5 font-mono text-[1.65rem] font-bold leading-none sm:text-[1.9rem]",
+        "font-mono font-bold leading-none",
+        compact ? "pb-0 text-[1.05rem]" : "pb-0.5 text-[1.65rem] sm:text-[1.9rem]",
         TONE_STYLES[tone].colon,
         blink ? "animate-pulse" : null,
       )}
@@ -88,7 +101,7 @@ function CountdownColon({ tone, blink }) {
   );
 }
 
-export default function ExamAttemptHeaderCountdown({ remainingMs = 0 }) {
+export default function ExamAttemptHeaderCountdown({ remainingMs = 0, compact = false }) {
   const parts = useMemo(() => splitRemainingDuration(remainingMs), [remainingMs]);
   const tone = getCountdownTone(parts.totalSeconds);
   const isExpired = parts.totalSeconds <= 0;
@@ -99,23 +112,26 @@ export default function ExamAttemptHeaderCountdown({ remainingMs = 0 }) {
       aria-label={isExpired ? "Hết giờ" : `Thời gian còn lại ${parts.timeDisplay}`}
       aria-live="polite"
       className={cn(
-        "flex flex-col items-center gap-2.5 rounded-2xl border px-4 py-3 sm:px-5 sm:py-3.5",
+        "rounded-xl border",
+        compact
+          ? "flex items-center gap-2 px-2.5 py-1.5"
+          : "flex flex-col items-center gap-2.5 rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5",
         styles.shell,
       )}
       role="timer"
     >
-      <CountdownLabel isExpired={isExpired} tone={tone} />
+      <CountdownLabel compact={compact} isExpired={isExpired} tone={tone} />
 
-      <div className="flex items-center gap-1 sm:gap-1.5">
+      <div className={cn("flex items-center", compact ? "gap-0.5" : "gap-1 sm:gap-1.5")}>
         {parts.showHours ? (
           <>
-            <CountdownDigit tone={tone} value={parts.hours} />
-            <CountdownColon tone={tone} />
+            <CountdownDigit compact={compact} tone={tone} value={parts.hours} />
+            <CountdownColon compact={compact} tone={tone} />
           </>
         ) : null}
-        <CountdownDigit tone={tone} value={parts.minutes} />
-        <CountdownColon blink={tone === "critical"} tone={tone} />
-        <CountdownDigit tone={tone} value={parts.seconds} />
+        <CountdownDigit compact={compact} tone={tone} value={parts.minutes} />
+        <CountdownColon blink={tone === "critical"} compact={compact} tone={tone} />
+        <CountdownDigit compact={compact} tone={tone} value={parts.seconds} />
       </div>
     </div>
   );

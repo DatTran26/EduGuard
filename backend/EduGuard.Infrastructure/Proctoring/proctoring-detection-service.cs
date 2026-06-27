@@ -169,7 +169,7 @@ public class ProctoringDetectionService : IProctoringDetectionService
                 }
             }
         }
-        else if (detectionType is not "Normal" and not "Disabled")
+        else
         {
             var state = await _proctoringRepository.GetStateByAttemptIdAsync(attemptId, ct);
             if (state is not null)

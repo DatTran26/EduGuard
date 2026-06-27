@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### AI Services
+
+- **Proctoring AI logging:** FastAPI service logs startup config, request timing, detection results (type, confidence, labels, inference ms), and errors for bad images or failed inference. Configurable via `PROCTORING_LOG_LEVEL`.
+
+### Backend
+
+- **Admin email settings:** Gmail/SMTP and OTP verification settings stored in DB; admin APIs `GET/PUT /api/admin/email-settings` and `POST /api/admin/email-settings/test`. Runtime auth email flow reads from DB instead of appsettings only.
+
+### Frontend
+
+- **Admin email settings page:** New `/admin/email-settings` screen for Admin role to configure Gmail account, sender info, OTP rules, and send test email.
+
+### Backend
+
+### Frontend
+
+- **Register email verification:** Step 4 OTP flow wired to backend verify/resend APIs; account is created at step 3, verification completes registration and signs in.
+
+### Frontend
+
+- **Proctoring room UX:** Stopped auto-opening student detail when someone joins the live room; added **Lịch sử vi phạm** on each student tile (opens drawer with AI / Hành vi sub-tabs); **Cảnh báo AI & vi phạm** feed is collapsed by default.
+
+### Frontend
+
+- **Bug fix (student exam camera):** Surveillance camera preview sits beside the countdown in the exam header; fixed blank local preview after late join or page refresh (F5) when the teacher still received the stream — single preview element, `mediaStream` state binding, and cancel-safe `getUserMedia`.
+- **Device check redesign:** New two-column readiness checklist with camera preview; fullscreen is requested automatically (no manual button); fullscreen also triggers on **Bắt đầu làm bài** via user gesture.
+
 ### Frontend
 
 - **Proctoring evidence gallery:** Added sidebar tab **Bằng chứng vi phạm** (`/teacher/proctoring-evidence`, `/admin/proctoring-evidence`) with filterable grid, lightbox viewer, and stats for snapshots/clips/auto evidence — no need to browse server folders.
