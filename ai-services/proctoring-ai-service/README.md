@@ -55,7 +55,7 @@ Point the API admin AI settings (or DB `ProctoringAiSettings`) at the service UR
 
 ## WebRTC / NAT
 
-Live video uses WebRTC (not this service). For TURN/STUN across NAT see `docs/proctoring-webrtc-nat.md`.
+Live video uses WebRTC (not this service). For TURN/STUN across NAT see `docs/proctoring/proctoring-webrtc-nat.md`.
 
 ## Response contract
 

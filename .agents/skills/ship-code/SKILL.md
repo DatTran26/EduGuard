@@ -10,7 +10,7 @@ compatibility: "requires: gh CLI, git, npm test, Windows PowerShell"
 
 # Ship Code Workflow (EduGuard)
 
-Human-readable rules: `docs/07_DEVELOPMENT_RULES.md` → Workflow ship / release.  
+Human-readable rules: `docs/development/development-rules.md` → Workflow ship / release.  
 Shell: **`.agents/references/powershell-windows.md`** (Windows — không `&&`, không HEREDOC bash).
 
 Orchestrates the full **ship / release → review → merge release → PR main** pipeline.
@@ -167,7 +167,7 @@ Follow github-release **Step 6** (CHANGELOG) on the **source branch**:
 
 Also update if applicable in the same session:
 
-- `docs/project-changelog.md` (per `AGENTS.md`)
+- `docs/changelog/project-changelog.md` (per `AGENTS.md`)
 - `Todo List.md` — mark completed items, update phase status and date
 
 ---
@@ -251,7 +251,7 @@ the temp file):
 - [ ] Husky commit-msg conventions respected
 - [ ] No secrets in diff
 - [ ] `Todo List.md` updated
-- [ ] `docs/project-changelog.md` updated
+- [ ] `docs/changelog/project-changelog.md` updated
 
 ### Risks and rollback
 - **Known risks:** <from review or "None identified">

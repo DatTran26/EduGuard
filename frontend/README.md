@@ -108,7 +108,7 @@ npm run lint
 - Token lưu localStorage qua `utils/tokenStorage.js`
 - Mọi request gắn `Authorization: Bearer {accessToken}` (interceptor trong `axiosClient.js`)
 - 401 → xóa token và redirect `/login`
-- Chi tiết contract API, refresh token, SignalR: [`../docs/05_API_FRONTEND_INTEGRATION.md`](../docs/05_API_FRONTEND_INTEGRATION.md)
+- Chi tiết contract API, refresh token, SignalR: [`../docs/architecture/api-frontend-integration.md`](../docs/architecture/api-frontend-integration.md)
 
 Biến môi trường tùy chọn (file `.env` trong `frontend/`):
 
@@ -135,7 +135,7 @@ Kết nối dùng access token; trong dev đi qua proxy `ws: true`.
 
 ## UI & design
 
-- Design system và checklist UI: [`../docs/design-guidelines.md`](../docs/design-guidelines.md)
+- Design system và checklist UI: [`../docs/design/design-guidelines.md`](../docs/design/design-guidelines.md)
 - Token màu / typography gốc: [`../design.md`](../design.md) (nếu có ở root)
 - Theme sáng/tối: `hooks/useTheme.jsx`
 
@@ -145,7 +145,7 @@ Kết nối dùng access token; trong dev đi qua proxy `ws: true`.
 
 | File | Nội dung |
 |------|----------|
-| [`../docs/05_API_FRONTEND_INTEGRATION.md`](../docs/05_API_FRONTEND_INTEGRATION.md) | Axios, JWT, SignalR, lỗi API |
-| [`../docs/design-guidelines.md`](../docs/design-guidelines.md) | Chuẩn component & layout |
-| [`../docs/apiList.md`](../docs/apiList.md) | Danh sách endpoint (checklist) |
-| [`../docs/features.md`](../docs/features.md) | Checklist chức năng BE/FE |
+| [`../docs/architecture/api-frontend-integration.md`](../docs/architecture/api-frontend-integration.md) | Axios, JWT, SignalR, lỗi API |
+| [`../docs/design/design-guidelines.md`](../docs/design/design-guidelines.md) | Chuẩn component & layout |
+| [`../docs/api/api-list.md`](../docs/api/api-list.md) | Danh sách endpoint (checklist) |
+| [`../docs/api/features.md`](../docs/api/features.md) | Checklist chức năng BE/FE |

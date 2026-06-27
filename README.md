@@ -14,7 +14,7 @@ Learning Management System + Online Exam + Anti-cheat Monitoring + Realtime Noti
 
 **Vai trò:** Admin · Teacher · Student
 
-> Tiến độ triển khai từng giai đoạn: [`Todo List.md`](Todo%20List.md) · Changelog chính: [`CHANGELOG.md`](CHANGELOG.md) · Lịch sử chi tiết theo feature: [`docs/project-changelog.md`](docs/project-changelog.md)
+> Tiến độ triển khai từng giai đoạn: [`Todo List.md`](Todo%20List.md) · Changelog chính: [`CHANGELOG.md`](CHANGELOG.md) · Lịch sử chi tiết theo feature: [`docs/changelog/project-changelog.md`](docs/changelog/project-changelog.md)
 
 ---
 
@@ -30,7 +30,7 @@ Learning Management System + Online Exam + Anti-cheat Monitoring + Realtime Noti
 | **Frontend** | React 19 + Vite 8 + Tailwind CSS 4; routing theo role; tích hợp API và SignalR qua proxy dev |
 | **Chất lượng repo** | Husky (test trước commit, conventional commits), `dotnet test` trong pre-commit |
 
-Chi tiết nghiệp vụ và use case: [`docs/01_PROJECT_OVERVIEW.md`](docs/01_PROJECT_OVERVIEW.md)
+Chi tiết nghiệp vụ và use case: [`docs/architecture/project-overview.md`](docs/architecture/project-overview.md)
 
 ---
 
@@ -48,7 +48,7 @@ Chi tiết nghiệp vụ và use case: [`docs/01_PROJECT_OVERVIEW.md`](docs/01_P
 | **Exam monitoring** | Hub giám sát đề (`/hubs/exam-monitoring`) cho giáo viên |
 | **Dashboard** | Tổng quan theo vai trò (một số metric phụ thuộc API đang mở rộng) |
 
-Danh sách API và checklist chức năng: [`docs/apiList.md`](docs/apiList.md), [`docs/features.md`](docs/features.md)
+Danh sách API và checklist chức năng: [`docs/api/api-list.md`](docs/api/api-list.md), [`docs/api/features.md`](docs/api/features.md)
 
 ---
 
@@ -69,7 +69,7 @@ Danh sách API và checklist chức năng: [`docs/apiList.md`](docs/apiList.md),
                     └───────────────────────────┴──────────► SQL Server
 ```
 
-Tài liệu sâu: [`docs/03_BACKEND_ARCHITECTURE.md`](docs/03_BACKEND_ARCHITECTURE.md) · [`docs/05_API_FRONTEND_INTEGRATION.md`](docs/05_API_FRONTEND_INTEGRATION.md)
+Tài liệu sâu: [`docs/architecture/backend-architecture.md`](docs/architecture/backend-architecture.md) · [`docs/architecture/api-frontend-integration.md`](docs/architecture/api-frontend-integration.md)
 
 ---
 
@@ -97,9 +97,9 @@ Tài liệu sâu: [`docs/03_BACKEND_ARCHITECTURE.md`](docs/03_BACKEND_ARCHITECTU
 - **SQL Server** (LocalDB / Express / instance riêng) — tạo `backend/EduGuard.Api/appsettings.Development.json` từ file mẫu rồi chỉnh `ConnectionStrings:DefaultConnection` cho máy local
 - Visual Studio 2022 hoặc VS Code *(khuyến nghị)*
 
-*Redis và Docker Compose — tùy chọn cho cache và triển khai tập trung; xem [`docs/02_SETUP_AND_PROJECT_STRUCTURE.md`](docs/02_SETUP_AND_PROJECT_STRUCTURE.md).*
+*Redis và Docker Compose — tùy chọn cho cache và triển khai tập trung; xem [`docs/architecture/setup-and-project-structure.md`](docs/architecture/setup-and-project-structure.md).*
 
-**Chạy đủ các cách (dev, SFU, AI, LAN/Tailscale/Tunnel):** [`docs/HUONG_DAN_CHAY_HE_THONG.md`](docs/HUONG_DAN_CHAY_HE_THONG.md)
+**Chạy đủ các cách (dev, SFU, AI, LAN/Tailscale/Tunnel):** [`docs/guides/system-run-guide.md`](docs/guides/system-run-guide.md)
 
 ---
 
@@ -190,7 +190,7 @@ EduGuard/
 └── package.json                   # Husky + npm test
 ```
 
-Hướng dẫn chi tiết: [`docs/02_SETUP_AND_PROJECT_STRUCTURE.md`](docs/02_SETUP_AND_PROJECT_STRUCTURE.md)
+Hướng dẫn chi tiết: [`docs/architecture/setup-and-project-structure.md`](docs/architecture/setup-and-project-structure.md)
 
 ---
 
@@ -223,8 +223,8 @@ Không dùng: `chore:` · Không gắn tham chiếu AI/tool trong message.
 
 | Mục đích | Tài liệu |
 |----------|----------|
-| Push code lên remote | [`docs/07_DEVELOPMENT_RULES.md`](docs/07_DEVELOPMENT_RULES.md) |
-| Release / ship | [`docs/08_DEPLOY_WORKFLOW.md`](docs/08_DEPLOY_WORKFLOW.md) |
+| Push code lên remote | [`docs/development/development-rules.md`](docs/development/development-rules.md) |
+| Release / ship | [`docs/development/deploy-workflow.md`](docs/development/deploy-workflow.md) |
 
 ---
 
@@ -235,24 +235,24 @@ Không dùng: `chore:` · Không gắn tham chiếu AI/tool trong message.
 | [`docs/README.md`](docs/README.md) | Mục lục toàn bộ docs |
 | [`frontend/README.md`](frontend/README.md) | Giới thiệu SPA, cấu trúc `src/`, chạy dev |
 | [`backend/README.md`](backend/README.md) | Solution 4 lớp, module API, migration |
-| [`docs/01_PROJECT_OVERVIEW.md`](docs/01_PROJECT_OVERVIEW.md) | Tổng quan hệ thống & nghiệp vụ |
-| [`docs/02_SETUP_AND_PROJECT_STRUCTURE.md`](docs/02_SETUP_AND_PROJECT_STRUCTURE.md) | Cấu hình, cấu trúc, Docker |
-| [`docs/03_BACKEND_ARCHITECTURE.md`](docs/03_BACKEND_ARCHITECTURE.md) | Kiến trúc backend |
-| [`docs/05_API_FRONTEND_INTEGRATION.md`](docs/05_API_FRONTEND_INTEGRATION.md) | Tích hợp API & SignalR |
-| [`docs/06_DEVELOPMENT_ROADMAP.md`](docs/06_DEVELOPMENT_ROADMAP.md) | Lộ trình MVP (thiết kế) |
-| [`docs/07_DEVELOPMENT_RULES.md`](docs/07_DEVELOPMENT_RULES.md) | Quy tắc Git & workflow |
+| [`docs/architecture/project-overview.md`](docs/architecture/project-overview.md) | Tổng quan hệ thống & nghiệp vụ |
+| [`docs/architecture/setup-and-project-structure.md`](docs/architecture/setup-and-project-structure.md) | Cấu hình, cấu trúc, Docker |
+| [`docs/architecture/backend-architecture.md`](docs/architecture/backend-architecture.md) | Kiến trúc backend |
+| [`docs/architecture/api-frontend-integration.md`](docs/architecture/api-frontend-integration.md) | Tích hợp API & SignalR |
+| [`docs/development/development-roadmap.md`](docs/development/development-roadmap.md) | Lộ trình MVP (thiết kế) |
+| [`docs/development/development-rules.md`](docs/development/development-rules.md) | Quy tắc Git & workflow |
 | [`Todo List.md`](Todo%20List.md) | **Trạng thái implementation** theo giai đoạn |
 | [`CHANGELOG.md`](CHANGELOG.md) | Changelog chính theo release và thay đổi user-facing |
-| [`docs/project-changelog.md`](docs/project-changelog.md) | Lịch sử chi tiết theo feature |
+| [`docs/changelog/project-changelog.md`](docs/changelog/project-changelog.md) | Lịch sử chi tiết theo feature |
 
 ---
 
 ## Đóng góp
 
 1. Fork repository và tạo nhánh từ `devD` (hoặc `devH` / `devB`).
-2. Đọc [`docs/07_DEVELOPMENT_RULES.md`](docs/07_DEVELOPMENT_RULES.md) trước khi commit.
+2. Đọc [`docs/development/development-rules.md`](docs/development/development-rules.md) trước khi commit.
 3. Cập nhật [`Todo List.md`](Todo%20List.md) khi hoàn thành task liên quan.
-4. Ghi changelog tại [`CHANGELOG.md`](CHANGELOG.md) cho thay đổi chính và [`docs/project-changelog.md`](docs/project-changelog.md) cho chi tiết theo feature.
+4. Ghi changelog tại [`CHANGELOG.md`](CHANGELOG.md) cho thay đổi chính và [`docs/changelog/project-changelog.md`](docs/changelog/project-changelog.md) cho chi tiết theo feature.
 5. Mở Pull Request vào `release` hoặc nhánh dev — không vào `main` trực tiếp.
 
 Báo lỗi hoặc đề xuất: [GitHub Issues](https://github.com/DatTran26/EduGuard/issues)

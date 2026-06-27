@@ -8,7 +8,7 @@ compatibility: "requires: git, Windows PowerShell"
 
 # Push Code (lưu lên repo)
 
-Human-readable rules: `docs/07_DEVELOPMENT_RULES.md` → Workflow push code.  
+Human-readable rules: `docs/development/development-rules.md` → Workflow push code.  
 Shell: **`.agents/references/powershell-windows.md`** (bắt buộc trên Windows — không dùng `&&`, HEREDOC bash).
 
 Dùng khi bạn chỉ muốn **đẩy code lên GitHub để lưu / đồng bộ**, không cắt version,

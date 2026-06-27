@@ -45,14 +45,14 @@ Required description fields:
 ## Feature Changelog Requirement
 
 - Update root `CHANGELOG.md` for user-facing or release-impacting changes; separate Backend and Frontend notes when both sides change.
-- Update `docs/project-changelog.md` for every feature-level change.
+- Update `docs/changelog/project-changelog.md` for every feature-level change.
 - Changelog entries must be grouped by feature, not only by date.
 - Each feature changelog entry must include date, branch/source, description, changed files, validation, and unresolved questions if any.
 - Bug fixes, security changes, and breaking changes must be explicitly labeled in the related feature entry.
 
 ## Development Rules & Workflows
 
-Full rules (implementation order, push vs ship, Todo List maintenance): **`docs/07_DEVELOPMENT_RULES.md`**
+Full rules (implementation order, push vs ship, Todo List maintenance): **`docs/development/development-rules.md`**
 
 | User says | Purpose | Skill |
 |-----------|---------|--------|
@@ -60,5 +60,5 @@ Full rules (implementation order, push vs ship, Todo List maintenance): **`docs/
 | **merge to release**, merge vào release, đưa code lên release, lấy code từ release về dev | Commit WIP → merge dev → `release` → sync về dev | `.agents/skills/merge-release/SKILL.md` |
 | **ship**, ship code, **release** (production) | Version cut → production | `.agents/skills/ship-code/SKILL.md` |
 
-- `Todo List.md` (root): live checklist only — update per `docs/07_DEVELOPMENT_RULES.md`.
+- `Todo List.md` (root): live checklist only — update per `docs/development/development-rules.md`.
 - Do not push to `main` in either workflow.

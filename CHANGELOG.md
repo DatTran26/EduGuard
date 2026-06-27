@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- **Docs restructure:** Reorganized `docs/` into topic folders and standardized all filenames to **kebab-case** (e.g. `development-rules.md`, `system-run-guide.md`, `api-list.md`). Updated `docs/README.md` index and cross-references across the repo.
+
 ### Backend
 
 - **Bug fix (GPT settings):** Admin GPT API key/model/base URL now persist in `GptSettings` database table (same pattern as email settings) instead of writing only to `.env`, which failed on deployed servers.
@@ -78,8 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Docs
 
-- **Run guide:** Clarified that `use-tunnel.cmd` (Admin) already opens LAN firewall — `open-lan-firewall.cmd` only needed for `use-lan` / `use-tailscale`, or when tunnel script was not run as Administrator. Updated [`docs/HUONG_DAN_CHAY_HE_THONG.md`](docs/HUONG_DAN_CHAY_HE_THONG.md) and [`docs/PROCTORING_NETWORK_MODES.md`](docs/PROCTORING_NETWORK_MODES.md).
-- **Run guide:** Added [`docs/HUONG_DAN_CHAY_HE_THONG.md`](docs/HUONG_DAN_CHAY_HE_THONG.md) — consolidated guide for all ways to run EduGuard (localhost dev, Visual Studio, Redis, LiveKit SFU, AI service, LAN/Tailscale/Tunnel network modes, full stack).
+- **Run guide:** Clarified that `use-tunnel.cmd` (Admin) already opens LAN firewall — `open-lan-firewall.cmd` only needed for `use-lan` / `use-tailscale`, or when tunnel script was not run as Administrator. Updated [`docs/guides/system-run-guide.md`](docs/guides/system-run-guide.md) and [`docs/proctoring/proctoring-network-modes.md`](docs/proctoring/proctoring-network-modes.md).
+- **Run guide:** Added [`docs/guides/system-run-guide.md`](docs/guides/system-run-guide.md) — consolidated guide for all ways to run EduGuard (localhost dev, Visual Studio, Redis, LiveKit SFU, AI service, LAN/Tailscale/Tunnel network modes, full stack).
 
 ### Infra
 
@@ -228,8 +232,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Docs
 
-- Added `docs/PROCTORING_SFU_SETUP.md` — LiveKit Docker, TURN/STUN env vars, teacher/student SFU flows, dev test steps.
-- Added `docs/apiList.md` registry entries for `API-QBK-*` and `API-MTX-*`, including non-conflicting Swagger/API groups for Question Bank and Exam Matrix.
+- Added `docs/proctoring/proctoring-sfu-setup.md` — LiveKit Docker, TURN/STUN env vars, teacher/student SFU flows, dev test steps.
+- Added `docs/api/api-list.md` registry entries for `API-QBK-*` and `API-MTX-*`, including non-conflicting Swagger/API groups for Question Bank and Exam Matrix.
 
 ### Known risks
 
@@ -322,7 +326,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Docs
 
-- Added teacher-facing question import template documentation and usage guidance under `docs/10_QUESTION_BANK_IMPORT_TEMPLATES.md` and `docs/11_QUESTION_IMPORT_TEMPLATE_USAGE.md`.
+- Added teacher-facing question import template documentation and usage guidance under `docs/question-bank/question-bank-import-templates.md` and `docs/question-bank/question-import-template-usage.md`.
 - Added DOCX/PDF teacher import guide files with no-accent names under `docs/`.
 - Clarified that `CHANGELOG.md` is the main project changelog and `docs/project-changelog.md` remains the detailed feature history.
 

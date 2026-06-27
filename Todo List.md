@@ -1,6 +1,6 @@
 # EduGuard — Todo List
 
-> Lộ trình: `docs/06_DEVELOPMENT_ROADMAP.md` · Quy tắc: `docs/07_DEVELOPMENT_RULES.md`  
+> Lộ trình: `docs/development/development-roadmap.md` · Quy tắc: `docs/development/development-rules.md`  
 > Nguyên tắc: **Chạy được → Đăng nhập được → Quản lý lớp được → Tạo bài thi được → Làm bài được → Giám sát được → Tối ưu được**
 
 **Branch làm việc:** `devD` / `devH` / `devB` (nhánh dev theo feature)
@@ -27,7 +27,7 @@
 **Ghi chú devB:** 2026-06-27 (highlight các bảng trong chi tiết ma trận với màu xanh lá nhạt cho dòng đủ câu, màu đỏ nhạt cho dòng thiếu câu và tiêu đề màu xanh.)
 **Ghi chú devB:** 2026-06-27 (áp dụng tự động lọc khi chọn dropdown bộ lọc; làm thanh tab tai thư mục bọc các khung nhập tạo tay/AI/File; đưa bộ lọc lên đầu danh sách câu hỏi; mặc định 10 câu ma trận chia đều 3-3-4; và highlight tab Câu hỏi ngân hàng / Ma trận đề thi.)
 **Ghi chú devD:** 2026-06-27 (ship v1.3.0 — email verification OTP, admin Gmail settings, proctoring room/camera UX, evidence gallery, LiveKit TURN, AI service logging; merge devD → release)
-**Ghi chú devB:** 2026-06-25 (đã hoàn tất Question Bank + Exam Matrix workspace theo integration devB: backend/frontend tách riêng, create-exam từ matrix chạy trong transaction và luôn tạo `ExamSetting`, Swagger dùng tag `QuestionBank`/`ExamMatrix`, `docs/apiList.md` có nhóm `API-QBK-*`/`API-MTX-*`, không thêm route/hub/entity proctoring.)
+**Ghi chú devB:** 2026-06-25 (đã hoàn tất Question Bank + Exam Matrix workspace theo integration devB: backend/frontend tách riêng, create-exam từ matrix chạy trong transaction và luôn tạo `ExamSetting`, Swagger dùng tag `QuestionBank`/`ExamMatrix`, `docs/api/api-list.md` có nhóm `API-QBK-*`/`API-MTX-*`, không thêm route/hub/entity proctoring.)
 **Ghi chú devB:** 2026-06-26 (đã bổ sung chức năng sinh câu hỏi tự động bằng AI trực tiếp trong Ngân hàng đề thi và Workspace, thay thế khung hướng dẫn tĩnh cũ bằng một UI tab động tuyệt đẹp hỗ trợ cấu hình độ khó, trạng thái, môn học, chương mặc định và nhập API Key cá nhân lưu local, kết nối trực tiếp với backend qua endpoint API sinh và import câu hỏi tuân thủ schema chuẩn.)
 **Ghi chú devB:** 2026-06-26 (đã thiết kế lại phần ma trận đề thi xử lý câu hỏi dễ, trung bình, khó: kéo thả thanh trượt số câu cho từng mức độ khó thay vì %, xóa dropdown chọn độ khó trên từng dòng ma trận; tái sử dụng QuestionImportPanel và QuestionImportResources cho import câu hỏi ngân hàng; ẩn hướng dẫn AI template ở tạo tay bằng collapsible panel toggle; xóa dashboard thống kê ngân hàng câu hỏi; tinh chỉnh luồng ma trận cho phép sao chép cấu hình ma trận sẵn có và bind kiểm tra đủ câu, sinh đề nháp trực tiếp theo ngân hàng + ma trận hiện tại.)
 **Ghi chú devB:** 2026-06-26 (đã Việt hóa breadcrumb/dropdown/badge/toast của ngân hàng câu hỏi và ma trận, giữ độ khó `Dễ / Trung bình / Khó`, đổi nhãn `Chuẩn đầu ra` thành `Yêu cầu cần đạt`, chuyển nút `Sửa` câu hỏi sang popup để không mất vị trí câu đang sửa, Việt hóa lỗi validate ma trận và giải thích chỉ đếm câu `Sẵn sàng` khớp đủ điều kiện, đồng thời thêm validate FE trước khi chuyển câu hỏi sang trạng thái `Sẵn sàng`.)
@@ -39,9 +39,9 @@
 **Ghi chú devB:** 2026-06-25 (đã cập nhật UI ngân hàng câu hỏi theo luồng list trước/detail sau, form câu hỏi bank dạng panel ngang có thể thu gọn, list câu hỏi full-width có badge trạng thái/độ khó rõ dấu, nút nhảy sang ma trận, popup thiếu câu ma trận chi tiết, và thêm tab `Ngân hàng` trong flow tạo đề để chọn câu đã duyệt từ question bank.)
 **Ghi chú devB:** 2026-06-20 (đã thêm file chuẩn import `.md` và prompt chuyển đổi vào backend resource; Teacher/Admin có thể tải file chuẩn trong question workspace, xem prompt thu gọn/mở rộng và copy toàn bộ prompt bằng nút ở góc phải.)
 **Ghi chú devB:** 2026-06-15 (backend cấu hình bài kiểm tra UTC, validation publish trắc nghiệm MVP; Phase 8 SignalR xong; Phase 9 Redis — kế hoạch chi tiết)
-**Ghi chú devH:** 2026-06-20 (đã chặn trường hợp `POST /api/auth/login` trả `401` làm trang đăng nhập refresh và mất form; đồng thời sửa các blocker compile của luồng import câu hỏi đề thi ở backend để build kiểm tra lại qua output tạm pass sạch. Luồng upload đề thi của Teacher nay kiểm tra định dạng file ở frontend, gọi backend preview ngay khi file hợp lệ, hiển thị câu hỏi + đáp án để review trước khi commit, và đẩy nút `Lưu đề` xuống bước cuối của create flow. Vừa bổ sung thêm fix cho create flow: lần lưu đầu sẽ gom cả câu hỏi soạn tay + câu hỏi đang preview, nếu tổng số câu > 0 thì tự publish ngay, còn nếu vẫn chưa có câu hỏi thì lưu ở trạng thái nháp. Sau đó tiếp tục vá lỗi `400` ở API tạo đề bằng cách không gửi các `answer.id` tạm kiểu string của draft/preview lên backend, đồng thời rút gọn card CTA cuối chỉ còn nút và bỏ message in-page "backend đã phân tích..." sau khi import preview thành công. Mới nhất đã bỏ hẳn submit DOM của nút `Tạo đề`, chuyển sang gọi callback submit trực tiếp từ `ExamForm` để bấm được ổn định ở create flow; đồng thời cho phép chỉnh sửa trực tiếp câu hỏi trong màn review import và khi lưu/commit sẽ tạo câu hỏi thật từ state đã chỉnh sửa thay vì import lại file gốc. Trước đó create-flow đề thi của Teacher đã chuyển sang soạn nháp cục bộ ngay trên `ExamListPage` để nhập câu hỏi/import preview trước rồi mới lưu toàn bộ một lần; backend tạo đề nay nhận kèm danh sách câu hỏi ngay trong request đầu tiên, đồng thời thêm endpoint preview import để nháp local không còn phải có `examId` trước; cùng lượt đã tách `ExamDetailPage` thành chế độ xem/chỉnh sửa riêng, đưa metadata lớp/giảng viên/lịch thi vào tooltip `Thông tin thêm`, bổ sung refresh + empty-state rõ nghĩa hơn cho bài tập trong classroom detail, và vừa đồng bộ shell/UI Teacher theo `docs/ui_tech.md` với menu mới, top bar search + quick-create, route teacher cho bài tập/giám sát/kết quả/thông báo, cùng workspace tab cho classroom detail. Mới nhất classroom detail của Teacher đã bỏ 2 nút tạo bài tập/đề thi trên header, làm nổi bật lại CTA `Sao chép mã lớp`, dồn phần xem thành viên về tab `Thành viên`, và đổi panel phụ ở `Tổng quan` thành hai nút ngang `Chỉnh sửa lớp học` / `Xoá Lớp học`.)
+**Ghi chú devH:** 2026-06-20 (đã chặn trường hợp `POST /api/auth/login` trả `401` làm trang đăng nhập refresh và mất form; đồng thời sửa các blocker compile của luồng import câu hỏi đề thi ở backend để build kiểm tra lại qua output tạm pass sạch. Luồng upload đề thi của Teacher nay kiểm tra định dạng file ở frontend, gọi backend preview ngay khi file hợp lệ, hiển thị câu hỏi + đáp án để review trước khi commit, và đẩy nút `Lưu đề` xuống bước cuối của create flow. Vừa bổ sung thêm fix cho create flow: lần lưu đầu sẽ gom cả câu hỏi soạn tay + câu hỏi đang preview, nếu tổng số câu > 0 thì tự publish ngay, còn nếu vẫn chưa có câu hỏi thì lưu ở trạng thái nháp. Sau đó tiếp tục vá lỗi `400` ở API tạo đề bằng cách không gửi các `answer.id` tạm kiểu string của draft/preview lên backend, đồng thời rút gọn card CTA cuối chỉ còn nút và bỏ message in-page "backend đã phân tích..." sau khi import preview thành công. Mới nhất đã bỏ hẳn submit DOM của nút `Tạo đề`, chuyển sang gọi callback submit trực tiếp từ `ExamForm` để bấm được ổn định ở create flow; đồng thời cho phép chỉnh sửa trực tiếp câu hỏi trong màn review import và khi lưu/commit sẽ tạo câu hỏi thật từ state đã chỉnh sửa thay vì import lại file gốc. Trước đó create-flow đề thi của Teacher đã chuyển sang soạn nháp cục bộ ngay trên `ExamListPage` để nhập câu hỏi/import preview trước rồi mới lưu toàn bộ một lần; backend tạo đề nay nhận kèm danh sách câu hỏi ngay trong request đầu tiên, đồng thời thêm endpoint preview import để nháp local không còn phải có `examId` trước; cùng lượt đã tách `ExamDetailPage` thành chế độ xem/chỉnh sửa riêng, đưa metadata lớp/giảng viên/lịch thi vào tooltip `Thông tin thêm`, bổ sung refresh + empty-state rõ nghĩa hơn cho bài tập trong classroom detail, và vừa đồng bộ shell/UI Teacher theo `docs/design/ui-tech.md` với menu mới, top bar search + quick-create, route teacher cho bài tập/giám sát/kết quả/thông báo, cùng workspace tab cho classroom detail. Mới nhất classroom detail của Teacher đã bỏ 2 nút tạo bài tập/đề thi trên header, làm nổi bật lại CTA `Sao chép mã lớp`, dồn phần xem thành viên về tab `Thành viên`, và đổi panel phụ ở `Tổng quan` thành hai nút ngang `Chỉnh sửa lớp học` / `Xoá Lớp học`.)
 **Ghi chú devH:** 2026-06-17 (đã xử lý conflict khi pull từ `release` theo hướng giữ bản release; hoàn thiện FE cho cấu hình lịch thi UTC+7, chia nhóm form, bỏ checkbox publish, thêm checklist điều kiện publish và nút `Publish đề` gọi backend thật, đồng thời bổ sung hướng dẫn theo loại câu hỏi và thống kê đầy đủ các dạng câu ở trang chi tiết đề thi; khóa exact version dependency frontend, thêm `.npmrc` `save-exact` và chuẩn hóa `package-lock.json` để giảm conflict merge với `release`; làm mới UI đăng nhập theo layout 2 cột cân giữa màn hình với panel thương hiệu và login card riêng)
-**Quy tắc:** `docs/07_DEVELOPMENT_RULES.md`
+**Quy tắc:** `docs/development/development-rules.md`
 
 ---
 
@@ -339,7 +339,7 @@
 
 **Mục tiêu:** Giảm truy vấn SQL lặp trên luồng **thi + giám sát** (đã chạy Phase 6–8); lưu **presence** tạm thời (student còn online) không ghi DB mỗi 30 giây.
 
-**Map feature:** `docs/features.md` → F-REDIS-01 … F-REDIS-06.
+**Map feature:** `docs/api/features.md` → F-REDIS-01 … F-REDIS-06.
 
 ---
 
@@ -543,7 +543,7 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 - [ ] Chạy Redis local: `docker run -d --name eduguard-redis -p 6379:6379 redis:7-alpine`
 - [ ] Smoke: `redis-cli PING` → `PONG`; `SET eduguard:smoke 1` / `GET`
 - [x] Xác nhận `appsettings.json` có `ConnectionStrings:Redis` (đã có) + section `Redis` như trên
-- [ ] Document trong `docs/02_SETUP_AND_PROJECT_STRUCTURE.md` (mục Redis) nếu lệnh Docker khác README — **chỉ khi dev hỏi setup**
+- [ ] Document trong `docs/architecture/setup-and-project-structure.md` (mục Redis) nếu lệnh Docker khác README — **chỉ khi dev hỏi setup**
 
 ### 9.1 — Hạ tầng DI & abstraction
 
@@ -626,7 +626,7 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 - [x] Thống kê cheating score *(Đã kết nối dữ liệu thật)*
 - [x] Frontend dashboard Admin *(UI tổng quan người dùng, lớp học, activity, anti-cheat đã giữ nguyên bố cục title-only; dữ liệu dashboard admin hiện tổng hợp từ API backend thật của user/classroom/exam/attempt/anti-cheat thay cho mock, nên số liệu lớp học, bài kiểm tra và lượt làm cần chú ý đã khớp hơn với database; điều hướng `Giám sát` vẫn giữ nguyên)*
 - [x] Frontend dashboard Teacher *(đã có mock API + UI lớp quản lý, nộp bài, lịch thi, sinh viên rủi ro cao, proctoring streams placeholder; thiết kế thanh điều hướng Nav bar chuyên nghiệp; block stat/timeline/metric đã bỏ mô tả phụ; thiết kế lại 6 card KPI sặc sỡ hơn theo tone màu và thêm micro-animations)*
-- [x] Teacher shell + reporting workspace theo `docs/ui_tech.md` *(sidebar Teacher nay đủ `Dashboard / Lớp học / Bài tập / Đề thi / Giám sát thi / Kết quả / Thông báo / Hồ sơ`; top bar đã có search thật + quick-create; bổ sung các page teacher cho assignment center, exam monitoring, result reporting, notification list; classroom detail của Teacher đã có workspace tab `Tổng quan / Học sinh / Bài tập / Bài thi / Kết quả / Hoạt động`)*
+- [x] Teacher shell + reporting workspace theo `docs/design/ui-tech.md` *(sidebar Teacher nay đủ `Dashboard / Lớp học / Bài tập / Đề thi / Giám sát thi / Kết quả / Thông báo / Hồ sơ`; top bar đã có search thật + quick-create; bổ sung các page teacher cho assignment center, exam monitoring, result reporting, notification list; classroom detail của Teacher đã có workspace tab `Tổng quan / Học sinh / Bài tập / Bài thi / Kết quả / Hoạt động`)*
 - [x] Frontend dashboard Student *(mock page cũ vẫn còn trong codebase để tham chiếu, nhưng đã gỡ khỏi menu và route công khai của Student; Student hiện dùng `Lớp của tôi` làm điểm vào chính và tập trung vào classroom, bài kiểm tra, hồ sơ)*
 - [x] Frontend biểu đồ dashboard *(tích hợp thư viện Recharts để vẽ trực quan Classroom Performance và Anti-cheat Incidents)*
 
@@ -655,7 +655,7 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 
 **Mục tiêu:** Giáo viên giám sát live camera học sinh trong lúc thi — lobby trước giờ, WebRTC, control room, bằng chứng, AI YOLO proxy.
 
-**Branch:** `feat/live-proctoring-control-room` · Spec: `plans/monitoring_camera/EduGuard_Live_Proctoring_Control_Room_Spec.md` · Merge devB: `docs/proctoring-devB-integration.md`
+**Branch:** `feat/live-proctoring-control-room` · Spec: `plans/monitoring_camera/EduGuard_Live_Proctoring_Control_Room_Spec.md` · Merge devB: `docs/proctoring/proctoring-devb-integration.md`
 
 ### Phase 0 — Chuẩn bị & data model
 
@@ -730,9 +730,9 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 
 ### Phase 8 — Docs, QA, tích hợp
 
-- [x] `CHANGELOG.md`, `docs/project-changelog.md`, `docs/apiList.md` §12
-- [x] `docs/proctoring-devB-integration.md`
-- [x] `docs/features.md` — F-FUT-01 đánh dấu v1
+- [x] `CHANGELOG.md`, `docs/changelog/project-changelog.md`, `docs/api/api-list.md` §12
+- [x] `docs/proctoring/proctoring-devb-integration.md`
+- [x] `docs/api/features.md` — F-FUT-01 đánh dấu v1
 - [x] `npm run lint` sạch cho module proctoring (`src/features/proctoring`, `proctoringApi.js`)
 - [ ] Smoke E2E: lobby → thi → live watch → pause → evidence
 - [x] Merge / rebase lên `devD` hoặc `release` (tránh conflict devB question bank) — `devD` sync `origin/release` @ `f01399c`
@@ -764,7 +764,7 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 
 ## Tài liệu — README giới thiệu hệ thống
 
-**Mục tiêu:** README là cổng vào repo — giới thiệu hệ thống làm gì, cấu trúc ra sao, cách chạy, điểm nổi bật. **Không** ghi tiến độ phase (để `Todo List.md`, `CHANGELOG.md`, `docs/project-changelog.md`, `docs/features.md`).
+**Mục tiêu:** README là cổng vào repo — giới thiệu hệ thống làm gì, cấu trúc ra sao, cách chạy, điểm nổi bật. **Không** ghi tiến độ phase (để `Todo List.md`, `CHANGELOG.md`, `docs/changelog/project-changelog.md`, `docs/api/features.md`).
 
 **Rà soát hiện trạng (2026-06-15):**
 
@@ -788,12 +788,12 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 - [x] Cập nhật **Tech stack** — bỏ "dự kiến" cho phần đã có (React/Vite/Tailwind, EF Core, SQL Server, SignalR)
 - [x] Cập nhật **Cấu trúc thư mục** — `frontend/` đã là app Vite đầy đủ; liệt kê module backend chính
 - [x] Cập nhật **Cài đặt / Chạy** — `dotnet run` backend + `npm run dev` frontend, URL Swagger & Vite
-- [x] Thêm **Kiến trúc tóm tắt** (ASCII hoặc link `docs/03_BACKEND_ARCHITECTURE.md`, `docs/01_PROJECT_OVERVIEW.md`)
+- [x] Thêm **Kiến trúc tóm tắt** (ASCII hoặc link `docs/architecture/backend-architecture.md`, `docs/architecture/project-overview.md`)
 - [x] Giữ **Phát triển** (nhánh, commit, workflow) — không trùng nội dung tiến độ feature
 
 ### `docs/README.md`
 
-- [x] Thêm mục **README vs tài liệu tiến độ** (README = giới thiệu; `Todo List` / `features.md` / `apiList.md` = checklist)
+- [x] Thêm mục **README vs tài liệu tiến độ** (README = giới thiệu; `Todo List` / `features.md` / `api-list.md` = checklist)
 - [x] Bổ sung **Điểm nổi bật hệ thống** (tóm tắt 5–8 bullet, không phase status)
 - [x] Cập nhật **Cách đọc nhanh** — dev mới vs đọc sâu kiến trúc/API
 
@@ -803,7 +803,7 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 - [x] Vai trò SPA, stack (React, Vite, Tailwind, Axios, SignalR client)
 - [x] Cấu trúc `src/` (`features/`, `api/`, `signalr/`, `hooks/`, theme)
 - [x] `npm install`, `npm run dev`, `npm run build`; proxy/CORS với backend
-- [x] Link `docs/design-guidelines.md`, `docs/05_API_FRONTEND_INTEGRATION.md`
+- [x] Link `docs/design/design-guidelines.md`, `docs/architecture/api-frontend-integration.md`
 - [x] Không ghi tiến độ phase
 
 ### `backend/README.md` (tạo mới)
@@ -812,7 +812,7 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 - [x] Sơ đồ layer `Controller → Service → Repository → DbContext`
 - [x] `dotnet run`, migration EF, connection string SQL Server / Redis
 - [x] Module chính: Auth, Classroom, Assignment, Exam, Attempt, AntiCheat, SignalR hubs
-- [x] Link `docs/03_BACKEND_ARCHITECTURE.md`, `docs/02_SETUP_AND_PROJECT_STRUCTURE.md`
+- [x] Link `docs/architecture/backend-architecture.md`, `docs/architecture/setup-and-project-structure.md`
 
 **Tiêu chí hoàn thành:** Dev mới đọc README (root + frontend/backend) hiểu hệ thống, chạy được local, biết điểm nổi bật — không cần đọc Todo List để hiểu sản phẩm là gì.
 
@@ -822,27 +822,27 @@ Mọi thao tác sau **phải** `RemoveAsync(eduguard:exam:{examId}:questions)` s
 
 Checklist thực hiện & giám sát — **master** + **16 file chi tiết** (~1.116 TC):
 
-- [ ] [`docs/test-checklists/eduguard-system-test-checklist.md`](docs/test-checklists/eduguard-system-test-checklist.md) — master (tiến độ + smoke + sign-off)
-- [ ] [`docs/test-checklists/README.md`](docs/test-checklists/README.md) — mục lục đầy đủ
+- [ ] [`docs/testing/test-checklists/eduguard-system-test-checklist.md`](docs/testing/test-checklists/eduguard-system-test-checklist.md) — master (tiến độ + smoke + sign-off)
+- [ ] [`docs/testing/test-checklists/README.md`](docs/testing/test-checklists/README.md) — mục lục đầy đủ
 
 **File chi tiết theo module:**
 
-- [ ] [`system-infrastructure-system-test-checklist.md`](docs/test-checklists/system-infrastructure-system-test-checklist.md) — §0 System (50 TC)
-- [ ] [`database-entity-system-test-checklist.md`](docs/test-checklists/database-entity-system-test-checklist.md) — §1 Database (56 TC)
-- [ ] [`authentication-system-test-checklist.md`](docs/test-checklists/authentication-system-test-checklist.md) — §2 Auth (85 TC)
-- [ ] [`user-management-system-test-checklist.md`](docs/test-checklists/user-management-system-test-checklist.md) — §3 User (62 TC)
-- [ ] [`classroom-system-test-checklist.md`](docs/test-checklists/classroom-system-test-checklist.md) — §4 Classroom (79 TC)
-- [ ] [`assignment-system-test-checklist.md`](docs/test-checklists/assignment-system-test-checklist.md) — §5 Assignment (78 TC)
-- [ ] [`exam-management-system-test-checklist.md`](docs/test-checklists/exam-management-system-test-checklist.md) — §6 Exam (88 TC)
-- [ ] [`exam-attempt-system-test-checklist.md`](docs/test-checklists/exam-attempt-system-test-checklist.md) — §7 Attempt (95 TC)
-- [ ] [`anti-cheat-system-test-checklist.md`](docs/test-checklists/anti-cheat-system-test-checklist.md) — §8 Anti-cheat (73 TC)
-- [ ] [`notification-system-test-checklist.md`](docs/test-checklists/notification-system-test-checklist.md) — §9 Notification (58 TC)
-- [ ] [`dashboard-reporting-system-test-checklist.md`](docs/test-checklists/dashboard-reporting-system-test-checklist.md) — §10 Dashboard (78 TC)
-- [ ] [`signalr-realtime-system-test-checklist.md`](docs/test-checklists/signalr-realtime-system-test-checklist.md) — §11 SignalR (67 TC)
-- [ ] [`redis-cache-system-test-checklist.md`](docs/test-checklists/redis-cache-system-test-checklist.md) — §12 Redis (60 TC)
-- [ ] [`logging-activity-system-test-checklist.md`](docs/test-checklists/logging-activity-system-test-checklist.md) — §13 Logging (49 TC)
-- [ ] [`docker-deploy-system-test-checklist.md`](docs/test-checklists/docker-deploy-system-test-checklist.md) — §14 Docker (58 TC)
-- [ ] [`cross-cutting-system-test-checklist.md`](docs/test-checklists/cross-cutting-system-test-checklist.md) — §X Cross-cutting (80 TC)
+- [ ] [`system-infrastructure-system-test-checklist.md`](docs/testing/test-checklists/system-infrastructure-system-test-checklist.md) — §0 System (50 TC)
+- [ ] [`database-entity-system-test-checklist.md`](docs/testing/test-checklists/database-entity-system-test-checklist.md) — §1 Database (56 TC)
+- [ ] [`authentication-system-test-checklist.md`](docs/testing/test-checklists/authentication-system-test-checklist.md) — §2 Auth (85 TC)
+- [ ] [`user-management-system-test-checklist.md`](docs/testing/test-checklists/user-management-system-test-checklist.md) — §3 User (62 TC)
+- [ ] [`classroom-system-test-checklist.md`](docs/testing/test-checklists/classroom-system-test-checklist.md) — §4 Classroom (79 TC)
+- [ ] [`assignment-system-test-checklist.md`](docs/testing/test-checklists/assignment-system-test-checklist.md) — §5 Assignment (78 TC)
+- [ ] [`exam-management-system-test-checklist.md`](docs/testing/test-checklists/exam-management-system-test-checklist.md) — §6 Exam (88 TC)
+- [ ] [`exam-attempt-system-test-checklist.md`](docs/testing/test-checklists/exam-attempt-system-test-checklist.md) — §7 Attempt (95 TC)
+- [ ] [`anti-cheat-system-test-checklist.md`](docs/testing/test-checklists/anti-cheat-system-test-checklist.md) — §8 Anti-cheat (73 TC)
+- [ ] [`notification-system-test-checklist.md`](docs/testing/test-checklists/notification-system-test-checklist.md) — §9 Notification (58 TC)
+- [ ] [`dashboard-reporting-system-test-checklist.md`](docs/testing/test-checklists/dashboard-reporting-system-test-checklist.md) — §10 Dashboard (78 TC)
+- [ ] [`signalr-realtime-system-test-checklist.md`](docs/testing/test-checklists/signalr-realtime-system-test-checklist.md) — §11 SignalR (67 TC)
+- [ ] [`redis-cache-system-test-checklist.md`](docs/testing/test-checklists/redis-cache-system-test-checklist.md) — §12 Redis (60 TC)
+- [ ] [`logging-activity-system-test-checklist.md`](docs/testing/test-checklists/logging-activity-system-test-checklist.md) — §13 Logging (49 TC)
+- [ ] [`docker-deploy-system-test-checklist.md`](docs/testing/test-checklists/docker-deploy-system-test-checklist.md) — §14 Docker (58 TC)
+- [ ] [`cross-cutting-system-test-checklist.md`](docs/testing/test-checklists/cross-cutting-system-test-checklist.md) — §X Cross-cutting (80 TC)
 
 - [ ] Smoke hệ thống (mục cuối file master) trước mỗi build
 - [ ] Cập nhật bảng tiến độ + defect log sau mỗi phiên QA

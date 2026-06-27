@@ -39,7 +39,7 @@ AppDbContext        (SQL Server)
 
 SignalR: Hub (Api) → `IExamMonitoringNotifier` / `INotificationNotifier` (Application) → implementation realtime (Api/Realtime) → client.
 
-Chi tiết: [`../docs/03_BACKEND_ARCHITECTURE.md`](../docs/03_BACKEND_ARCHITECTURE.md)
+Chi tiết: [`../docs/architecture/backend-architecture.md`](../docs/architecture/backend-architecture.md)
 
 ---
 
@@ -175,7 +175,7 @@ dotnet test EduGuard.Api/EduGuard.Api.slnx
 - Swagger Bearer JWT — nút Authorize trên Swagger UI
 - JSON: hỗ trợ optional fields qua `OptionalJsonConverterFactory`
 
-Hướng dẫn test API: [`../docs/swagger-api-testing-guide.md`](../docs/swagger-api-testing-guide.md)
+Hướng dẫn test API: [`../docs/api/swagger-api-testing-guide.md`](../docs/api/swagger-api-testing-guide.md)
 
 ---
 
@@ -183,7 +183,7 @@ Hướng dẫn test API: [`../docs/swagger-api-testing-guide.md`](../docs/swagge
 
 | File | Nội dung |
 |------|----------|
-| [`../docs/02_SETUP_AND_PROJECT_STRUCTURE.md`](../docs/02_SETUP_AND_PROJECT_STRUCTURE.md) | Setup chi tiết, Docker, CORS |
-| [`../docs/03_BACKEND_ARCHITECTURE.md`](../docs/03_BACKEND_ARCHITECTURE.md) | Kiến trúc & patterns |
-| [`../docs/04_DATABASE_ENTITIES.md`](../docs/04_DATABASE_ENTITIES.md) | Entity & quan hệ |
-| [`../docs/apiList.md`](../docs/apiList.md) | Checklist REST endpoint |
+| [`../docs/architecture/setup-and-project-structure.md`](../docs/architecture/setup-and-project-structure.md) | Setup chi tiết, Docker, CORS |
+| [`../docs/architecture/backend-architecture.md`](../docs/architecture/backend-architecture.md) | Kiến trúc & patterns |
+| [`../docs/architecture/database-entities.md`](../docs/architecture/database-entities.md) | Entity & quan hệ |
+| [`../docs/api/api-list.md`](../docs/api/api-list.md) | Checklist REST endpoint |

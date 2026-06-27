@@ -10,7 +10,7 @@ compatibility: "requires: git, Windows PowerShell"
 
 # Merge to Release (tích hợp release)
 
-Human-readable rules: `docs/07_DEVELOPMENT_RULES.md` → Workflow merge to release.  
+Human-readable rules: `docs/development/development-rules.md` → Workflow merge to release.  
 Shell: **`.agents/references/powershell-windows.md`** (PowerShell 5.x — không `&&`, HEREDOC bash).
 
 Dùng khi user muốn **đưa công việc trên nhánh dev vào `release`** và **đồng bộ lại nhánh dev**

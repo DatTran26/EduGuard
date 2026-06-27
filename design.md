@@ -108,7 +108,7 @@ excluded:
 
 **v1.1 (2026-06-11):** Chuyển từ Apple Gray sang Slate; CTA sâu hơn; thêm `*-muted` cho badge/alert surface.
 
-**Chuẩn triển khai đầy đủ:** [`docs/design-guidelines.md`](docs/design-guidelines.md)
+**Chuẩn triển khai đầy đủ:** [`docs/design/design-guidelines.md`](docs/design/design-guidelines.md)
 
 ---
 
