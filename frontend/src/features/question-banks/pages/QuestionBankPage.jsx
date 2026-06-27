@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   Archive,
@@ -13,6 +13,7 @@ import {
   Pencil,
   Plus,
   Search,
+  Sparkles,
   Table2,
   Trash2,
   X,
@@ -206,6 +207,33 @@ function buildDraftMatrixWarnings(draftQuestions, matrix) {
   });
 
   return warnings;
+}
+
+function SubstitutionConfirmDialog({ dialog, onConfirm, onCancel }) {
+  if (!dialog) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+      <div className="w-full max-w-lg rounded-[24px] border border-border bg-surface p-6 shadow-2xl space-y-6">
+        <div className="flex items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border border-caution/20 bg-caution-muted text-caution">
+            <AlertTriangle aria-hidden="true" className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-xl font-semibold text-primary">Xác nhận thay thế câu hỏi</h3>
+            <p className="mt-2 text-sm leading-6 text-secondary">{dialog.message}</p>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <Button onClick={onCancel} variant="secondary">Không đồng ý</Button>
+          <Button onClick={onConfirm}>Đồng ý thay thế</Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function MatrixIssueDialog({ dialog, onClose }) {
@@ -465,8 +493,8 @@ function GenerateExamConfirmDialog({ classroomOptions, dialog, formValues, isSub
       <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-[24px] border border-border bg-surface p-6 shadow-2xl">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h3 className="text-xl font-semibold text-primary">Đặt lịch bài kiểm tra thật</h3>
-            <p className="mt-2 text-sm leading-6 text-secondary">Bài kiểm tra sẽ dùng đúng đề nháp đã chỉnh và được mở cho sinh viên theo thời gian bạn chọn.</p>
+            <h3 className="text-xl font-semibold text-primary">Lưu đề nháp</h3>
+            <p className="mt-2 text-sm leading-6 text-secondary">Lưu thông tin đề nháp vào danh sách bài kiểm tra dưới dạng bản nháp để tiếp tục chỉnh sửa hoặc xuất bản sau.</p>
           </div>
           <Button onClick={onCancel} variant="ghost">
             <IconButtonContent icon={X}>Đóng</IconButtonContent>
@@ -482,7 +510,7 @@ function GenerateExamConfirmDialog({ classroomOptions, dialog, formValues, isSub
 
         {warnings.length > 0 ? (
           <div className="mt-4 rounded-[18px] border border-caution/20 bg-caution-muted p-4 text-sm text-caution">
-            <p className="font-semibold">Đề nháp có cảnh báo lệch ma trận nhưng vẫn có thể tạo bài kiểm tra.</p>
+            <p className="font-semibold">Đề nháp có cảnh báo lệch ma trận nhưng vẫn có thể lưu.</p>
             <ul className="mt-2 list-disc space-y-1 pl-5">
               {warnings.slice(0, 5).map((warning) => <li key={warning}>{warning}</li>)}
             </ul>
@@ -493,8 +521,8 @@ function GenerateExamConfirmDialog({ classroomOptions, dialog, formValues, isSub
           <Select id="exam-classroom-dialog" label="Lớp học" onChange={(event) => updateField("classroomId", event.target.value)} options={classroomOptions} value={formValues.classroomId} />
           <TextInput id="exam-title-dialog" label="Tiêu đề bài kiểm tra" onChange={(event) => updateField("title", event.target.value)} required value={formValues.title} />
           <div className="grid gap-4 md:grid-cols-2">
-            <TextInput id="exam-start-dialog" label="Mở đề" onChange={(event) => updateField("startTime", event.target.value)} required type="datetime-local" value={formValues.startTime} />
-            <TextInput id="exam-end-dialog" label="Đóng đề" onChange={(event) => updateField("endTime", event.target.value)} type="datetime-local" value={formValues.endTime} />
+            <TextInput id="exam-start-dialog" label="Mở đề (Không bắt buộc)" onChange={(event) => updateField("startTime", event.target.value)} type="datetime-local" value={formValues.startTime} />
+            <TextInput id="exam-end-dialog" label="Đóng đề (Không bắt buộc)" onChange={(event) => updateField("endTime", event.target.value)} type="datetime-local" value={formValues.endTime} />
             <TextInput id="exam-attempts-dialog" label="Số lần làm" min="1" onChange={(event) => updateSetting("maxAttempts", event.target.value)} type="number" value={formValues.settings.maxAttempts} />
           </div>
           <CheckboxField checked={formValues.enableAntiCheat} id="exam-anticheat-dialog" label="Bật giám sát gian lận" onChange={(event) => updateField("enableAntiCheat", event.target.checked)} />
@@ -503,7 +531,7 @@ function GenerateExamConfirmDialog({ classroomOptions, dialog, formValues, isSub
 
           <div className="flex flex-wrap justify-end gap-3">
             <Button disabled={isSubmitting} onClick={onCancel} variant="secondary">Hủy</Button>
-            <Button disabled={isSubmitting} type="submit">{isSubmitting ? "Đang tạo bài kiểm tra..." : "Tạo bài kiểm tra thật"}</Button>
+            <Button disabled={isSubmitting} type="submit">{isSubmitting ? "Đang lưu đề nháp..." : "Lưu đề nháp"}</Button>
           </div>
         </form>
       </div>
@@ -513,12 +541,13 @@ function GenerateExamConfirmDialog({ classroomOptions, dialog, formValues, isSub
 
 export default function QuestionBankPage() {
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const importFileRef = useRef(null);
   const matrixPanelRef = useRef(null);
   const sliderRef = useRef(null);
-  const [easyCount, setEasyCount] = useState(0);
-  const [mediumCount, setMediumCount] = useState(0);
-  const [hardCount, setHardCount] = useState(0);
+  const [easyCount, setEasyCount] = useState(3);
+  const [mediumCount, setMediumCount] = useState(3);
+  const [hardCount, setHardCount] = useState(4);
   const [banks, setBanks] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [matrices, setMatrices] = useState([]);
@@ -528,9 +557,8 @@ export default function QuestionBankPage() {
   const [activeBankSection, setActiveBankSection] = useState("questions");
   const [expandedBankQuestionId, setExpandedBankQuestionId] = useState(null);
   const [isBankFormOpen, setIsBankFormOpen] = useState(false);
-  const [isQuestionComposerOpen, setIsQuestionComposerOpen] = useState(false);
+  const [activeAddMethod, setActiveAddMethod] = useState(null);
   const [isQuestionEditDialogOpen, setIsQuestionEditDialogOpen] = useState(false);
-  const [isImportPanelOpen, setIsImportPanelOpen] = useState(false);
   const [bankForm, setBankForm] = useState(EMPTY_BANK_FORM);
   const [editingBankId, setEditingBankId] = useState(null);
   const [questionForm, setQuestionForm] = useState(() => buildEmptyQuestionForm());
@@ -546,6 +574,8 @@ export default function QuestionBankPage() {
   const [editingDraftQuestionIndex, setEditingDraftQuestionIndex] = useState(null);
   const [matrixIssueDialog, setMatrixIssueDialog] = useState(null);
   const [generateExamDialog, setGenerateExamDialog] = useState(null);
+  const [substitutionConfirmDialog, setSubstitutionConfirmDialog] = useState(null);
+  const [matrixErrors, setMatrixErrors] = useState({ name: "", subject: "", chapter: "" });
   const [isLoading, setIsLoading] = useState(true);
   const [isBankSubmitting, setIsBankSubmitting] = useState(false);
   const [isQuestionSubmitting, setIsQuestionSubmitting] = useState(false);
@@ -633,7 +663,7 @@ export default function QuestionBankPage() {
   }
 
   useEffect(() => { void loadPageData(); }, []);
-  useEffect(() => { void loadBankQuestions(selectedBankId); }, [selectedBankId]);
+  useEffect(() => { void loadBankQuestions(selectedBankId); }, [selectedBankId, filters.difficulty, filters.questionType, filters.status]);
 
   function resetQuestionForm(bank = selectedBank) {
     setQuestionForm(buildEmptyQuestionForm(bank));
@@ -647,35 +677,32 @@ export default function QuestionBankPage() {
     if (fieldName === "totalQuestions") {
       const total = Math.max(0, parseInt(value) || 0);
       setMatrixForm((prev) => ({ ...prev, totalQuestions: total }));
-
-      if (total === 0) {
-        setEasyCount(0);
-        setMediumCount(0);
-        setHardCount(0);
-      } else {
-        const currentTotal = easyCount + mediumCount + hardCount;
-        if (currentTotal === 0) {
-          const easy = Math.round(total * 0.4);
-          const medium = Math.round(total * 0.4);
-          const hard = total - easy - medium;
-          setEasyCount(easy);
-          setMediumCount(medium);
-          setHardCount(hard);
-        } else {
-          let easy = Math.round((easyCount / currentTotal) * total);
-          let medium = Math.round((mediumCount / currentTotal) * total);
-          let hard = total - easy - medium;
-          if (hard < 0) {
-            medium += hard;
-            hard = 0;
-          }
-          setEasyCount(easy);
-          setMediumCount(medium);
-          setHardCount(hard);
-        }
-      }
+      const base = Math.floor(total / 3);
+      const remainder = total % 3;
+      setEasyCount(base);
+      setMediumCount(base);
+      setHardCount(base + remainder);
     } else {
       setMatrixForm((previous) => ({ ...previous, [fieldName]: value }));
+    }
+
+    if (fieldName === "name") {
+      setMatrixErrors((prev) => ({
+        ...prev,
+        name: !value.trim() ? "Tên ma trận không được để trống" : "",
+      }));
+    } else if (fieldName === "subject") {
+      setMatrixErrors((prev) => ({
+        ...prev,
+        subject: !value.trim() ? "Tên môn học không được để trống" : "",
+      }));
+    } else if (fieldName === "chapter") {
+      const regex = /^[a-zA-Z0-9\s,;ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠ-ỹ]*$/;
+      const isValid = regex.test(value);
+      setMatrixErrors((prev) => ({
+        ...prev,
+        chapter: !isValid ? "Định dạng chương không hợp lệ. Chỉ chấp nhận các số cách nhau bằng dấu phẩy (Ví dụ: 1, 2, 3)" : "",
+      }));
     }
   }
 
@@ -694,13 +721,15 @@ export default function QuestionBankPage() {
     setEasyCount(parsed.easyCount);
     setMediumCount(parsed.mediumCount);
     setHardCount(parsed.hardCount);
+    setMatrixErrors({ name: "", subject: "", chapter: "" });
   }
 
   function resetMatrixForm() {
     setMatrixForm(EMPTY_MATRIX_FORM);
-    setEasyCount(0);
-    setMediumCount(1);
-    setHardCount(0);
+    setEasyCount(3);
+    setMediumCount(3);
+    setHardCount(4);
+    setMatrixErrors({ name: "", subject: "", chapter: "" });
   }
 
   function resetMatrixDraft() {
@@ -820,9 +849,8 @@ export default function QuestionBankPage() {
     setExpandedBankQuestionId(null);
     setValidationResult(null);
     resetMatrixDraft();
-    setIsQuestionComposerOpen(false);
+    setActiveAddMethod(null);
     setIsQuestionEditDialogOpen(false);
-    setIsImportPanelOpen(false);
     resetQuestionForm(bank);
   }
 
@@ -838,7 +866,7 @@ export default function QuestionBankPage() {
 
   function openQuestionEditDialog(question) {
     setQuestionForm(buildQuestionFormFromQuestion(question));
-    setIsQuestionComposerOpen(false);
+    setActiveAddMethod(null);
     setIsQuestionEditDialogOpen(true);
   }
 
@@ -935,7 +963,7 @@ export default function QuestionBankPage() {
       await loadBankQuestions(selectedBankId);
       await loadPageData({ showLoader: false });
       resetQuestionForm();
-      setIsQuestionComposerOpen(false);
+      setActiveAddMethod(null);
       setIsQuestionEditDialogOpen(false);
       showToast({ tone: "success", title: questionForm.id ? "Đã cập nhật câu hỏi" : "Đã thêm câu hỏi", message: questionForm.id ? "Nội dung câu hỏi đã được cập nhật." : "Câu hỏi đã được thêm vào ngân hàng." });
     } catch (error) {
@@ -964,7 +992,7 @@ export default function QuestionBankPage() {
       await loadBankQuestions(selectedBankId);
       await loadPageData({ showLoader: false });
       setImportFile(null);
-      setIsImportPanelOpen(false);
+      setActiveAddMethod(null);
       if (importFileRef.current) importFileRef.current.value = "";
       showToast({ tone: "success", title: "Đã nhập câu hỏi", message: "Tệp câu hỏi đã được nhập vào ngân hàng." });
     } catch (error) {
@@ -977,6 +1005,25 @@ export default function QuestionBankPage() {
 
   async function handleSubmitMatrix(event) {
     event.preventDefault();
+
+    const hasNameError = !matrixForm.name.trim();
+    const hasSubjectError = !matrixForm.subject.trim();
+    const regex = /^[a-zA-Z0-9\s,;ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠ-ỹ]*$/;
+    const hasChapterError = !regex.test(matrixForm.chapter || "");
+
+    const newErrors = {
+      name: hasNameError ? "Tên ma trận không được để trống" : "",
+      subject: hasSubjectError ? "Tên môn học không được để trống" : "",
+      chapter: hasChapterError ? "Định dạng chương không hợp lệ. Chỉ chấp nhận các số cách nhau bằng dấu phẩy (Ví dụ: 1, 2, 3)" : "",
+    };
+
+    setMatrixErrors(newErrors);
+
+    if (hasNameError || hasSubjectError || hasChapterError) {
+      showToast({ tone: "caution", title: "Thông tin ma trận chưa hợp lệ", message: "Vui lòng kiểm tra và sửa các lỗi hiển thị dưới các ô nhập." });
+      return;
+    }
+
     if (matrixTotals.totalQuestions <= 0) {
       showToast({ tone: "caution", title: "Ma trận chưa hợp lệ", message: "Tổng số câu phải lớn hơn 0." });
       return;
@@ -1053,25 +1100,61 @@ export default function QuestionBankPage() {
     }
   }
 
+  function applyPreviewResult(previewData) {
+    setPreviewResult(previewData);
+    setDraftExamQuestions(previewData.success ? buildDraftQuestionsFromPreview(previewData) : []);
+    setDraftQuestionForm(null);
+    setEditingDraftQuestionIndex(null);
+    setGenerateExamDialog(null);
+    if (!previewData.success) {
+      showMatrixIssueDialog("Không thể tạo bản xem thử từ ma trận", previewData);
+    }
+    showToast({ 
+      tone: previewData.success ? "success" : "caution", 
+      title: previewData.success ? "Đã sinh đề nháp" : "Chưa thể sinh đề nháp", 
+      message: previewData.message || (previewData.success ? "Đã sinh đề nháp thành công." : "Không thể sinh đề nháp.")
+    });
+  }
+
   async function handleGeneratePreview() {
     if (!selectedMatrixId || !selectedBankId) return;
     setIsMatrixActionRunning(true);
     try {
       const response = await questionBankApi.generateMatrixPreview(selectedMatrixId, selectedBankId);
-      setPreviewResult(response.data);
-      setDraftExamQuestions(response.data.success ? buildDraftQuestionsFromPreview(response.data) : []);
-      setDraftQuestionForm(null);
-      setEditingDraftQuestionIndex(null);
-      setGenerateExamDialog(null);
-      if (!response.data.success) {
-        showMatrixIssueDialog("Không thể tạo bản xem thử từ ma trận", response.data);
+      if (response.data.success && response.data.hasSubstitutions) {
+        setSubstitutionConfirmDialog({
+          message: response.data.substitutionMessage || "Ngân hàng thiếu câu hỏi có độ khó tương ứng. Đã tự động bù câu hỏi khác vào cho đủ số câu. Bạn có chấp nhận thay thế không?",
+          previewData: response.data
+        });
+      } else {
+        applyPreviewResult(response.data);
       }
-      showToast({ tone: response.data.success ? "success" : "caution", title: response.data.success ? "Đã sinh đề nháp" : "Chưa thể sinh đề nháp", message: response.data.message });
     } catch (error) {
       showToast({ tone: "danger", title: "Sinh đề nháp thất bại", message: error.message || "Không thể sinh đề nháp." });
     } finally {
       setIsMatrixActionRunning(false);
     }
+  }
+
+  function handleConfirmSubstitution() {
+    if (substitutionConfirmDialog?.previewData) {
+      applyPreviewResult(substitutionConfirmDialog.previewData);
+    }
+    setSubstitutionConfirmDialog(null);
+  }
+
+  function handleCancelSubstitution() {
+    setDraftExamQuestions([]);
+    setPreviewResult(null);
+    if (substitutionConfirmDialog?.previewData) {
+      showMatrixIssueDialog("Ma trận thiếu câu hỏi", substitutionConfirmDialog.previewData);
+    }
+    setSubstitutionConfirmDialog(null);
+    showToast({
+      tone: "caution",
+      title: "Đã hủy sinh đề nháp",
+      message: "Bạn đã từ chối sử dụng các câu hỏi thay thế."
+    });
   }
 
   function handleOpenGenerateExamDialog() {
@@ -1091,6 +1174,31 @@ export default function QuestionBankPage() {
     });
   }
 
+  function handleNavigateToCreateExam() {
+    const matrixId = createExamForm.matrixId || selectedMatrixId;
+    if (!matrixId || !selectedBankId || draftExamQuestions.length === 0) return;
+
+    if (previewResult?.success !== true) {
+      showToast({ tone: "caution", title: "Chưa có đề nháp hợp lệ", message: "Vui lòng sinh đề nháp từ ma trận trước khi tạo bài kiểm tra." });
+      return;
+    }
+
+    navigate(routeConfig.teacherExams, {
+      state: {
+        fromMatrixDraft: true,
+        matrixName: selectedMatrix?.name ?? "Ma trận đang chọn",
+        durationMinutes: selectedMatrix?.durationMinutes ?? 0,
+        questions: draftExamQuestions,
+        title: createExamForm.title,
+        classroomId: createExamForm.classroomId,
+        startTime: createExamForm.startTime,
+        endTime: createExamForm.endTime,
+        enableAntiCheat: createExamForm.enableAntiCheat,
+        settings: createExamForm.settings,
+      }
+    });
+  }
+
   async function handleConfirmCreateExamFromMatrix(event) {
     event.preventDefault();
     const matrixId = createExamForm.matrixId || selectedMatrixId;
@@ -1103,10 +1211,6 @@ export default function QuestionBankPage() {
       showToast({ tone: "caution", title: "Chưa nhập tiêu đề", message: "Vui lòng nhập tiêu đề bài kiểm tra." });
       return;
     }
-    if (!createExamForm.startTime) {
-      showToast({ tone: "caution", title: "Chưa chọn giờ mở đề", message: "Vui lòng chọn thời gian bắt đầu làm bài trước khi tạo bài kiểm tra thật." });
-      return;
-    }
     if (hasInvalidCreateExamTimeWindow()) {
       showToast({ tone: "caution", title: "Thời gian chưa hợp lệ", message: "Thời gian đóng đề phải sau thời gian mở đề." });
       return;
@@ -1116,16 +1220,17 @@ export default function QuestionBankPage() {
       const response = await questionBankApi.createExamFromMatrix(matrixId, {
         ...createExamForm,
         questionBankId: selectedBankId,
-        startTime: toVietnamISOString(createExamForm.startTime),
-        endTime: toVietnamISOString(createExamForm.endTime),
+        startTime: createExamForm.startTime ? toVietnamISOString(createExamForm.startTime) : null,
+        endTime: createExamForm.endTime ? toVietnamISOString(createExamForm.endTime) : null,
         questions: draftExamQuestions,
+        isPublished: false,
       });
       setGenerateExamDialog(null);
       setDraftExamQuestions([]);
       setPreviewResult(null);
-      showToast({ tone: "success", title: "Đã tạo bài kiểm tra thật", message: response.message || "Bài kiểm tra đã được tạo và lên lịch theo thời gian mở đề." });
+      showToast({ tone: "success", title: "Đã lưu đề nháp", message: response.message || "Đề nháp đã được lưu vào danh sách bài kiểm tra dưới dạng bản nháp." });
     } catch (error) {
-      showToast({ tone: "danger", title: "Tạo bài kiểm tra thất bại", message: error.message || "Không thể tạo bài kiểm tra từ đề nháp." });
+      showToast({ tone: "danger", title: "Lưu đề nháp thất bại", message: error.message || "Không thể lưu đề nháp." });
     } finally {
       setIsMatrixActionRunning(false);
     }
@@ -1227,7 +1332,17 @@ export default function QuestionBankPage() {
   function renderQuestionList() {
     return (
       <Card className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Bộ lọc câu hỏi */}
+        <div className="border-b border-border pb-5 space-y-4 pt-2">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <TextInput id="filter-keyword" label="Từ khóa" onChange={(event) => setFilters((previous) => ({ ...previous, keyword: event.target.value }))} value={filters.keyword} />
+            <Select id="filter-difficulty" label="Độ khó" onChange={(event) => setFilters((previous) => ({ ...previous, difficulty: event.target.value }))} options={[{ label: "Tất cả độ khó", value: "" }, ...questionBankEnums.difficultyOptions]} value={filters.difficulty} />
+            <Select id="filter-type" label="Loại câu" onChange={(event) => setFilters((previous) => ({ ...previous, questionType: event.target.value }))} options={QUESTION_TYPE_FILTER_OPTIONS} value={filters.questionType} />
+            <Select id="filter-status" label="Trạng thái" onChange={(event) => setFilters((previous) => ({ ...previous, status: event.target.value }))} options={QUESTION_STATUS_FILTER_OPTIONS} value={filters.status} />
+            <TextInput id="filter-chapter" label="Chương" onChange={(event) => setFilters((previous) => ({ ...previous, chapter: event.target.value }))} value={filters.chapter} />
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <div>
             <h3 className="text-lg font-semibold text-primary">Câu hỏi trong ngân hàng</h3>
             <p className="mt-1 text-sm text-secondary">Danh sách rộng để rà nội dung, trạng thái, độ khó và số lần dùng.</p>
@@ -1292,81 +1407,189 @@ export default function QuestionBankPage() {
   function renderQuestionManager() {
     return (
       <div className="space-y-5">
-        <Card className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-primary">Bộ lọc câu hỏi</h3>
-            <Button disabled={!selectedBankId} onClick={() => loadBankQuestions(selectedBankId)} variant="secondary">
-              <IconButtonContent icon={Search}>Áp dụng lọc</IconButtonContent>
-            </Button>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <TextInput id="filter-keyword" label="Từ khóa" onChange={(event) => setFilters((previous) => ({ ...previous, keyword: event.target.value }))} value={filters.keyword} />
-            <Select id="filter-difficulty" label="Độ khó" onChange={(event) => setFilters((previous) => ({ ...previous, difficulty: event.target.value }))} options={[{ label: "Tất cả độ khó", value: "" }, ...questionBankEnums.difficultyOptions]} value={filters.difficulty} />
-            <Select id="filter-type" label="Loại câu" onChange={(event) => setFilters((previous) => ({ ...previous, questionType: event.target.value }))} options={QUESTION_TYPE_FILTER_OPTIONS} value={filters.questionType} />
-            <Select id="filter-status" label="Trạng thái" onChange={(event) => setFilters((previous) => ({ ...previous, status: event.target.value }))} options={QUESTION_STATUS_FILTER_OPTIONS} value={filters.status} />
-            <TextInput id="filter-chapter" label="Chương" onChange={(event) => setFilters((previous) => ({ ...previous, chapter: event.target.value }))} value={filters.chapter} />
-          </div>
-        </Card>
+        {/* Folder Tabs Row */}
+        <div className="flex flex-wrap items-end gap-1.5 relative z-10 px-4 -mb-[1px]">
+          {/* Tab 1: Thêm câu hỏi / Tạo câu hỏi thủ công */}
+          <button
+            type="button"
+            onClick={() => {
+              if (activeAddMethod === "manual") {
+                setActiveAddMethod(null);
+              } else {
+                resetQuestionForm();
+                setActiveAddMethod("manual");
+              }
+            }}
+            className={`relative px-5 py-2.5 text-sm transition-all duration-150 flex items-center gap-2 rounded-t-2xl cursor-pointer ${
+              activeAddMethod === "manual"
+                ? "bg-success text-white border border-success z-20 font-bold shadow-md"
+                : "bg-surface-sunken border border-border border-b-transparent text-secondary hover:bg-surface hover:text-primary font-semibold"
+            }`}
+          >
+            {activeAddMethod === "manual" ? (
+              <>
+                <ChevronUp className="h-4 w-4" />
+                <span>Thu gọn khung nhập</span>
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                <span>Thêm câu hỏi</span>
+              </>
+            )}
+          </button>
 
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => { resetQuestionForm(); setIsQuestionComposerOpen((value) => !value); }} variant={isQuestionComposerOpen ? "secondary" : "primary"}>
-            <IconButtonContent icon={isQuestionComposerOpen ? ChevronUp : Plus}>{isQuestionComposerOpen ? "Thu gọn khung nhập" : "Thêm câu hỏi"}</IconButtonContent>
-          </Button>
-          <Button onClick={() => setIsImportPanelOpen((value) => !value)} variant="secondary">
-            <IconButtonContent icon={FilePlus2}>{isImportPanelOpen ? "Thu gọn nhập tệp" : "Nhập câu hỏi từ tệp"}</IconButtonContent>
-          </Button>
+          {/* Tab 2: Tạo câu hỏi với AI */}
+          <button
+            type="button"
+            onClick={() => {
+              if (activeAddMethod === "ai") {
+                setActiveAddMethod(null);
+              } else {
+                setActiveAddMethod("ai");
+              }
+            }}
+            className={`relative px-5 py-2.5 text-sm transition-all duration-150 flex items-center gap-2 rounded-t-2xl cursor-pointer ${
+              activeAddMethod === "ai"
+                ? "bg-success text-white border border-success z-20 font-bold shadow-md"
+                : "bg-surface-sunken border border-border border-b-transparent text-secondary hover:bg-surface hover:text-primary font-semibold"
+            }`}
+          >
+            {activeAddMethod === "ai" ? (
+              <>
+                <ChevronUp className="h-4 w-4" />
+                <span>Thu gọn AI</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                <span>Tạo câu hỏi với AI</span>
+              </>
+            )}
+          </button>
+
+          {/* Tab 3: Nhập câu hỏi từ tệp */}
+          <button
+            type="button"
+            onClick={() => {
+              if (activeAddMethod === "manual-import") {
+                setActiveAddMethod(null);
+              } else {
+                setActiveAddMethod("manual-import");
+              }
+            }}
+            className={`relative px-5 py-2.5 text-sm transition-all duration-150 flex items-center gap-2 rounded-t-2xl cursor-pointer ${
+              activeAddMethod === "manual-import"
+                ? "bg-success text-white border border-success z-20 font-bold shadow-md"
+                : "bg-surface-sunken border border-border border-b-transparent text-secondary hover:bg-surface hover:text-primary font-semibold"
+            }`}
+          >
+            {activeAddMethod === "manual-import" ? (
+              <>
+                <ChevronUp className="h-4 w-4" />
+                <span>Thu gọn nhập tệp</span>
+              </>
+            ) : (
+              <>
+                <FilePlus2 className="h-4 w-4" />
+                <span>Nhập câu hỏi từ tệp</span>
+              </>
+            )}
+          </button>
         </div>
 
-        {isQuestionComposerOpen ? (
-          <BankQuestionForm
-            formValues={questionForm}
-            isDisabled={!selectedBankId}
-            isSubmitting={isQuestionSubmitting}
-            onChange={setQuestionForm}
-            onReset={() => resetQuestionForm()}
-            onSubmit={handleSubmitQuestion}
-            title="Thêm câu hỏi vào ngân hàng"
-          />
-        ) : null}
+        {/* Tab Contents Panel (Card connected seamlessly to the active tab) */}
+        {activeAddMethod && (
+          <div
+            className={`border border-border bg-surface p-6 shadow-sm space-y-6 ${
+              activeAddMethod === "manual"
+                ? "rounded-b-[24px] rounded-tr-[24px] rounded-tl-none"
+                : "rounded-b-[24px] rounded-t-[24px]"
+            }`}
+          >
+            {activeAddMethod === "manual" && (
+              <BankQuestionForm
+                formValues={questionForm}
+                isDisabled={!selectedBankId}
+                isSubmitting={isQuestionSubmitting}
+                onChange={setQuestionForm}
+                onReset={() => {
+                  resetQuestionForm();
+                  setActiveAddMethod(null);
+                }}
+                onSubmit={async (e) => {
+                  await handleSubmitQuestion(e);
+                  setActiveAddMethod(null);
+                }}
+                title="Thêm câu hỏi vào ngân hàng"
+              />
+            )}
 
-        {isImportPanelOpen ? (
-          <div className="space-y-6">
-            <QuestionImportResources
-              bankId={selectedBankId}
-              onQuestionsGenerated={async () => {
-                await loadBankQuestions(selectedBankId);
-                await loadPageData({ showLoader: false });
-                showToast({
-                  tone: "success",
-                  title: "Sinh câu hỏi thành công",
-                  message: "Các câu hỏi đã được sinh bằng AI và thêm vào ngân hàng câu hỏi.",
-                });
-              }}
-            />
-            <Card className="space-y-4">
-              <h3 className="text-lg font-semibold text-primary">Cấu hình thông tin mặc định cho câu hỏi nhập từ tệp</h3>
-              <div className="grid gap-4 md:grid-cols-4">
-                <Select id="import-status" label="Trạng thái" onChange={(event) => setImportDefaults((previous) => ({ ...previous, status: event.target.value }))} options={questionBankEnums.statusOptions} value={importDefaults.status} />
-                <TextInput id="import-subject" label="Môn" onChange={(event) => setImportDefaults((previous) => ({ ...previous, subject: event.target.value }))} value={importDefaults.subject} />
-                <TextInput id="import-chapter" label="Chương" onChange={(event) => setImportDefaults((previous) => ({ ...previous, chapter: event.target.value }))} value={importDefaults.chapter} />
-                <TextInput id="import-lesson" label="Bài" onChange={(event) => setImportDefaults((previous) => ({ ...previous, lesson: event.target.value }))} value={importDefaults.lesson} />
+            {activeAddMethod === "ai" && (
+              <div className="space-y-4">
+                <QuestionImportResources
+                  bankId={selectedBankId}
+                  mode="ai"
+                  onQuestionsGenerated={async () => {
+                    await loadBankQuestions(selectedBankId);
+                    await loadPageData({ showLoader: false });
+                    setActiveAddMethod(null);
+                    showToast({
+                      tone: "success",
+                      title: "Sinh câu hỏi thành công",
+                      message: "Các câu hỏi đã được sinh bằng AI và thêm vào ngân hàng câu hỏi.",
+                    });
+                  }}
+                />
               </div>
-            </Card>
-            <QuestionImportPanel
-              acceptedExtensions={[".csv", ".xlsx", ".txt", ".docx", ".pdf"]}
-              commitLabel="Nhập vào ngân hàng"
-              isDisabled={!selectedBankId}
-              isSubmitting={isImportSubmitting}
-              maxFileSizeLabel="5 MB"
-              onClearFile={() => setImportFile(null)}
-              onCommitImport={() => handleImportQuestions()}
-              onFileSelected={setImportFile}
-              stagedFile={importFile}
-              statusLabel="Review trước khi nhập"
-              submittingLabel="Đang nhập..."
-            />
+            )}
+
+            {activeAddMethod === "manual-import" && (
+              <div className="space-y-6">
+                <QuestionImportResources
+                  bankId={selectedBankId}
+                  mode="manual"
+                  onQuestionsGenerated={async () => {
+                    await loadBankQuestions(selectedBankId);
+                    await loadPageData({ showLoader: false });
+                    setActiveAddMethod(null);
+                    showToast({
+                      tone: "success",
+                      title: "Sinh câu hỏi thành công",
+                      message: "Các câu hỏi đã được sinh bằng AI và thêm vào ngân hàng câu hỏi.",
+                    });
+                  }}
+                />
+                <Card className="space-y-4">
+                  <h3 className="text-lg font-semibold text-primary">Cấu hình thông tin mặc định cho câu hỏi nhập từ tệp</h3>
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                    <Select id="import-status" label="Trạng thái" onChange={(event) => setImportDefaults((previous) => ({ ...previous, status: event.target.value }))} options={questionBankEnums.statusOptions} value={importDefaults.status} />
+                    <TextInput id="import-subject" label="Môn" onChange={(event) => setImportDefaults((previous) => ({ ...previous, subject: event.target.value }))} value={importDefaults.subject} />
+                    <TextInput id="import-chapter" label="Chương" onChange={(event) => setImportDefaults((previous) => ({ ...previous, chapter: event.target.value }))} value={importDefaults.chapter} />
+                    <TextInput id="import-lesson" label="Bài" onChange={(event) => setImportDefaults((previous) => ({ ...previous, lesson: event.target.value }))} value={importDefaults.lesson} />
+                    <TextInput id="import-learning-outcome" label="Yêu cầu cần đạt" onChange={(event) => setImportDefaults((previous) => ({ ...previous, learningOutcome: event.target.value }))} value={importDefaults.learningOutcome} />
+                  </div>
+                </Card>
+                <QuestionImportPanel
+                  acceptedExtensions={[".csv", ".xlsx", ".txt", ".docx", ".pdf"]}
+                  commitLabel="Nhập vào ngân hàng"
+                  isDisabled={!selectedBankId}
+                  isSubmitting={isImportSubmitting}
+                  maxFileSizeLabel="5 MB"
+                  onClearFile={() => setImportFile(null)}
+                  onCommitImport={async () => {
+                    await handleImportQuestions();
+                    setActiveAddMethod(null);
+                  }}
+                  onFileSelected={setImportFile}
+                  stagedFile={importFile}
+                  statusLabel="Review trước khi nhập"
+                  submittingLabel="Đang nhập..."
+                />
+              </div>
+            )}
           </div>
-        ) : null}
+        )}
 
         {renderQuestionList()}
       </div>
@@ -1430,22 +1653,22 @@ export default function QuestionBankPage() {
 
         <div className="space-y-3">
           <h4 className="text-sm font-semibold text-primary">Chi tiết dòng ma trận</h4>
-          <div className="overflow-auto rounded-[18px] border border-border">
+          <div className="overflow-auto rounded-[18px] border border-border shadow-sm">
             <table className="min-w-full divide-y divide-border text-sm">
-              <thead className="bg-neutral text-left text-xs font-semibold uppercase tracking-[0.08em] text-secondary">
+              <thead className="bg-primary/5 text-left text-xs font-bold uppercase tracking-[0.08em] text-primary">
                 <tr>
-                  <th className="px-4 py-3">Chương</th>
-                  <th className="px-4 py-3">Bài</th>
-                  <th className="px-4 py-3">Yêu cầu cần đạt</th>
-                  <th className="px-4 py-3">Loại câu</th>
-                  <th className="px-4 py-3">Độ khó</th>
-                  <th className="px-4 py-3 text-right">Số câu</th>
+                  <th className="px-4 py-3.5 border-b border-border">Chương</th>
+                  <th className="px-4 py-3.5 border-b border-border">Bài</th>
+                  <th className="px-4 py-3.5 border-b border-border">Yêu cầu cần đạt</th>
+                  <th className="px-4 py-3.5 border-b border-border">Loại câu</th>
+                  <th className="px-4 py-3.5 border-b border-border">Độ khó</th>
+                  <th className="px-4 py-3.5 border-b border-border text-right">Số câu</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border bg-surface">
                 {selectedMatrix.items.map((item, index) => (
-                  <tr key={item.id || index}>
-                    <td className="px-4 py-3 text-primary">{item.chapter || "Bất kỳ"}</td>
+                  <tr key={item.id || index} className="hover:bg-neutral/40 transition-colors">
+                    <td className="px-4 py-3 text-primary font-medium">{item.chapter || "Bất kỳ"}</td>
                     <td className="px-4 py-3 text-secondary">{item.lesson || "Bất kỳ"}</td>
                     <td className="px-4 py-3 text-secondary">{item.learningOutcome || "Bất kỳ"}</td>
                     <td className="px-4 py-3 text-secondary">{getQuestionTypeLabel(item.questionType)}</td>
@@ -1463,29 +1686,40 @@ export default function QuestionBankPage() {
             <h4 className="text-sm font-semibold text-primary">Trạng thái ngân hàng câu hỏi</h4>
             <Button disabled={isMatrixActionRunning || !selectedBankId || !selectedMatrixId} onClick={handleValidateMatrix} variant="secondary">Kiểm tra đủ câu</Button>
           </div>
-          <div className="overflow-auto rounded-[18px] border border-border">
+          <div className="overflow-auto rounded-[18px] border border-border shadow-sm">
             <table className="min-w-full divide-y divide-border text-sm">
-              <thead className="bg-neutral text-left text-xs font-semibold uppercase tracking-[0.08em] text-secondary">
+              <thead className="bg-primary/5 text-left text-xs font-bold uppercase tracking-[0.08em] text-primary">
                 <tr>
-                  <th className="px-4 py-3">Dòng</th>
-                  <th className="px-4 py-3">Điều kiện</th>
-                  <th className="px-4 py-3 text-right">Cần</th>
-                  <th className="px-4 py-3 text-right">Hiện có</th>
-                  <th className="px-4 py-3 text-right">Thiếu</th>
-                  <th className="px-4 py-3">Trạng thái</th>
+                  <th className="px-4 py-3.5 border-b border-border">Dòng</th>
+                  <th className="px-4 py-3.5 border-b border-border">Điều kiện</th>
+                  <th className="px-4 py-3.5 border-b border-border text-right">Cần</th>
+                  <th className="px-4 py-3.5 border-b border-border text-right">Hiện có</th>
+                  <th className="px-4 py-3.5 border-b border-border text-right">Thiếu</th>
+                  <th className="px-4 py-3.5 border-b border-border">Trạng thái</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border bg-surface">
                 {availabilityRows.map((row) => {
                   const shortfall = formatMatrixIssueShortfall(row);
                   const isMissing = row.checked && shortfall.missing > 0;
+                  const isOk = row.checked && shortfall.missing === 0;
+
                   return (
-                    <tr key={row.matrixItemId || row.rowIndex}>
+                    <tr 
+                      key={row.matrixItemId || row.rowIndex}
+                      className={`transition-colors ${
+                        isMissing
+                          ? "bg-danger/5 hover:bg-danger/10 text-danger-hover"
+                          : isOk
+                          ? "bg-success/5 hover:bg-success/10"
+                          : "hover:bg-neutral/40"
+                      }`}
+                    >
                       <td className="px-4 py-3 font-semibold text-primary">{row.rowIndex}</td>
                       <td className="px-4 py-3 text-secondary">{formatMatrixIssueRequirement(row)}</td>
-                      <td className="px-4 py-3 text-right text-primary">{shortfall.required}</td>
-                      <td className="px-4 py-3 text-right text-primary">{row.checked ? shortfall.available : "-"}</td>
-                      <td className="px-4 py-3 text-right text-primary">{row.checked ? shortfall.missing : "-"}</td>
+                      <td className="px-4 py-3 text-right font-medium text-primary">{shortfall.required}</td>
+                      <td className="px-4 py-3 text-right text-secondary">{row.checked ? shortfall.available : "-"}</td>
+                      <td className={`px-4 py-3 text-right font-semibold ${isMissing ? "text-danger" : "text-secondary"}`}>{row.checked ? shortfall.missing : "-"}</td>
                       <td className="px-4 py-3"><Badge variant={!row.checked ? "neutral" : isMissing ? "danger" : "success"}>{!row.checked ? "Chưa kiểm tra" : isMissing ? "Thiếu" : "Đủ"}</Badge></td>
                     </tr>
                   );
@@ -1577,8 +1811,8 @@ export default function QuestionBankPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-4 xl:grid-cols-7">
-              <TextInput id="matrix-name" label="Tên ma trận" onChange={(event) => updateMatrixForm("name", event.target.value)} required value={matrixForm.name} />
-              <TextInput id="matrix-subject" label="Môn" onChange={(event) => updateMatrixForm("subject", event.target.value)} required value={matrixForm.subject} />
+              <TextInput id="matrix-name" label="Tên ma trận" onChange={(event) => updateMatrixForm("name", event.target.value)} required value={matrixForm.name} error={matrixErrors.name} />
+              <TextInput id="matrix-subject" label="Môn" onChange={(event) => updateMatrixForm("subject", event.target.value)} required value={matrixForm.subject} error={matrixErrors.subject} />
               <TextInput id="matrix-grade" label="Khối/lớp" onChange={(event) => updateMatrixForm("gradeLevel", event.target.value)} value={matrixForm.gradeLevel} />
               <TextInput id="matrix-duration" label="Thời lượng phút" min="1" onChange={(event) => updateMatrixForm("durationMinutes", event.target.value)} type="number" value={matrixForm.durationMinutes} />
               <TextInput id="matrix-total-questions" label="Tổng số câu" min="1" onChange={(event) => updateMatrixForm("totalQuestions", event.target.value)} required type="number" value={matrixForm.totalQuestions} />
@@ -1670,7 +1904,7 @@ export default function QuestionBankPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-4 mt-4">
-              <TextInput id="matrix-chapter" label="Chương" onChange={(event) => updateMatrixForm("chapter", event.target.value)} value={matrixForm.chapter} />
+              <TextInput id="matrix-chapter" label="Chương" onChange={(event) => updateMatrixForm("chapter", event.target.value)} value={matrixForm.chapter} error={matrixErrors.chapter} />
               <TextInput id="matrix-lesson" label="Bài" onChange={(event) => updateMatrixForm("lesson", event.target.value)} value={matrixForm.lesson} />
               <TextInput id="matrix-outcome" label="Yêu cầu cần đạt" onChange={(event) => updateMatrixForm("learningOutcome", event.target.value)} value={matrixForm.learningOutcome} />
               <Select id="matrix-type" label="Loại câu" onChange={(event) => updateMatrixForm("questionType", event.target.value)} options={MATRIX_QUESTION_TYPE_OPTIONS} value={matrixForm.questionType} />
@@ -1759,7 +1993,12 @@ export default function QuestionBankPage() {
                 </div>
 
                 <div className="flex flex-wrap justify-end gap-3">
-                  <Button disabled={isMatrixActionRunning || !canOpenScheduleDialog()} onClick={handleOpenGenerateExamDialog}>Xác nhận đề nháp và đặt lịch</Button>
+                  <Button disabled={isMatrixActionRunning || !canOpenScheduleDialog()} onClick={handleOpenGenerateExamDialog} variant="secondary">
+                    Lưu đề nháp
+                  </Button>
+                  <Button disabled={isMatrixActionRunning || !canOpenScheduleDialog()} onClick={handleNavigateToCreateExam}>
+                    Tạo đề
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -1794,9 +2033,29 @@ export default function QuestionBankPage() {
 
         {isBankFormOpen ? renderBankFormPanel() : null}
 
-        <div className="flex flex-wrap gap-2">
-          <button className={activeBankSection === "questions" ? "eg-question-filter-chip eg-question-filter-chip-active" : "eg-question-filter-chip"} onClick={() => setActiveBankSection("questions")} type="button">Câu hỏi trong ngân hàng</button>
-          <button className={activeBankSection === "matrix" ? "eg-question-filter-chip eg-question-filter-chip-active" : "eg-question-filter-chip"} onClick={openMatrixSection} type="button">Ma trận đề thi</button>
+        <div className="inline-flex rounded-full border border-border bg-neutral p-1 shadow-sm">
+          <button
+            className={`whitespace-nowrap rounded-full px-6 py-2.5 text-sm font-bold transition-all duration-200 ${
+              activeBankSection === "questions"
+                ? "bg-primary text-white shadow-sm"
+                : "text-secondary hover:bg-surface hover:text-primary"
+            }`}
+            onClick={() => setActiveBankSection("questions")}
+            type="button"
+          >
+            Câu hỏi trong ngân hàng
+          </button>
+          <button
+            className={`whitespace-nowrap rounded-full px-6 py-2.5 text-sm font-bold transition-all duration-200 ${
+              activeBankSection === "matrix"
+                ? "bg-primary text-white shadow-sm"
+                : "text-secondary hover:bg-surface hover:text-primary"
+            }`}
+            onClick={openMatrixSection}
+            type="button"
+          >
+            Ma trận đề thi
+          </button>
         </div>
 
         {activeBankSection === "questions" ? renderQuestionManager() : renderMatrixManager()}
@@ -1846,6 +2105,11 @@ export default function QuestionBankPage() {
     <>
       {selectedBank ? renderBankDetailView() : renderBankListView()}
       <MatrixIssueDialog dialog={matrixIssueDialog} onClose={() => setMatrixIssueDialog(null)} />
+      <SubstitutionConfirmDialog
+        dialog={substitutionConfirmDialog}
+        onConfirm={handleConfirmSubstitution}
+        onCancel={handleCancelSubstitution}
+      />
       {isQuestionEditDialogOpen ? (
         <QuestionEditDialog
           formValues={questionForm}

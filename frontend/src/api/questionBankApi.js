@@ -232,11 +232,14 @@ function normalizeMatrixPreview(preview) {
     message: translateMatrixMessage(preview?.message),
     totalQuestions: Number(preview?.totalQuestions) || 0,
     totalScore: Number(preview?.totalScore) || 0,
+    hasSubstitutions: Boolean(preview?.hasSubstitutions),
+    substitutionMessage: translateMatrixMessage(preview?.substitutionMessage),
     errors: Array.isArray(preview?.errors) ? preview.errors.map((issue) => normalizeMatrixIssue(issue)) : [],
     questions: Array.isArray(preview?.questions)
       ? preview.questions.map((item) => ({
           matrixItemId: Number(item?.matrixItemId) || 0,
           score: Number(item?.score) || 0,
+          isSubstitution: Boolean(item?.isSubstitution),
           question: normalizeBankQuestion(item?.question),
         }))
       : [],
@@ -307,6 +310,7 @@ function buildCreateExamFromMatrixPayload(payload) {
     startTime: payload.startTime || null,
     endTime: payload.endTime || null,
     enableAntiCheat: Boolean(payload.enableAntiCheat),
+    isPublished: payload.isPublished !== undefined ? Boolean(payload.isPublished) : true,
     settings: {
       shuffleQuestions: Boolean(payload.settings?.shuffleQuestions),
       shuffleAnswers: Boolean(payload.settings?.shuffleAnswers),
@@ -445,6 +449,71 @@ export const questionBankApi = {
       },
     };
   },
+
+  async generateQuestionsAiPreview(bankId, payload) {
+    const apiResponse = await requestApi(() => axiosClient.post(`/question-banks/${bankId}/questions/generate-ai/preview`, {
+      prompt: payload.prompt,
+      userApiKey: payload.userApiKey,
+      difficulty: toDifficultyCode(payload.difficulty),
+      status: toQuestionStatusCode(payload.status),
+      subject: payload.subject?.trim() || null,
+      chapter: payload.chapter?.trim() || null,
+      lesson: payload.lesson?.trim() || null,
+      learningOutcome: payload.learningOutcome?.trim() || null,
+    }));
+
+    return {
+      ...apiResponse,
+      data: Array.isArray(apiResponse.data)
+        ? apiResponse.data.map((question) => normalizeBankQuestion(question))
+        : [],
+    };
+  },
+
+  async createQuestionsBulk(bankId, questions) {
+    const payload = questions.map((q) => ({
+      content: q.content,
+      questionType: toQuestionTypeCode(q.questionType),
+      difficulty: toDifficultyCode(q.difficulty),
+      defaultScore: Number(q.defaultScore) || 1,
+      subject: q.subject?.trim() || null,
+      chapter: q.chapter?.trim() || null,
+      lesson: q.lesson?.trim() || null,
+      learningOutcome: q.learningOutcome?.trim() || null,
+      status: toQuestionStatusCode(q.status),
+      answers: Array.isArray(q.answers)
+        ? q.answers.map((a, idx) => ({
+            content: a.content,
+            isCorrect: Boolean(a.isCorrect),
+            orderIndex: idx + 1,
+          }))
+        : [],
+    }));
+
+    const apiResponse = await requestApi(() => axiosClient.post(`/question-banks/${bankId}/questions/bulk`, payload));
+    return {
+      ...apiResponse,
+      data: {
+        ...(apiResponse.data ?? {}),
+        questions: Array.isArray(apiResponse.data?.questions)
+          ? apiResponse.data.questions.map((question) => normalizeBankQuestion(question))
+          : [],
+      },
+    };
+  },
+
+  async getGptSettings() {
+    return requestApi(() => axiosClient.get("/admin/gpt/settings"));
+  },
+
+  async saveGptSettings(payload) {
+    return requestApi(() => axiosClient.post("/admin/gpt/settings", payload));
+  },
+
+  async testGptConnection(payload) {
+    return requestApi(() => axiosClient.post("/admin/gpt/test-connection", payload));
+  },
+
 
   async getMatrices() {
     const apiResponse = await requestApi(() => axiosClient.get("/exam-matrices"));
