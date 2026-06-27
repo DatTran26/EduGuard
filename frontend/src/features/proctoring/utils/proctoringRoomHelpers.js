@@ -1,7 +1,15 @@
+import {
+  isAiViolationDetectionType,
+  PROCTORING_AI_DETECTION_FILTERS,
+} from "./proctoringAiHelpers";
+
 const RISK_PRIORITY = { Critical: 0, Warning: 1, Watch: 2, Normal: 3 };
+
+export { PROCTORING_AI_DETECTION_FILTERS };
 
 export const PROCTORING_FILTERS = [
   { id: "all", label: "Tất cả" },
+  { id: "inProgress", label: "Đang làm" },
   { id: "live", label: "Đang live" },
   { id: "highRisk", label: "Rủi ro cao" },
   { id: "critical", label: "Cần xem xét" },
@@ -51,25 +59,60 @@ function isHighRisk(student) {
   return student?.riskLevel === "Warning" || student?.riskLevel === "Critical";
 }
 
-export function filterStudents(students = [], filterId = "all") {
-  switch (filterId) {
-    case "live":
-      return students.filter(isLiveStudent);
-    case "highRisk":
-      return students.filter(isHighRisk);
-    case "critical":
-      return students.filter((student) => student.riskLevel === "Critical");
-    case "cameraError":
-      return students.filter(isCameraError);
-    case "disconnected":
-      return students.filter(isDisconnected);
-    case "external":
-      return students.filter(isExternalDevice);
-    case "submitted":
-      return students.filter((student) => student.attemptStatus === "Submitted");
-    default:
-      return students;
+function isInProgress(student) {
+  const status = String(student?.attemptStatus ?? "");
+  return status === "InProgress" || status === "PausedByProctor";
+}
+
+export function filterStudentsByAiDetection(students = [], detectionFilterId = "all") {
+  if (!detectionFilterId || detectionFilterId === "all") {
+    return students;
   }
+
+  if (detectionFilterId === "any") {
+    return students.filter((student) => isAiViolationDetectionType(student?.latestDetectionType));
+  }
+
+  return students.filter((student) => student?.latestDetectionType === detectionFilterId);
+}
+
+export function filterStudents(students = [], filterId = "all", aiDetectionFilterId = "all") {
+  let filteredStudents;
+
+  switch (filterId) {
+    case "inProgress":
+      filteredStudents = students.filter(isInProgress);
+      break;
+    case "live":
+      filteredStudents = students.filter(isLiveStudent);
+      break;
+    case "highRisk":
+      filteredStudents = students.filter(isHighRisk);
+      break;
+    case "critical":
+      filteredStudents = students.filter((student) => student.riskLevel === "Critical");
+      break;
+    case "cameraError":
+      filteredStudents = students.filter(isCameraError);
+      break;
+    case "disconnected":
+      filteredStudents = students.filter(isDisconnected);
+      break;
+    case "external":
+      filteredStudents = students.filter(isExternalDevice);
+      break;
+    case "submitted":
+      filteredStudents = students.filter((student) => student.attemptStatus === "Submitted");
+      break;
+    default:
+      filteredStudents = students;
+  }
+
+  if (filterId === "inProgress") {
+    return filterStudentsByAiDetection(filteredStudents, aiDetectionFilterId);
+  }
+
+  return filteredStudents;
 }
 
 export function computeRoomStats(students = [], room = null) {

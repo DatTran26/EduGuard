@@ -179,6 +179,12 @@ public class ProctoringAiSettingsDto
     public int DetectionIntervalSeconds { get; set; }
 }
 
+public class ProctoringDetectionConfigDto
+{
+    public bool EnableYoloDetection { get; set; }
+    public int DetectionIntervalSeconds { get; set; } = 4;
+}
+
 public class UpdateProctoringAiSettingsRequest
 {
     public bool EnableYoloDetection { get; set; }
@@ -199,6 +205,12 @@ public class ProctoringHeartbeatRequest
 public class ProctoringReasonRequest
 {
     public string Reason { get; set; } = string.Empty;
+}
+
+public class ProctoringLogActionRequest
+{
+    public string ActionType { get; set; } = string.Empty;
+    public string? Reason { get; set; }
 }
 
 public class AiDetectionEventDto

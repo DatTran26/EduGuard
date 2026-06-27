@@ -16,6 +16,7 @@ using EduGuard.Infrastructure.QuestionBanks;
 using EduGuard.Infrastructure.Redis;
 using EduGuard.Infrastructure.Repositories;
 using EduGuard.Infrastructure.Email;
+using EduGuard.Infrastructure.Settings;
 using EduGuard.Infrastructure.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Logging;
@@ -106,6 +107,7 @@ public static class DependencyInjection
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IEmailSettingsService, EmailSettingsService>();
+        services.AddScoped<IGptSettingsService, GptSettingsService>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddScoped<IEmailVerificationService, EmailVerificationService>();
         services.AddScoped<IAuthService, AuthService>();

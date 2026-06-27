@@ -58,6 +58,12 @@ public class ProctoringController : ControllerBase
     public ActionResult<ApiResponse<SfuConfigDto>> GetSfuConfig() =>
         Ok(ApiResponse<SfuConfigDto>.CreateSuccess(_liveKitTokenService.GetConfig()));
 
+    [HttpGet("api/proctoring/detection-config")]
+    [Authorize(Roles = "Teacher,Student,Admin")]
+    public async Task<ActionResult<ApiResponse<ProctoringDetectionConfigDto>>> GetDetectionConfig(CancellationToken ct) =>
+        Ok(ApiResponse<ProctoringDetectionConfigDto>.CreateSuccess(
+            await _proctoringService.GetDetectionConfigAsync(ct)));
+
     [HttpGet("api/exams/{examId:int}/proctoring/sfu-token")]
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<ActionResult<ApiResponse<SfuTokenDto>>> GetTeacherSfuToken(int examId, CancellationToken ct) =>
@@ -169,6 +175,24 @@ public class ProctoringController : ControllerBase
         {
             await _liveProctoringService.StopWatchAsync(attemptId, GetUserId()!, GetRoles(), ct);
             return ApiResponse<object>.CreateSuccess(null!, "Đã dừng xem live.");
+        });
+
+    [HttpPost("api/attempts/{attemptId:int}/proctoring/log-action")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<ActionResult<ApiResponse<object>>> LogTeacherAction(
+        int attemptId,
+        [FromBody] ProctoringLogActionRequest request,
+        CancellationToken ct) =>
+        await ExecuteTeacherVoidAsync(async () =>
+        {
+            await _proctoringActionService.LogTeacherActionAsync(
+                attemptId,
+                GetUserId()!,
+                GetRoles(),
+                request.ActionType,
+                request.Reason,
+                ct);
+            return ApiResponse<object>.CreateSuccess(null!, "Đã ghi nhận thao tác.");
         });
 
     [HttpPost("api/attempts/{attemptId:int}/proctoring/warn")]

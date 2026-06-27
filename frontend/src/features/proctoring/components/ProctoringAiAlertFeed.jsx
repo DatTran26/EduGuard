@@ -3,10 +3,11 @@ import { FiAlertTriangle, FiChevronDown, FiChevronUp, FiCpu } from "react-icons/
 import Badge from "../../../components/common/Badge";
 import { cn } from "../../../utils/cn";
 import { formatShortDateTime } from "../../../utils/formatDate";
+import AiConfidenceBadge from "./AiConfidenceBadge";
 import {
-  formatAiConfidence,
   getAiDetectionMeta,
   isAiViolationEvent,
+  sanitizeAiViolationDescription,
 } from "../utils/proctoringAiHelpers";
 import { getAntiCheatEventMeta } from "../../anti-cheat/antiCheatHelpers";
 
@@ -20,7 +21,8 @@ function buildFeedItem(entry) {
       studentName: entry.studentName,
       title: meta.label,
       variant: entry.isFlagged ? meta.variant : "neutral",
-      detail: `${formatAiConfidence(entry.confidence)}${entry.labels?.length ? ` · ${entry.labels.join(", ")}` : ""}`,
+      confidence: entry.confidence,
+      detail: "",
       occurredAt: entry.occurredAt,
       isHighlighted: entry.isFlagged,
     };
@@ -32,7 +34,7 @@ function buildFeedItem(entry) {
     studentName: entry.studentName,
     title: meta.label,
     variant: meta.variant,
-    detail: entry.description,
+    detail: sanitizeAiViolationDescription(entry.description),
     occurredAt: entry.occurredAt,
     isHighlighted: true,
   };
@@ -137,9 +139,14 @@ export default function ProctoringAiAlertFeed({
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate text-sm font-semibold text-slate-100">{item.studentName}</p>
-                          <Badge variant={item.variant}>{item.title}</Badge>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <p className="truncate text-sm font-semibold text-slate-100">{item.studentName}</p>
+                            <Badge variant={item.variant}>{item.title}</Badge>
+                          </div>
+                          {item.confidence != null ? (
+                            <AiConfidenceBadge confidence={item.confidence} className="mt-0.5" />
+                          ) : null}
                         </div>
                         {item.detail ? (
                           <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-400">{item.detail}</p>

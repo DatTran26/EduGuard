@@ -5,14 +5,18 @@ export default function StudentCameraGrid({
   students = [],
   activeAttemptId,
   isAudioEnabled = false,
+  globalAiEnabled = true,
+  disabledAiAttemptIds = null,
   remoteStream,
   remoteStatus,
   sfuEnabled = false,
   sfuConnectionStatus = null,
   getStreamForAttempt,
+  getVideoTrackForAttempt,
   getStatusForAttempt,
   onSelectStudent,
   onRequestWatch,
+  onToggleStudentAi,
   onViewViolationHistory,
   viewMode = "auto",
 }) {
@@ -35,6 +39,13 @@ export default function StudentCameraGrid({
     return status === "InProgress" || status === "PausedByProctor";
   });
 
+  function resolveTileVideoTrack(student) {
+    if (sfuEnabled && getVideoTrackForAttempt) {
+      return getVideoTrackForAttempt(student.attemptId);
+    }
+    return null;
+  }
+
   function resolveTileStream(student) {
     if (sfuEnabled && getStreamForAttempt) {
       return getStreamForAttempt(student.attemptId);
@@ -47,6 +58,32 @@ export default function StudentCameraGrid({
       return getStatusForAttempt(student.attemptId);
     }
     return activeAttemptId === student.attemptId ? remoteStatus : "idle";
+  }
+
+  function resolveStudentAiEnabled(student) {
+    if (!disabledAiAttemptIds) {
+      return true;
+    }
+
+    return !disabledAiAttemptIds.has(student.attemptId);
+  }
+
+  function renderTileProps(student, extra = {}) {
+    return {
+      globalAiEnabled,
+      isStudentAiEnabled: resolveStudentAiEnabled(student),
+      isAudioEnabled,
+      onRequestWatch,
+      onSelect: onSelectStudent,
+      onToggleStudentAi,
+      onViewViolationHistory,
+      remoteStatus: resolveTileStatus(student),
+      remoteStream: resolveTileStream(student),
+      remoteVideoTrack: resolveTileVideoTrack(student),
+      sfuEnabled,
+      student,
+      ...extra,
+    };
   }
 
   function renderP2pHint() {
@@ -71,18 +108,7 @@ export default function StudentCameraGrid({
         {renderP2pHint()}
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.6fr)]">
           {activeStudent ? (
-            <StudentLiveTile
-              isActive
-              isAudioEnabled={isAudioEnabled}
-              isFocused
-              onRequestWatch={onRequestWatch}
-              onSelect={onSelectStudent}
-              onViewViolationHistory={onViewViolationHistory}
-              remoteStatus={resolveTileStatus(activeStudent)}
-              remoteStream={resolveTileStream(activeStudent)}
-              sfuEnabled={sfuEnabled}
-              student={activeStudent}
-            />
+            <StudentLiveTile {...renderTileProps(activeStudent, { isActive: true, isFocused: true })} />
           ) : null}
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Danh sách học sinh</p>
@@ -90,16 +116,7 @@ export default function StudentCameraGrid({
               {otherStudents.map((student) => (
                 <StudentLiveTile
                   key={student.attemptId}
-                  compact
-                  isActive={false}
-                  isAudioEnabled={isAudioEnabled}
-                  onRequestWatch={onRequestWatch}
-                  onSelect={onSelectStudent}
-                  onViewViolationHistory={onViewViolationHistory}
-                  remoteStatus={resolveTileStatus(student)}
-                  remoteStream={resolveTileStream(student)}
-                  sfuEnabled={sfuEnabled}
-                  student={student}
+                  {...renderTileProps(student, { compact: true, isActive: false })}
                 />
               ))}
             </div>
@@ -123,15 +140,7 @@ export default function StudentCameraGrid({
         {students.map((student) => (
           <StudentLiveTile
             key={student.attemptId}
-            isActive={activeAttemptId === student.attemptId}
-            isAudioEnabled={isAudioEnabled}
-            onRequestWatch={onRequestWatch}
-            onSelect={onSelectStudent}
-            onViewViolationHistory={onViewViolationHistory}
-            remoteStatus={resolveTileStatus(student)}
-            remoteStream={resolveTileStream(student)}
-            sfuEnabled={sfuEnabled}
-            student={student}
+            {...renderTileProps(student, { isActive: activeAttemptId === student.attemptId })}
           />
         ))}
       </div>

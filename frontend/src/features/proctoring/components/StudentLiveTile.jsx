@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { FiAlertTriangle, FiRadio, FiVideo, FiWifi } from "react-icons/fi";
+import { FiAlertTriangle, FiCpu, FiRadio, FiVideo, FiWifi } from "react-icons/fi";
 import Badge from "../../../components/common/Badge";
 import { cn } from "../../../utils/cn";
 import {
@@ -9,7 +9,7 @@ import {
   resolveTileVideoPlaceholder,
 } from "../utils/proctoringStudentStatus";
 import RiskBadge from "./RiskBadge";
-import { getAiDetectionMeta } from "../utils/proctoringAiHelpers";
+import { resolveTileAiStatusMeta } from "../utils/proctoringAiHelpers";
 
 const TILE_BORDER = {
   Normal: "border-white/10",
@@ -58,20 +58,27 @@ export default function StudentLiveTile({
   isAudioEnabled = false,
   isFocused = false,
   compact = false,
+  globalAiEnabled = true,
+  isStudentAiEnabled = true,
   remoteStream,
+  remoteVideoTrack = null,
   remoteStatus,
   sfuEnabled = false,
   onSelect,
   onRequestWatch,
+  onToggleStudentAi,
   onViewViolationHistory,
 }) {
   const videoRef = useRef(null);
   const riskLevel = student.riskLevel ?? "Normal";
-  const showLiveVideo = Boolean(remoteStream) && remoteStatus === "connected";
+  const showLiveVideo =
+    (Boolean(remoteStream) || Boolean(remoteVideoTrack)) && remoteStatus === "connected";
   const attemptMeta = getAttemptStatusMeta(student.attemptStatus);
-  const latestDetectionMeta = student.latestDetectionType
-    ? getAiDetectionMeta(student.latestDetectionType)
-    : null;
+  const aiStatusMeta = resolveTileAiStatusMeta(student, {
+    globalAiEnabled,
+    studentAiEnabled: isStudentAiEnabled,
+  });
+  const canToggleStudentAi = globalAiEnabled && Boolean(onToggleStudentAi);
   const watchable = canWatchStudentLive(student);
   const placeholder = resolveTileVideoPlaceholder({
     student,
@@ -86,13 +93,21 @@ export default function StudentLiveTile({
     if (!video) {
       return;
     }
+
+    if (remoteVideoTrack) {
+      remoteVideoTrack.attach(video);
+      return () => {
+        remoteVideoTrack.detach(video);
+      };
+    }
+
     if (showLiveVideo) {
       video.srcObject = remoteStream;
       video.play().catch(() => {});
       return;
     }
     video.srcObject = null;
-  }, [remoteStream, showLiveVideo]);
+  }, [remoteStream, remoteVideoTrack, showLiveVideo]);
 
   return (
     <button
@@ -151,6 +166,26 @@ export default function StudentLiveTile({
             Đang chọn
           </div>
         ) : null}
+        {canToggleStudentAi ? (
+          <span
+            className={cn(
+              "absolute left-2 top-2 inline-flex cursor-pointer items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold transition-colors",
+              showLiveVideo || (isActive && !showLiveVideo && watchable) ? "top-9" : "top-2",
+              isStudentAiEnabled
+                ? "border-emerald-400/35 bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30"
+                : "border-white/15 bg-black/45 text-slate-300 hover:bg-black/60",
+            )}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleStudentAi?.(student);
+            }}
+            role="presentation"
+            title={isStudentAiEnabled ? "Tắt giám sát AI cho học sinh này" : "Bật giám sát AI cho học sinh này"}
+          >
+            <FiCpu className="h-3 w-3" />
+            AI {isStudentAiEnabled ? "Bật" : "Tắt"}
+          </span>
+        ) : null}
         {riskLevel === "Critical" ? (
           <div className="absolute right-2 top-2 rounded-full bg-rose-500 px-2 py-1 text-[10px] font-semibold text-white">
             Cần xem xét
@@ -184,9 +219,9 @@ export default function StudentLiveTile({
           <Badge variant="caution">{student.warningCount} cảnh báo</Badge>
         ) : null}
 
-        {!compact && latestDetectionMeta && latestDetectionMeta.variant !== "success" ? (
-          <Badge variant={latestDetectionMeta.variant}>AI: {latestDetectionMeta.label}</Badge>
-        ) : null}
+        <Badge className={compact ? "max-w-full truncate" : undefined} variant={aiStatusMeta.variant}>
+          AI: {aiStatusMeta.label}
+        </Badge>
 
         <div className="flex flex-wrap items-center gap-2">
           {watchable && !student.watchedByTeacherId ? (

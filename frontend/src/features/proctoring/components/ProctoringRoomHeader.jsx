@@ -1,4 +1,4 @@
-import { FiRefreshCw, FiShield, FiX } from "react-icons/fi";
+import { FiCpu, FiRefreshCw, FiShield, FiX } from "react-icons/fi";
 import Button from "../../../components/common/Button";
 import { routeConfig } from "../../../routes/routeConfig";
 import { formatShortDateTime } from "../../../utils/formatDate";
@@ -27,10 +27,13 @@ export default function ProctoringRoomHeader({
   sessionPhase = null,
   isRefreshing,
   canCloseExam = false,
+  globalAiEnabled = false,
+  allStudentsAiEnabled = true,
   onRefresh,
   onOpenCoProctor,
   onOpenClassReport,
   onCloseExam,
+  onToggleAllStudentsAi,
 }) {
   const countdown = useExamEndCountdown({
     endTime: room?.endTime,
@@ -137,6 +140,26 @@ export default function ProctoringRoomHeader({
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2">
+          {globalAiEnabled ? (
+            <Button
+              className={cn(
+                "border-white/15 hover:bg-white/10",
+                allStudentsAiEnabled
+                  ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25"
+                  : "bg-white/5 text-slate-100",
+              )}
+              onClick={onToggleAllStudentsAi}
+              title={
+                allStudentsAiEnabled
+                  ? "Tắt giám sát AI cho tất cả học sinh"
+                  : "Bật giám sát AI cho tất cả học sinh"
+              }
+              variant="secondary"
+            >
+              <FiCpu className="mr-2 h-4 w-4" />
+              Bật tắt AI
+            </Button>
+          ) : null}
           <Button
             className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10"
             onClick={onOpenClassReport}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, Room, RoomEvent, Track } from "livekit-client";
 import { proctoringApi } from "../../../api/proctoringApi";
 import { resolveLiveKitUrl } from "../../../config/livekitConfig";
+import { devLog } from "../../../utils/devLogger";
 import { buildLiveKitConnectOptions } from "../utils/livekitRtcConfig";
 import {
   buildMediaStreamFromTrack,
@@ -10,13 +11,35 @@ import {
 } from "../utils/sfuHelpers";
 
 function upsertParticipantStream(previousMap, attemptId, updater) {
-  const current = previousMap[attemptId] ?? { stream: null, status: "connecting" };
+  const current = previousMap[attemptId] ?? {
+    stream: null,
+    videoTrack: null,
+    status: "connecting",
+  };
   const next = updater(current);
   if (!next) {
     const { [attemptId]: _removed, ...rest } = previousMap;
     return rest;
   }
   return { ...previousMap, [attemptId]: next };
+}
+
+function shouldSubscribeToPublication(publication, enableAudio) {
+  if (publication.kind === Track.Kind.Video) {
+    return true;
+  }
+  return enableAudio && publication.kind === Track.Kind.Audio;
+}
+
+function subscribeParticipantPublications(participant, enableAudio) {
+  participant.trackPublications.forEach((publication) => {
+    if (!shouldSubscribeToPublication(publication, enableAudio)) {
+      return;
+    }
+    if (!publication.isSubscribed) {
+      publication.setSubscribed(true);
+    }
+  });
 }
 
 export function useTeacherSfuViewer({ examId, enabled, maxTiles = 9, enableAudio = false }) {
@@ -67,6 +90,7 @@ export function useTeacherSfuViewer({ examId, enabled, maxTiles = 9, enableAudio
 
         return upsertParticipantStream(previousMap, attemptId, (current) => ({
           stream: mergeTrackIntoStream(current.stream, track),
+          videoTrack: track.kind === Track.Kind.Video ? track : current.videoTrack,
           status: "connected",
         }));
       });
@@ -88,30 +112,49 @@ export function useTeacherSfuViewer({ examId, enabled, maxTiles = 9, enableAudio
         if (!nextStream.getTracks().length) {
           return null;
         }
-        return { stream: nextStream, status: "connected" };
+        return {
+          stream: nextStream,
+          videoTrack: track.kind === Track.Kind.Video ? null : current.videoTrack,
+          status: "connected",
+        };
       }),
     );
   }, []);
 
-  const handleParticipantConnected = useCallback((participant) => {
-    const attemptId = parseAttemptIdFromIdentity(participant.identity);
-    if (!attemptId) {
-      return;
-    }
+  const handleParticipantConnected = useCallback(
+    (participant) => {
+      const attemptId = parseAttemptIdFromIdentity(participant.identity);
+      if (!attemptId) {
+        return;
+      }
 
-    setStreamsByAttemptId((previousMap) =>
-      upsertParticipantStream(previousMap, attemptId, () => ({
-        stream: null,
-        status: "connecting",
-      })),
-    );
+      setStreamsByAttemptId((previousMap) =>
+        upsertParticipantStream(previousMap, attemptId, () => ({
+          stream: null,
+          videoTrack: null,
+          status: "connecting",
+        })),
+      );
 
-    participant.trackPublications.forEach((publication) => {
+      subscribeParticipantPublications(participant, enableAudio);
+      participant.trackPublications.forEach((publication) => {
+        if (publication.track) {
+          handleTrackSubscribed(publication.track, publication, participant);
+        }
+      });
+    },
+    [enableAudio, handleTrackSubscribed],
+  );
+
+  const handleTrackPublished = useCallback(
+    (publication, participant) => {
+      subscribeParticipantPublications(participant, enableAudio);
       if (publication.track) {
         handleTrackSubscribed(publication.track, publication, participant);
       }
-    });
-  }, [handleTrackSubscribed]);
+    },
+    [enableAudio, handleTrackSubscribed],
+  );
 
   const handleParticipantDisconnected = useCallback((participant) => {
     const attemptId = parseAttemptIdFromIdentity(participant.identity);
@@ -150,13 +193,14 @@ export function useTeacherSfuViewer({ examId, enabled, maxTiles = 9, enableAudio
         }
 
         const room = new Room({
-          adaptiveStream: true,
+          adaptiveStream: false,
           dynacast: true,
         });
         roomRef.current = room;
 
         room.on(RoomEvent.TrackSubscribed, handleTrackSubscribed);
         room.on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
+        room.on(RoomEvent.TrackPublished, handleTrackPublished);
         room.on(RoomEvent.ParticipantConnected, handleParticipantConnected);
         room.on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
         room.on(RoomEvent.ConnectionStateChanged, (state) => {
@@ -184,7 +228,8 @@ export function useTeacherSfuViewer({ examId, enabled, maxTiles = 9, enableAudio
           setSfuEnabled(true);
           setConnectionStatus("connected");
         }
-      } catch {
+      } catch (error) {
+        devLog.proctoring("Teacher SFU connect failed", error);
         if (!isDisposed) {
           setSfuEnabled(false);
           setConnectionStatus("error");
@@ -204,6 +249,7 @@ export function useTeacherSfuViewer({ examId, enabled, maxTiles = 9, enableAudio
     examId,
     handleParticipantConnected,
     handleParticipantDisconnected,
+    handleTrackPublished,
     handleTrackSubscribed,
     handleTrackUnsubscribed,
   ]);
@@ -226,12 +272,18 @@ export function useTeacherSfuViewer({ examId, enabled, maxTiles = 9, enableAudio
     [streamsByAttemptId],
   );
 
+  const getVideoTrackForAttempt = useCallback(
+    (attemptId) => streamsByAttemptId[attemptId]?.videoTrack ?? null,
+    [streamsByAttemptId],
+  );
+
   return {
     sfuEnabled,
     connectionStatus,
     streamsByAttemptId,
     getStreamForAttempt,
     getStatusForAttempt,
+    getVideoTrackForAttempt,
     activeRemoteStream,
     buildMediaStreamFromTrack,
   };

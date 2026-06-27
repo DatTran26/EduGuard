@@ -4,34 +4,34 @@ using System.Text.Json;
 using EduGuard.Application.DTOs.Exams;
 using EduGuard.Application.Services.Interfaces;
 using EduGuard.Domain.Enums;
-using Microsoft.Extensions.Configuration;
 
 namespace EduGuard.Infrastructure.QuestionBanks;
 
 public class OpenAiQuestionGeneratorService : IAiQuestionGeneratorService
 {
     private readonly HttpClient _httpClient;
-    private readonly IConfiguration _configuration;
+    private readonly IGptSettingsService _gptSettingsService;
 
-    public OpenAiQuestionGeneratorService(HttpClient httpClient, IConfiguration configuration)
+    public OpenAiQuestionGeneratorService(
+        HttpClient httpClient,
+        IGptSettingsService gptSettingsService)
     {
         _httpClient = httpClient;
-        _configuration = configuration;
+        _gptSettingsService = gptSettingsService;
     }
 
     public async Task<List<CreateQuestionRequest>> GenerateQuestionsAsync(string prompt, string? customApiKey, string? bankContext, CancellationToken ct)
     {
-        var apiKey = !string.IsNullOrWhiteSpace(customApiKey) 
-            ? customApiKey 
-            : (Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? _configuration["OpenAI:ApiKey"]);
+        var runtime = await _gptSettingsService.GetRuntimeSettingsAsync(ct);
+        var apiKey = !string.IsNullOrWhiteSpace(customApiKey) ? customApiKey : runtime.ApiKey;
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             throw new InvalidOperationException("OpenAI API Key is not configured. Please supply an API key in settings or configuration.");
         }
 
-        var model = Environment.GetEnvironmentVariable("OPENAI_MODEL") ?? _configuration["OpenAI:Model"] ?? "gpt-5.4";
-        var baseUrl = Environment.GetEnvironmentVariable("OPENAI_BASE_URL") ?? _configuration["OpenAI:BaseUrl"] ?? "https://api.openai.com/v1";
+        var model = runtime.Model;
+        var baseUrl = runtime.BaseUrl;
 
         var payload = new
         {
@@ -192,17 +192,16 @@ public class OpenAiQuestionGeneratorService : IAiQuestionGeneratorService
         if (missingIndices.Count == 0)
             return questions;
 
-        var apiKey = !string.IsNullOrWhiteSpace(customApiKey) 
-            ? customApiKey 
-            : (Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? _configuration["OpenAI:ApiKey"]);
+        var runtime = await _gptSettingsService.GetRuntimeSettingsAsync(ct);
+        var apiKey = !string.IsNullOrWhiteSpace(customApiKey) ? customApiKey : runtime.ApiKey;
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             throw new InvalidOperationException("OpenAI API Key is not configured. Please supply an API key in settings or configuration.");
         }
 
-        var model = Environment.GetEnvironmentVariable("OPENAI_MODEL") ?? _configuration["OpenAI:Model"] ?? "gpt-5.4";
-        var baseUrl = Environment.GetEnvironmentVariable("OPENAI_BASE_URL") ?? _configuration["OpenAI:BaseUrl"] ?? "https://api.openai.com/v1";
+        var model = runtime.Model;
+        var baseUrl = runtime.BaseUrl;
 
         var payload = new
         {

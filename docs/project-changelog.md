@@ -1,5 +1,129 @@
 # Project Changelog
 
+## Feature: Proctoring room bulk AI toggle
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring room bulk **Bật tắt AI** header button.
+- Purpose and user/business impact: Teachers can quickly mute or restore AI monitoring alerts for every student in the live proctoring room with one click instead of toggling each tile individually.
+- Files or modules changed: `frontend/src/features/proctoring/components/ProctoringRoomHeader.jsx`, `frontend/src/features/proctoring/pages/TeacherProctoringRoomPage.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`.
+- Technical summary: Added header button (visible when global YOLO detection is on) wired to existing `disabledAiAttemptIds` session state; if all students have AI enabled, click disables all attempt IDs; otherwise click clears the set to re-enable all. Button uses emerald styling when all AI is on, matching per-tile toggle affordance.
+- Validation: ESLint on changed files — no issues.
+- Known risks: Same session-local scope as per-student toggle (resets on page refresh); does not yet stop student-side frame upload.
+- Unresolved questions: Whether to persist bulk AI mute via backend/SignalR for co-proctors.
+
+## Feature: Proctoring room Đang làm + AI detect filters
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring room **Đang làm** filter with AI detect sub-filters.
+- Purpose and user/business impact: Teachers can quickly narrow the camera grid to in-progress students and further filter by AI violation type (phone, document, multiple faces, person not visible, or any AI violation).
+- Files or modules changed: `frontend/src/features/proctoring/components/ProctoringFilterBar.jsx`, `frontend/src/features/proctoring/pages/TeacherProctoringRoomPage.jsx`, `frontend/src/features/proctoring/utils/proctoringRoomHelpers.js`, `frontend/src/features/proctoring/utils/proctoringAiHelpers.js`, `CHANGELOG.md`, `docs/project-changelog.md`.
+- Technical summary: Added `inProgress` to `PROCTORING_FILTERS`; when active, a violet sub-panel lists `PROCTORING_AI_DETECTION_FILTERS` mapped to `latestDetectionType` on each student state. `filterStudents()` chains status filter then optional AI type filter; switching away from **Đang làm** resets AI sub-filter to **Tất cả lỗi AI**.
+- Validation: ESLint on changed files — no issues.
+- Known risks: AI sub-filter uses latest detection only, not full violation history per student.
+- Unresolved questions: Whether to show per-filter counts on each AI pill.
+
+## Feature: Proctoring student tile AI status and toggle
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring student tile AI status and toggle.
+- Purpose and user/business impact: Teachers always see AI monitoring state on each student tile (normal, violation, or paused) without waiting for a flagged event; can temporarily mute AI alerts per student via header toggle during the proctoring session.
+- Files or modules changed: `frontend/src/features/proctoring/components/StudentLiveTile.jsx`, `StudentCameraGrid.jsx`, `TeacherProctoringRoomPage.jsx`, `frontend/src/features/proctoring/utils/proctoringAiHelpers.js`.
+- Technical summary: Added `resolveTileAiStatusMeta()` for consistent AI badge labels; permanent **AI:** badge below signal chips; **AI Bật/Tắt** pill on video header (uses `disabledAiAttemptIds` session state in room page); toggle hidden when global YOLO detection is off.
+- Validation: ESLint on changed files — no issues.
+- Known risks: Per-student AI toggle is session-local (resets on page refresh); does not yet stop student-side frame upload to the detection API.
+- Unresolved questions: Whether to persist teacher AI mute per attempt via backend/SignalR.
+
+## Feature: Proctoring violation history refresh lag fix
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring violation history refresh lag fix (**Bug fix**).
+- Purpose and user/business impact: Teachers viewing **Lịch sử vi phạm** in the proctor drawer no longer see the list jerk or flash loading every ~4s when AI detections arrive; logs still update in the background without scroll reset.
+- Files or modules changed: `frontend/src/features/proctoring/components/AttemptProctorDrawer.jsx`, `frontend/src/features/proctoring/pages/TeacherProctoringRoomPage.jsx`.
+- Technical summary: Root cause was `violationRefreshToken` tied to all room hub events plus `setIsLoadingLogs(true)` on every refetch, replacing the list with a loading placeholder. Fix: separate `drawerViolationRefreshToken` bumped only for AI/anti-cheat events matching the selected attempt; initial load shows spinner, background refresh is silent with 500ms debounce and shallow log equality check to skip redundant re-renders.
+- Validation: ESLint on changed files — no issues.
+- Known risks: Log count badges still update on silent refresh when new entries exist; first open of a student still shows one loading state as expected.
+
+Unresolved questions:
+
+- None.
+
+## Feature: GPT settings database persistence
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: GPT settings database persistence (**Bug fix**).
+- Purpose and user/business impact: Admin can save OpenAI API key from `/admin/gpt-model` and the value persists in SQL Server; AI question generation reads from DB instead of relying on `.env` file writes that fail on production hosts.
+- Files or modules changed: `backend/EduGuard.Domain/Entities/GptSettings.cs`, `backend/EduGuard.Application/DTOs/Settings/gpt-settings-dtos.cs`, `backend/EduGuard.Application/Services/Interfaces/i-gpt-settings-service.cs`, `backend/EduGuard.Infrastructure/Settings/gpt-settings-service.cs`, `backend/EduGuard.Infrastructure/Data/Configurations/gpt-settings-configuration.cs`, `backend/EduGuard.Infrastructure/Data/Migrations/20260627130000_AddGptSettings.cs`, `backend/EduGuard.Api/Controllers/GptAdminController.cs`, `backend/EduGuard.Infrastructure/QuestionBanks/OpenAiQuestionGeneratorService.cs`, `backend/EduGuard.Infrastructure/dependency-injection.cs`, `frontend/src/features/admin/pages/AdminGptSettingsPage.jsx`.
+- Technical summary: Replaced `EnvFileHelper.SaveEnv` in `GptAdminController` with `GptSettingsService` backed by `GptSettings` singleton row (`Id=1`). Runtime OpenAI calls use `IGptSettingsService.GetRuntimeSettingsAsync` with fallback to env/appsettings when DB key is empty. Migration `AddGptSettings` creates table and seed row.
+- Validation: `dotnet build EduGuard.Infrastructure/EduGuard.Infrastructure.csproj` — passed. Run `dotnet ef database update` before testing save on local/staging.
+- Known risks: Existing keys only in `.env` remain available as fallback until Admin saves once via UI (then DB becomes source of truth). Redeploy backend and apply migration on `class.wpcteam.homes`.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Proctoring room React hook crash fix
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring room React hook crash fix.
+- Purpose and user/business impact: Teachers can open the live proctoring room without the app error boundary showing "Giao diện gặp sự cố" / `useRef` crash; clip recording controls in the proctor drawer work again.
+- Files or modules changed: `frontend/vite.config.js`.
+- Technical summary: Browser console showed `Invalid hook call` and `TypeError: Cannot read properties of null (reading 'useRef')` at `useTeacherClipRecorder.js:6` called from `TeacherProctoringRoomPage.jsx:197` — classic duplicate React in the Vite 8/Rolldown production bundle. Added `resolve.dedupe` and explicit `react` / `react-dom` aliases plus `optimizeDeps.include` so all hooks share one React dispatcher.
+- Validation: `npm run build` (frontend) — passed.
+- Known risks: Redeploy/rebuild frontend on `class.wpcteam.homes` required for the fix to take effect in production.
+
+Unresolved questions:
+
+- None.
+
+## Feature: Classroom detail white screen guard
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Classroom detail white screen guard.
+- Purpose and user/business impact: Teachers opening classroom detail (including `?tab=members`) no longer see a blank page when a secondary tab module throws; users get a recoverable error screen instead of a silent crash.
+- Files or modules changed: `frontend/src/components/common/AppErrorBoundary.jsx`, `frontend/src/App.jsx`, `frontend/src/features/classrooms/pages/ClassroomDetailPage.jsx`.
+- Technical summary: Wrapped the app shell in `AppErrorBoundary`; lazy-loaded `ClassOverviewPanel` and `TeacherClassroomWorkspace` with `Suspense` fallbacks; hardened member list keys/labels; restored `teacher-classroom-tab-bar` anchor for tab scroll sync.
+- Validation: `npm run build` (frontend) — passed; Playwright smoke on `https://class.wpcteam.homes/teacher/classrooms/4?tab=members` as `teacher1@eduguard.test` — members tab rendered, no page errors.
+- Known risks: If backend/API is down, users still see login or empty states — ensure API (`:5157`) and Vite (`:5173`) are both running for tunnel mode.
+
+Unresolved questions:
+
+- None.
+
 ## Feature: Proctoring AI service logging
 
 Date: 2026-06-27

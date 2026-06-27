@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { antiCheatApi } from "../../../api/antiCheatApi";
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import { cn } from "../../../utils/cn";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import { getAntiCheatEventMeta } from "../../anti-cheat/antiCheatHelpers";
+import AiConfidenceBadge from "./AiConfidenceBadge";
 import {
-  formatAiConfidence,
+  sanitizeAiViolationDescription,
   getAiDetectionMeta,
   isAiViolationLog,
   parseAiDetectionMetadata,
 } from "../utils/proctoringAiHelpers";
+import { formatTimelineActionDisplay } from "../utils/proctoringActionHelpers";
 import {
   getAttemptStatusMeta,
   getCameraStatusMeta,
@@ -31,6 +33,33 @@ const VIOLATION_SUB_TABS = [
   { id: "ai", label: "AI" },
   { id: "behavior", label: "Hành vi" },
 ];
+
+function areViolationLogsEqual(previousLogs, nextLogs) {
+  if (previousLogs === nextLogs) {
+    return true;
+  }
+
+  if (previousLogs.length !== nextLogs.length) {
+    return false;
+  }
+
+  for (let index = 0; index < previousLogs.length; index += 1) {
+    const previousLog = previousLogs[index];
+    const nextLog = nextLogs[index];
+
+    if (
+      previousLog.id !== nextLog.id ||
+      previousLog.type !== nextLog.type ||
+      previousLog.description !== nextLog.description ||
+      previousLog.occurredAt !== nextLog.occurredAt ||
+      previousLog.metadata !== nextLog.metadata
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 function DetailTabBar({ activeTab, onTabChange, counts, isRoom }) {
   return (
@@ -237,6 +266,7 @@ function ViolationsTabContent({ violationLogs, isLoadingLogs, isRoom, attemptId,
             const aiDetectionMeta = aiMeta?.detectionType ? getAiDetectionMeta(aiMeta.detectionType) : null;
             const badgeLabel = aiDetectionMeta ? `AI: ${aiDetectionMeta.label}` : meta.label;
             const badgeVariant = aiDetectionMeta?.variant ?? meta.variant;
+            const violationDescription = sanitizeAiViolationDescription(log.description);
 
             return (
               <li
@@ -246,15 +276,16 @@ function ViolationsTabContent({ violationLogs, isLoadingLogs, isRoom, attemptId,
                   isRoom ? "border-white/10 bg-white/[0.03]" : "border-border bg-neutral",
                 )}
               >
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-start justify-between gap-3">
                   <Badge variant={badgeVariant}>{badgeLabel}</Badge>
-                  <span className="text-[11px] text-slate-500">{formatShortDateTime(log.occurredAt)}</span>
+                  {isAiViolationLog(log) && aiMeta?.detectionType ? (
+                    <AiConfidenceBadge confidence={aiMeta.confidence} size="lg" />
+                  ) : null}
                 </div>
-                <p className={cn("mt-1", isRoom ? "text-slate-300" : "text-primary")}>{log.description}</p>
-                {aiMeta ? (
-                  <p className="mt-1 text-xs text-slate-500">
-                    Độ tin cậy: {formatAiConfidence(aiMeta.confidence)}
-                    {aiMeta.labels?.length ? ` · ${aiMeta.labels.join(", ")}` : ""}
+                <p className="mt-1.5 text-[11px] text-slate-500">{formatShortDateTime(log.occurredAt)}</p>
+                {violationDescription ? (
+                  <p className={cn("mt-1", isRoom ? "text-slate-300" : "text-primary")}>
+                    {violationDescription}
                   </p>
                 ) : null}
               </li>
@@ -277,20 +308,27 @@ function TimelineTabContent({ recentActions, isRoom }) {
 
   return (
     <ul className={cn("space-y-2 text-sm", isRoom ? "text-slate-400" : "text-secondary")}>
-      {recentActions.map((action) => (
-        <li
-          key={action.id}
-          className={cn(
-            "rounded-[12px] border px-3 py-2",
-            isRoom ? "border-white/10 bg-white/[0.03]" : "border-border bg-neutral",
-          )}
-        >
-          <p className={cn("font-medium", isRoom ? "text-slate-200" : "text-primary")}>
-            {action.actionType}
-          </p>
-          <p>{action.reason || "Không có ghi chú"}</p>
-        </li>
-      ))}
+      {recentActions.map((action) => {
+        const { label, reason } = formatTimelineActionDisplay(action);
+
+        return (
+          <li
+            key={action.id}
+            className={cn(
+              "rounded-[12px] border px-3 py-2",
+              isRoom ? "border-white/10 bg-white/[0.03]" : "border-border bg-neutral",
+            )}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <p className={cn("font-medium", isRoom ? "text-slate-200" : "text-primary")}>{label}</p>
+              {action.createdAt ? (
+                <span className="text-[11px] text-slate-500">{formatShortDateTime(action.createdAt)}</span>
+              ) : null}
+            </div>
+            {reason ? <p className="mt-1">{reason}</p> : null}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -374,35 +412,58 @@ export default function AttemptProctorDrawer({
   const [violationLogs, setViolationLogs] = useState([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [activeTab, setActiveTab] = useState("evidence");
+  const loadedAttemptIdRef = useRef(null);
 
   useEffect(() => {
     if (!student?.attemptId) {
       setViolationLogs([]);
+      loadedAttemptIdRef.current = null;
       return undefined;
     }
 
+    const attemptId = student.attemptId;
+    const isInitialLoad = loadedAttemptIdRef.current !== attemptId;
     let isMounted = true;
-    setIsLoadingLogs(true);
-    antiCheatApi
-      .getLogsByAttempt(student.attemptId)
-      .then((response) => {
-        if (isMounted) {
-          setViolationLogs(response.data ?? []);
+
+    if (isInitialLoad) {
+      setIsLoadingLogs(true);
+    }
+
+    async function loadViolationLogs() {
+      try {
+        const response = await antiCheatApi.getLogsByAttempt(attemptId);
+        if (!isMounted) {
+          return;
         }
-      })
-      .catch(() => {
-        if (isMounted) {
+
+        const nextLogs = response.data ?? [];
+        setViolationLogs((previousLogs) =>
+          areViolationLogsEqual(previousLogs, nextLogs) ? previousLogs : nextLogs,
+        );
+        loadedAttemptIdRef.current = attemptId;
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        if (isInitialLoad) {
           setViolationLogs([]);
         }
-      })
-      .finally(() => {
-        if (isMounted) {
+      } finally {
+        if (isMounted && isInitialLoad) {
           setIsLoadingLogs(false);
         }
-      });
+      }
+    }
+
+    const refreshDelayMs = isInitialLoad ? 0 : 500;
+    const timeoutId = window.setTimeout(() => {
+      loadViolationLogs();
+    }, refreshDelayMs);
 
     return () => {
       isMounted = false;
+      window.clearTimeout(timeoutId);
     };
   }, [student?.attemptId, violationRefreshToken]);
 
@@ -518,7 +579,7 @@ export default function AttemptProctorDrawer({
               </Button>
               {isClipRecording ? (
                 <Button className="!px-2 !py-2 text-xs sm:text-sm" onClick={onStopClip} variant="danger">
-                  Dừng ghi ({clipElapsedSeconds}s)
+                  Dừng Record ({clipElapsedSeconds}s)
                 </Button>
               ) : (
                 <Button
@@ -527,7 +588,7 @@ export default function AttemptProctorDrawer({
                   onClick={onStartClip}
                   variant="secondary"
                 >
-                  Ghi clip
+                  Record
                 </Button>
               )}
               <Button className="!px-2 !py-2 text-xs sm:text-sm" onClick={onToggleAudio} variant="secondary">

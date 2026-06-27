@@ -244,6 +244,12 @@ export const proctoringApi = {
     if (options.triggerEventType) {
       formData.append("triggerEventType", options.triggerEventType);
     }
+    if (options.metadata) {
+      formData.append(
+        "metadata",
+        typeof options.metadata === "string" ? options.metadata : JSON.stringify(options.metadata),
+      );
+    }
 
     const apiResponse = await requestApi(() =>
       axiosClient.post(`/attempts/${attemptId}/proctoring/evidence`, formData, {
@@ -251,6 +257,15 @@ export const proctoringApi = {
       }),
     );
     return { ...apiResponse, data: apiResponse.data };
+  },
+
+  async logTeacherAction(attemptId, actionType, reason = "") {
+    return requestApi(() =>
+      axiosClient.post(`/attempts/${attemptId}/proctoring/log-action`, {
+        actionType,
+        reason: reason || undefined,
+      }),
+    );
   },
 
   async detectFrame(attemptId, file) {
@@ -267,6 +282,17 @@ export const proctoringApi = {
   async getAiSettings() {
     const apiResponse = await requestApi(() => axiosClient.get("/admin/proctoring/ai-settings"));
     return { ...apiResponse, data: apiResponse.data };
+  },
+
+  async getDetectionConfig() {
+    const apiResponse = await requestApi(() => axiosClient.get("/proctoring/detection-config"));
+    return {
+      ...apiResponse,
+      data: {
+        enableYoloDetection: Boolean(apiResponse.data?.enableYoloDetection),
+        detectionIntervalSeconds: Math.max(Number(apiResponse.data?.detectionIntervalSeconds) || 4, 2),
+      },
+    };
   },
 
   async updateAiSettings(payload) {

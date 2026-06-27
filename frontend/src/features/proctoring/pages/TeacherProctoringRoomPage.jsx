@@ -11,6 +11,7 @@ import ProctoringRoomHeader from "../components/ProctoringRoomHeader";
 import ProctoringStatusBar from "../components/ProctoringStatusBar";
 import StudentCameraGrid from "../components/StudentCameraGrid";
 import CloseExamDialog from "../../exams/components/CloseExamDialog";
+import { useProctoringDetectionConfig } from "../hooks/useProctoringDetectionConfig";
 import { useTeacherClipRecorder } from "../hooks/useTeacherClipRecorder";
 import { useProctoringHubConnection } from "../hooks/useProctoringHubConnection";
 import { useTeacherWebRtcViewer } from "../hooks/useTeacherWebRtcViewer";
@@ -46,6 +47,7 @@ export default function TeacherProctoringRoomPage() {
   const [isActionSubmitting, setIsActionSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
+  const [activeAiDetectionFilter, setActiveAiDetectionFilter] = useState("all");
   const [viewMode, setViewMode] = useState("auto");
   const [isCoProctorOpen, setIsCoProctorOpen] = useState(false);
   const [isRoomLoading, setIsRoomLoading] = useState(true);
@@ -55,15 +57,19 @@ export default function TeacherProctoringRoomPage() {
   const [isClosingExam, setIsClosingExam] = useState(false);
   const [isClassReportOpen, setIsClassReportOpen] = useState(false);
   const [reportRefreshToken, setReportRefreshToken] = useState(0);
+  const [drawerViolationRefreshToken, setDrawerViolationRefreshToken] = useState(0);
   const [aiEvents, setAiEvents] = useState([]);
   const [violationEvents, setViolationEvents] = useState([]);
+  const [disabledAiAttemptIds, setDisabledAiAttemptIds] = useState(() => new Set());
   const liveVideoRef = useRef(null);
   const requestWatchRef = useRef(null);
   const stopWatchRef = useRef(null);
+  const selectedStudentRef = useRef(null);
 
   const activeAttemptId = selectedStudent?.attemptId ?? null;
   const sessionPhase = useMemo(() => getProctoringRoomSessionPhase(room), [room]);
   const sessionLive = useMemo(() => isProctoringRoomSessionLive(room), [room]);
+  const { aiEnabled: globalAiEnabled } = useProctoringDetectionConfig(Boolean(examId) && sessionLive !== false);
 
   const refreshRoom = useCallback(async () => {
     const [roomResponse, statesResponse] = await Promise.all([
@@ -74,6 +80,27 @@ export default function TeacherProctoringRoomPage() {
     setStudents(statesResponse.data);
   }, [examId]);
 
+  const refreshAttemptDetail = useCallback(async (attemptId) => {
+    if (!attemptId || selectedStudentRef.current?.attemptId !== attemptId) {
+      return;
+    }
+
+    const response = await proctoringApi.getAttemptDetail(attemptId);
+    setDetail(response.data);
+  }, []);
+
+  const bumpDrawerViolationRefresh = useCallback((attemptId) => {
+    if (!attemptId || selectedStudentRef.current?.attemptId !== attemptId) {
+      return;
+    }
+
+    setDrawerViolationRefreshToken((value) => value + 1);
+  }, []);
+
+  useEffect(() => {
+    selectedStudentRef.current = selectedStudent;
+  }, [selectedStudent]);
+
   const handleRoomHubEvent = useCallback(
     (eventName, payload) => {
       if (eventName === EXAM_MONITORING_EVENTS.receiveAiDetection) {
@@ -82,6 +109,7 @@ export default function TeacherProctoringRoomPage() {
         setAiEvents((previous) => [event, ...previous].slice(0, 80));
         refreshRoom().catch(() => {});
         setReportRefreshToken((value) => value + 1);
+        bumpDrawerViolationRefresh(event.examAttemptId);
         return;
       }
 
@@ -97,6 +125,7 @@ export default function TeacherProctoringRoomPage() {
         setViolationEvents((previous) => [warning, ...previous].slice(0, 80));
         refreshRoom().catch(() => {});
         setReportRefreshToken((value) => value + 1);
+        bumpDrawerViolationRefresh(warning.examAttemptId);
         return;
       }
 
@@ -111,7 +140,7 @@ export default function TeacherProctoringRoomPage() {
         setReportRefreshToken((value) => value + 1);
       }
     },
-    [refreshRoom],
+    [bumpDrawerViolationRefresh, refreshRoom],
   );
 
   const roomHub = useProctoringHubConnection({
@@ -149,6 +178,7 @@ export default function TeacherProctoringRoomPage() {
     connectionStatus: sfuConnectionStatus,
     getStreamForAttempt,
     getStatusForAttempt,
+    getVideoTrackForAttempt,
     activeRemoteStream,
   } = useTeacherSfuViewer({
     examId: Number(examId),
@@ -173,21 +203,34 @@ export default function TeacherProctoringRoomPage() {
   const selectedRemoteStream = sfuEnabled
     ? activeRemoteStream(activeAttemptId)
     : remoteStream;
+  const selectedRemoteVideoTrack = sfuEnabled
+    ? getVideoTrackForAttempt(activeAttemptId)
+    : null;
   const selectedRemoteStatus = sfuEnabled
     ? getStatusForAttempt(activeAttemptId)
     : remoteStatus;
 
   useEffect(() => {
-    if (!sfuEnabled || !liveVideoRef.current) {
+    const video = liveVideoRef.current;
+    if (!video) {
       return;
     }
+
+    if (selectedRemoteVideoTrack && selectedRemoteStatus === "connected") {
+      selectedRemoteVideoTrack.attach(video);
+      return () => {
+        selectedRemoteVideoTrack.detach(video);
+      };
+    }
+
     if (selectedRemoteStream && selectedRemoteStatus === "connected") {
-      liveVideoRef.current.srcObject = selectedRemoteStream;
-      liveVideoRef.current.play().catch(() => {});
+      video.srcObject = selectedRemoteStream;
+      video.play().catch(() => {});
       return;
     }
-    liveVideoRef.current.srcObject = null;
-  }, [selectedRemoteStatus, selectedRemoteStream, sfuEnabled]);
+
+    video.srcObject = null;
+  }, [selectedRemoteStatus, selectedRemoteStream, selectedRemoteVideoTrack]);
 
   const {
     elapsedSeconds: clipElapsedSeconds,
@@ -261,27 +304,37 @@ export default function TeacherProctoringRoomPage() {
       .catch(() => {});
 
     if (isRoomHubConnected && canWatchStudentLive(selectedStudent)) {
-      requestWatchRef.current?.().catch((error) => {
-        showToast({
-          tone: "danger",
-          title: "Không thể xem live",
-          message: error.message,
+      requestWatchRef.current?.()
+        .then(() => refreshAttemptDetail(attemptId))
+        .catch((error) => {
+          showToast({
+            tone: "danger",
+            title: "Không thể xem live",
+            message: error.message,
+          });
         });
-      });
     }
 
     return () => {
       isMounted = false;
       stopWatchRef.current?.().catch(() => {});
     };
-  }, [isRoomHubConnected, selectedStudent?.attemptId, showToast]);
+  }, [isRoomHubConnected, refreshAttemptDetail, selectedStudent?.attemptId, showToast]);
 
   const sortedStudents = useMemo(() => sortStudentsByRisk(students), [students]);
   const filteredStudents = useMemo(
-    () => filterStudents(sortedStudents, activeFilter),
-    [activeFilter, sortedStudents],
+    () => filterStudents(sortedStudents, activeFilter, activeAiDetectionFilter),
+    [activeAiDetectionFilter, activeFilter, sortedStudents],
   );
   const roomStats = useMemo(() => computeRoomStats(students, room), [room, students]);
+  const allStudentsAiEnabled = useMemo(() => {
+    const attemptIds = students.filter((student) => student.attemptId).map((student) => student.attemptId);
+    if (!attemptIds.length) {
+      return true;
+    }
+
+    return attemptIds.every((attemptId) => !disabledAiAttemptIds.has(attemptId));
+  }, [disabledAiAttemptIds, students]);
 
   async function handleManualRefresh() {
     setIsRefreshing(true);
@@ -321,6 +374,60 @@ export default function TeacherProctoringRoomPage() {
 
   function handleViewViolationHistory(student) {
     handleSelectStudent(student, { tab: "violations", violationSubTab: "behavior" });
+  }
+
+  function handleToggleStudentAi(student) {
+    if (!student?.attemptId) {
+      return;
+    }
+
+    const willDisable = !disabledAiAttemptIds.has(student.attemptId);
+
+    setDisabledAiAttemptIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(student.attemptId)) {
+        next.delete(student.attemptId);
+      } else {
+        next.add(student.attemptId);
+      }
+      return next;
+    });
+
+    showToast({
+      tone: willDisable ? "info" : "success",
+      title: willDisable ? "Đã tắt giám sát AI" : "Đã bật giám sát AI",
+      message: student.studentName,
+    });
+  }
+
+  function handleToggleAllStudentsAi() {
+    const attemptIds = students.filter((student) => student.attemptId).map((student) => student.attemptId);
+    if (!attemptIds.length) {
+      showToast({
+        tone: "info",
+        title: "Chưa có học sinh",
+        message: "Không có học sinh nào trong phòng để bật/tắt AI.",
+      });
+      return;
+    }
+
+    const willDisableAll = attemptIds.every((attemptId) => !disabledAiAttemptIds.has(attemptId));
+
+    setDisabledAiAttemptIds((previous) => {
+      const next = new Set(previous);
+      if (willDisableAll) {
+        attemptIds.forEach((attemptId) => next.add(attemptId));
+      } else {
+        attemptIds.forEach((attemptId) => next.delete(attemptId));
+      }
+      return next;
+    });
+
+    showToast({
+      tone: willDisableAll ? "info" : "success",
+      title: willDisableAll ? "Đã tắt giám sát AI cho tất cả" : "Đã bật giám sát AI cho tất cả",
+      message: `${attemptIds.length} học sinh`,
+    });
   }
 
   async function handleRequestWatch(student) {
@@ -368,6 +475,9 @@ export default function TeacherProctoringRoomPage() {
       }
       setReasonDialog(null);
       await refreshRoom();
+      if (type !== "terminate") {
+        await refreshAttemptDetail(student.attemptId);
+      }
     } catch (error) {
       showToast({ tone: "danger", title: "Thao tác thất bại", message: error.message });
     } finally {
@@ -383,6 +493,7 @@ export default function TeacherProctoringRoomPage() {
     try {
       await proctoringApi.resumeAttempt(student.attemptId, "Giáo viên cho tiếp tục làm bài");
       await refreshRoom();
+      await refreshAttemptDetail(student.attemptId);
       showToast({ tone: "success", title: "Đã cho tiếp tục làm bài" });
     } catch (error) {
       showToast({ tone: "danger", title: "Tiếp tục thất bại", message: error.message });
@@ -416,22 +527,31 @@ export default function TeacherProctoringRoomPage() {
 
     try {
       const file = new File([blob], `snapshot-${selectedStudent.attemptId}.jpg`, { type: "image/jpeg" });
-      const response = await proctoringApi.uploadEvidence(selectedStudent.attemptId, file);
-      const detailResponse = await proctoringApi.getAttemptDetail(selectedStudent.attemptId);
-      setDetail(detailResponse.data);
-      showToast({ tone: "success", title: "Đã lưu ảnh chụp", message: response.data?.fileUrl });
+      await proctoringApi.uploadEvidence(selectedStudent.attemptId, file);
+      await proctoringApi.logTeacherAction(selectedStudent.attemptId, "CAPTURE_SNAPSHOT");
+      await refreshAttemptDetail(selectedStudent.attemptId);
+      showToast({ tone: "success", title: "Đã lưu ảnh chụp" });
     } catch (error) {
       showToast({ tone: "danger", title: "Lưu ảnh thất bại", message: error.message });
     }
   }
 
   async function handleStartClip() {
-    if (selectedRemoteStatus !== "connected") {
+    if (selectedRemoteStatus !== "connected" || !selectedStudent?.attemptId) {
       return;
     }
+
     const started = startClipRecording();
     if (!started) {
       showToast({ tone: "danger", title: "Không thể bắt đầu ghi clip" });
+      return;
+    }
+
+    try {
+      await proctoringApi.logTeacherAction(selectedStudent.attemptId, "START_RECORD_CLIP");
+      await refreshAttemptDetail(selectedStudent.attemptId);
+    } catch (error) {
+      showToast({ tone: "danger", title: "Ghi log ghi clip thất bại", message: error.message });
     }
   }
 
@@ -464,8 +584,21 @@ export default function TeacherProctoringRoomPage() {
       return;
     }
 
+    const recordedSeconds = clipElapsedSeconds;
     const blob = await stopClipRecording();
+
+    try {
+      await proctoringApi.logTeacherAction(
+        selectedStudent.attemptId,
+        "RECORD_CLIP",
+        `Record màn hình ${recordedSeconds} giây`,
+      );
+    } catch (error) {
+      showToast({ tone: "danger", title: "Ghi log Record thất bại", message: error.message });
+    }
+
     if (!blob) {
+      await refreshAttemptDetail(selectedStudent.attemptId);
       showToast({ tone: "danger", title: "Clip trống hoặc quá ngắn" });
       return;
     }
@@ -476,20 +609,42 @@ export default function TeacherProctoringRoomPage() {
         evidenceType: "Clip",
         captureSource: "TeacherManual",
         triggerEventType: "ManualClip",
+        metadata: { durationSeconds: recordedSeconds },
       });
-      const detailResponse = await proctoringApi.getAttemptDetail(selectedStudent.attemptId);
-      setDetail(detailResponse.data);
+      await refreshAttemptDetail(selectedStudent.attemptId);
       showToast({ tone: "success", title: "Đã lưu clip giám sát" });
     } catch (error) {
       showToast({ tone: "danger", title: "Lưu clip thất bại", message: error.message });
     }
   }
 
+  async function handleToggleAudio() {
+    if (!selectedStudent?.attemptId) {
+      return;
+    }
+
+    const nextAudioEnabled = !isAudioEnabled;
+    setIsAudioEnabled(nextAudioEnabled);
+
+    try {
+      await proctoringApi.logTeacherAction(
+        selectedStudent.attemptId,
+        nextAudioEnabled ? "UNMUTE_AUDIO" : "MUTE_AUDIO",
+      );
+      await refreshAttemptDetail(selectedStudent.attemptId);
+    } catch (error) {
+      setIsAudioEnabled(!nextAudioEnabled);
+      showToast({ tone: "danger", title: "Ghi log mic thất bại", message: error.message });
+    }
+  }
+
   return (
     <div className="flex min-h-[100dvh] flex-col">
       <ProctoringRoomHeader
+        allStudentsAiEnabled={allStudentsAiEnabled}
         canCloseExam={canCloseExam}
         examTitle={room?.examTitle}
+        globalAiEnabled={globalAiEnabled}
         isHubConnected={isRoomHubConnected}
         isRoomLoading={isRoomLoading}
         isRefreshing={isRefreshing}
@@ -497,6 +652,7 @@ export default function TeacherProctoringRoomPage() {
         onRefresh={handleManualRefresh}
         onOpenCoProctor={() => setIsCoProctorOpen(true)}
         onOpenClassReport={() => setIsClassReportOpen(true)}
+        onToggleAllStudentsAi={handleToggleAllStudentsAi}
         room={room}
         sessionLive={sessionLive}
         sessionPhase={sessionPhase}
@@ -527,9 +683,11 @@ export default function TeacherProctoringRoomPage() {
         />
 
         <ProctoringFilterBar
+          activeAiDetectionFilter={activeAiDetectionFilter}
           activeFilter={activeFilter}
           activeViewMode={viewMode}
           filteredCount={filteredStudents.length}
+          onAiDetectionFilterChange={setActiveAiDetectionFilter}
           onFilterChange={setActiveFilter}
           onViewModeChange={setViewMode}
           totalCount={students.length}
@@ -537,11 +695,15 @@ export default function TeacherProctoringRoomPage() {
 
         <StudentCameraGrid
           activeAttemptId={activeAttemptId}
+          disabledAiAttemptIds={disabledAiAttemptIds}
           getStatusForAttempt={sfuEnabled ? getStatusForAttempt : undefined}
           getStreamForAttempt={sfuEnabled ? getStreamForAttempt : undefined}
+          getVideoTrackForAttempt={sfuEnabled ? getVideoTrackForAttempt : undefined}
+          globalAiEnabled={globalAiEnabled}
           isAudioEnabled={isAudioEnabled}
           onRequestWatch={handleRequestWatch}
           onSelectStudent={handleSelectStudent}
+          onToggleStudentAi={handleToggleStudentAi}
           onViewViolationHistory={handleViewViolationHistory}
           remoteStatus={selectedRemoteStatus}
           remoteStream={selectedRemoteStream}
@@ -581,12 +743,12 @@ export default function TeacherProctoringRoomPage() {
         onStartClip={handleStartClip}
         onStopClip={handleStopClip}
         onTerminate={handleTerminate}
-        onToggleAudio={() => setIsAudioEnabled((value) => !value)}
+        onToggleAudio={handleToggleAudio}
         onWarn={handleWarn}
         remoteStatus={selectedRemoteStatus}
         student={selectedStudent}
         variant="room"
-        violationRefreshToken={reportRefreshToken}
+        violationRefreshToken={drawerViolationRefreshToken}
       />
 
       <CloseExamDialog

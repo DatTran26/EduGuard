@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { areUserIdsEqual } from "../../../api/apiHelpers";
 import { classroomApi } from "../../../api/classroomApi";
@@ -11,7 +11,6 @@ import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
-import PageHeader from "../../../components/layout/PageHeader";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/useToast";
 import { buildTeacherTasksPath, getClassroomListPathByRole, routeConfig } from "../../../routes/routeConfig";
@@ -20,12 +19,21 @@ import { buildTeacherExamMonitoringPath, isTeacherProctoringPath, openTeacherPro
 import AssignmentSection from "../../assignments/components/AssignmentSection";
 import CreateClassroomForm from "../components/CreateClassroomForm";
 import Skeleton from "../../../components/common/Skeleton";
-import TeacherClassroomWorkspace from "../components/TeacherClassroomWorkspace";
 import ClassDetailHeader from "../components/ClassDetailHeader";
-import TeacherClassroomTabBar from "../components/TeacherClassroomTabBar";
 import ClassQuickStatsPanel from "../components/ClassQuickStats";
-import ClassOverviewPanel from "../components/ClassOverviewPanel";
 import { TEACHER_CLASSROOM_TABS, normalizeTeacherClassroomTab } from "../components/teacher-classroom-tabs";
+
+const ClassOverviewPanel = lazy(() => import("../components/ClassOverviewPanel"));
+const TeacherClassroomWorkspace = lazy(() => import("../components/TeacherClassroomWorkspace"));
+
+function ClassroomTabPanelFallback() {
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1.8fr_1.2fr]">
+      <Skeleton className="h-44 w-full rounded-2xl animate-pulse" />
+      <Skeleton className="h-44 w-full rounded-2xl animate-pulse" />
+    </div>
+  );
+}
 
 function buildQuickInfoItems(classroom) {
   return [
@@ -606,7 +614,7 @@ export default function ClassroomDetailPage() {
           <div className="space-y-3">
             {membersToRender.map((member) => (
               <div
-                key={member.id}
+                key={member.id || member.studentId || member.email || member.fullName}
                 className={`rounded-[16px] border border-border bg-surface-sunken p-4 ${
                   String(member.studentId || "") === highlightedStudentId ? "ring-2 ring-tertiary/30" : ""
                 }`}
@@ -622,7 +630,9 @@ export default function ClassroomDetailPage() {
                       {member.email || (member.role === "Giảng viên" ? "Giảng viên phụ trách lớp" : "")}
                     </p>
                   </div>
-                  <Badge variant={getMemberBadgeVariant(member)}>{member.statusLabel}</Badge>
+                  <Badge variant={getMemberBadgeVariant(member)}>
+                    {member.statusLabel || "Chưa xác định"}
+                  </Badge>
                 </div>
                 <p className="mt-2 text-sm text-secondary">
                   {member.role === "Giảng viên" ? "Bắt đầu quản lý" : "Tham gia"}:{" "}
@@ -726,7 +736,10 @@ export default function ClassroomDetailPage() {
       ) : null}
 
       {shouldShowTeacherWorkspace ? (
-        <div className="py-3 flex justify-center border-b border-border/50">
+        <div
+          id="teacher-classroom-tab-bar"
+          className="py-3 flex justify-center border-b border-border/50"
+        >
           <div className="rounded-full border border-border bg-surface p-1 shadow-sm max-w-fit overflow-x-auto scrollbar-none">
             <div className="flex gap-1">
               {TEACHER_CLASSROOM_TABS.map((tab) => (
@@ -761,16 +774,18 @@ export default function ClassroomDetailPage() {
               title="Chỉnh sửa lớp học"
             />
           ) : (
-            <ClassOverviewPanel
-              members={members}
-              assignments={assignments}
-              submissionsByAssignmentId={submissionsByAssignmentId}
-              exams={exams}
-              attempts={attempts}
-              warningCountByExamId={warningCountByExamId}
-              notifications={notifications}
-              onAction={handleHeaderAction}
-            />
+            <Suspense fallback={<ClassroomTabPanelFallback />}>
+              <ClassOverviewPanel
+                members={members}
+                assignments={assignments}
+                submissionsByAssignmentId={submissionsByAssignmentId}
+                exams={exams}
+                attempts={attempts}
+                warningCountByExamId={warningCountByExamId}
+                notifications={notifications}
+                onAction={handleHeaderAction}
+              />
+            </Suspense>
           )}
         </div>
       )}
@@ -780,24 +795,26 @@ export default function ClassroomDetailPage() {
       ) : null}
 
       {shouldShowTeacherWorkspace && activeTeacherTab !== "overview" && activeTeacherTab !== "members" ? (
-        <TeacherClassroomWorkspace
-          activeTab={activeTeacherTab}
-          classroom={classroom}
-          highlightedStudentId={highlightedStudentId}
-          members={members}
-          showToast={showToast}
-          user={user}
-          // Pre-fetched props
-          assignments={assignments}
-          submissionsByAssignmentId={submissionsByAssignmentId}
-          exams={exams}
-          attempts={attempts}
-          warningCountByExamId={warningCountByExamId}
-          notifications={notifications}
-          isLoading={isLoadingWorkspace}
-          onNotificationCreated={reloadNotifications}
-          onAssignmentCreated={reloadAssignments}
-        />
+        <Suspense fallback={<ClassroomTabPanelFallback />}>
+          <TeacherClassroomWorkspace
+            activeTab={activeTeacherTab}
+            classroom={classroom}
+            highlightedStudentId={highlightedStudentId}
+            members={members}
+            showToast={showToast}
+            user={user}
+            // Pre-fetched props
+            assignments={assignments}
+            submissionsByAssignmentId={submissionsByAssignmentId}
+            exams={exams}
+            attempts={attempts}
+            warningCountByExamId={warningCountByExamId}
+            notifications={notifications}
+            isLoading={isLoadingWorkspace}
+            onNotificationCreated={reloadNotifications}
+            onAssignmentCreated={reloadAssignments}
+          />
+        </Suspense>
       ) : null}
 
       {!shouldShowTeacherWorkspace ? (

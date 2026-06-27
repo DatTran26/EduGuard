@@ -13,9 +13,15 @@ export default defineConfig({
   envDir: __dirname,
   plugins: [react(), tailwindcss(), devServerLogger(backendTarget)],
   resolve: {
+    dedupe: ["react", "react-dom", "react-is"],
     alias: {
       "@": path.resolve(__dirname, "src"),
+      react: path.resolve(__dirname, "node_modules/react"),
+      "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
     },
+  },
+  optimizeDeps: {
+    include: ["react", "react-dom", "react/jsx-runtime"],
   },
   server: {
     host: true,

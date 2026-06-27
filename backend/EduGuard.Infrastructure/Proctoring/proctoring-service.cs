@@ -365,6 +365,16 @@ public class ProctoringService : IProctoringService
         return MapAiSettings(settings);
     }
 
+    public async Task<ProctoringDetectionConfigDto> GetDetectionConfigAsync(CancellationToken ct = default)
+    {
+        var settings = await _proctoringRepository.GetAiSettingsAsync(ct);
+        return new ProctoringDetectionConfigDto
+        {
+            EnableYoloDetection = settings.EnableYoloDetection,
+            DetectionIntervalSeconds = Math.Max(settings.DetectionIntervalSeconds, 2)
+        };
+    }
+
     public async Task<ProctoringAiSettingsDto> UpdateAiSettingsAsync(UpdateProctoringAiSettingsRequest request, CancellationToken ct = default)
     {
         var settings = await _proctoringRepository.GetAiSettingsAsync(ct);
@@ -401,6 +411,7 @@ public class ProctoringService : IProctoringService
             {
                 stateMap.TryGetValue(attempt.Id, out var state);
                 watchMap.TryGetValue(attempt.Id, out var watch);
+                var suspicionScore = Math.Max(state?.SuspicionScore ?? 0, attempt.SuspicionScore);
                 return new ProctoringStateSummaryDto
                 {
                     AttemptId = attempt.Id,
@@ -411,8 +422,8 @@ public class ProctoringService : IProctoringService
                     LiveStatus = state?.LiveStatus ?? "Inactive",
                     ConnectionStatus = state?.ConnectionStatus ?? "Unknown",
                     EnvironmentStatus = state?.EnvironmentStatus ?? "Normal",
-                    SuspicionScore = state?.SuspicionScore ?? attempt.SuspicionScore,
-                    RiskLevel = state?.RiskLevel ?? ProctoringRiskHelper.GetRiskLevel(attempt.SuspicionScore),
+                    SuspicionScore = suspicionScore,
+                    RiskLevel = ProctoringRiskHelper.GetRiskLevel(suspicionScore),
                     WarningCount = state?.WarningCount ?? 0,
                     EvidenceCount = state?.EvidenceCount ?? 0,
                     WatchedByTeacherId = watch?.TeacherId,
@@ -459,21 +470,26 @@ public class ProctoringService : IProctoringService
             throw new UnauthorizedAccessException("Chỉ giáo viên tạo đề mới được quản lý co-proctor.");
     }
 
-    private static ProctoringStateDto MapState(ProctoringState? state, int fallbackScore) => new()
+    private static ProctoringStateDto MapState(ProctoringState? state, int fallbackScore)
     {
-        CameraStatus = state?.CameraStatus ?? "Unknown",
-        LiveStatus = state?.LiveStatus ?? "Inactive",
-        FullscreenStatus = state?.FullscreenStatus ?? "Unknown",
-        ConnectionStatus = state?.ConnectionStatus ?? "Unknown",
-        EnvironmentStatus = state?.EnvironmentStatus ?? "Normal",
-        LatestDetectionType = state?.LatestDetectionType,
-        WarningCount = state?.WarningCount ?? 0,
-        EvidenceCount = state?.EvidenceCount ?? 0,
-        SuspicionScore = state?.SuspicionScore ?? fallbackScore,
-        RiskLevel = state?.RiskLevel ?? ProctoringRiskHelper.GetRiskLevel(fallbackScore),
-        LastHeartbeatAt = state?.LastHeartbeatAt ?? DateTime.UtcNow,
-        LatestWarningAt = state?.LatestWarningAt
-    };
+        var suspicionScore = Math.Max(state?.SuspicionScore ?? 0, fallbackScore);
+
+        return new ProctoringStateDto
+        {
+            CameraStatus = state?.CameraStatus ?? "Unknown",
+            LiveStatus = state?.LiveStatus ?? "Inactive",
+            FullscreenStatus = state?.FullscreenStatus ?? "Unknown",
+            ConnectionStatus = state?.ConnectionStatus ?? "Unknown",
+            EnvironmentStatus = state?.EnvironmentStatus ?? "Normal",
+            LatestDetectionType = state?.LatestDetectionType,
+            WarningCount = state?.WarningCount ?? 0,
+            EvidenceCount = state?.EvidenceCount ?? 0,
+            SuspicionScore = suspicionScore,
+            RiskLevel = ProctoringRiskHelper.GetRiskLevel(suspicionScore),
+            LastHeartbeatAt = state?.LastHeartbeatAt ?? DateTime.UtcNow,
+            LatestWarningAt = state?.LatestWarningAt
+        };
+    }
 
     private static ProctorActionDto MapAction(ProctorAction action) => new()
     {

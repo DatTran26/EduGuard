@@ -16,8 +16,8 @@ const RISK_LABELS = {
 
 export default function RiskBadge({ riskLevel = "Normal", score = 0 }) {
   return (
-    <Badge variant={RISK_VARIANTS[riskLevel] ?? "neutral"}>
-      {RISK_LABELS[riskLevel] ?? riskLevel} · {score}
+    <Badge title="Điểm nghi ngờ tích lũy từ các vi phạm" variant={RISK_VARIANTS[riskLevel] ?? "neutral"}>
+      {RISK_LABELS[riskLevel] ?? riskLevel} · {score} điểm
     </Badge>
   );
 }

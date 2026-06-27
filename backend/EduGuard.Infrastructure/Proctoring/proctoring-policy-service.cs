@@ -13,7 +13,7 @@ public class ProctoringPolicyService : IProctoringPolicyService
         ProctoringHeartbeatRequest request,
         CancellationToken ct = default)
     {
-        var score = attempt.SuspicionScore;
+        var score = Math.Max(attempt.SuspicionScore, state.SuspicionScore);
 
         if (string.Equals(request.CameraStatus, "Off", StringComparison.OrdinalIgnoreCase))
         {
@@ -37,7 +37,7 @@ public class ProctoringPolicyService : IProctoringPolicyService
             state.EnvironmentStatus = "PausedByTeacher";
         }
 
-        state.SuspicionScore = Math.Min(score, 100);
+        state.SuspicionScore = score;
         state.RiskLevel = ProctoringRiskHelper.GetRiskLevel(state.SuspicionScore);
         state.LastHeartbeatAt = DateTime.UtcNow;
 

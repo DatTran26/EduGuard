@@ -12,6 +12,17 @@ export const ANTI_CHEAT_EVENT_TYPES = {
   personNotVisible: "PERSON_NOT_VISIBLE",
 };
 
+const AUTO_CAPTURE_VIOLATION_TYPES = new Set([
+  ANTI_CHEAT_EVENT_TYPES.copyPaste,
+  ANTI_CHEAT_EVENT_TYPES.exitFullscreen,
+  ANTI_CHEAT_EVENT_TYPES.pageReload,
+  ANTI_CHEAT_EVENT_TYPES.webcamOff,
+  ANTI_CHEAT_EVENT_TYPES.phoneVisible,
+  ANTI_CHEAT_EVENT_TYPES.bookVisible,
+  ANTI_CHEAT_EVENT_TYPES.secondPersonVisible,
+  ANTI_CHEAT_EVENT_TYPES.personNotVisible,
+]);
+
 const ANTI_CHEAT_EVENT_META = {
   TAB_SWITCH: { label: "Chuyển tab", variant: "caution" },
   WINDOW_BLUR: { label: "Mất focus", variant: "caution" },
@@ -20,10 +31,10 @@ const ANTI_CHEAT_EVENT_META = {
   PAGE_RELOAD: { label: "Tải lại trang", variant: "caution" },
   DISCONNECTED: { label: "Mất kết nối", variant: "info" },
   WEBCAM_OFF: { label: "Tắt webcam", variant: "danger" },
-  PHONE_VISIBLE: { label: "AI: Điện thoại", variant: "danger" },
+  PHONE_VISIBLE: { label: "AI: Điện thoại", variant: "info" },
   BOOK_VISIBLE: { label: "AI: Tài liệu", variant: "danger" },
-  SECOND_PERSON_VISIBLE: { label: "AI: Người thứ hai", variant: "danger" },
-  PERSON_NOT_VISIBLE: { label: "AI: Không thấy người", variant: "caution" },
+  SECOND_PERSON_VISIBLE: { label: "AI: Người thứ hai", variant: "caution" },
+  PERSON_NOT_VISIBLE: { label: "AI: Không thấy người", variant: "neutral" },
 };
 
 export function getAntiCheatEventMeta(type) {
@@ -31,6 +42,10 @@ export function getAntiCheatEventMeta(type) {
     label: type || "Su kien anti-cheat",
     variant: "info",
   };
+}
+
+export function isAutoCaptureViolationType(type) {
+  return AUTO_CAPTURE_VIOLATION_TYPES.has(type);
 }
 
 export function getSuspicionScoreMeta(score) {

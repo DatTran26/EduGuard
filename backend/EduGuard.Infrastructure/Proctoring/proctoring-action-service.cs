@@ -10,6 +10,15 @@ namespace EduGuard.Infrastructure.Proctoring;
 
 public class ProctoringActionService : IProctoringActionService
 {
+    private static readonly HashSet<string> ManualLogActionTypes = new(StringComparer.Ordinal)
+    {
+        "CAPTURE_SNAPSHOT",
+        "START_RECORD_CLIP",
+        "RECORD_CLIP",
+        "MUTE_AUDIO",
+        "UNMUTE_AUDIO",
+    };
+
     private readonly AppDbContext _db;
     private readonly IExamMonitoringNotifier _examMonitoringNotifier;
     private readonly IExamMonitoringService _examMonitoringService;
@@ -86,6 +95,22 @@ public class ProctoringActionService : IProctoringActionService
             ActionType = "TERMINATED",
             Reason = reason?.Trim()
         }, ct);
+    }
+
+    public async Task LogTeacherActionAsync(
+        int attemptId,
+        string teacherId,
+        IReadOnlyList<string> roles,
+        string actionType,
+        string? reason,
+        CancellationToken ct = default)
+    {
+        var normalizedActionType = actionType?.Trim() ?? string.Empty;
+        if (!ManualLogActionTypes.Contains(normalizedActionType))
+            throw new ArgumentException("Loại thao tác không được hỗ trợ.");
+
+        await GetAttemptForTeacherActionAsync(attemptId, teacherId, roles, ct);
+        await LogActionAsync(attemptId, teacherId, normalizedActionType, reason, ct);
     }
 
     public async Task WarnStudentAsync(int attemptId, string teacherId, IReadOnlyList<string> roles, string reason, CancellationToken ct = default)

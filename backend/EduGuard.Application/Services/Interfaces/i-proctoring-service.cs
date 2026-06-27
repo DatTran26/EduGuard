@@ -23,6 +23,7 @@ public interface IProctoringService
 
     Task<ProctoringAiSettingsDto> GetAiSettingsAsync(CancellationToken ct = default);
     Task<ProctoringAiSettingsDto> UpdateAiSettingsAsync(UpdateProctoringAiSettingsRequest request, CancellationToken ct = default);
+    Task<ProctoringDetectionConfigDto> GetDetectionConfigAsync(CancellationToken ct = default);
 }
 
 public interface IExamLobbyService
@@ -52,4 +53,5 @@ public interface IProctoringActionService
     Task ResumeAttemptAsync(int attemptId, string teacherId, IReadOnlyList<string> roles, string? reason, CancellationToken ct = default);
     Task TerminateAttemptAsync(int attemptId, string teacherId, IReadOnlyList<string> roles, string reason, CancellationToken ct = default);
     Task WarnStudentAsync(int attemptId, string teacherId, IReadOnlyList<string> roles, string reason, CancellationToken ct = default);
+    Task LogTeacherActionAsync(int attemptId, string teacherId, IReadOnlyList<string> roles, string actionType, string? reason, CancellationToken ct = default);
 }

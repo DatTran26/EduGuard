@@ -39,6 +39,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ExamProctorAssignment> ExamProctorAssignments => Set<ExamProctorAssignment>();
     public DbSet<ProctoringAiSettings> ProctoringAiSettings => Set<ProctoringAiSettings>();
     public DbSet<EmailSettings> EmailSettings => Set<EmailSettings>();
+    public DbSet<GptSettings> GptSettings => Set<GptSettings>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

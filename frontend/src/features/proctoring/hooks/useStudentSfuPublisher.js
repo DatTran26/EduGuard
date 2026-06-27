@@ -53,6 +53,9 @@ export function useStudentSfuPublisher({
     }
   }, [cameraReady, enableAudio, mediaStream]);
 
+  const publishLocalTracksRef = useRef(publishLocalTracks);
+  publishLocalTracksRef.current = publishLocalTracks;
+
   useEffect(() => {
     if (!enabled || !attemptId) {
       cleanupRoom();
@@ -91,7 +94,7 @@ export function useStudentSfuPublisher({
 
         if (!isDisposed) {
           setIsConnected(true);
-          await publishLocalTracks();
+          await publishLocalTracksRef.current();
           await proctoringApi
             .heartbeatProctoring(attemptId, {
               cameraStatus: "On",
@@ -110,14 +113,14 @@ export function useStudentSfuPublisher({
       isDisposed = true;
       cleanupRoom();
     };
-  }, [attemptId, cleanupRoom, enabled, publishLocalTracks]);
+  }, [attemptId, cleanupRoom, enabled]);
 
   useEffect(() => {
     if (!enabled || !cameraReady) {
       return;
     }
-    publishLocalTracks().catch(() => {});
-  }, [cameraReady, enabled, publishLocalTracks]);
+    publishLocalTracksRef.current().catch(() => {});
+  }, [cameraReady, enabled, mediaStream]);
 
   return { cleanupRoom, isConnected };
 }

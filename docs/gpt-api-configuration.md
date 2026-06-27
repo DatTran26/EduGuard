@@ -1,31 +1,38 @@
 # Cấu hình Tích hợp API OpenAI GPT
 
-Tài liệu này hướng dẫn cách cấu hình các biến môi trường phục vụ cho tính năng sinh câu hỏi tự động bằng AI trong hệ thống EduGuard.
+Tài liệu này hướng dẫn cách cấu hình API OpenAI phục vụ tính năng sinh câu hỏi tự động bằng AI trong hệ thống EduGuard.
 
-## 1. Lưu trữ cấu hình trong file `.env`
+## 1. Lưu trữ cấu hình trong cơ sở dữ liệu
 
-Để tăng cường bảo mật, tất cả các thông tin nhạy cảm và thông số liên quan đến việc gọi API OpenAI đều được lưu trữ trực tiếp trong file `.env` đặt tại thư mục gốc của dự án thay vì lưu cứng trong mã nguồn hoặc tệp cấu hình `appsettings.json`.
+Cấu hình GPT (API Key, Model, Base URL) được lưu trong bảng `GptSettings` (SQL Server), quản lý qua trang Admin **Cấu hình Mô hình GPT** (`/admin/gpt-model`).
 
-Giảng viên (Teacher role) sẽ **không thể nhìn thấy** hoặc cấu hình các thông số này từ giao diện của họ. Chỉ có Quản trị viên (Admin role) mới có quyền xem, chỉnh sửa và thử nghiệm kết nối thông qua trang cấu hình hệ thống chuyên biệt.
+Giảng viên (Teacher role) **không thể** xem hoặc chỉnh sửa các thông số này. Chỉ Admin mới có quyền cấu hình và kiểm tra kết nối.
 
-## 2. Các biến môi trường hỗ trợ
+Khi chưa có giá trị trong DB, hệ thống vẫn đọc fallback từ biến môi trường hoặc `appsettings.json` (xem mục 2).
 
-Dưới đây là danh sách các khóa cấu hình được định nghĩa trong file `.env`:
+## 2. Biến môi trường / appsettings (fallback)
 
-| Biến môi trường | Giá trị mặc định | Mô tả |
-|-----------------|------------------|-------|
-| `OPENAI_API_KEY` | *(Trống)* | API Key cung cấp bởi OpenAI (dạng `sk-proj-...`). |
-| `OPENAI_MODEL` | `gpt-5.4` | Mô hình ngôn ngữ mặc định sử dụng để sinh câu hỏi. |
-| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | URL gốc của dịch vụ API OpenAI hoặc Proxy tương thích. |
+| Khóa | Giá trị mặc định | Mô tả |
+|------|------------------|-------|
+| `OPENAI_API_KEY` / `OpenAI:ApiKey` | *(Trống)* | API Key OpenAI (`sk-proj-...`). |
+| `OPENAI_MODEL` / `OpenAI:Model` | `gpt-5.4` | Model mặc định sinh câu hỏi. |
+| `OPENAI_BASE_URL` / `OpenAI:BaseUrl` | `https://api.openai.com/v1` | URL API OpenAI hoặc proxy tương thích. |
 
-## 3. Quy trình tải cấu hình tự động (Backend)
+File `.env` ở thư mục gốc vẫn được nạp khi khởi động (`EnvFileHelper.LoadEnv`) để hỗ trợ dev local; **lưu từ giao diện Admin ghi vào DB**, không ghi `.env`.
 
-Hệ thống backend ASP.NET Core sử dụng lớp tiện ích `EnvFileHelper` để tự động dò tìm và nạp các biến này từ file `.env` vào bộ nhớ khi khởi động:
-- Lớp `EnvFileHelper` sẽ ánh xạ trực tiếp các biến môi trường tiêu chuẩn sang định dạng biến môi trường cấu hình kép của ASP.NET Core (ví dụ: `OPENAI_API_KEY` tương ứng với biến cấu hình `OpenAI:ApiKey`).
-- Trường hợp biến môi trường không được định nghĩa, hệ thống sẽ sử dụng các giá trị dự phòng (fallback) cấu hình sẵn trong `appsettings.json`.
+## 3. API Admin
 
-## 4. Kiểm tra kết nối (API Testing)
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/api/admin/gpt/settings` | Lấy cấu hình (API Key được mask). |
+| POST | `/api/admin/gpt/settings` | Lưu cấu hình vào DB. |
+| POST | `/api/admin/gpt/test-connection` | Gọi `GET /v1/models` để kiểm tra API Key. |
 
-Quản trị viên có thể kiểm tra trực tiếp tính khả dụng của API Key và địa chỉ API thông qua chức năng **"Test API Connection"** ở giao diện Admin.
-- API Endpoint phía backend: `POST /api/admin/gpt/test-connection`
-- Logic kiểm tra sẽ thực hiện gửi một yêu cầu truy vấn danh sách mô hình hiện có từ OpenAI (`GET /v1/models`) để kiểm tra quyền truy cập hợp lệ trước khi chính thức lưu cấu hình vào file `.env`.
+## 4. Migration
+
+Sau khi deploy backend mới, chạy:
+
+```powershell
+cd backend
+dotnet ef database update --project EduGuard.Infrastructure --startup-project EduGuard.Api
+```

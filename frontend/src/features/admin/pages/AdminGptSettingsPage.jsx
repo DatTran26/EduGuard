@@ -67,7 +67,10 @@ export default function AdminGptSettingsPage() {
     event.preventDefault();
     setIsSaving(true);
     try {
-      await questionBankApi.saveGptSettings(form);
+      const response = await questionBankApi.saveGptSettings(form);
+      if (response.data) {
+        setForm({ ...defaultForm, ...response.data });
+      }
       showToast({ tone: "success", title: "Cập nhật cấu hình thành công" });
     } catch (error) {
       showToast({ tone: "danger", title: "Lưu thất bại", message: error.message });
@@ -140,7 +143,7 @@ export default function AdminGptSettingsPage() {
                   value={form.apiKey}
                   onChange={(e) => updateField("apiKey", e.target.value)}
                   type={showApiKey ? "text" : "password"}
-                  helperText="API Key sẽ được lưu bảo mật trong file .env phía máy chủ và ẩn đi ở giao diện giảng viên."
+                  helperText="API Key được lưu bảo mật trong cơ sở dữ liệu và chỉ Admin mới có thể cấu hình."
                 />
                 <button
                   type="button"

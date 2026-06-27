@@ -121,7 +121,7 @@ public class ProctoringDetectionService : IProctoringDetectionService
             if (state is not null)
             {
                 state.LatestDetectionType = detectionType;
-                state.SuspicionScore = Math.Min(state.SuspicionScore + 10, 100);
+                state.SuspicionScore += 10;
                 state.RiskLevel = ProctoringRiskHelper.GetRiskLevel(state.SuspicionScore);
                 await _proctoringRepository.UpsertStateAsync(state, ct);
             }

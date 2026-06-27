@@ -162,7 +162,10 @@ public class StudentProctoringService : IStudentProctoringService
         if (state.EvidenceCount >= setting.MaxSnapshotsPerAttempt)
             return false;
 
-        if (state.RiskLevel is not ("Warning" or "Critical"))
+        var riskEligible = state.RiskLevel is "Warning" or "Critical";
+        var detectionEligible = IsAutoSnapshotDetectionType(state.LatestDetectionType);
+
+        if (!riskEligible && !detectionEligible)
             return false;
 
         var evidence = await _proctoringRepository.GetEvidenceByAttemptIdAsync(state.ExamAttemptId, ct);
@@ -230,4 +233,12 @@ public class StudentProctoringService : IStudentProctoringService
     private static bool IsDisconnectedStatus(string? status) =>
         string.Equals(status, "Offline", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(status, "Unstable", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsAutoSnapshotDetectionType(string? detectionType) =>
+        detectionType is "PhoneVisible"
+            or "BookVisible"
+            or "MultipleFaces"
+            or "PersonNotVisible"
+            or "CameraOff"
+            or "FullscreenExit";
 }
