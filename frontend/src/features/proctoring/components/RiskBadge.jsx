@@ -14,10 +14,17 @@ const RISK_LABELS = {
   Critical: "Cần xem xét",
 };
 
-export default function RiskBadge({ riskLevel = "Normal", score = 0 }) {
+export default function RiskBadge({ riskLevel = "Normal", score = 0, compact = false, className }) {
+  const label = RISK_LABELS[riskLevel] ?? riskLevel;
+  const content = compact ? `${label} · ${score}đ` : `${label} · ${score} điểm`;
+
   return (
-    <Badge title="Điểm nghi ngờ tích lũy từ các vi phạm" variant={RISK_VARIANTS[riskLevel] ?? "neutral"}>
-      {RISK_LABELS[riskLevel] ?? riskLevel} · {score} điểm
+    <Badge
+      className={className}
+      title="Điểm nghi ngờ tích lũy từ các vi phạm"
+      variant={RISK_VARIANTS[riskLevel] ?? "neutral"}
+    >
+      {content}
     </Badge>
   );
 }

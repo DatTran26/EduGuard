@@ -8,7 +8,6 @@ import {
   PROCTORING_SIGNAL_ITEMS,
   resolveTileVideoPlaceholder,
 } from "../utils/proctoringStudentStatus";
-import RiskBadge from "./RiskBadge";
 import { resolveTileAiStatusMeta } from "../utils/proctoringAiHelpers";
 
 const TILE_BORDER = {
@@ -194,17 +193,14 @@ export default function StudentLiveTile({
       </div>
 
       <div className={cn("space-y-3", compact ? "flex flex-1 flex-col justify-center p-3" : "p-3")}>
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 space-y-1.5">
-            <p className="truncate font-semibold text-slate-100">{student.studentName}</p>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Badge variant={attemptMeta.variant}>{attemptMeta.label}</Badge>
-              {student.isLateJoin ? (
-                <Badge variant="caution">Vào trễ {student.lateByMinutes || 1} phút</Badge>
-              ) : null}
-            </div>
+        <div className="min-w-0 space-y-1.5">
+          <p className="truncate font-semibold text-slate-100">{student.studentName}</p>
+          <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
+            <Badge variant={attemptMeta.variant}>{attemptMeta.label}</Badge>
+            {student.isLateJoin ? (
+              <Badge variant="caution">Vào trễ {student.lateByMinutes || 1} phút</Badge>
+            ) : null}
           </div>
-          <RiskBadge riskLevel={riskLevel} score={student.suspicionScore} />
         </div>
 
         {!compact ? (

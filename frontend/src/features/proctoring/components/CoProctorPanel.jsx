@@ -152,9 +152,11 @@ export default function CoProctorPanel({ examId, isOpen = true, variant = "defau
           <p className={cn("text-sm font-medium", isRoom ? "text-slate-200" : "text-primary")}>
             {proctors.length} giáo viên trong phòng
           </p>
-          <p className={cn("text-xs", isRoom ? "text-slate-500" : "text-secondary")}>
-            {coProctorCount > 0 ? `${coProctorCount} co-proctor` : "Chưa có co-proctor"}
-          </p>
+          {coProctorCount > 0 ? (
+            <p className={cn("text-xs", isRoom ? "text-slate-500" : "text-secondary")}>
+              {coProctorCount} co-proctor
+            </p>
+          ) : null}
         </div>
       </div>
 
