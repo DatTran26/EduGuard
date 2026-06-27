@@ -4,7 +4,7 @@ services:
     ports:
       - "8800:8800"
     environment:
-      PROCTORING_MODEL: /models/yolo26s.pt
+      PROCTORING_MODEL: /models/yolo11n.pt
     volumes:
       - ../models:/models:ro
       - proctoring-models:/root/.cache/ultralytics
