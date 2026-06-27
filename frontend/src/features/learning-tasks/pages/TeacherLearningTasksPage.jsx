@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FiShield } from "react-icons/fi";
+import { FiArrowLeft, FiShield, FiX } from "react-icons/fi";
 import { assignmentApi } from "../../../api/assignmentApi";
 import { classroomApi } from "../../../api/classroomApi";
 import { examApi } from "../../../api/examApi";
@@ -18,7 +18,7 @@ import {
 import { formatShortDateTime } from "../../../utils/formatDate";
 import AssignmentForm from "../../assignments/components/AssignmentForm";
 import ExamForm from "../../exams/components/ExamForm";
-import LearningTaskList from "../components/LearningTaskList";
+import AssignmentTaskTable from "../components/AssignmentTaskTable";
 import LearningTaskStats from "../components/LearningTaskStats";
 import LearningTaskTypeTabs from "../components/LearningTaskTypeTabs";
 import ExamGrid from "../components/ExamGrid";
@@ -66,6 +66,20 @@ function buildAssignmentGradeDrafts(submissionEntries) {
       ]),
     ),
   );
+}
+
+function getSubmissionReviewStatusMeta(submission) {
+  const isReviewed = Boolean(submission?.gradedAt) || typeof submission?.score === "number";
+
+  return isReviewed
+    ? {
+        label: "Đã chấm",
+        className: "border-success/15 bg-success/8 text-success",
+      }
+    : {
+        label: "Chưa chấm",
+        className: "border-caution/15 bg-caution/8 text-caution",
+      };
 }
 
 function buildExamSummaryCards(task) {
@@ -116,7 +130,6 @@ export default function TeacherLearningTasksPage() {
   const [taskActionId, setTaskActionId] = useState("");
   const [loadErrorMessage, setLoadErrorMessage] = useState("");
   const [reloadVersion, setReloadVersion] = useState(0);
-  const workspacePanelRef = useRef(null);
 
   const selectedType = resolveLearningTaskType(searchParams.get("type"));
   const selectedClassroomId = searchParams.get("classroomId") ?? "";
@@ -130,8 +143,12 @@ export default function TeacherLearningTasksPage() {
   const isCreateFormVisible = searchParams.get("create") === "1";
 
   const sortOptions = useMemo(() => getLearningTaskSortOptions(selectedType), [selectedType]);
+  const isLegacyAssignmentDeadlineSort =
+    selectedType === LEARNING_TASK_TYPES.assignment && requestedSort === "deadline-asc";
   const resolvedSortOption =
-    sortOptions.find((option) => option.value === requestedSort)?.value ??
+    (!isLegacyAssignmentDeadlineSort
+      ? sortOptions.find((option) => option.value === requestedSort)?.value
+      : null) ??
     getDefaultSortOption(selectedType);
   const pageCopy = getLearningTaskPageCopy(selectedType);
   const classroomFormOptions = useMemo(
@@ -167,11 +184,11 @@ export default function TeacherLearningTasksPage() {
     () => buildLearningTaskStats(scopedTasks, selectedType),
     [scopedTasks, selectedType],
   );
-  const selectedTask =
-    visibleTasks.find((task) => String(task.id) === String(selectedTaskId)) ??
-    tasks.find((task) => String(task.id) === String(selectedTaskId)) ??
-    visibleTasks[0] ??
-    null;
+  const selectedTask = selectedTaskId
+    ? visibleTasks.find((task) => String(task.id) === String(selectedTaskId)) ??
+      tasks.find((task) => String(task.id) === String(selectedTaskId)) ??
+      null
+    : null;
   const selectedAssignmentSubmissions =
     selectedTask?.type === LEARNING_TASK_TYPES.assignment
       ? submissionsByAssignmentId[selectedTask.id] ?? []
@@ -255,6 +272,7 @@ export default function TeacherLearningTasksPage() {
                 return (Array.isArray(response.data) ? response.data : []).map((assignment) => ({
                   ...assignment,
                   classroomMemberCount: Number(classroom.memberCount) || 0,
+                  classroomStudentCount: Math.max(Number(classroom.memberCount) - 1, 0),
                   classroomName: classroom.name,
                 }));
               } catch {
@@ -339,19 +357,6 @@ export default function TeacherLearningTasksPage() {
     setSearchParams(nextParams, options);
   }
 
-  function scrollToWorkspace() {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    window.requestAnimationFrame(() => {
-      workspacePanelRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-  }
-
   function handleRetry() {
     setReloadVersion((previousValue) => previousValue + 1);
   }
@@ -389,6 +394,29 @@ export default function TeacherLearningTasksPage() {
   function handleSelectTask(taskId) {
     updateSearchParams((nextParams) => {
       nextParams.set("taskId", String(taskId));
+      nextParams.delete("assignmentId");
+      nextParams.delete("examId");
+    });
+  }
+
+  function openAssignmentWorkspace(taskId, options = {}) {
+    const { openEditor = false } = options;
+
+    setSelectedSubmissionId("");
+    setEditingTaskId(openEditor ? String(taskId) : "");
+    updateSearchParams((nextParams) => {
+      nextParams.set("taskId", String(taskId));
+      nextParams.delete("assignmentId");
+      nextParams.delete("examId");
+      nextParams.delete("create");
+    });
+  }
+
+  function handleBackToAssignmentList() {
+    setEditingTaskId("");
+    setSelectedSubmissionId("");
+    updateSearchParams((nextParams) => {
+      nextParams.delete("taskId");
       nextParams.delete("assignmentId");
       nextParams.delete("examId");
     });
@@ -461,7 +489,6 @@ export default function TeacherLearningTasksPage() {
 
     try {
       const response = await assignmentApi.update(taskId, payload);
-      setEditingTaskId("");
       setReloadVersion((previousValue) => previousValue + 1);
       showToast({ tone: "success", title: "Đã cập nhật bài tập", message: response.message });
       return false;
@@ -647,87 +674,6 @@ export default function TeacherLearningTasksPage() {
     }
   }
 
-  function buildTaskActions(task) {
-    const isDeleteArmed = String(armedDeleteTaskId) === String(task.id);
-
-    if (task.type === LEARNING_TASK_TYPES.exam) {
-      return [
-        {
-          key: "edit",
-          label: String(editingTaskId) === String(task.id) ? "Đang chỉnh sửa" : "Chỉnh sửa",
-          onClick: () => {
-            handleSelectTask(task.id);
-            setEditingTaskId((previousValue) =>
-              previousValue === String(task.id) ? "" : String(task.id),
-            );
-            updateSearchParams((nextParams) => nextParams.delete("create"));
-          },
-          variant: "secondary",
-        },
-        task.canPublish
-          ? {
-              key: "publish",
-              label: taskActionId === `publish-${task.id}` ? "Đang publish..." : "Publish",
-              onClick: () => handlePublishExam(task),
-              variant: "primary",
-              disabled: taskActionId === `publish-${task.id}` || task.publishIssueCount > 0,
-            }
-          : task.canCloseEarly
-            ? {
-                key: "close",
-                label: taskActionId === `close-${task.id}` ? "Đang đóng..." : "Đóng sớm",
-                onClick: () => handleCloseExam(task),
-                variant: "danger",
-                disabled: taskActionId === `close-${task.id}`,
-              }
-            : null,
-        {
-          key: "delete",
-          label:
-            taskActionId === `delete-${task.id}`
-              ? "Đang xóa..."
-              : isDeleteArmed
-                ? "Xác nhận xóa"
-                : "Xóa",
-          onClick: () => handleDeleteExam(task),
-          variant: "ghost",
-          disabled: taskActionId === `delete-${task.id}`,
-        },
-      ].filter(Boolean);
-    }
-
-    return [
-      {
-        key: "grade",
-        label: String(selectedTaskId) === String(task.id) ? "Đang xem" : "Mở chấm bài",
-        onClick: () => {
-          handleSelectTask(task.id);
-          scrollToWorkspace();
-        },
-        variant: String(selectedTaskId) === String(task.id) ? "secondary" : "primary",
-      },
-      {
-        key: "edit",
-        label: String(editingTaskId) === String(task.id) ? "Đang chỉnh sửa" : "Chỉnh sửa",
-        onClick: () => {
-          handleSelectTask(task.id);
-          setEditingTaskId((previousValue) =>
-            previousValue === String(task.id) ? "" : String(task.id),
-          );
-          updateSearchParams((nextParams) => nextParams.delete("create"));
-        },
-        variant: "secondary",
-      },
-      {
-        key: "delete",
-        label: isDeleteArmed ? "Xác nhận xóa" : "Xóa",
-        onClick: () => handleDeleteAssignment(task),
-        variant: "ghost",
-        disabled: isSavingTask,
-      },
-    ];
-  }
-
   function renderCreateForm() {
     if (!isCreateFormVisible) {
       return null;
@@ -735,53 +681,72 @@ export default function TeacherLearningTasksPage() {
 
     if (classrooms.length === 0) {
       return (
-        <EmptyState
-          title="Bạn cần có ít nhất một lớp học để tạo hoạt động mới."
-          description="Hãy tạo lớp học trước rồi quay lại tạo bài tập hoặc bài kiểm tra cho lớp đó."
-        />
-      );
-    }
-
-    if (selectedType === LEARNING_TASK_TYPES.exam) {
-      return (
-        <ExamForm
-          classroomOptions={classrooms}
-          defaultClassroomId={selectedClassroomId || classrooms[0]?.id || ""}
-          isSubmitting={isSavingTask}
-          onSubmitExam={handleCreateExam}
-          showDescriptions={false}
-          submitLabel={pageCopy.createLabel}
-          title="Tạo bài kiểm tra mới"
-        />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-[2px] animate-fadeIn">
+          <div className="absolute inset-0 bg-transparent" onClick={toggleCreateForm} />
+          <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-100 dark:border-slate-800 animate-slideUp">
+            <button
+              type="button"
+              onClick={toggleCreateForm}
+              className="absolute top-4 right-4 z-10 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
+            >
+              <FiX className="h-4 w-4" />
+            </button>
+            <EmptyState
+              title="Bạn cần có ít nhất một lớp học để tạo hoạt động mới."
+              description="Hãy tạo lớp học trước rồi quay lại tạo bài tập hoặc bài kiểm tra cho lớp đó."
+            />
+          </div>
+        </div>
       );
     }
 
     return (
-      <AssignmentForm
-        classroomOptions={classroomFormOptions}
-        defaultClassroomId={selectedClassroomId || classrooms[0]?.id || ""}
-        isSubmitting={isSavingTask}
-        onSubmitAssignment={handleCreateAssignment}
-        submitLabel={pageCopy.createLabel}
-        title="Tạo bài tập mới"
-      />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-[2px] animate-fadeIn">
+        {/* Click outside to close */}
+        <div className="absolute inset-0 bg-transparent" onClick={toggleCreateForm} />
+        
+        {/* Modal content container */}
+        <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col animate-slideUp">
+          {/* Close button at top right */}
+          <button
+            type="button"
+            onClick={toggleCreateForm}
+            className="absolute top-4 right-4 z-10 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors shadow-sm"
+          >
+            <FiX className="h-4 w-4" />
+          </button>
+          
+          {/* Form scroll viewport */}
+          <div className="overflow-y-auto w-full p-2 pr-3 scrollbar-thin">
+            {selectedType === LEARNING_TASK_TYPES.exam ? (
+              <ExamForm
+                classroomOptions={classrooms}
+                defaultClassroomId={selectedClassroomId || classrooms[0]?.id || ""}
+                isSubmitting={isSavingTask}
+                onSubmitExam={handleCreateExam}
+                showDescriptions={false}
+                submitLabel={pageCopy.createLabel}
+                title="Tạo bài kiểm tra mới"
+              />
+            ) : (
+              <AssignmentForm
+                classroomOptions={classroomFormOptions}
+                defaultClassroomId={selectedClassroomId || classrooms[0]?.id || ""}
+                isSubmitting={isSavingTask}
+                onSubmitAssignment={handleCreateAssignment}
+                submitLabel={pageCopy.createLabel}
+                title="Tạo bài tập mới"
+              />
+            )}
+          </div>
+        </div>
+      </div>
     );
   }
 
   function renderAssignmentDetailPanel(task) {
     return (
       <Card className="space-y-5">
-        {String(editingTaskId) === String(task.id) ? (
-          <AssignmentForm
-            assignment={task.rawData}
-            isSubmitting={isSavingTask}
-            onCancel={() => setEditingTaskId("")}
-            onSubmitAssignment={(payload) => handleUpdateAssignment(task.id, payload)}
-            submitLabel="Lưu thay đổi"
-            title="Chỉnh sửa bài tập"
-          />
-        ) : null}
-
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -800,22 +765,33 @@ export default function TeacherLearningTasksPage() {
           ) : (
             <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
               <div className="space-y-3">
-                {selectedAssignmentSubmissions.map((submission) => (
-                  <button
-                    key={submission.id}
-                    type="button"
-                    onClick={() => setSelectedSubmissionId(String(submission.id))}
-                    className={`w-full rounded-[18px] border px-4 py-4 text-left transition-all duration-200 ${
-                      String(selectedSubmission?.id) === String(submission.id)
-                        ? "border-sky-200 bg-sky-50"
-                        : "border-border bg-surface hover:bg-surface-sunken"
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-primary">{submission.studentName || submission.studentEmail}</p>
-                    <p className="mt-1 text-xs text-secondary">{submission.studentEmail}</p>
-                    <p className="mt-2 text-xs text-secondary">{formatShortDateTime(submission.submittedAt)}</p>
-                  </button>
-                ))}
+                {selectedAssignmentSubmissions.map((submission) => {
+                  const statusMeta = getSubmissionReviewStatusMeta(submission);
+
+                  return (
+                    <button
+                      key={submission.id}
+                      type="button"
+                      onClick={() => setSelectedSubmissionId(String(submission.id))}
+                      className={`w-full rounded-[18px] border px-4 py-4 text-left transition-all duration-200 ${
+                        String(selectedSubmission?.id) === String(submission.id)
+                          ? "border-sky-200 bg-sky-50"
+                          : "border-border bg-surface hover:bg-surface-sunken"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <p className="text-sm font-semibold text-primary">{submission.studentName || submission.studentEmail}</p>
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${statusMeta.className}`}
+                        >
+                          {statusMeta.label}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-secondary">{submission.studentEmail}</p>
+                      <p className="mt-2 text-xs text-secondary">{formatShortDateTime(submission.submittedAt)}</p>
+                    </button>
+                  );
+                })}
               </div>
 
               {selectedSubmission ? (
@@ -870,6 +846,66 @@ export default function TeacherLearningTasksPage() {
           )}
         </div>
       </Card>
+    );
+  }
+
+  function renderAssignmentEditPanel(task) {
+    return (
+      <AssignmentForm
+        assignment={task.rawData}
+        isSubmitting={isSavingTask}
+        onCancel={handleBackToAssignmentList}
+        onSubmitAssignment={(payload) => handleUpdateAssignment(task.id, payload)}
+        submitLabel="Lưu thay đổi"
+        title="Chỉnh sửa bài tập"
+      />
+    );
+  }
+
+  function renderAssignmentWorkspace() {
+    if (isLoading) {
+      return <DetailPanelSkeleton />;
+    }
+
+    if (!selectedTask) {
+      return (
+        <Card>
+          <EmptyState
+            title="Không tìm thấy bài tập cần chấm."
+            description="Bài tập này có thể đã bị xóa hoặc không còn nằm trong phạm vi bộ lọc hiện tại."
+            action={
+              <Button onClick={handleBackToAssignmentList} variant="secondary">
+                Quay lại danh sách bài tập
+              </Button>
+            }
+          />
+        </Card>
+      );
+    }
+
+    const isEditingAssignment = String(editingTaskId) === String(selectedTask.id);
+
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-sky-200/80 bg-sky-50/60 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-info">
+              {isEditingAssignment ? "Chỉnh sửa bài tập" : "Workspace chấm bài"}
+            </p>
+            <h2 className="mt-1 truncate text-xl font-semibold text-primary">{selectedTask.title}</h2>
+            <p className="mt-1 text-sm text-secondary">{selectedTask.className}</p>
+          </div>
+
+          <Button onClick={handleBackToAssignmentList} variant="secondary">
+            <FiArrowLeft className="mr-2 h-4 w-4" />
+            Quay lại danh sách
+          </Button>
+        </div>
+
+        {isEditingAssignment
+          ? renderAssignmentEditPanel(selectedTask)
+          : renderAssignmentDetailPanel(selectedTask)}
+      </div>
     );
   }
 
@@ -983,26 +1019,6 @@ export default function TeacherLearningTasksPage() {
     );
   }
 
-  function renderDetailPanel() {
-    if (isLoading) {
-      return <DetailPanelSkeleton />;
-    }
-
-    if (!selectedTask) {
-      return (
-        <Card>
-          <EmptyState title="Chọn một hoạt động để xem chi tiết quản lý." />
-        </Card>
-      );
-    }
-
-    if (selectedTask.type === LEARNING_TASK_TYPES.exam) {
-      return renderExamDetailPanel(selectedTask);
-    }
-
-    return renderAssignmentDetailPanel(selectedTask);
-  }
-
   const emptyTitle =
     tasks.length > 0
       ? "Không có hoạt động nào khớp với bộ lọc hiện tại."
@@ -1011,8 +1027,6 @@ export default function TeacherLearningTasksPage() {
     tasks.length > 0
       ? "Thử đổi khối trạng thái đang chọn hoặc mở lại toàn bộ danh sách để xem thêm hoạt động."
       : pageCopy.emptyDescription;
-  const workspaceSectionTitle =
-    selectedType === LEARNING_TASK_TYPES.exam ? "Khu điều hành bài kiểm tra" : "Khu chấm bài và phản hồi";
 
   return (
     <div className="space-y-3.5">
@@ -1085,31 +1099,28 @@ export default function TeacherLearningTasksPage() {
           setArmedDeleteTaskId={setArmedDeleteTaskId}
         />
       ) : (
-        <div className="grid gap-6 xl:grid-cols-[0.98fr_1.02fr]">
+        selectedTask ? (
+          renderAssignmentWorkspace()
+        ) : (
           <div className="space-y-4">
-            <LearningTaskList
+            <AssignmentTaskTable
+              armedDeleteTaskId={armedDeleteTaskId}
               emptyDescription={emptyDescription}
               emptyTitle={emptyTitle}
               errorMessage={loadErrorMessage}
-              getTaskActions={buildTaskActions}
               isLoading={isLoading}
+              onDelete={(task) => handleDeleteAssignment(task)}
+              onEdit={(task) => {
+                openAssignmentWorkspace(task.id, { openEditor: true });
+              }}
+              onOpenGrading={(task) => openAssignmentWorkspace(task.id)}
               onRetry={handleRetry}
-              onSelect={handleSelectTask}
+              onSelect={(taskId) => openAssignmentWorkspace(taskId)}
               selectedTaskId={selectedTask?.id ?? ""}
               tasks={visibleTasks}
             />
           </div>
-
-          <div
-            ref={workspacePanelRef}
-            className="space-y-4 rounded-[28px] border border-sky-200/80 p-4 sm:p-5"
-            style={{ background: "linear-gradient(180deg, rgb(14 165 233 / 8%), rgb(255 255 255 / 96%))" }}
-          >
-            <h2 className="text-lg font-semibold text-primary">{workspaceSectionTitle}</h2>
-
-            {renderDetailPanel()}
-          </div>
-        </div>
+        )
       )}
 
       {/* Edit Exam Modal */}

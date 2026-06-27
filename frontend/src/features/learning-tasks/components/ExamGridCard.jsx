@@ -1,18 +1,15 @@
 import { useState, useRef, useEffect } from "react";
-import { 
-  FiClock, 
-  FiCalendar, 
-  FiBookOpen, 
-  FiUsers, 
-  FiMoreVertical, 
-  FiShield, 
-  FiCheckCircle, 
-  FiTrash2, 
-  FiEdit, 
-  FiPlay, 
-  FiXCircle 
+import {
+  FiBookOpen,
+  FiUsers,
+  FiMoreVertical,
+  FiShield,
+  FiCheckCircle,
+  FiTrash2,
+  FiEdit,
+  FiPlay,
+  FiXCircle,
 } from "react-icons/fi";
-import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import { formatShortDateTime } from "../../../utils/formatDate";
@@ -90,22 +87,19 @@ export default function ExamGridCard({
       primaryAction = {
         label: "Kết quả",
         onClick: onViewResults,
-        variant: "ghost",
+        variant: "secondary",
+        className:
+          "border-sky-200 bg-sky-50 text-sky-700 shadow-sm hover:border-sky-300 hover:bg-sky-100 hover:text-sky-800",
         icon: <FiCheckCircle className="mr-1 h-3 w-3" />,
       };
     }
   }
 
   return (
-    <Card className="relative flex flex-col justify-between p-4 rounded-[18px] border border-slate-100 bg-white/70 backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 min-h-[220px] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-100">
-      
-      <div className="space-y-2">
-        {/* Top Class & Status */}
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-100/50 max-w-[100px] truncate">
-            {task.className}
-          </span>
-          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wide uppercase ${statusBadgeClass}`}>
+    <Card className="relative flex min-h-[244px] flex-col justify-between rounded-[18px] border border-slate-100 bg-white/80 p-4 shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-100">
+      <div className="space-y-2.5">
+        <div className="relative min-h-[5.25rem]">
+          <span className={`absolute right-0 top-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wide uppercase ${statusBadgeClass}`}>
             {showPulseDot && (
               <span className="relative flex h-1 w-1">
                 <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${pulseDotClass}`} />
@@ -114,48 +108,66 @@ export default function ExamGridCard({
             )}
             {statusMeta.label}
           </span>
+
+          <div className="flex min-h-[5.25rem] flex-col">
+            <div className="flex min-h-[1.5rem] items-center pr-20">
+              <p className="w-full truncate text-left text-[0.92rem] font-bold text-sky-700" title={task.className}>
+                {task.className}
+              </p>
+            </div>
+
+            <div className="mx-auto flex min-h-[3.15rem] w-full max-w-[82%] items-start justify-center pt-1 text-center">
+              <h3
+                className="w-full truncate cursor-pointer text-[1.02rem] font-extrabold leading-tight text-slate-900 transition-colors hover:text-sky-700"
+                title={task.title}
+                onClick={onComposeQuestions}
+              >
+                {task.title}
+              </h3>
+            </div>
+          </div>
         </div>
 
-        {/* Title */}
-        <div>
-          <h3 
-            className="text-[13px] font-bold text-slate-800 line-clamp-1 cursor-pointer hover:text-sky-600 transition-colors leading-tight"
-            title={task.title}
-            onClick={onComposeQuestions}
-          >
-            {task.title}
-          </h3>
-          <p className="text-[9px] text-slate-400 font-medium mt-0.5">
-            Tạo: {formatShortDateTime(task.createdAt)}
-          </p>
-        </div>
-
-        {/* Compact stats row */}
-        <div className="flex items-center gap-2.5 text-[10px] text-slate-500 font-semibold py-0.5 border-y border-slate-50">
-          <span className="flex items-center gap-1">
-            <FiBookOpen className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        <div className="flex min-h-[2.5rem] items-center justify-center gap-2.5 border-y border-slate-100 py-1 text-[0.82rem] font-bold text-slate-700">
+          <span className="flex items-center gap-1.5">
+            <FiBookOpen className="h-3.5 w-3.5 shrink-0 text-sky-500" />
             {task.questionCount} câu hỏi
           </span>
           <span className="text-slate-300">•</span>
-          <span className="flex items-center gap-1">
-            <FiUsers className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="flex items-center gap-1.5">
+            <FiUsers className="h-3.5 w-3.5 shrink-0 text-sky-500" />
             {task.attemptCount} lượt làm
           </span>
         </div>
 
-        {/* Compact calendar block */}
-        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 bg-slate-50/50 px-2 py-1.5 rounded-lg border border-slate-100/50">
-          <FiCalendar className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-          <span className="truncate leading-none">
-            {formatShortDateTime(task.startTime)} - {formatShortDateTime(task.endTime)}
-          </span>
+        <div className="min-h-[5.75rem] rounded-[14px] border border-sky-100 bg-sky-50/70 px-3 py-2.5 text-[0.84rem] font-semibold text-slate-700">
+          <div className="relative min-w-0 pl-0.5">
+            <span className="pointer-events-none absolute left-[4px] top-[9px] h-[30px] w-px rounded-full bg-sky-200" aria-hidden="true" />
+
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2.5">
+                <span className="inline-flex h-2 w-2 shrink-0 rounded-full bg-sky-500" aria-hidden="true" />
+                <p className="truncate font-bold text-slate-800">
+                  <span className="mr-1.5 text-[0.69rem] font-bold uppercase tracking-[0.12em] text-slate-400">Mở</span>
+                  {formatShortDateTime(task.startTime)}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <span className="inline-flex h-2 w-2 shrink-0 rounded-full bg-slate-400" aria-hidden="true" />
+                <p className="truncate font-bold text-slate-800">
+                  <span className="mr-1.5 text-[0.69rem] font-bold uppercase tracking-[0.12em] text-slate-400">Đóng</span>
+                  {formatShortDateTime(task.endTime)}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Action Footer */}
       <div className="flex items-center gap-1.5 mt-3 pt-2.5 border-t border-slate-100/50 relative">
         <Button 
-          className="flex-1 text-[10px] py-1 justify-center font-bold"
+          className={`flex-1 justify-center py-1 text-[10px] font-bold ${primaryAction.className ?? ""}`}
           onClick={(event) => {
             event.stopPropagation();
             primaryAction.onClick();

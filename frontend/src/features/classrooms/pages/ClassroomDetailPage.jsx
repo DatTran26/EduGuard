@@ -25,7 +25,7 @@ import ClassDetailHeader from "../components/ClassDetailHeader";
 import TeacherClassroomTabBar from "../components/TeacherClassroomTabBar";
 import ClassQuickStatsPanel from "../components/ClassQuickStats";
 import ClassOverviewPanel from "../components/ClassOverviewPanel";
-import { normalizeTeacherClassroomTab } from "../components/teacher-classroom-tabs";
+import { TEACHER_CLASSROOM_TABS, normalizeTeacherClassroomTab } from "../components/teacher-classroom-tabs";
 
 function buildQuickInfoItems(classroom) {
   return [

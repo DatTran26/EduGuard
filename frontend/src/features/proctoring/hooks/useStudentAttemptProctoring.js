@@ -11,6 +11,7 @@ import {
   buildStudentExamDetailPath,
   buildStudentExamPausedPath,
 } from "../../../routes/routeConfig";
+import { ensureFullscreenExited } from "../../../utils/fullscreen";
 import { useProctoringHubConnection } from "./useProctoringHubConnection";
 import { useStudentSfuPublisher } from "./useStudentSfuPublisher";
 
@@ -116,6 +117,7 @@ export function useStudentAttemptProctoring({
         }
 
         if (eventName === EXAM_MONITORING_EVENTS.studentMovedToWaitingRoom) {
+          await ensureFullscreenExited();
           navigate(buildStudentExamPausedPath(attemptId), { replace: true });
           return;
         }
@@ -136,6 +138,7 @@ export function useStudentAttemptProctoring({
             title: "Bài làm đã kết thúc",
             message: payload?.reason ?? "Giáo viên đã kết thúc bài làm của bạn.",
           });
+          await ensureFullscreenExited();
           if (examId) {
             navigate(buildStudentExamDetailPath(examId), { replace: true });
           }

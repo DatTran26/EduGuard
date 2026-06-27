@@ -134,7 +134,7 @@ export function getLearningTaskSortOptions(type) {
 }
 
 export function getDefaultSortOption(type) {
-  return type === LEARNING_TASK_TYPES.exam ? "created-desc" : "deadline-asc";
+  return "created-desc";
 }
 
 export function resolveLearningTaskQuickFilter(type, value) {
@@ -155,7 +155,10 @@ export function mapAssignmentToLearningTask(assignment, classrooms = [], submiss
   const classroom = classrooms.find((item) => Number(item.id) === Number(assignment?.classroomId)) ?? null;
   const ungradedCount = submissions.filter((submission) => typeof submission?.score !== "number").length;
   const averageScore = roundAverageScore(submissions);
-  const totalStudents = Number(classroom?.memberCount) || Number(assignment?.classroomMemberCount) || 0;
+  const totalStudents =
+    Number(assignment?.classroomStudentCount) ||
+    Math.max(Number(classroom?.memberCount) || Number(assignment?.classroomMemberCount) || 0, 0) -
+      (Number(classroom?.memberCount) || Number(assignment?.classroomMemberCount) || 0 ? 1 : 0);
 
   return {
     id: Number(assignment?.id) || 0,
