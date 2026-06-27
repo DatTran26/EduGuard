@@ -322,11 +322,6 @@ export default function TeacherProctoringRoomPage() {
   }, [isRoomHubConnected, refreshAttemptDetail, selectedStudent?.attemptId, showToast]);
 
   const sortedStudents = useMemo(() => sortStudentsByRisk(students), [students]);
-  const filteredStudents = useMemo(
-    () => filterStudents(sortedStudents, activeFilter, activeAiDetectionFilter),
-    [activeAiDetectionFilter, activeFilter, sortedStudents],
-  );
-  const roomStats = useMemo(() => computeRoomStats(students, room), [room, students]);
   const allStudentsAiEnabled = useMemo(() => {
     const attemptIds = students.filter((student) => student.attemptId).map((student) => student.attemptId);
     if (!attemptIds.length) {
@@ -335,6 +330,25 @@ export default function TeacherProctoringRoomPage() {
 
     return attemptIds.every((attemptId) => !disabledAiAttemptIds.has(attemptId));
   }, [disabledAiAttemptIds, students]);
+  const allStudentsAiDisabled = useMemo(() => {
+    const attemptIds = students.filter((student) => student.attemptId).map((student) => student.attemptId);
+    if (!attemptIds.length) {
+      return false;
+    }
+
+    return attemptIds.every((attemptId) => disabledAiAttemptIds.has(attemptId));
+  }, [disabledAiAttemptIds, students]);
+  const aiMonitoringActive = globalAiEnabled && !allStudentsAiDisabled;
+  const filteredStudents = useMemo(
+    () =>
+      filterStudents(
+        sortedStudents,
+        activeFilter,
+        aiMonitoringActive ? activeAiDetectionFilter : "all",
+      ),
+    [activeAiDetectionFilter, activeFilter, aiMonitoringActive, sortedStudents],
+  );
+  const roomStats = useMemo(() => computeRoomStats(students, room), [room, students]);
 
   async function handleManualRefresh() {
     setIsRefreshing(true);
@@ -422,6 +436,10 @@ export default function TeacherProctoringRoomPage() {
       }
       return next;
     });
+
+    if (willDisableAll) {
+      setActiveAiDetectionFilter("all");
+    }
 
     showToast({
       tone: willDisableAll ? "info" : "success",
@@ -686,6 +704,7 @@ export default function TeacherProctoringRoomPage() {
           activeAiDetectionFilter={activeAiDetectionFilter}
           activeFilter={activeFilter}
           activeViewMode={viewMode}
+          aiMonitoringEnabled={aiMonitoringActive}
           filteredCount={filteredStudents.length}
           onAiDetectionFilterChange={setActiveAiDetectionFilter}
           onFilterChange={setActiveFilter}

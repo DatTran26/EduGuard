@@ -1,4 +1,4 @@
-import { FiCpu, FiRefreshCw, FiShield, FiX } from "react-icons/fi";
+import { FiCpu, FiFlag, FiPlay, FiRadio, FiRefreshCw, FiShield, FiX } from "react-icons/fi";
 import Button from "../../../components/common/Button";
 import { routeConfig } from "../../../routes/routeConfig";
 import { formatShortDateTime } from "../../../utils/formatDate";
@@ -6,17 +6,113 @@ import { cn } from "../../../utils/cn";
 import { useExamEndCountdown } from "../hooks/useExamEndCountdown";
 import { resolveProctoringRealtimeBadge } from "../utils/proctoringRoomHelpers";
 
-const BADGE_TONE_CLASS_NAMES = {
-  success: "bg-emerald-500/15 text-emerald-300",
-  connecting: "bg-amber-500/15 text-amber-300",
-  neutral: "bg-slate-500/15 text-slate-300",
+const REALTIME_BADGE_STYLES = {
+  success: {
+    container: "border-emerald-400/25 bg-emerald-500/10 shadow-[0_0_16px_rgba(52,211,153,0.12)]",
+    label: "text-emerald-200",
+    dot: "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]",
+    icon: "text-emerald-400",
+  },
+  connecting: {
+    container: "border-amber-400/25 bg-amber-500/10",
+    label: "text-amber-200",
+    dot: "bg-amber-400",
+    icon: "text-amber-400",
+  },
+  neutral: {
+    container: "border-slate-500/25 bg-slate-500/10",
+    label: "text-slate-300",
+    dot: "bg-slate-400",
+    icon: "text-slate-400",
+  },
 };
 
-const BADGE_DOT_CLASS_NAMES = {
-  success: "bg-emerald-400 animate-pulse",
-  connecting: "bg-amber-400",
-  neutral: "bg-slate-400",
+const EXAM_TIME_CHIP_STYLES = {
+  start: {
+    container: "border-sky-400/20 bg-sky-500/[0.07]",
+    iconWrap: "bg-sky-500/15 text-sky-300",
+    label: "text-sky-400/75",
+  },
+  end: {
+    container: "border-amber-400/20 bg-amber-500/[0.07]",
+    iconWrap: "bg-amber-500/15 text-amber-300",
+    label: "text-amber-400/75",
+  },
 };
+
+function ExamTimeChip({ label, value, variant, icon: Icon }) {
+  const styles = EXAM_TIME_CHIP_STYLES[variant];
+
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 backdrop-blur-sm",
+        styles.container,
+      )}
+    >
+      <span
+        className={cn(
+          "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg",
+          styles.iconWrap,
+        )}
+      >
+        <Icon className="h-3 w-3" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 leading-tight">
+        <p className={cn("text-[0.62rem] font-semibold uppercase tracking-[0.14em]", styles.label)}>
+          {label}
+        </p>
+        <p className="truncate text-[0.78rem] font-medium tabular-nums text-slate-100">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function RealtimeStatusBadge({ badge, compact = false }) {
+  const styles = REALTIME_BADGE_STYLES[badge.tone] ?? REALTIME_BADGE_STYLES.neutral;
+
+  return (
+    <div
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 rounded-xl border backdrop-blur-sm",
+        compact ? "px-2 py-1" : "gap-2 px-2.5 py-1.5",
+        styles.container,
+      )}
+    >
+      <span
+        className={cn(
+          "relative flex shrink-0 items-center justify-center",
+          compact ? "h-5 w-5" : "h-6 w-6",
+        )}
+      >
+        {badge.pulse ? (
+          <span
+            className={cn("absolute inset-0 rounded-lg opacity-40 animate-ping", styles.dot)}
+            aria-hidden="true"
+          />
+        ) : null}
+        <span
+          className={cn(
+            "relative flex items-center justify-center rounded-lg bg-white/[0.06]",
+            compact ? "h-5 w-5" : "h-6 w-6",
+            styles.icon,
+          )}
+        >
+          <FiRadio className={cn(compact ? "h-2.5 w-2.5" : "h-3 w-3")} aria-hidden="true" />
+        </span>
+      </span>
+      <span
+        className={cn(
+          "font-medium leading-tight",
+          compact ? "text-[0.72rem]" : "text-[0.78rem]",
+          styles.label,
+        )}
+      >
+        {badge.label}
+      </span>
+    </div>
+  );
+}
 
 export default function ProctoringRoomHeader({
   examTitle,
@@ -57,28 +153,29 @@ export default function ProctoringRoomHeader({
             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-sky-300/90">
               Phòng giám sát bài thi
             </p>
-            <h1 className="truncate text-xl font-semibold tracking-tight text-white md:text-2xl">
-              {examTitle ?? "Đang tải…"}
-            </h1>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+            <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+              <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight text-white md:text-2xl">
+                {examTitle ?? "Đang tải…"}
+              </h1>
+              <RealtimeStatusBadge badge={realtimeBadge} compact />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
               {room?.startTime ? (
-                <span>Bắt đầu {formatShortDateTime(room.startTime)}</span>
-              ) : null}
-              {room?.endTime ? <span>Kết thúc {formatShortDateTime(room.endTime)}</span> : null}
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium",
-                  BADGE_TONE_CLASS_NAMES[realtimeBadge.tone] ?? BADGE_TONE_CLASS_NAMES.neutral,
-                )}
-              >
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    BADGE_DOT_CLASS_NAMES[realtimeBadge.tone] ?? BADGE_DOT_CLASS_NAMES.neutral,
-                  )}
+                <ExamTimeChip
+                  icon={FiPlay}
+                  label="Bắt đầu"
+                  value={formatShortDateTime(room.startTime)}
+                  variant="start"
                 />
-                {realtimeBadge.label}
-              </span>
+              ) : null}
+              {room?.endTime ? (
+                <ExamTimeChip
+                  icon={FiFlag}
+                  label="Kết thúc"
+                  value={formatShortDateTime(room.endTime)}
+                  variant="end"
+                />
+              ) : null}
             </div>
           </div>
         </div>
@@ -142,12 +239,7 @@ export default function ProctoringRoomHeader({
         <div className="flex flex-wrap items-center gap-2">
           {globalAiEnabled ? (
             <Button
-              className={cn(
-                "border-white/15 hover:bg-white/10",
-                allStudentsAiEnabled
-                  ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25"
-                  : "bg-white/5 text-slate-100",
-              )}
+              className="!border !border-black !bg-emerald-500 !text-white hover:!bg-emerald-600"
               onClick={onToggleAllStudentsAi}
               title={
                 allStudentsAiEnabled
@@ -157,11 +249,11 @@ export default function ProctoringRoomHeader({
               variant="secondary"
             >
               <FiCpu className="mr-2 h-4 w-4" />
-              Bật tắt AI
+              {allStudentsAiEnabled ? "Tắt AI" : "Bật AI"}
             </Button>
           ) : null}
           <Button
-            className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10"
+            className="!border !border-black !bg-blue-500 !text-white hover:!bg-blue-600"
             onClick={onOpenClassReport}
             variant="secondary"
           >
@@ -193,11 +285,12 @@ export default function ProctoringRoomHeader({
             </Button>
           ) : null}
           <a
-            className="eg-button eg-button-ghost border border-white/10 text-slate-300 hover:bg-white/5 hover:text-white"
+            aria-label="Đóng phòng"
+            className="eg-button inline-flex !h-10 !w-10 !min-h-0 shrink-0 items-center justify-center !p-0 border border-yellow-500/40 bg-yellow-400 hover:bg-yellow-300"
             href={routeConfig.teacherMonitoring}
+            title="Đóng phòng"
           >
-            <FiX className="mr-2 h-4 w-4" />
-            Đóng phòng
+            <FiX aria-hidden="true" color="#000000" size={22} strokeWidth={2.5} />
           </a>
         </div>
       </div>

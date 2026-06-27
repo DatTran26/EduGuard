@@ -9,17 +9,18 @@ export default function ProctoringFilterBar({
   activeFilter,
   activeAiDetectionFilter = "all",
   activeViewMode,
+  aiMonitoringEnabled = true,
   filteredCount,
   totalCount,
   onFilterChange,
   onAiDetectionFilterChange,
   onViewModeChange,
 }) {
-  const showAiDetectionFilters = activeFilter === "inProgress";
+  const showAiDetectionFilters = activeFilter === "inProgress" && aiMonitoringEnabled;
 
   function handleFilterChange(filterId) {
     onFilterChange(filterId);
-    if (filterId !== "inProgress") {
+    if (filterId !== "inProgress" || !aiMonitoringEnabled) {
       onAiDetectionFilterChange?.("all");
     }
   }
