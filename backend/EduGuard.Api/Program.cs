@@ -9,7 +9,9 @@ using EduGuard.Infrastructure;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
+using EduGuard.Infrastructure.Common;
 
+EnvFileHelper.LoadEnv();
 var builder = WebApplication.CreateBuilder(args);
 
 var jwtKey = builder.Configuration["Jwt:Key"];

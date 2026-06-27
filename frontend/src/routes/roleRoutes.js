@@ -12,6 +12,7 @@ const ROLE_NAVIGATION_ITEMS = {
     { label: "Giám sát", path: routeConfig.adminMonitoring },
     { label: "AI giám sát", path: routeConfig.adminProctoringAi },
     { label: "Quản lí người dùng", path: routeConfig.adminUsers },
+    { label: "Mô hình GPT", path: routeConfig.adminGptModel },
     { label: "Hồ sơ cá nhân", path: routeConfig.adminProfile },
   ],
   Teacher: [

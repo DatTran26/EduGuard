@@ -13,6 +13,7 @@ export const routeConfig = {
   adminExamMonitoring: "/admin/exam-monitoring",
   adminProctoringAi: "/admin/proctoring-ai",
   adminUsers: "/admin/users",
+  adminGptModel: "/admin/gpt-model",
   adminProfile: "/admin/profile",
   teacherDashboard: "/teacher/dashboard",
   teacherClassrooms: "/teacher/classrooms",
