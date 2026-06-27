@@ -14,6 +14,7 @@ export const routeConfig = {
   adminProctoringAi: "/admin/proctoring-ai",
   adminProctoringEvidence: "/admin/proctoring-evidence",
   adminUsers: "/admin/users",
+  adminGptModel: "/admin/gpt-model",
   adminProfile: "/admin/profile",
   teacherDashboard: "/teacher/dashboard",
   teacherClassrooms: "/teacher/classrooms",

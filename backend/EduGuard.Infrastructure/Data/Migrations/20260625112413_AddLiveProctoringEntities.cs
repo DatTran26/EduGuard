@@ -274,7 +274,7 @@ namespace EduGuard.Infrastructure.Data.Migrations
                         column: x => x.CheatingLogId,
                         principalTable: "CheatingLogs",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.NoAction);
                     table.ForeignKey(
                         name: "FK_ProctoringEvidences_ExamAttempts_ExamAttemptId",
                         column: x => x.ExamAttemptId,

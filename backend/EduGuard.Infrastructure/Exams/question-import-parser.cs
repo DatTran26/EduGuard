@@ -50,6 +50,11 @@ internal sealed class QuestionImportTextBlock
     public string? QuestionType { get; set; }
     public string CorrectAnswer { get; set; } = string.Empty;
     public string Score { get; set; } = string.Empty;
+    public string Difficulty { get; set; } = string.Empty;
+    public string Subject { get; set; } = string.Empty;
+    public string Chapter { get; set; } = string.Empty;
+    public string Lesson { get; set; } = string.Empty;
+    public string LearningOutcome { get; set; } = string.Empty;
     public List<QuestionImportOption> Options { get; } = [];
 }
 
@@ -486,8 +491,28 @@ internal static class QuestionImportStructuredTextParser
         @"^\s*(?:score|\u0110i\u1ec3m|Diem)\s*[:\uff1a]\s*(?<value>.+?)\s*$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
+    private static readonly Regex DifficultyRegex = new(
+        @"^\s*(?:difficulty|M\u1ee9c\s*\u0111\u1ed9|Muc\s*do|Do\s*kho|\u0110\u1ed9\s*kh\u00f3)\s*[:\uff1a]\s*(?<value>.+?)\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Regex SubjectRegex = new(
+        @"^\s*(?:subject|M\u00f4n|Mon|M\u00f4n\s*h\u1ecdc|Mon\s*hoc)\s*[:\uff1a]\s*(?<value>.+?)\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Regex ChapterRegex = new(
+        @"^\s*(?:chapter|Ch\u01b0\u01a1ng|Chuong)\s*[:\uff1a]\s*(?<value>.+?)\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Regex LessonRegex = new(
+        @"^\s*(?:lesson|B\u00e0i|Bai|B\u00e0i\s*h\u1ecdc|Bai\s*hoc)\s*[:\uff1a]\s*(?<value>.+?)\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Regex LearningOutcomeRegex = new(
+        @"^\s*(?:learning_outcome|learning outcome|Y\u00eau\s*c\u1ea7u\s*c\u1ea7n\s*\u0111\u1ea1t|Yeu\s*cau\s*can\s*dat|Chu\u1ea9n\s*\u0111\u1ea7u\s*ra|Chuan\s*dau\s*ra)\s*[:\uff1a]\s*(?<value>.+?)\s*$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
     private static readonly Regex IgnoredMetadataRegex = new(
-        @"^\s*(?:subject|chapter|lesson|difficulty|explanation|tags|image_url|status|M\u00f4n|Mon|Ch\u01b0\u01a1ng|Chuong|B\u00e0i|Bai|M\u1ee9c\s*\u0111\u1ed9|Muc\s*do|Gi\u1ea3i\s*th\u00edch|Giai\s*thich)\s*[:\uff1a]",
+        @"^\s*(?:explanation|tags|image_url|status|Gi\u1ea3i\s*th\u00edch|Giai\s*thich)\s*[:\uff1a]",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     public static ParsedQuestionImport Parse(string text, string noQuestionMessage)
@@ -570,6 +595,41 @@ internal static class QuestionImportStructuredTextParser
                 continue;
             }
 
+            var difficultyMatch = DifficultyRegex.Match(trimmed);
+            if (difficultyMatch.Success)
+            {
+                current.Difficulty = difficultyMatch.Groups["value"].Value.Trim();
+                continue;
+            }
+
+            var subjectMatch = SubjectRegex.Match(trimmed);
+            if (subjectMatch.Success)
+            {
+                current.Subject = subjectMatch.Groups["value"].Value.Trim();
+                continue;
+            }
+
+            var chapterMatch = ChapterRegex.Match(trimmed);
+            if (chapterMatch.Success)
+            {
+                current.Chapter = chapterMatch.Groups["value"].Value.Trim();
+                continue;
+            }
+
+            var lessonMatch = LessonRegex.Match(trimmed);
+            if (lessonMatch.Success)
+            {
+                current.Lesson = lessonMatch.Groups["value"].Value.Trim();
+                continue;
+            }
+
+            var learningOutcomeMatch = LearningOutcomeRegex.Match(trimmed);
+            if (learningOutcomeMatch.Success)
+            {
+                current.LearningOutcome = learningOutcomeMatch.Groups["value"].Value.Trim();
+                continue;
+            }
+
             if (IgnoredMetadataRegex.IsMatch(trimmed))
                 continue;
 
@@ -625,7 +685,7 @@ internal static class QuestionImportQuestionBuilder
         if (string.IsNullOrWhiteSpace(correctAnswer))
             QuestionImportErrors.Add(errors, rowNumber, "correct_answer", "correct_answer is required.");
 
-        var score = ParseScore(GetField(headerIndexes, values, "score"), rowNumber, errors);
+        var score = ParseScore(GetFirstField(headerIndexes, values, "score", "diem"), rowNumber, errors);
 
         if (errors.Count > startErrorCount)
             return null;
@@ -640,7 +700,13 @@ internal static class QuestionImportQuestionBuilder
             .Where(x => !string.IsNullOrWhiteSpace(x.Content))
             .ToList();
 
-        return BuildQuestion(questionText, questionType, correctAnswer, score, options, rowNumber, errors, startErrorCount);
+        var difficulty = GetFirstField(headerIndexes, values, "difficulty", "do kho", "muc do", "muc do kho");
+        var subject = GetFirstField(headerIndexes, values, "subject", "mon", "mon hoc");
+        var chapter = GetFirstField(headerIndexes, values, "chapter", "chuong");
+        var lesson = GetFirstField(headerIndexes, values, "lesson", "bai", "bai hoc");
+        var learningOutcome = GetFirstField(headerIndexes, values, "learning_outcome", "learning outcome", "yeu cau can dat", "chuan dau ra");
+
+        return BuildQuestion(questionText, questionType, correctAnswer, score, options, rowNumber, errors, startErrorCount, difficulty, subject, chapter, lesson, learningOutcome);
     }
 
     public static CreateQuestionRequest? ParseTextBlock(
@@ -677,7 +743,7 @@ internal static class QuestionImportQuestionBuilder
         if (errors.Count > startErrorCount)
             return null;
 
-        return BuildQuestion(questionText, questionType, correctAnswer, score, block.Options, block.RowNumber, errors, startErrorCount);
+        return BuildQuestion(questionText, questionType, correctAnswer, score, block.Options, block.RowNumber, errors, startErrorCount, block.Difficulty, block.Subject, block.Chapter, block.Lesson, block.LearningOutcome);
     }
 
     public static string NormalizeToken(string value)
@@ -708,7 +774,12 @@ internal static class QuestionImportQuestionBuilder
         IReadOnlyList<QuestionImportOption> options,
         int rowNumber,
         List<QuestionImportErrorDto> errors,
-        int startErrorCount)
+        int startErrorCount,
+        string? difficulty = null,
+        string? subject = null,
+        string? chapter = null,
+        string? lesson = null,
+        string? learningOutcome = null)
     {
         var answers = questionType switch
         {
@@ -738,7 +809,12 @@ internal static class QuestionImportQuestionBuilder
             QuestionType = questionType,
             Score = score,
             OrderIndex = rowNumber,
-            Answers = answers
+            Answers = answers,
+            Difficulty = difficulty,
+            Subject = subject,
+            Chapter = chapter,
+            Lesson = lesson,
+            LearningOutcome = learningOutcome
         };
     }
 
@@ -928,6 +1004,21 @@ internal static class QuestionImportQuestionBuilder
         .Select(x => x.ToUpperInvariant())
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToList();
+
+    private static string GetFirstField(
+        IReadOnlyDictionary<string, int> headerIndexes,
+        IReadOnlyList<string> values,
+        params string[] headers)
+    {
+        foreach (var header in headers)
+        {
+            var value = GetField(headerIndexes, values, header);
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
+
+        return string.Empty;
+    }
 
     private static string GetField(
         IReadOnlyDictionary<string, int> headerIndexes,

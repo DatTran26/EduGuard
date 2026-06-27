@@ -5,6 +5,7 @@ import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
+import Skeleton from "../../../components/common/Skeleton";
 import TextInput from "../../../components/forms/TextInput";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import AssignmentForm from "./AssignmentForm";
@@ -440,9 +441,35 @@ export default function AssignmentSection({ classroom, user, showToast, onAssign
 
   if (isLoading) {
     return (
-      <Card className="text-sm text-secondary">
-        Đang tải bài tập...
-      </Card>
+      <div className="space-y-6 animate-pulse">
+        <Card className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-10 w-28 rounded-xl" />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Skeleton className="h-20 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
+          </div>
+        </Card>
+        {[1, 2].map((i) => (
+          <Card key={i} className="space-y-4">
+            <div className="flex justify-between">
+              <div className="space-y-2 w-1/3">
+                <Skeleton className="h-5 w-24 rounded-full" />
+                <Skeleton className="h-6 w-full" />
+              </div>
+              <Skeleton className="h-10 w-24 rounded-xl" />
+            </div>
+            <div className="grid gap-3 grid-cols-2">
+              <Skeleton className="h-16 rounded-xl" />
+              <Skeleton className="h-16 rounded-xl" />
+            </div>
+          </Card>
+        ))}
+      </div>
     );
   }
 
@@ -604,8 +631,10 @@ export default function AssignmentSection({ classroom, user, showToast, onAssign
                     </div>
 
                     {isLoadingSubmissions ? (
-                      <div className="rounded-[16px] border border-border bg-neutral p-4 text-sm text-secondary">
-                        Đang tải bài nộp...
+                      <div className="space-y-3 animate-pulse">
+                        <Skeleton className="h-12 w-full rounded-xl" />
+                        <Skeleton className="h-12 w-full rounded-xl" />
+                        <Skeleton className="h-12 w-full rounded-xl" />
                       </div>
                     ) : assignmentSubmissions.length > 0 ? (
                       <div className="space-y-4">

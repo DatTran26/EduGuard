@@ -7,6 +7,7 @@ import CheckboxField from "../../../components/forms/CheckboxField";
 import TextInput from "../../../components/forms/TextInput";
 import PageHeader from "../../../components/layout/PageHeader";
 import { useToast } from "../../../hooks/useToast";
+import { SkeletonForm } from "../../../components/common/Skeleton";
 
 const defaultForm = {
   enableYoloDetection: true,

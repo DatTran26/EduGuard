@@ -4,7 +4,7 @@ import Card from "../../../components/common/Card";
 import FormErrorSummary from "../../../components/forms/FormErrorSummary";
 import Select from "../../../components/forms/Select";
 import TextInput from "../../../components/forms/TextInput";
-import { toAssignmentDateTimeInputValue } from "../assignmentHelpers";
+import { toAssignmentDateTimeInputValue, toAssignmentVietnamISOString } from "../assignmentHelpers";
 import {
   getFirstValidationError,
   hasValidationErrors,
@@ -68,7 +68,7 @@ export default function AssignmentForm({
       classroomId: formValues.classroomId ? Number(formValues.classroomId) : null,
       title: formValues.title.trim(),
       description: formValues.description.trim(),
-      deadline: formValues.deadline ? new Date(formValues.deadline).toISOString() : null,
+      deadline: formValues.deadline ? toAssignmentVietnamISOString(formValues.deadline) : null,
       maxScore: Number(formValues.maxScore),
     };
   }

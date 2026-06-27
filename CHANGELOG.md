@@ -56,6 +56,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Classroom notifications:** `POST /api/notifications/classroom` accepts optional `recipientIds` to target specific active students; realtime tone follows notification type. `PausedByProctor` attempts instead of treating them as finished; max-attempt check counts only **Submitted** attempts; exam list/detail for students expose `myAttemptId`, `myAttemptStatus`, `myLatestScore`.
 - **TURN ICE:** `WebRtc__IceServers__*` env vars for coturn (`turn:livekit.wpcteam.homes:3478`).
+### Backend
+
+- Cập nhật API `createExamFromMatrix` hỗ trợ nhận tham số `isPublished` để xác định trạng thái xuất bản của đề thi tạo từ ma trận (nháp hay chính thức).
+- Điều chỉnh `ExamMatrixService` gán giá trị `IsPublished` của `Exam` được sinh từ ma trận theo tham số `request.IsPublished` từ client thay vì cố định gán bằng `true`.
+- Cải tiến thuật toán khớp môn học trong ma trận (`SubjectMatches`) trở nên không phân biệt hoa thường và hỗ trợ chuẩn hóa xóa dấu/so sánh cụm từ (ví dụ: "Toán học" khớp với "toán").
+- Nâng cấp bộ lọc chương học (`ChapterOptionalTextMatches`) hỗ trợ bóc tách số tự động từ cả chuỗi ký tự (ví dụ: "chương 1, 4, 2" sẽ khớp với các câu hỏi thuộc chương 1, 4 hoặc 2).
+- Ràng buộc trường chương học (Chapter) chỉ hiển thị số thứ tự chương (dạng chữ số đơn thuần, ví dụ: 1, 2, 3) tương ứng với bài học được suy luận từ nội dung câu hỏi (ví dụ: bài CSS cơ bản thuộc chương 1). Tích hợp helper chuẩn hóa `ExtractChapterNumber` tự động lọc lấy số từ các phản hồi của AI hoặc từ dữ liệu nhập vào của giảng viên.
+- Cải tiến cơ chế tự động điền các thông tin môn học, chương học, bài học còn thiếu bằng AI cho cả luồng lưu câu hỏi đơn lẻ, cập nhật câu hỏi, và lưu câu hỏi hàng loạt (CreateQuestionsBulk) để bảo đảm dữ liệu luôn được điền đầy đủ và chính xác khi lưu vào cơ sở dữ liệu.
+- Tích hợp cơ chế tự động điền các thông tin môn học (Subject), chương học (Chapter), bài học (Lesson) còn thiếu bằng AI (OpenAI) khi sinh câu hỏi hoặc import tệp Excel/CSV/PDF/Docx/Txt của giảng viên.
+- Bổ sung validate chặn sinh câu hỏi cho nhiều môn học hoặc khác môn học của ngân hàng trong cùng một yêu cầu API sinh bằng AI (trả về 400 Bad Request kèm thông báo lỗi tiếng Việt cụ thể).
+- Added a direct AI question generation endpoint `POST api/question-banks/{bankId}/questions/generate-ai` that calls OpenAI using structured JSON outputs (`gpt-5.5` with reasoning_effort medium).
+- Added `OpenAiQuestionGeneratorService` to call the OpenAI completion API and deserialize generated questions directly matching the database schema.
+- Extended `IQuestionBankService` with `GenerateQuestionsAiAsync` to automatically parse and save AI-generated questions into the database.
+- Added difficulty parsing to the question import parser from Excel/CSV columns ("difficulty", "do kho", "muc do") and structured text metadata ("difficulty", "Mức độ", "Do khó").
+- Mapped question-specific difficulty into bank question import requests, falling back to defaults if not specified.
+
+### Frontend
+
+- Tách nút "Xác nhận đề nháp và đặt lịch" thành 2 nút: "Lưu đề nháp" và "Tạo đề" trên trang ma trận đề thi ngân hàng câu hỏi.
+- Điều chỉnh hộp thoại `GenerateExamConfirmDialog` (thành hộp thoại Lưu đề nháp) phù hợp cho luồng lưu bản nháp: gỡ bỏ bắt buộc nhập giờ mở đề/đóng đề và cập nhật thông báo/nút hành động phù hợp.
+- Nút "Lưu đề nháp" thực hiện tạo đề thi trên backend với trạng thái nháp (`isPublished: false`).
+- Nút "Tạo đề" thực hiện chuyển hướng sang trang tạo đề thi đầy đủ (`ExamListPage`), chuyển tiếp toàn bộ thông tin đề nháp (lớp, tiêu đề, thời gian làm bài, giám sát, cài đặt trộn đề/đáp án, tối đa số lần làm bài và danh sách câu hỏi) để tự động điền (autofill) các trường thông tin tương ứng.
+- Bổ sung hộp thoại xác nhận thay thế câu hỏi (`SubstitutionConfirmDialog`) khi sinh đề thi từ ma trận mà ngân hàng thiếu câu hỏi có độ khó tương ứng. Đưa ra lựa chọn đồng ý tự động bù câu hỏi có độ khó khác hoặc không đồng ý để hủy và hiển thị thông báo các dòng ma trận thiếu câu.
+- Cải tiến giao diện bảng chi tiết ma trận và trạng thái ngân hàng câu hỏi: Thêm highlight tiêu đề xanh, hiệu ứng hover dòng, và tô màu nền phân biệt dòng đủ câu (xanh lá nhạt) và thiếu câu (đỏ nhạt) trực quan.
+
+- Bổ dung tự động lọc câu hỏi trong ngân hàng khi chọn các bộ lọc dropdown (độ khó, loại câu, trạng thái).
+- Thiết kế thanh điều hướng thêm câu hỏi dạng các tab thư mục (folder tabs) gồm: "Thêm câu hỏi", "Tạo câu hỏi với AI", và "Nhập câu hỏi từ tệp". Khung viền của tab đang chọn kết nối liền mạch với viền của card nội dung phía dưới, mang lại giao diện trực quan và chuyên nghiệp.
+- Di chuyển bộ lọc câu hỏi vào đầu component danh sách câu hỏi ngân hàng câu hỏi.
+- Thiết lập số lượng câu hỏi mặc định của ma trận đề thi là 10 câu và cấu hình phân bổ đều (3 dễ, 3 trung bình, 4 khó) khi khởi tạo hoặc khi thay đổi tổng số câu.
+- Cải tiến giao diện bằng cách highlight nổi bật hai tab điều hướng "Câu hỏi trong ngân hàng" và "Ma trận đề thi" theo kiểu tab tròn đồng bộ.
+
+- Bổ sung tự động lọc câu hỏi trong ngân hàng khi chọn các bộ lọc dropdown (độ khó, loại câu, trạng thái).
+- Thiết kế thanh điều hướng thêm câu hỏi dạng các tab thư mục (folder tabs) gồm: "Thêm câu hỏi", "Tạo câu hỏi với AI", và "Nhập câu hỏi từ tệp". Khung viền của tab đang chọn kết nối liền mạch với viền của card nội dung phía dưới, mang lại giao diện trực quan và chuyên nghiệp.
+- Di chuyển bộ lọc câu hỏi vào đầu component danh sách câu hỏi ngân hàng câu hỏi.
+- Thiết lập số lượng câu hỏi mặc định của ma trận đề thi là 10 câu và cấu hình phân bổ đều (3 dễ, 3 trung bình, 4 khó) khi khởi tạo hoặc khi thay đổi tổng số câu.
+- Cải tiến giao diện bằng cách highlight nổi bật hai tab điều hướng "Câu hỏi trong ngân hàng" và "Ma trận đề thi" theo kiểu tab tròn đồng bộ.
+
+- Replaced the static manual instructions box in `QuestionImportResources.jsx` with a tabbed UI, introducing an interactive "Tạo câu hỏi bằng AI" panel alongside the manual Excel import instructions.
+- Added prompt text inputs, optional local-storage saved OpenAI API Key inputs, and advanced configuration defaults (difficulty, status, subject, chapter) directly into the AI Question Generator.
+- Integrated AI generation directly in `QuestionBankPage.jsx` and `TeacherQuestionWorkspace.jsx` to refresh lists upon successful question generation.
+- Moved exam matrix filters (Chapter, Lesson, LearningOutcome, QuestionType) to top-level fields in the matrix editor form, and removed row-level grids and "Thêm dòng" button entirely.
+- Redesigned the exam matrix difficulty configuration with a global multi-range interactive slider mapping to Easy, Medium, and Hard counts.
+- Replaced the custom file upload form in the question bank page with the reusable `QuestionImportPanel` and `QuestionImportResources` components.
+- Added a collapsible panel with a toggle button to hide the AI Excel template guide in the manual exam creation workspace by default.
+- Added a "Bài" (lesson) input text field to the import defaults card, and removed the "Độ khó" dropdown.
+- Streamlined the saved matrix workflow by adding a copy configuration dropdown directly in the matrix editor form, removing arbitrary selection dropdowns, and binding validation/preview generation directly to the active bank and active matrix.
+- Removed statistics dashboards cards and info blocks from both the list and detail views of the question bank page.
 
 ## [1.3.0-rc.1] - 2026-06-26
 
@@ -66,11 +113,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Backend
 
+- Changed matrix-generated exam creation to require a confirmed draft-question snapshot, validate a start time, build the real exam from the edited snapshot instead of regenerating the matrix preview, publish the exam immediately for scheduling, and still update source bank-question usage counts transactionally.
+- Fixed the live-proctoring migration for SQL Server by changing the `ProctoringEvidences -> CheatingLogs` delete rule to `NO ACTION`, allowing pending database migrations to apply cleanly before matrix-generated exams save full `ExamSetting` rows.
+- Added database-save error handling to matrix exam creation so EF save failures return a Vietnamese API error message instead of a generic 500 toast.
+- Fixed matrix-generated exam creation to validate the exam time window and build the full exam setting entity, preventing invalid generate-exam requests from falling through as a generic 500 error.
+- Fixed matrix availability matching so chapter, lesson, and learning-outcome comparisons ignore surrounding spaces/case, while questions with blank subject metadata are still usable inside the selected bank instead of being incorrectly reported as missing.
+- Changed exam matrix create/update/preview/generated exam scoring to derive `TotalQuestions` from matrix rows and use one common `ScorePerQuestion = TotalScore / TotalQuestions`; matrix availability now returns every row and counts only approved questions matching the matrix subject plus row filters.
 - **Late exam join alerts:** When a student starts a new attempt after the scheduled open time, teachers and co-proctors receive an in-app notification (`LateJoin`) plus a realtime SignalR event (`StudentJoinedExamLate`) on the exam monitoring hub; proctoring state summaries expose `isLateJoin` and `lateByMinutes`.
 - **Anti-cheat in-app notifications:** Cheating logs now persist notifications for exam owner and co-proctors (`AntiCheat`, `AntiCheatHighRisk`), with SignalR push, dedupe window, deep links, and migration `ExtendNotificationMetadata` (`ActionUrl`, `RelatedExamId`, `SourceKey`).
 - **Co-proctor invite notifications:** `AddProctorAsync` now creates an in-app notification and SignalR push for the invited teacher (`Type: ProctorInvite`, link to proctoring room).
 - **Co-proctor exam discovery:** `GET /api/teacher/proctoring/assigned-exams` returns exams where the teacher is assigned as co-proctor; co-proctors can also load exam detail, attempts, and anti-cheat summary for those exams.
 - Added **LiveKit SFU** for multi-stream teacher proctoring: `LiveKit` config section, JWT token service, `GET /api/proctoring/sfu-config`, teacher/student SFU token endpoints; SignalR retained for control events (warn/pause/terminate).
+- Fixed 400 Bad Request error when creating assignments by replacing the strict `Deadline` comparison `GreaterThan(DateTime.UtcNow.AddMinutes(-1))` with a basic `NotEmpty()` validation check to prevent timezone and clock drift issues.
+- Fixed timezone discrepancy in assignment deadlines where retrieved DateTime objects were interpreted as browser local time by forcing them to UTC kind in MapAssignment and MapSubmission, preventing false overdue states for active assignments.
 - Added teacher-owned question banks with bank questions, bank answers, difficulty/status metadata, versioning for snapshotted questions, and archived-question history.
 - Added exam matrix APIs so teachers can define matrix rows, validate available approved bank questions, generate a balanced preview, and create draft exams from the selected bank.
 - Added Admin read access for exam matrix list/detail while keeping create/update/delete/preview/create-exam restricted to Teacher-owned resources.
@@ -79,12 +134,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Frontend
 
+- Reworked `Sinh đề từ ma trận` into a draft-first workflow: teachers generate a local draft from the matrix, edit each draft question in a popup without changing the question bank, see non-blocking matrix-mismatch warnings, then confirm the draft and choose class/start time/settings in a scheduling popup before creating the real test.
+- Auto-fills `Đóng đề` in the matrix scheduling popup as `Mở đề + Thời gian làm bài` from the selected matrix, while still letting teachers adjust the close time if needed.
+- Added a time-window guard before matrix exam generation so teachers see `Thời gian đóng đề phải sau thời gian mở đề` before the confirmation request is sent.
+- Added `Môn` to matrix availability row conditions so teachers can see every filter used when a row reports enough or missing questions.
+- Reworked the Teacher matrix builder for the MVP matrix workflow: teachers enter `Tổng điểm`, score per question is computed read-only, realtime totals/difficulty counts are shown, matrix sections now render as stacked full-width cards, the saved matrix detail panel shows overview/difficulty/detail/availability tables, and `Sinh đề nháp` requires a successful availability check plus confirmation modal.
+- Fixed the Teacher question bank workspace to use fully accented Vietnamese labels for breadcrumbs, difficulty/status dropdowns, badges, buttons, toasts, and matrix validation errors; `Chuẩn đầu ra` is now shown as `Yêu cầu cần đạt`, and editing a bank question now opens in a modal so teachers keep their position in the question list, with client-side validation before marking a question ready.
 - **Late exam join UX:** Students joining after open time see device-check and attempt-page warnings about camera requirements; teachers in the proctoring room get a realtime toast and a "Vào trễ" badge on student tiles.
 - **Notification center navigation:** Bell dropdown and `/notifications` now open the relevant monitoring/proctoring page from `actionUrl` and notification type (anti-cheat, proctor invite, high-risk).
 - **Co-proctor monitoring:** `examApi.getAll()` merges assigned proctoring exams so co-proctors see them under **Giám sát thi** without owning the classroom.
 - Fixed sidebar navigation showing duplicate icons on small screens when the desktop collapsed state was persisted in localStorage; nav items now render a single icon (plain on mobile, boxed on desktop) plus label, with truncated text and tooltip when space is tight. (`/student/exams/:examId/lobby`): single-column focus layout with a live countdown timer, camera preview only when the exam requires it, and removal of redundant badges, duplicate session metadata, and unused consent checkbox that contradicted optional-camera exams. (`useTeacherSfuViewer`, `useStudentSfuPublisher`) for multi-tile proctoring grid (up to `maxActiveLiveTiles`); falls back to SignalR P2P when `LiveKit:Enabled` is false.
 - Fixed teacher classroom creation returning 403 when the UI showed `Giảng viên` but the stored JWT access token still carried an older role set; session hydration now compares JWT role claims with `/auth/me` and refreshes the token when they diverge, and axios retries once after a permission 403 following a silent token refresh.
 - Improved API error toasts so users see Vietnamese messages from the backend (or friendly fallbacks) instead of raw HTTP status text such as `Request failed with status code 403`.
+- Added global `Skeleton` components (`SkeletonAvatar`, `SkeletonForm`, `SkeletonTable`, `SkeletonList`) in `Skeleton.jsx` and refactored loading state handlers across all API-dependent pages (Profile, AI settings, lobby, attempt room, device checks, question bank, class workspace, result list, etc.) to use polished Skeleton Screens instead of simple spinners or text placeholders, preventing layout shifts and creating a unified high-premium loading UX.
+- Fixed syntax compilation error in Skeleton.jsx by removing duplicate/malformed SkeletonExamCard definition and cleaning up layout hierarchy.
+- Replaced local timezone-unaware datetime conversion for assignment deadlines in `AssignmentForm.jsx` and `assignmentHelpers.js` with Vietnam timezone-safe functions (`toAssignmentDateTimeInputValue`, `toAssignmentVietnamISOString`) to prevent timezone conversion discrepancies.
+- Added a Teacher `Ngân hàng câu hỏi` workspace for creating question banks, filtering bank questions, manually adding/editing/archiving questions, importing files into a bank, creating matrix rows, previewing matrix selections, and creating draft exams from a matrix.
 - Added frontend question bank and exam matrix API adapters with enum normalization for question type, difficulty, and bank question status.
 - Added the Teacher sidebar route `/teacher/question-banks` while keeping the existing exam create/detail flow intact.
 - Changed the Teacher question bank route to open on a bank list first; selecting a bank now enters the full edit workspace with a collapsible horizontal question form, full-width question list, clearer status/difficulty badges, matrix jump action, and a closable matrix-shortfall dialog that lists required versus available questions.
@@ -106,7 +171,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known risks
 
-- Matrix-generated exams are created as drafts; publishing still uses the existing exam detail publish checklist.
+- Matrix-generated exams are now published/scheduled immediately after the teacher confirms the edited draft; teachers should review the draft carefully before creating the real test.
 
 ## [1.2.0] - 2026-06-25
 

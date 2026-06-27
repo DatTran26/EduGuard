@@ -48,7 +48,12 @@ export const EMPTY_MATRIX_FORM = {
   subject: "",
   gradeLevel: "",
   durationMinutes: 45,
-  items: [{ ...EMPTY_MATRIX_ITEM }],
+  totalScore: 10,
+  totalQuestions: 10,
+  chapter: "",
+  lesson: "",
+  learningOutcome: "",
+  questionType: "",
 };
 
 export const EMPTY_CREATE_EXAM_FORM = {
@@ -119,29 +124,55 @@ export function buildQuestionFormFromQuestion(question) {
 }
 
 export function buildMatrixFormFromMatrix(matrix) {
+  const parsed = parseMatrixItemsForForm(matrix.items || []);
+  const firstItem = matrix.items?.[0] || {};
   return {
     id: matrix.id,
     name: matrix.name,
     subject: matrix.subject,
     gradeLevel: matrix.gradeLevel,
     durationMinutes: matrix.durationMinutes || 45,
-    items: matrix.items.length > 0 ? matrix.items.map((item) => ({ ...item })) : [{ ...EMPTY_MATRIX_ITEM }],
+    totalScore: matrix.totalScore || 10,
+    totalQuestions: matrix.totalQuestions || parsed.easyCount + parsed.mediumCount + parsed.hardCount || 10,
+    chapter: firstItem.chapter || "",
+    lesson: firstItem.lesson || "",
+    learningOutcome: firstItem.learningOutcome || "",
+    questionType: firstItem.questionType || "",
   };
 }
 
-export function calculateMatrixTotals(items = []) {
-  return items.reduce(
-    (summary, item) => {
-      const questionCount = Number(item.questionCount) || 0;
-      const scorePerQuestion = Number(item.scorePerQuestion) || 0;
+export function calculateMatrixTotals(items = [], totalScoreValue = 0) {
+  const totalQuestions = items.reduce((total, item) => total + (Number(item.questionCount) || 0), 0);
+  const totalScore = Number(totalScoreValue) || 0;
+  const scorePerQuestion = totalQuestions > 0 ? totalScore / totalQuestions : 0;
+  const difficultySummary = questionBankEnums.difficultyOptions.map((option) => {
+    const questionCount = items
+      .filter((item) => item.difficulty === option.value)
+      .reduce((total, item) => total + (Number(item.questionCount) || 0), 0);
 
-      return {
-        totalQuestions: summary.totalQuestions + questionCount,
-        totalScore: summary.totalScore + questionCount * scorePerQuestion,
-      };
-    },
-    { totalQuestions: 0, totalScore: 0 },
-  );
+    return {
+      difficulty: option.value,
+      label: option.label,
+      questionCount,
+      totalScore: questionCount * scorePerQuestion,
+    };
+  });
+
+  return {
+    totalQuestions,
+    totalScore,
+    scorePerQuestion,
+    difficultySummary,
+  };
+}
+
+export function formatMatrixNumber(value, maximumFractionDigits = 2) {
+  const numericValue = Number(value) || 0;
+
+  return new Intl.NumberFormat("vi-VN", {
+    maximumFractionDigits,
+    minimumFractionDigits: 0,
+  }).format(numericValue);
 }
 
 export function getDifficultyLabel(value) {
@@ -166,6 +197,44 @@ export function getStatusBadgeVariant(value) {
   }
 
   return "caution";
+}
+
+export function getBankQuestionValidationError(formValues = {}) {
+  const content = String(formValues.content ?? "").trim();
+  const score = Number(formValues.defaultScore);
+  const answers = Array.isArray(formValues.answers) ? formValues.answers : [];
+  const filledAnswers = answers.filter((answer) => String(answer.content ?? "").trim().length > 0);
+  const correctAnswers = filledAnswers.filter((answer) => Boolean(answer.isCorrect));
+
+  if (!content) {
+    return "Vui lòng nhập nội dung câu hỏi.";
+  }
+
+  if (!Number.isFinite(score) || score <= 0) {
+    return "Điểm mặc định phải lớn hơn 0.";
+  }
+
+  if (formValues.status !== "Approved") {
+    return "";
+  }
+
+  if (formValues.questionType === "SingleChoice" && correctAnswers.length !== 1) {
+    return "Câu hỏi một đáp án cần có đúng 1 đáp án đúng trước khi chuyển sang Sẵn sàng.";
+  }
+
+  if (formValues.questionType === "MultipleChoice" && correctAnswers.length < 1) {
+    return "Câu hỏi nhiều đáp án cần có ít nhất 1 đáp án đúng trước khi chuyển sang Sẵn sàng.";
+  }
+
+  if (formValues.questionType === "TrueFalse" && correctAnswers.length !== 1) {
+    return "Câu hỏi Đúng/Sai cần có đúng 1 lựa chọn đúng trước khi chuyển sang Sẵn sàng.";
+  }
+
+  if (formValues.questionType === "ShortAnswer" && filledAnswers.length < 1) {
+    return "Câu trả lời ngắn cần có ít nhất 1 đáp án mẫu trước khi chuyển sang Sẵn sàng.";
+  }
+
+  return "";
 }
 
 export function getDifficultyBadgeVariant(value) {
@@ -218,9 +287,10 @@ export function getQuestionTypeLabel(value) {
 
 export function formatMatrixIssueRequirement(issue = {}) {
   const filters = [
+    issue.subject ? `Môn: ${issue.subject}` : null,
     issue.chapter ? `Chương: ${issue.chapter}` : null,
     issue.lesson ? `Bài: ${issue.lesson}` : null,
-    issue.learningOutcome ? `Chuẩn đầu ra: ${issue.learningOutcome}` : null,
+    issue.learningOutcome ? `Yêu cầu cần đạt: ${issue.learningOutcome}` : null,
     issue.questionType ? `Loại: ${getQuestionTypeLabel(issue.questionType)}` : null,
     issue.difficulty ? `Độ khó: ${getDifficultyLabel(issue.difficulty)}` : null,
   ].filter(Boolean);
@@ -247,5 +317,100 @@ export function buildBankQuestionFilters(filters) {
     questionType: filters.questionType || undefined,
     status: filters.status || undefined,
     chapter: filters.chapter || undefined,
+  };
+}
+
+export function distributeDifficultyToItems(items, easyCount, mediumCount, hardCount) {
+  const resultItems = [];
+  
+  let easyRemaining = easyCount;
+  let mediumRemaining = mediumCount;
+  let hardRemaining = hardCount;
+
+  for (const item of items) {
+    let needed = Number(item.questionCount) || 0;
+    if (needed <= 0) continue;
+
+    // Distribute Easy
+    const easyAlloc = Math.min(needed, easyRemaining);
+    if (easyAlloc > 0) {
+      resultItems.push({
+        ...item,
+        difficulty: "Easy",
+        questionCount: easyAlloc,
+      });
+      needed -= easyAlloc;
+      easyRemaining -= easyAlloc;
+    }
+
+    // Distribute Medium
+    const mediumAlloc = Math.min(needed, mediumRemaining);
+    if (mediumAlloc > 0) {
+      resultItems.push({
+        ...item,
+        difficulty: "Medium",
+        questionCount: mediumAlloc,
+      });
+      needed -= mediumAlloc;
+      mediumRemaining -= mediumAlloc;
+    }
+
+    // Distribute Hard
+    const hardAlloc = Math.min(needed, hardRemaining);
+    if (hardAlloc > 0) {
+      resultItems.push({
+        ...item,
+        difficulty: "Hard",
+        questionCount: hardAlloc,
+      });
+      needed -= hardAlloc;
+      hardRemaining -= hardAlloc;
+    }
+  }
+
+  // If there are still remaining difficulties, add them as fallback items
+  if (easyRemaining > 0) {
+    resultItems.push({ chapter: "", lesson: "", learningOutcome: "", questionType: "", difficulty: "Easy", questionCount: easyRemaining });
+  }
+  if (mediumRemaining > 0) {
+    resultItems.push({ chapter: "", lesson: "", learningOutcome: "", questionType: "", difficulty: "Medium", questionCount: mediumRemaining });
+  }
+  if (hardRemaining > 0) {
+    resultItems.push({ chapter: "", lesson: "", learningOutcome: "", questionType: "", difficulty: "Hard", questionCount: hardRemaining });
+  }
+
+  return resultItems;
+}
+
+export function parseMatrixItemsForForm(items) {
+  const grouped = {};
+  let easyCount = 0;
+  let mediumCount = 0;
+  let hardCount = 0;
+
+  for (const item of items) {
+    const qCount = Number(item.questionCount) || 0;
+    if (item.difficulty === "Easy") easyCount += qCount;
+    else if (item.difficulty === "Hard") hardCount += qCount;
+    else mediumCount += qCount;
+
+    const key = `${item.chapter || ""}|${item.lesson || ""}|${item.learningOutcome || ""}|${item.questionType || ""}`;
+    if (!grouped[key]) {
+      grouped[key] = {
+        chapter: item.chapter || "",
+        lesson: item.lesson || "",
+        learningOutcome: item.learningOutcome || "",
+        questionType: item.questionType || "",
+        questionCount: 0,
+      };
+    }
+    grouped[key].questionCount += qCount;
+  }
+
+  return {
+    items: Object.values(grouped),
+    easyCount,
+    mediumCount,
+    hardCount,
   };
 }

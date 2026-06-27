@@ -53,6 +53,7 @@ const breadcrumbLabelBySegment = {
   monitoring: "Giám sát thi",
   "proctoring-evidence": "Bằng chứng vi phạm",
   notifications: "Thông báo",
+  "question-banks": "Ngân hàng câu hỏi",
   "proctoring-ai": "AI giám sát",
 };
 

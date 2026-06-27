@@ -8,7 +8,7 @@ public class CreateExamMatrixRequestValidator : AbstractValidator<CreateExamMatr
     public CreateExamMatrixRequestValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.Subject).MaximumLength(150);
+        RuleFor(x => x.Subject).NotEmpty().MaximumLength(150);
         RuleFor(x => x.GradeLevel).MaximumLength(50);
         RuleFor(x => x.TotalQuestions).GreaterThan(0);
         RuleFor(x => x.TotalScore).GreaterThan(0);

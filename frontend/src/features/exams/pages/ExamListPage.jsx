@@ -235,7 +235,95 @@ export default function ExamListPage() {
     );
   }, [location.pathname, location.search, location.state, navigate, showToast]);
 
+  // Tự động prefill form và câu hỏi khi navigate từ trang sinh đề ma trận
+  useEffect(() => {
+    if (!location.state?.fromMatrixDraft) {
+      return;
+    }
+
+    const matrixState = location.state;
+
+    // Prefill form values từ dữ liệu ma trận
+    setCreateDraftExamValues((previous) => {
+      const merged = {
+        ...buildExamFormValues(null, ""),
+        ...previous,
+      };
+
+      if (matrixState.title) {
+        merged.title = matrixState.title;
+      } else if (matrixState.matrixName) {
+        merged.title = `Đề thi - ${matrixState.matrixName}`;
+      }
+
+      if (matrixState.durationMinutes) {
+        merged.durationMinutes = String(matrixState.durationMinutes);
+      }
+
+      if (matrixState.classroomId) {
+        merged.classroomId = String(matrixState.classroomId);
+      }
+
+      if (matrixState.startTime) {
+        merged.startTime = matrixState.startTime;
+      }
+
+      if (matrixState.endTime) {
+        merged.endTime = matrixState.endTime;
+      }
+
+      if (matrixState.enableAntiCheat !== undefined) {
+        merged.enableAntiCheat = Boolean(matrixState.enableAntiCheat);
+      }
+
+      if (matrixState.settings) {
+        merged.settings = {
+          ...merged.settings,
+          ...matrixState.settings,
+        };
+        if (matrixState.settings.maxAttempts !== undefined) {
+          merged.settings.maxAttempts = String(matrixState.settings.maxAttempts);
+        }
+      }
+
+      return merged;
+    });
+
+    // Convert draft questions từ ma trận sang createFlowQuestions
+    if (Array.isArray(matrixState.questions) && matrixState.questions.length > 0) {
+      const convertedQuestions = matrixState.questions.map((q, index) =>
+        buildDraftQuestion(
+          {
+            content: q.content,
+            questionType: q.questionType,
+            score: q.score,
+            orderIndex: index + 1,
+            answers: Array.isArray(q.answers)
+              ? q.answers.map((ans, aIdx) => ({
+                  content: ans.content,
+                  isCorrect: ans.isCorrect,
+                  orderIndex: Number(ans.orderIndex) || aIdx + 1,
+                }))
+              : [],
+          },
+          index + 1,
+        ),
+      );
+      setCreateFlowQuestions(resequenceDraftQuestions(convertedQuestions));
+    }
+
+    // Mở form tạo đề và xóa state để tránh prefill lại khi refresh
+    const nextParams = new URLSearchParams(location.search);
+    nextParams.set("create", "1");
+    navigate(
+      { pathname: location.pathname, search: nextParams.toString() },
+      { replace: true, state: null },
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.fromMatrixDraft]);
+
   // Hàm này tải song song lớp học và đề thi theo quyền hiện tại để page có đủ dữ liệu hiển thị.
+
   async function loadExamPageData(filters = {}, options = {}) {
     const { showPageLoader = true } = options;
 

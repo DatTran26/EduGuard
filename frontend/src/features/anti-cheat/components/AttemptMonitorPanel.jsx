@@ -5,6 +5,7 @@ import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
+import Skeleton from "../../../components/common/Skeleton";
 import {
   createExamMonitoringConnection,
   EXAM_MONITORING_EVENTS,
@@ -413,8 +414,16 @@ export default function AttemptMonitorPanel({
                 Chọn một lượt làm để xem chi tiết.
               </div>
             ) : isLoadingAttemptDetail ? (
-              <div className="rounded-[16px] border border-border bg-neutral p-4 text-sm text-secondary">
-                Đang tải chi tiết lượt làm...
+              <div className="rounded-[16px] border border-border bg-neutral p-5 text-sm text-secondary animate-pulse space-y-4">
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                  <Skeleton className="h-6 w-24 rounded-full" />
+                </div>
+                <div className="space-y-3">
+                  <Skeleton className="h-5 w-2/3 rounded-md" />
+                  <Skeleton className="h-5 w-1/2 rounded-md" />
+                  <Skeleton className="h-5 w-3/4 rounded-md" />
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
