@@ -405,6 +405,14 @@ public class ProctoringService : IProctoringService
         var teacherNames = await _db.Users
             .Where(x => watchSessions.Select(s => s.TeacherId).Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, x => x.FullName, ct);
+        var cheatingLogs = await _db.CheatingLogs
+            .Where(x => attempts.Select(attempt => attempt.Id).Contains(x.ExamAttemptId))
+            .ToListAsync(ct);
+        var aiViolationHistoryMap = cheatingLogs
+            .GroupBy(x => x.ExamAttemptId)
+            .ToDictionary(
+                group => group.Key,
+                group => ProctoringAiViolationHistoryHelper.BuildHistory(group));
 
         return attempts
             .Select(attempt =>
@@ -412,6 +420,7 @@ public class ProctoringService : IProctoringService
                 stateMap.TryGetValue(attempt.Id, out var state);
                 watchMap.TryGetValue(attempt.Id, out var watch);
                 var suspicionScore = Math.Max(state?.SuspicionScore ?? 0, attempt.SuspicionScore);
+                aiViolationHistoryMap.TryGetValue(attempt.Id, out var aiViolationHistory);
                 return new ProctoringStateSummaryDto
                 {
                     AttemptId = attempt.Id,
@@ -431,7 +440,8 @@ public class ProctoringService : IProctoringService
                     LatestWarningAt = state?.LatestWarningAt,
                     IsLateJoin = ExamJoinHelper.IsLateJoin(attempt.Exam, attempt.StartedAt),
                     LateByMinutes = ExamJoinHelper.GetLateByMinutes(attempt.Exam, attempt.StartedAt),
-                    LatestDetectionType = state?.LatestDetectionType
+                    LatestDetectionType = state?.LatestDetectionType,
+                    AiViolationHistory = aiViolationHistory ?? [],
                 };
             })
             .OrderByDescending(x => x.SuspicionScore)

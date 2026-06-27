@@ -1,5 +1,21 @@
 # Project Changelog
 
+## Bug fix: Proctoring AI detect filter logic + confidence threshold
+
+Date: 2026-06-27
+
+Branch/source: `devD`
+
+Description:
+
+- Feature or fix name: Proctoring **Lọc theo AI detect** filter correctness and configurable confidence threshold.
+- Purpose and user/business impact: Teachers using **Đang làm** → **Tất cả lỗi AI** no longer see students with **AI: Bình thường** unless those students have prior AI violation logs above the confidence threshold; helps focus on active and historically flagged cases.
+- Files or modules changed: `backend/EduGuard.Application/DTOs/Proctoring/proctoring-dtos.cs`, `backend/EduGuard.Infrastructure/Proctoring/proctoring-ai-violation-history-helper.cs`, `backend/EduGuard.Infrastructure/Proctoring/proctoring-service.cs`, `frontend/src/features/proctoring/utils/proctoringAiHelpers.js`, `frontend/src/features/proctoring/utils/proctoringRoomHelpers.js`, `frontend/src/features/proctoring/components/ProctoringFilterBar.jsx`, `frontend/src/features/proctoring/pages/TeacherProctoringRoomPage.jsx`, `CHANGELOG.md`, `docs/project-changelog.md`.
+- Technical summary: Backend aggregates AI cheating logs per attempt into `aiViolationHistory` (detection type + max confidence). Frontend `studentMatchesAiDetectionFilter()` matches current `latestDetectionType` violations or history entries ≥ threshold; **Tất cả lỗi AI** uses this union, **Có vi phạm AI** keeps current-state-only behavior. Filter bar adds **Độ tin cậy tối thiểu** number input (0–100%, default 70).
+- Validation: `dotnet build` on `EduGuard.Infrastructure` — success; ESLint on changed frontend files.
+- Known risks: History relies on cheating log metadata; logs without confidence metadata fall back to type mapping with 0% confidence and won't pass a positive threshold.
+- Unresolved questions: Whether to persist teacher confidence threshold in localStorage across sessions.
+
 ## Feature: Proctoring room bulk AI toggle
 
 Date: 2026-06-27

@@ -31,7 +31,7 @@ import {
 } from "../utils/proctoringRoomHelpers";
 import { canWatchStudentLive } from "../utils/proctoringStudentStatus";
 import { devLog } from "../../../utils/devLogger";
-import { normalizeAiDetectionEvent } from "../utils/proctoringAiHelpers";
+import { normalizeAiDetectionEvent, DEFAULT_AI_FILTER_MIN_CONFIDENCE } from "../utils/proctoringAiHelpers";
 import { normalizeAntiCheatEventType } from "../../anti-cheat/antiCheatHelpers";
 
 export default function TeacherProctoringRoomPage() {
@@ -48,6 +48,7 @@ export default function TeacherProctoringRoomPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
   const [activeAiDetectionFilter, setActiveAiDetectionFilter] = useState("all");
+  const [aiFilterMinConfidence, setAiFilterMinConfidence] = useState(DEFAULT_AI_FILTER_MIN_CONFIDENCE);
   const [viewMode, setViewMode] = useState("auto");
   const [isCoProctorOpen, setIsCoProctorOpen] = useState(false);
   const [isRoomLoading, setIsRoomLoading] = useState(true);
@@ -345,8 +346,9 @@ export default function TeacherProctoringRoomPage() {
         sortedStudents,
         activeFilter,
         aiMonitoringActive ? activeAiDetectionFilter : "all",
+        aiFilterMinConfidence,
       ),
-    [activeAiDetectionFilter, activeFilter, aiMonitoringActive, sortedStudents],
+    [activeAiDetectionFilter, activeFilter, aiFilterMinConfidence, aiMonitoringActive, sortedStudents],
   );
   const roomStats = useMemo(() => computeRoomStats(students, room), [room, students]);
 
@@ -702,11 +704,13 @@ export default function TeacherProctoringRoomPage() {
 
         <ProctoringFilterBar
           activeAiDetectionFilter={activeAiDetectionFilter}
+          aiFilterMinConfidence={aiFilterMinConfidence}
           activeFilter={activeFilter}
           activeViewMode={viewMode}
           aiMonitoringEnabled={aiMonitoringActive}
           filteredCount={filteredStudents.length}
           onAiDetectionFilterChange={setActiveAiDetectionFilter}
+          onAiFilterMinConfidenceChange={setAiFilterMinConfidence}
           onFilterChange={setActiveFilter}
           onViewModeChange={setViewMode}
           totalCount={students.length}

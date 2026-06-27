@@ -5,8 +5,11 @@ import { cn } from "../../../utils/cn";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import AiConfidenceBadge from "./AiConfidenceBadge";
 import {
+  formatAiViolationLabel,
   getAiDetectionMeta,
+  isAiAntiCheatEventType,
   isAiViolationEvent,
+  parseAiDetectionMetadata,
   sanitizeAiViolationDescription,
 } from "../utils/proctoringAiHelpers";
 import { getAntiCheatEventMeta } from "../../anti-cheat/antiCheatHelpers";
@@ -19,7 +22,7 @@ function buildFeedItem(entry) {
     return {
       id: entry.id,
       studentName: entry.studentName,
-      title: meta.label,
+      title: formatAiViolationLabel(meta.label),
       variant: entry.isFlagged ? meta.variant : "neutral",
       confidence: entry.confidence,
       detail: "",
@@ -29,11 +32,16 @@ function buildFeedItem(entry) {
   }
 
   const meta = getAntiCheatEventMeta(entry.type);
+  const aiMeta = isAiAntiCheatEventType(entry.type)
+    ? parseAiDetectionMetadata(entry.metadata)
+    : null;
+
   return {
     id: entry.id,
     studentName: entry.studentName,
-    title: meta.label,
+    title: isAiAntiCheatEventType(entry.type) ? formatAiViolationLabel(meta.label) : meta.label,
     variant: meta.variant,
+    confidence: aiMeta?.detectionType != null ? aiMeta.confidence : null,
     detail: sanitizeAiViolationDescription(entry.description),
     occurredAt: entry.occurredAt,
     isHighlighted: true,

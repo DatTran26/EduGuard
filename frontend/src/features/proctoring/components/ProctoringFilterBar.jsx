@@ -1,4 +1,5 @@
 import { cn } from "../../../utils/cn";
+import { DEFAULT_AI_FILTER_MIN_CONFIDENCE } from "../utils/proctoringAiHelpers";
 import {
   PROCTORING_AI_DETECTION_FILTERS,
   PROCTORING_FILTERS,
@@ -8,12 +9,14 @@ import {
 export default function ProctoringFilterBar({
   activeFilter,
   activeAiDetectionFilter = "all",
+  aiFilterMinConfidence = DEFAULT_AI_FILTER_MIN_CONFIDENCE,
   activeViewMode,
   aiMonitoringEnabled = true,
   filteredCount,
   totalCount,
   onFilterChange,
   onAiDetectionFilterChange,
+  onAiFilterMinConfidenceChange,
   onViewModeChange,
 }) {
   const showAiDetectionFilters = activeFilter === "inProgress" && aiMonitoringEnabled;
@@ -80,7 +83,33 @@ export default function ProctoringFilterBar({
 
       {showAiDetectionFilters ? (
         <div className="space-y-2 rounded-[14px] border border-violet-400/20 bg-violet-500/[0.04] px-3 py-3">
-          <p className="text-xs font-medium text-violet-100/90">Lọc theo AI detect</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs font-medium text-violet-100/90">Lọc theo AI detect</p>
+            <label className="flex items-center gap-2 text-xs text-slate-400">
+              <span className="whitespace-nowrap text-violet-100/80">Độ tin cậy tối thiểu</span>
+              <input
+                aria-label="Độ tin cậy tối thiểu cho bộ lọc AI"
+                className="w-16 rounded-[8px] border border-white/10 bg-white/[0.04] px-2 py-1 text-center text-xs text-slate-100 outline-none transition-colors focus:border-violet-400/45"
+                inputMode="numeric"
+                max={100}
+                min={0}
+                type="number"
+                value={aiFilterMinConfidence}
+                onChange={(event) => {
+                  const nextValue = Number(event.target.value);
+                  if (Number.isNaN(nextValue)) {
+                    return;
+                  }
+
+                  onAiFilterMinConfidenceChange?.(Math.min(100, Math.max(0, nextValue)));
+                }}
+              />
+              <span>%</span>
+            </label>
+          </div>
+          <p className="text-[11px] leading-relaxed text-slate-500">
+            Hiển thị sinh viên đang vi phạm AI hoặc có log vi phạm AI trước đó với độ tin cậy từ ngưỡng này trở lên.
+          </p>
           <div className="flex flex-wrap gap-2">
             {PROCTORING_AI_DETECTION_FILTERS.map((filter) => (
               <button

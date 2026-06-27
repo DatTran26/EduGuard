@@ -39,6 +39,13 @@ public class ProctoringStateSummaryDto
     public bool IsLateJoin { get; set; }
     public int LateByMinutes { get; set; }
     public string? LatestDetectionType { get; set; }
+    public IReadOnlyList<ProctoringAiViolationHistoryItemDto> AiViolationHistory { get; set; } = [];
+}
+
+public class ProctoringAiViolationHistoryItemDto
+{
+    public string DetectionType { get; set; } = string.Empty;
+    public decimal Confidence { get; set; }
 }
 
 public class ProctoringAttemptDetailDto

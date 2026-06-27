@@ -16,6 +16,50 @@ export const PROCTORING_AI_DETECTION_FILTERS = [
   { id: AI_DETECTION_TYPES.personNotVisible, label: "Không thấy người" },
 ];
 
+export const DEFAULT_AI_FILTER_MIN_CONFIDENCE = 70;
+
+export function normalizeConfidencePercent(confidence) {
+  const value = Number(confidence);
+  if (Number.isNaN(value)) {
+    return 0;
+  }
+
+  return value <= 1 ? value * 100 : value;
+}
+
+export function getStudentAiViolationHistory(student) {
+  return Array.isArray(student?.aiViolationHistory) ? student.aiViolationHistory : [];
+}
+
+export function studentHasCurrentAiViolation(student) {
+  return isAiViolationDetectionType(student?.latestDetectionType);
+}
+
+export function studentHasHighConfidenceAiViolationHistory(student, minConfidencePercent, detectionType = null) {
+  const threshold = Number(minConfidencePercent);
+  const resolvedThreshold = Number.isNaN(threshold) ? DEFAULT_AI_FILTER_MIN_CONFIDENCE : threshold;
+
+  return getStudentAiViolationHistory(student).some((entry) => {
+    const confidencePercent = normalizeConfidencePercent(entry?.confidence);
+    const matchesType = !detectionType || entry?.detectionType === detectionType;
+    return matchesType && confidencePercent >= resolvedThreshold;
+  });
+}
+
+export function studentMatchesAiDetectionFilter(student, detectionFilterId, minConfidencePercent = DEFAULT_AI_FILTER_MIN_CONFIDENCE) {
+  if (!detectionFilterId || detectionFilterId === "all") {
+    return studentHasCurrentAiViolation(student)
+      || studentHasHighConfidenceAiViolationHistory(student, minConfidencePercent);
+  }
+
+  if (detectionFilterId === "any") {
+    return studentHasCurrentAiViolation(student);
+  }
+
+  return student?.latestDetectionType === detectionFilterId
+    || studentHasHighConfidenceAiViolationHistory(student, minConfidencePercent, detectionFilterId);
+}
+
 const AI_DETECTION_META = {
   PhoneVisible: { label: "Phát hiện điện thoại", variant: "info" },
   BookVisible: { label: "Phát hiện tài liệu", variant: "danger" },
@@ -32,6 +76,26 @@ export function getAiDetectionMeta(detectionType) {
     label: detectionType || "AI detect",
     variant: "info",
   };
+}
+
+const AI_ANTI_CHEAT_EVENT_TYPES = new Set([
+  "PHONE_VISIBLE",
+  "BOOK_VISIBLE",
+  "SECOND_PERSON_VISIBLE",
+  "PERSON_NOT_VISIBLE",
+]);
+
+export function isAiAntiCheatEventType(type) {
+  return AI_ANTI_CHEAT_EVENT_TYPES.has(type);
+}
+
+export function formatAiViolationLabel(label) {
+  const trimmed = label?.trim();
+  if (!trimmed) {
+    return "AI";
+  }
+
+  return trimmed.startsWith("AI:") ? trimmed : `AI: ${trimmed}`;
 }
 
 export function resolveTileAiStatusMeta(student, { globalAiEnabled = true, studentAiEnabled = true } = {}) {

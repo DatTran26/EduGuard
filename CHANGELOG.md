@@ -10,9 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Backend
 
 - **Bug fix (GPT settings):** Admin GPT API key/model/base URL now persist in `GptSettings` database table (same pattern as email settings) instead of writing only to `.env`, which failed on deployed servers.
+- **Proctoring states API:** `ProctoringStateSummaryDto` now includes `aiViolationHistory` (max confidence per AI detection type from cheating logs) for room filter use.
 
 ### Frontend
 
+- **Bug fix (proctoring AI filter):** **Tất cả lỗi AI** no longer shows students with **AI: Bình thường** unless they have high-confidence AI violation history; filter matches current violations or past logs above a configurable confidence threshold (default 70%).
 - **Proctoring room filters:** Added **Đang làm** filter; when selected, shows **Lọc theo AI detect** sub-filters (all AI violations, phone, document, multiple faces, person not visible).
 - **Proctoring student tile AI UX:** Each student tile always shows an **AI status** line (Bình thường / vi phạm / AI tắt); header overlay adds **AI Bật/Tắt** toggle per student for the teacher session.
 - **Proctoring room bulk AI toggle:** Header adds **Bật tắt AI** button to enable or disable AI monitoring for all students in the live room at once (session-local, same as per-student toggle).

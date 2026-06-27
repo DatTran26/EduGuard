@@ -1,6 +1,6 @@
 import {
-  isAiViolationDetectionType,
   PROCTORING_AI_DETECTION_FILTERS,
+  studentMatchesAiDetectionFilter,
 } from "./proctoringAiHelpers";
 
 const RISK_PRIORITY = { Critical: 0, Warning: 1, Watch: 2, Normal: 3 };
@@ -64,19 +64,26 @@ function isInProgress(student) {
   return status === "InProgress" || status === "PausedByProctor";
 }
 
-export function filterStudentsByAiDetection(students = [], detectionFilterId = "all") {
-  if (!detectionFilterId || detectionFilterId === "all") {
+export function filterStudentsByAiDetection(
+  students = [],
+  detectionFilterId = "all",
+  minConfidencePercent,
+) {
+  if (!detectionFilterId) {
     return students;
   }
 
-  if (detectionFilterId === "any") {
-    return students.filter((student) => isAiViolationDetectionType(student?.latestDetectionType));
-  }
-
-  return students.filter((student) => student?.latestDetectionType === detectionFilterId);
+  return students.filter((student) =>
+    studentMatchesAiDetectionFilter(student, detectionFilterId, minConfidencePercent),
+  );
 }
 
-export function filterStudents(students = [], filterId = "all", aiDetectionFilterId = "all") {
+export function filterStudents(
+  students = [],
+  filterId = "all",
+  aiDetectionFilterId = "all",
+  aiFilterMinConfidence,
+) {
   let filteredStudents;
 
   switch (filterId) {
@@ -109,7 +116,7 @@ export function filterStudents(students = [], filterId = "all", aiDetectionFilte
   }
 
   if (filterId === "inProgress") {
-    return filterStudentsByAiDetection(filteredStudents, aiDetectionFilterId);
+    return filterStudentsByAiDetection(filteredStudents, aiDetectionFilterId, aiFilterMinConfidence);
   }
 
   return filteredStudents;
