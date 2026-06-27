@@ -228,6 +228,49 @@ public class QuestionBanksController : ControllerBase
         catch (ArgumentException ex) { return BadRequest(ApiResponse<BankQuestionImportResultDto>.CreateFailure(ex.Message)); }
     }
 
+    [HttpPost("api/question-banks/{bankId:int}/questions/generate-ai/preview")]
+    [Authorize(Roles = "Teacher")]
+    public async Task<ActionResult<ApiResponse<List<CreateBankQuestionRequest>>>> GenerateQuestionsAiPreview(int bankId, [FromBody] GenerateBankQuestionsAiRequest request, CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+            return Unauthorized(ApiResponse<List<CreateBankQuestionRequest>>.CreateFailure("Token khong hop le."));
+
+        if (string.IsNullOrWhiteSpace(request.Prompt))
+            return BadRequest(ApiResponse<List<CreateBankQuestionRequest>>.CreateFailure("Vui long nhap yeu cau de sinh cau hoi."));
+
+        try
+        {
+            var data = await _questionBankService.GenerateQuestionsAiPreviewAsync(bankId, request, userId, ct);
+            return Ok(ApiResponse<List<CreateBankQuestionRequest>>.CreateSuccess(data, "Sinh ban xem truoc cau hoi tu AI thanh cong."));
+        }
+        catch (ValidationException ex) { return BadRequest(ApiResponse<List<CreateBankQuestionRequest>>.CreateFailure(ex.Errors.First().ErrorMessage)); }
+        catch (KeyNotFoundException ex) { return NotFound(ApiResponse<List<CreateBankQuestionRequest>>.CreateFailure(ex.Message)); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<List<CreateBankQuestionRequest>>.CreateFailure(ex.Message)); }
+        catch (InvalidOperationException ex) { return BadRequest(ApiResponse<List<CreateBankQuestionRequest>>.CreateFailure(ex.Message)); }
+        catch (ArgumentException ex) { return BadRequest(ApiResponse<List<CreateBankQuestionRequest>>.CreateFailure(ex.Message)); }
+    }
+
+    [HttpPost("api/question-banks/{bankId:int}/questions/bulk")]
+    [Authorize(Roles = "Teacher")]
+    public async Task<ActionResult<ApiResponse<BankQuestionImportResultDto>>> CreateQuestionsBulk(int bankId, [FromBody] List<CreateBankQuestionRequest> requests, CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+            return Unauthorized(ApiResponse<BankQuestionImportResultDto>.CreateFailure("Token khong hop le."));
+
+        try
+        {
+            var data = await _questionBankService.CreateQuestionsBulkAsync(bankId, requests, userId, ct);
+            return Ok(ApiResponse<BankQuestionImportResultDto>.CreateSuccess(data, "Nhap danh sach cau hoi vao ngan hang thanh cong."));
+        }
+        catch (ValidationException ex) { return BadRequest(ApiResponse<BankQuestionImportResultDto>.CreateFailure(ex.Errors.First().ErrorMessage)); }
+        catch (KeyNotFoundException ex) { return NotFound(ApiResponse<BankQuestionImportResultDto>.CreateFailure(ex.Message)); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<BankQuestionImportResultDto>.CreateFailure(ex.Message)); }
+        catch (InvalidOperationException ex) { return BadRequest(ApiResponse<BankQuestionImportResultDto>.CreateFailure(ex.Message)); }
+        catch (ArgumentException ex) { return BadRequest(ApiResponse<BankQuestionImportResultDto>.CreateFailure(ex.Message)); }
+    }
+
     [HttpPost("api/exams/{examId:int}/bank-questions")]
     [Authorize(Roles = "Teacher")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<QuestionDto>>>> SnapshotToExam(int examId, [FromBody] SnapshotBankQuestionsRequest request, CancellationToken ct)

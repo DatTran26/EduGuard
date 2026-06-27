@@ -145,7 +145,7 @@ public class ExamMatrixService : IExamMatrixService
             StartTime = startTime,
             EndTime = endTime,
             EnableAntiCheat = request.EnableAntiCheat,
-            IsPublished = true,
+            IsPublished = request.IsPublished,
             CreatedAt = DateTime.UtcNow,
             Setting = ExamSettingMapper.BuildEntity(request.Settings),
             Questions = examQuestions
@@ -319,15 +319,78 @@ public class ExamMatrixService : IExamMatrixService
             && question.Difficulty == item.Difficulty
             && SubjectMatches(question.Subject, matrix.Subject)
             && (!item.QuestionType.HasValue || question.QuestionType == item.QuestionType.Value)
-            && OptionalTextMatches(question.Chapter, item.Chapter)
+            && ChapterOptionalTextMatches(question.Chapter, item.Chapter)
             && OptionalTextMatches(question.Lesson, item.Lesson)
             && OptionalTextMatches(question.LearningOutcome, item.LearningOutcome))
             .OrderBy(question => question.TimesUsed)
             .ThenBy(question => question.Id)
             .ToList();
 
-    private static bool SubjectMatches(string? actual, string? expected) =>
-        string.IsNullOrWhiteSpace(expected) || string.IsNullOrWhiteSpace(actual) || TextEquals(actual, expected);
+    private static bool SubjectMatches(string? actual, string? expected)
+    {
+        if (string.IsNullOrWhiteSpace(expected) || string.IsNullOrWhiteSpace(actual))
+            return true;
+
+        var s1 = actual.Trim().ToLowerInvariant();
+        var s2 = expected.Trim().ToLowerInvariant();
+
+        if (s1 == s2) return true;
+
+        s1 = RemoveDiacritics(s1).Replace(" học", "").Replace(" hoc", "");
+        s2 = RemoveDiacritics(s2).Replace(" học", "").Replace(" hoc", "");
+
+        if (s1 == s2) return true;
+
+        return s1.Contains(s2) || s2.Contains(s1);
+    }
+
+    private static string RemoveDiacritics(string text)
+    {
+        var normalizedString = text.Normalize(System.Text.NormalizationForm.FormD);
+        var stringBuilder = new System.Text.StringBuilder();
+
+        foreach (var c in normalizedString)
+        {
+            var unicodeCategory = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+            if (unicodeCategory != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                stringBuilder.Append(c);
+            }
+        }
+
+        return stringBuilder.ToString().Normalize(System.Text.NormalizationForm.FormC);
+    }
+
+    private static bool ChapterOptionalTextMatches(string? actual, string? expected)
+    {
+        if (string.IsNullOrWhiteSpace(expected))
+            return true;
+
+        var actualNormalized = NormalizeOptional(actual);
+        if (string.IsNullOrWhiteSpace(actualNormalized))
+            return false;
+
+        var expectedChapters = expected.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => ExtractChapterDigits(x))
+            .Where(x => !string.IsNullOrEmpty(x))
+            .ToList();
+
+        if (expectedChapters.Count == 0)
+            return true;
+
+        var actualDigits = ExtractChapterDigits(actualNormalized);
+        return expectedChapters.Any(exp => string.Equals(actualDigits, exp, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string? ExtractChapterDigits(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        var trimmed = value.Trim();
+        var digits = new string(trimmed.Where(char.IsDigit).ToArray());
+        return !string.IsNullOrEmpty(digits) ? digits : trimmed;
+    }
 
     private static bool OptionalTextMatches(string? actual, string? expected) =>
         string.IsNullOrWhiteSpace(expected) || TextEquals(actual, expected);
