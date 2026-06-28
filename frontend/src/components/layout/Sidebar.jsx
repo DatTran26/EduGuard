@@ -5,6 +5,7 @@ import {
   FiBookOpen,
   FiBell,
   FiBarChart2,
+  FiCamera,
   FiClipboard,
   FiFileText,
   FiHome,
@@ -26,6 +27,16 @@ function getNavigationLinkClassName(isActive) {
   );
 }
 
+function getNavigationIconWrapperClassName(isActive) {
+  return cn(
+    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border transition-all duration-200",
+    "max-lg:h-auto max-lg:w-auto max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none",
+    isActive
+      ? "border-sky-200/24 bg-white/14 text-white shadow-[0_10px_24px_rgba(56,189,248,0.16)]"
+      : "border-white/10 bg-white/6 text-slate-200 shadow-[0_10px_24px_rgba(15,47,87,0.16)]",
+  );
+}
+
 function SidebarCollapseToggleIcon({ isCollapsed }) {
   return isCollapsed ? <FiChevronsRight className="h-4 w-4" /> : <FiChevronsLeft className="h-4 w-4" />;
 }
@@ -37,7 +48,7 @@ function getNavigationIconByLabel(label) {
   if (label === "Bài tập") {
     return FiFileText;
   }
-  if (label === "Bài kiểm tra" || label === "Đề thi" || label === "Quản lí bài kiểm tra") {
+  if (label === "Bài kiểm tra" || label === "Đề thi" || label === "Quản lí bài kiểm tra" || label === "Hoạt động học tập") {
     return FiClipboard;
   }
   if (label === "Tham gia lớp") {
@@ -49,10 +60,13 @@ function getNavigationIconByLabel(label) {
   if (label === "Giám sát" || label === "Giám sát thi") {
     return FiShield;
   }
+  if (label === "Kho hình ảnh/ Video") {
+    return FiCamera;
+  }
   if (label === "Kết quả") {
     return FiBarChart2;
   }
-  if (label === "Thông báo") {
+  if (label === "Thông báo" || label === "Xem thông báo") {
     return FiBell;
   }
   if (label === "Hồ sơ" || label === "Hồ sơ cá nhân") {
@@ -84,10 +98,6 @@ function getNavigationItemIsActive(itemPath, pathname) {
     );
   }
 
-  if (itemPath === routeConfig.teacherAssignments) {
-    return pathname === routeConfig.teacherAssignments;
-  }
-
   if (itemPath === routeConfig.adminClassrooms) {
     return (
       pathname === routeConfig.adminClassrooms ||
@@ -106,16 +116,25 @@ function getNavigationItemIsActive(itemPath, pathname) {
     );
   }
 
-  if (itemPath === routeConfig.teacherExams) {
+  if (itemPath === routeConfig.teacherTasks) {
     return (
+      pathname === routeConfig.teacherTasks ||
+      pathname === routeConfig.teacherAssignments ||
       pathname === routeConfig.teacherExams ||
-      Boolean(matchPath(routeConfig.teacherExamDetail, pathname)) ||
-      Boolean(matchPath(routeConfig.teacherProctoring, pathname))
+      (Boolean(matchPath(routeConfig.teacherExamDetail, pathname)) &&
+        !matchPath(routeConfig.teacherProctoring, pathname))
     );
   }
 
   if (itemPath === routeConfig.teacherMonitoring) {
-    return pathname === routeConfig.teacherMonitoring;
+    return (
+      pathname === routeConfig.teacherMonitoring ||
+      Boolean(matchPath(routeConfig.teacherProctoring, pathname))
+    );
+  }
+
+  if (itemPath === routeConfig.teacherProctoringEvidence) {
+    return pathname === routeConfig.teacherProctoringEvidence;
   }
 
   if (itemPath === routeConfig.teacherResults) {
@@ -132,6 +151,14 @@ function getNavigationItemIsActive(itemPath, pathname) {
 
   if (itemPath === routeConfig.adminProctoringAi) {
     return pathname === routeConfig.adminProctoringAi;
+  }
+
+  if (itemPath === routeConfig.adminEmailSettings) {
+    return pathname === routeConfig.adminEmailSettings;
+  }
+
+  if (itemPath === routeConfig.adminProctoringEvidence) {
+    return pathname === routeConfig.adminProctoringEvidence;
   }
 
   return pathname === itemPath;
@@ -168,7 +195,7 @@ export default function Sidebar({
     >
       <div
         className={cn(
-          "flex h-full w-[280px] flex-col bg-obsidian border-r border-white/10 transition-transform duration-200 lg:h-screen lg:rounded-none lg:border-r lg:border-white/5 lg:sticky lg:top-0",
+          "flex h-full w-[280px] flex-col border-r border-white/10 bg-[linear-gradient(145deg,#0f2f57_0%,#0a2545_100%)] shadow-[0_24px_60px_rgba(15,47,87,0.28)] transition-transform duration-200 lg:h-screen lg:rounded-none lg:border-r lg:border-white/8 lg:sticky lg:top-0",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           isCollapsed ? "lg:w-[92px]" : "lg:w-[280px]",
         )}
@@ -182,12 +209,12 @@ export default function Sidebar({
         >
           <div className="flex items-center gap-3">
             <div className="relative">
-              <span className="absolute -inset-1 rounded-[14px] bg-white/5 blur-[10px]" aria-hidden="true" />
+              <span className="absolute -inset-1 rounded-[14px] bg-sky-300/10 blur-[12px]" aria-hidden="true" />
               <img alt="Logo EduGuard" className="relative h-8 w-auto object-contain" src="/logo.png" />
             </div>
             <div className={cn(isCollapsed ? "lg:hidden" : "")}>
-              <h2 className="text-base font-bold tracking-tight text-white leading-none">EduGuard</h2>
-              <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400 mt-1">
+              <h2 className="text-base font-bold leading-none tracking-tight text-white">EduGuard</h2>
+              <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-300/80">
                 Workspace
               </p>
             </div>
@@ -195,7 +222,7 @@ export default function Sidebar({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="rounded-[12px] border border-white/10 px-3 py-1.5 text-xs text-slate-400 hover:text-white lg:hidden"
+              className="rounded-[12px] border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-slate-200 transition-colors duration-200 hover:bg-white/12 hover:text-white lg:hidden"
               onClick={onClose}
             >
               Đóng
@@ -222,40 +249,32 @@ export default function Sidebar({
                   isCollapsed ? "lg:px-2 lg:py-2.5 lg:rounded-[16px]" : "",
                 )}
                 onClick={onNavigate}
-                title={isCollapsed ? item.label : undefined}
+                title={item.label}
                 to={item.path}
               >
-                <span className={cn("flex items-center gap-3", isCollapsed ? "lg:justify-center" : "")}>
-                  <span
-                    className={cn(
-                      "inline-flex h-9 w-9 items-center justify-center rounded-[14px] border border-white/10 bg-white/6 text-white/90",
-                      isCollapsed ? "lg:flex" : "hidden lg:flex",
-                    )}
-                  >
-                    <ItemIcon className="h-[18px] w-[18px]" />
+                <span className={cn("flex min-w-0 items-center gap-3", isCollapsed ? "lg:justify-center" : "")}>
+                  <span className={getNavigationIconWrapperClassName(isItemActive)}>
+                    <ItemIcon className="h-[18px] w-[18px] max-lg:text-slate-200" />
                   </span>
-                  <span className={cn("flex items-center gap-3", isCollapsed ? "lg:hidden" : "")}>
-                    <ItemIcon className="h-[18px] w-[18px] text-slate-300 lg:hidden" />
-                    <span>{item.label}</span>
-                  </span>
+                  <span className={cn("min-w-0 truncate", isCollapsed ? "lg:hidden" : "")}>{item.label}</span>
                 </span>
               </Link>
             );
           })}
         </nav>
 
-        <div className={cn("border-t border-white/10 pt-4 pb-5 mt-auto", isCollapsed ? "px-3" : "px-5")}>
+        <div className={cn("mt-auto border-t border-white/10 pt-4 pb-5", isCollapsed ? "px-3" : "px-5")}>
           <button
             type="button"
             className={cn(
-              "mx-auto flex items-center justify-center gap-2 rounded-[12px] px-3 py-2 text-[10px] font-semibold text-slate-400 transition-all duration-200 hover:bg-white/5 hover:text-white",
+              "mx-auto flex items-center justify-center gap-2 rounded-[12px] px-3 py-2 text-[10px] font-semibold text-slate-300 transition-all duration-200 hover:bg-white/6 hover:text-white",
               isCollapsed ? "lg:px-2" : "",
             )}
             onClick={onToggleCollapse}
             title={isCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
             aria-label={isCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
           >
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-[12px] border border-white/10 bg-white/5 text-slate-200">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-[12px] border border-white/10 bg-white/8 text-slate-100 shadow-[0_8px_18px_rgba(15,47,87,0.18)]">
               <SidebarCollapseToggleIcon isCollapsed={isCollapsed} />
             </span>
             {!isCollapsed ? <span className="hidden lg:inline">Thu gọn</span> : null}

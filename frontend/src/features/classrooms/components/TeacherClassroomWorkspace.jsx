@@ -19,14 +19,18 @@ import { examAttemptApi } from "../../../api/examAttemptApi";
 import Badge from "../../../components/common/Badge";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
+import Skeleton from "../../../components/common/Skeleton";
 import {
+  buildTeacherTasksPath,
   buildExamDetailPathByRole,
-  routeConfig,
 } from "../../../routes/routeConfig";
 import { formatShortDateTime } from "../../../utils/formatDate";
+import { buildTeacherExamMonitoringPath, isLiveProctoringRoomAvailable } from "../../proctoring/utils/proctoringRouting";
+import ProctoringRoomLink from "../../proctoring/components/ProctoringRoomLink";
 import AssignmentSection from "../../assignments/components/AssignmentSection";
 import { getExamStatusVariant } from "../../exams/examHelpers";
 import { normalizeTeacherClassroomTab } from "./teacher-classroom-tabs";
+import TeacherNotificationTab from "./TeacherNotificationTab";
 
 const OVERVIEW_BAR_COLORS = {
   assignments: "#1D4ED8",
@@ -192,18 +196,42 @@ export default function TeacherClassroomWorkspace({
   members,
   showToast,
   user,
+  // Lifted props
+  assignments: propAssignments,
+  submissionsByAssignmentId: propSubmissionsByAssignmentId,
+  exams: propExams,
+  attempts: propAttempts,
+  warningCountByExamId: propWarningCountByExamId,
+  notifications: propNotifications,
+  isLoading: propIsLoading,
+  onNotificationCreated,
+  onAssignmentCreated,
 }) {
-  const [assignments, setAssignments] = useState([]);
+  const [assignments, setAssignments] = useState(propAssignments || []);
   const [submissionsByAssignmentId, setSubmissionsByAssignmentId] = useState(
-    {},
+    propSubmissionsByAssignmentId || {},
   );
-  const [exams, setExams] = useState([]);
-  const [attempts, setAttempts] = useState([]);
-  const [warningCountByExamId, setWarningCountByExamId] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [exams, setExams] = useState(propExams || []);
+  const [attempts, setAttempts] = useState(propAttempts || []);
+  const [warningCountByExamId, setWarningCountByExamId] = useState(
+    propWarningCountByExamId || {},
+  );
+  const [isLoading, setIsLoading] = useState(
+    propIsLoading !== undefined ? propIsLoading : true,
+  );
   const resolvedActiveTab = normalizeTeacherClassroomTab(activeTab);
 
   useEffect(() => {
+    if (propAssignments !== undefined) {
+      setAssignments(propAssignments);
+      setSubmissionsByAssignmentId(propSubmissionsByAssignmentId || {});
+      setExams(propExams || []);
+      setAttempts(propAttempts || []);
+      setWarningCountByExamId(propWarningCountByExamId || {});
+      setIsLoading(propIsLoading !== undefined ? propIsLoading : false);
+      return;
+    }
+
     let isMounted = true;
 
     async function loadWorkspaceData() {
@@ -294,7 +322,7 @@ export default function TeacherClassroomWorkspace({
     return () => {
       isMounted = false;
     };
-  }, [classroom.id, showToast]);
+  }, [classroom.id, showToast, propAssignments, propSubmissionsByAssignmentId, propExams, propAttempts, propWarningCountByExamId, propIsLoading]);
 
   const studentRows = useMemo(
     () => buildStudentSummaryRows(members, submissionsByAssignmentId, attempts),
@@ -343,9 +371,29 @@ export default function TeacherClassroomWorkspace({
 
   if (isLoading) {
     return (
-      <Card className="text-sm text-secondary">
-        Đang tải workspace lớp học...
-      </Card>
+      <div className="space-y-6 animate-pulse">
+        <Card className="space-y-5">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-[280px] w-full rounded-2xl" />
+        </Card>
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <Card className="p-5 space-y-4">
+            <Skeleton className="h-6 w-32" />
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full rounded-xl" />
+              <Skeleton className="h-10 w-full rounded-xl" />
+            </div>
+          </Card>
+          <Card className="p-5 space-y-4">
+            <Skeleton className="h-6 w-32" />
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full rounded-xl" />
+              <Skeleton className="h-10 w-full rounded-xl" />
+            </div>
+          </Card>
+        </div>
+      </div>
     );
   }
 
@@ -491,6 +539,15 @@ export default function TeacherClassroomWorkspace({
           classroom={classroom}
           showToast={showToast}
           user={user}
+          onAssignmentCreated={onAssignmentCreated}
+        />
+      ) : null}
+
+      {resolvedActiveTab === "notifications" ? (
+        <TeacherNotificationTab
+          classroom={classroom}
+          members={members}
+          onNotificationCreated={onNotificationCreated}
         />
       ) : null}
 
@@ -505,7 +562,7 @@ export default function TeacherClassroomWorkspace({
 
             <Link
               className="eg-button eg-button-primary"
-              to={`${routeConfig.teacherExams}?create=1&classroomId=${classroom.id}`}
+              to={buildTeacherTasksPath("exam", { create: 1, classroomId: classroom.id })}
             >
               Tạo bài thi
             </Link>
@@ -514,7 +571,17 @@ export default function TeacherClassroomWorkspace({
           <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
             <div>
               {exams.length === 0 ? (
-                <EmptyState title="Chưa có bài thi nào cho lớp học này." />
+                <EmptyState 
+                  title="Lớp chưa có bài thi nào"
+                  action={
+                    <Link
+                      className="eg-button eg-button-primary"
+                      to={buildTeacherTasksPath("exam", { create: 1, classroomId: classroom.id })}
+                    >
+                      Tạo bài thi
+                    </Link>
+                  }
+                />
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {exams.map((exam) => (
@@ -577,12 +644,21 @@ export default function TeacherClassroomWorkspace({
                         >
                           Xem chi tiết
                         </Link>
-                        <Link
-                          className="eg-button eg-button-ghost"
-                          to={`${routeConfig.teacherMonitoring}?examId=${exam.id}`}
-                        >
-                          Giám sát
-                        </Link>
+                        {isLiveProctoringRoomAvailable(exam) ? (
+                          <ProctoringRoomLink
+                            className="eg-button eg-button-ghost"
+                            examId={exam.id}
+                          >
+                            Giám sát
+                          </ProctoringRoomLink>
+                        ) : (
+                          <Link
+                            className="eg-button eg-button-ghost"
+                            to={buildTeacherExamMonitoringPath(exam)}
+                          >
+                            Giám sát
+                          </Link>
+                        )}
                       </div>
                     </Card>
                   ))}

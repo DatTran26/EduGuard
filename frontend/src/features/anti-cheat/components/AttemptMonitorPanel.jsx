@@ -5,6 +5,7 @@ import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
+import Skeleton from "../../../components/common/Skeleton";
 import {
   createExamMonitoringConnection,
   EXAM_MONITORING_EVENTS,
@@ -16,7 +17,11 @@ import {
   getSuspicionScoreMeta,
   normalizeAntiCheatEventType,
 } from "../antiCheatHelpers";
-import { buildTeacherProctoringPath } from "../../../routes/routeConfig";
+import ProctoringRoomLink from "../../proctoring/components/ProctoringRoomLink";
+import {
+  buildTeacherExamMonitoringPath,
+  isLiveProctoringRoomAvailable,
+} from "../../proctoring/utils/proctoringRouting";
 
 function buildAttemptSummaryItems(attempts = [], antiCheatSummary = null) {
   const submittedCount = attempts.filter((attempt) => attempt.status === "Submitted").length;
@@ -85,6 +90,34 @@ function getRealtimeStatusMeta(status) {
   return { label: "Chưa kết nối", variant: "neutral" };
 }
 
+function hasActiveAttempts(attempts = []) {
+  return attempts.some((attempt) => attempt.status === "InProgress");
+}
+
+function isExamMonitoringSessionLive(exam, attempts = []) {
+  if (!exam) {
+    return false;
+  }
+
+  if (hasActiveAttempts(attempts)) {
+    return true;
+  }
+
+  if (exam.statusLabel === "Đã đóng") {
+    return false;
+  }
+
+  return exam.statusLabel === "Đang mở";
+}
+
+function resolveMonitoringStatusMeta(realtimeStatus, isSessionLive) {
+  if (!isSessionLive) {
+    return { label: "Đã kết thúc", variant: "neutral" };
+  }
+
+  return getRealtimeStatusMeta(realtimeStatus);
+}
+
 function normalizeRealtimeAntiCheatWarning(warning) {
   return {
     id: Number(warning?.logId) || Number(warning?.id) || 0,
@@ -105,6 +138,7 @@ function normalizeRealtimeAntiCheatWarning(warning) {
 
 export default function AttemptMonitorPanel({
   antiCheatSummary = null,
+  embedded = false,
   exam,
   onAntiCheatWarning,
   showToast,
@@ -127,14 +161,19 @@ export default function AttemptMonitorPanel({
   );
   const selectedAttempt = monitorItems.find((attempt) => attempt.id === selectedAttemptId) ?? null;
   const selectedScoreMeta = getSuspicionScoreMeta(selectedAttemptScore?.suspicionScore ?? 0);
-  const realtimeStatusMeta = getRealtimeStatusMeta(realtimeStatus);
+  const isSessionLive = useMemo(
+    () => isExamMonitoringSessionLive(exam, attempts),
+    [attempts, exam],
+  );
+  const realtimeStatusMeta = resolveMonitoringStatusMeta(realtimeStatus, isSessionLive);
 
   useEffect(() => {
     selectedAttemptIdRef.current = selectedAttemptId;
   }, [selectedAttemptId]);
 
   useEffect(() => {
-    if (!exam?.enableAntiCheat || !exam?.id) {
+    if (!exam?.enableAntiCheat || !exam?.id || !isSessionLive) {
+      setRealtimeStatus("idle");
       return undefined;
     }
 
@@ -143,7 +182,6 @@ export default function AttemptMonitorPanel({
 
     function handleWarning(rawWarning) {
       const warning = normalizeRealtimeAntiCheatWarning(rawWarning);
-      const eventMeta = getAntiCheatEventMeta(warning.type);
 
       onAntiCheatWarning?.(warning);
 
@@ -158,12 +196,6 @@ export default function AttemptMonitorPanel({
           ...previousLogs.filter((logItem) => logItem.id !== warning.id),
         ]);
       }
-
-      showToast({
-        tone: eventMeta.variant === "danger" ? "danger" : "info",
-        title: "Cảnh báo phòng thi",
-        message: `${warning.studentName || "Học sinh"}: ${eventMeta.label}`,
-      });
     }
 
     async function startConnection() {
@@ -218,7 +250,7 @@ export default function AttemptMonitorPanel({
           connection.stop().catch(() => {});
         });
     };
-  }, [exam?.enableAntiCheat, exam?.id, onAntiCheatWarning, showToast]);
+  }, [exam?.enableAntiCheat, exam?.id, isSessionLive, onAntiCheatWarning]);
 
   async function handleInspectAttempt(attemptId) {
     if (!exam.enableAntiCheat) {
@@ -257,35 +289,59 @@ export default function AttemptMonitorPanel({
 
   return (
     <div className="space-y-6">
-      <Card className="space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold text-primary">Lượt làm bài</h3>
+      {!embedded ? (
+        <Card className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-lg font-semibold text-primary">Lượt làm bài</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              {exam.enableAntiCheat ? (
+                <Badge variant="caution">Anti-cheat bật</Badge>
+              ) : (
+                <Badge variant="neutral">Anti-cheat tắt</Badge>
+              )}
+              {exam.enableAntiCheat ? (
+                <Badge variant={realtimeStatusMeta.variant}>{realtimeStatusMeta.label}</Badge>
+              ) : null}
+              {exam.isPublished ? (
+                isLiveProctoringRoomAvailable(exam) ? (
+                  <Button as={ProctoringRoomLink} examId={exam.id}>
+                    Vào phòng giám sát
+                  </Button>
+                ) : (
+                  <Button as={Link} to={buildTeacherExamMonitoringPath(exam)} variant="secondary">
+                    Xem log anti-cheat
+                  </Button>
+                )
+              ) : null}
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {summaryItems.map((item) => (
+              <div key={item.label} className="rounded-[16px] border border-border bg-neutral p-4">
+                <p className="text-[0.82rem] font-medium text-secondary">{item.label}</p>
+                <p className="mt-3 text-2xl font-semibold tracking-tight text-primary">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-border bg-neutral px-4 py-3">
           <div className="flex flex-wrap items-center gap-2">
-            {exam.enableAntiCheat ? (
-              <Badge variant="caution">Anti-cheat bật</Badge>
-            ) : (
-              <Badge variant="neutral">Anti-cheat tắt</Badge>
-            )}
+            <p className="text-sm font-semibold text-primary">Lượt làm bài</p>
             {exam.enableAntiCheat ? (
               <Badge variant={realtimeStatusMeta.variant}>{realtimeStatusMeta.label}</Badge>
             ) : null}
-            {exam.settings?.enableLiveProctoring ? (
-              <Button as={Link} to={buildTeacherProctoringPath(exam.id)} variant="secondary">
-                Mở phòng giám sát live
-              </Button>
-            ) : null}
+          </div>
+          <div className="flex flex-wrap gap-4 text-sm text-secondary">
+            {summaryItems.map((item) => (
+              <span key={item.label}>
+                <span className="font-medium text-primary">{item.value}</span> {item.label.toLowerCase()}
+              </span>
+            ))}
           </div>
         </div>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {summaryItems.map((item) => (
-            <div key={item.label} className="rounded-[16px] border border-border bg-neutral p-4">
-              <p className="text-[0.82rem] font-medium text-secondary">{item.label}</p>
-              <p className="mt-3 text-2xl font-semibold tracking-tight text-primary">{item.value}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
+      )}
 
       {monitorItems.length === 0 ? (
         <EmptyState title="Chưa có lượt làm nào." />
@@ -344,7 +400,7 @@ export default function AttemptMonitorPanel({
           <Card className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h4 className="text-lg font-semibold text-primary">
-                {exam.enableAntiCheat ? "Chi tiet anti-cheat" : "Chi tiet luot lam"}
+                {exam.enableAntiCheat ? "Chi tiết anti-cheat" : "Chi tiết lượt làm"}
               </h4>
               {selectedAttempt ? (
                 <Button onClick={() => handleInspectAttempt(selectedAttempt.id)} variant="ghost">
@@ -358,8 +414,16 @@ export default function AttemptMonitorPanel({
                 Chọn một lượt làm để xem chi tiết.
               </div>
             ) : isLoadingAttemptDetail ? (
-              <div className="rounded-[16px] border border-border bg-neutral p-4 text-sm text-secondary">
-                Đang tải chi tiết lượt làm...
+              <div className="rounded-[16px] border border-border bg-neutral p-5 text-sm text-secondary animate-pulse space-y-4">
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                  <Skeleton className="h-6 w-24 rounded-full" />
+                </div>
+                <div className="space-y-3">
+                  <Skeleton className="h-5 w-2/3 rounded-md" />
+                  <Skeleton className="h-5 w-1/2 rounded-md" />
+                  <Skeleton className="h-5 w-3/4 rounded-md" />
+                </div>
               </div>
             ) : (
               <div className="space-y-4">

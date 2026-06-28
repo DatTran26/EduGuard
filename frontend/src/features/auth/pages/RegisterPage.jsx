@@ -76,7 +76,7 @@ function WizardStepIndicator({ currentStep }) {
 // Trang này đăng ký tài khoản mới qua backend rồi đăng nhập luôn để giữ trải nghiệm mượt hơn.
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, verifyEmailRegistration, resendVerificationEmail } = useAuth();
   const { showToast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [slideDirection, setSlideDirection] = useState("right");
@@ -91,6 +91,9 @@ export default function RegisterPage() {
   const [registerErrorMessage, setRegisterErrorMessage] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRegisteringAccount, setIsRegisteringAccount] = useState(false);
+  const [isResendingOtp, setIsResendingOtp] = useState(false);
+  const [accountRegistered, setAccountRegistered] = useState(false);
 
   // Hàm này cập nhật state form đăng ký theo từng field để phần submit dưới đây đỡ lặp lại.
   function handleFieldChange(fieldName, value) {
@@ -174,6 +177,45 @@ export default function RegisterPage() {
     setRegisterErrorMessage("");
   }
 
+  async function handleRegisterAccount() {
+    const nextValidationErrors = validateFormValues();
+    setValidationErrors(nextValidationErrors);
+    setRegisterErrorMessage("");
+    if (hasValidationErrors(nextValidationErrors)) return;
+
+    setIsRegisteringAccount(true);
+    try {
+      const result = await register(formValues);
+      setAccountRegistered(true);
+
+      if (result.requiresEmailVerification) {
+        showToast({
+          tone: "success",
+          title: "Đăng ký thành công",
+          message: "Kiểm tra email để lấy mã OTP 6 chữ số.",
+        });
+        goToStep(4, "right");
+        return;
+      }
+
+      showToast({
+        tone: "success",
+        title: "Đăng ký thành công",
+        message: "Tài khoản mới đã được tạo và đăng nhập vào hệ thống.",
+      });
+      navigate(getDefaultPathByRole(result.session.user.role), { replace: true });
+    } catch (error) {
+      setRegisterErrorMessage(error.message || "Không thể tạo tài khoản mới.");
+      showToast({
+        tone: "danger",
+        title: "Đăng ký thất bại",
+        message: error.message || "Không thể tạo tài khoản mới.",
+      });
+    } finally {
+      setIsRegisteringAccount(false);
+    }
+  }
+
   function handleNext() {
     if (currentStep === 1) {
       const errors = validateStep1();
@@ -185,6 +227,10 @@ export default function RegisterPage() {
       setValidationErrors(errors);
       if (hasValidationErrors(errors)) return;
     }
+    if (currentStep === 3) {
+      handleRegisterAccount();
+      return;
+    }
     goToStep(currentStep + 1, "right");
   }
 
@@ -192,32 +238,60 @@ export default function RegisterPage() {
     goToStep(currentStep - 1, "left");
   }
 
-  // Hàm này submit thông tin đăng ký rồi đưa user mới về route mặc định của Student.
+  // Hàm này xác thực OTP rồi đăng nhập user sau khi tài khoản đã được tạo ở bước trước.
   async function handleSubmit(event) {
     event.preventDefault();
-    const nextValidationErrors = validateFormValues();
-    setValidationErrors(nextValidationErrors);
-    setRegisterErrorMessage("");
-    if (hasValidationErrors(nextValidationErrors)) return;
+    const otpCode = otpValues.join("");
+    if (otpCode.length !== 6) {
+      setRegisterErrorMessage("Vui lòng nhập đủ mã OTP 6 chữ số.");
+      return;
+    }
 
     setIsSubmitting(true);
+    setRegisterErrorMessage("");
     try {
-      const session = await register(formValues);
+      const session = await verifyEmailRegistration({
+        email: formValues.email,
+        code: otpCode,
+      });
       showToast({
         tone: "success",
-        title: "Đăng ký thành công",
-        message: "Tài khoản mới đã được tạo và đăng nhập vào hệ thống.",
+        title: "Xác thực thành công",
+        message: "Email đã được xác thực. Chào mừng bạn đến EduGuard!",
       });
       navigate(getDefaultPathByRole(session.user.role), { replace: true });
     } catch (error) {
-      setRegisterErrorMessage(error.message || "Không thể tạo tài khoản mới.");
+      setRegisterErrorMessage(error.message || "Mã xác thực không hợp lệ.");
       showToast({
         tone: "danger",
-        title: "Đăng ký thất bại",
-        message: error.message || "Không thể tạo tài khoản mới.",
+        title: "Xác thực thất bại",
+        message: error.message || "Mã xác thực không hợp lệ.",
       });
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleResendOtp() {
+    setIsResendingOtp(true);
+    setRegisterErrorMessage("");
+    try {
+      await resendVerificationEmail({ email: formValues.email });
+      setOtpValues(["", "", "", "", "", ""]);
+      showToast({
+        tone: "success",
+        title: "Đã gửi lại mã",
+        message: "Mã OTP mới đã được gửi đến email của bạn.",
+      });
+    } catch (error) {
+      setRegisterErrorMessage(error.message || "Không thể gửi lại mã xác thực.");
+      showToast({
+        tone: "danger",
+        title: "Gửi lại thất bại",
+        message: error.message || "Không thể gửi lại mã xác thực.",
+      });
+    } finally {
+      setIsResendingOtp(false);
     }
   }
 
@@ -355,14 +429,14 @@ export default function RegisterPage() {
                 >
                   <FiChevronLeft className="h-4 w-4" /> Quay lại
                 </button>
-                <Button className="eg-auth-primary-button flex-[2]" onClick={handleNext}>
-                  Tiếp theo <FiChevronRight className="inline-block h-4 w-4 ml-1" />
+                <Button className="eg-auth-primary-button flex-[2]" disabled={isRegisteringAccount} onClick={handleNext}>
+                  {isRegisteringAccount ? "Đang tạo tài khoản..." : "Tiếp theo"} <FiChevronRight className="inline-block h-4 w-4 ml-1" />
                 </Button>
               </div>
             </div>
           ) : null}
 
-          {/* ── Step 4: OTP placeholder ── */}
+          {/* ── Step 4: Email OTP verification ── */}
           {currentStep === 4 ? (
             <form className="space-y-5" noValidate onSubmit={handleSubmit}>
               <FormErrorSummary message={formErrorMessage} />
@@ -378,6 +452,11 @@ export default function RegisterPage() {
                   Nhập mã OTP 6 chữ số gửi đến{" "}
                   <strong className="text-primary">{formValues.email}</strong>
                 </p>
+                {!accountRegistered ? (
+                  <p className="text-xs text-secondary">
+                    Tài khoản chưa được tạo. Quay lại bước trước để hoàn tất thông tin đăng ký.
+                  </p>
+                ) : null}
                 <div className="eg-auth-otp-grid" role="group" aria-label="Mã OTP 6 chữ số">
                   {otpValues.map((val, idx) => (
                     <input
@@ -400,6 +479,14 @@ export default function RegisterPage() {
                     />
                   ))}
                 </div>
+                <button
+                  type="button"
+                  className="text-sm text-accent hover:underline disabled:opacity-50"
+                  disabled={isResendingOtp || !accountRegistered}
+                  onClick={handleResendOtp}
+                >
+                  {isResendingOtp ? "Đang gửi lại..." : "Gửi lại mã OTP"}
+                </button>
               </div>
 
               <div className="flex gap-3">
@@ -413,10 +500,10 @@ export default function RegisterPage() {
                 </button>
                 <Button
                   className="eg-auth-primary-button flex-[2]"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !accountRegistered}
                   type="submit"
                 >
-                  {isSubmitting ? "Đang tạo tài khoản..." : "Hoàn tất đăng ký"}
+                  {isSubmitting ? "Đang xác thực..." : "Hoàn tất đăng ký"}
                 </Button>
               </div>
             </form>

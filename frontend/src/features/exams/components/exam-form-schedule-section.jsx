@@ -8,6 +8,7 @@ export default function ExamFormScheduleSection({
   errors = {},
   expectedEndTimeValue = "",
   formValues,
+  isDurationReadOnly = false,
   isEndTimeManuallyEdited = false,
   onDurationChange,
   onEndTimeChange,
@@ -37,13 +38,19 @@ export default function ExamFormScheduleSection({
           error={errors.durationMinutes}
           helperText={showDescriptions ? "Thời lượng này được dùng để tính mốc đóng đề tự động khi bạn đã nhập giờ mở đề." : undefined}
           min="1"
-          onChange={(event) => onDurationChange(event.target.value)}
+          onChange={(event) => {
+            if (!isDurationReadOnly) {
+              onDurationChange(event.target.value);
+            }
+          }}
+          readOnly={isDurationReadOnly}
           required
           type="number"
           value={formValues.durationMinutes}
         />
         <TextInput
           id="exam-start-time"
+          error={errors.startTime}
           label="Thời gian mở đề"
           helperText={showDescriptions ? "Theo giờ Việt Nam (UTC+7)." : undefined}
           onChange={(event) => onStartTimeChange(event.target.value)}

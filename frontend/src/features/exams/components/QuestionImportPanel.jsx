@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Badge from "../../../components/common/Badge";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
@@ -33,6 +33,7 @@ export default function QuestionImportPanel({
   submittingLabel = "Đang commit...",
 }) {
   const fileInputRef = useRef(null);
+  const [isDragActive, setIsDragActive] = useState(false);
   const acceptedLabel = acceptedExtensions.join(", ");
 
   function handleTriggerFilePicker() {
@@ -43,6 +44,32 @@ export default function QuestionImportPanel({
     const [nextFile] = Array.from(event.target.files || []);
     onFileSelected(nextFile ?? null);
     event.target.value = "";
+  }
+
+  function handleDrag(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.type === "dragenter" || event.type === "dragover") {
+      setIsDragActive(true);
+    } else if (event.type === "dragleave") {
+      setIsDragActive(false);
+    }
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragActive(false);
+
+    if (isDisabled || isSubmitting) return;
+
+    if (event.dataTransfer.files && event.dataTransfer.files[0]) {
+      const nextFile = event.dataTransfer.files[0];
+      const extension = "." + nextFile.name.split(".").pop().toLowerCase();
+      if (acceptedExtensions.includes(extension)) {
+        onFileSelected(nextFile);
+      }
+    }
   }
 
   return (
@@ -66,9 +93,15 @@ export default function QuestionImportPanel({
       />
 
       <button
-        className="eg-question-import-dropzone"
+        className={`eg-question-import-dropzone transition-all duration-200 ${
+          isDragActive ? "border-primary bg-primary-muted/10 scale-[0.99] border-dashed" : ""
+        }`}
         disabled={isDisabled || isSubmitting}
         onClick={handleTriggerFilePicker}
+        onDragEnter={handleDrag}
+        onDragOver={handleDrag}
+        onDragLeave={handleDrag}
+        onDrop={handleDrop}
         type="button"
       >
         <span className="eg-question-import-dropzone-icon" aria-hidden="true">

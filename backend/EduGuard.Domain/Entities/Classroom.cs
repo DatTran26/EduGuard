@@ -12,4 +12,5 @@ public class Classroom
 
     public ApplicationUser Teacher { get; set; } = null!;
     public ICollection<ClassroomMember> Members { get; set; } = [];
+    public ICollection<Notification> Notifications { get; set; } = [];
 }

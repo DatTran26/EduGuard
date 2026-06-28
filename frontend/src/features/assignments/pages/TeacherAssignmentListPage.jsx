@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { FiActivity, FiClock, FiFileText, FiGrid } from "react-icons/fi";
+import { /*FiActivity, */FiClock, FiFileText, FiGrid } from "react-icons/fi";
 import { assignmentApi } from "../../../api/assignmentApi";
 import { classroomApi } from "../../../api/classroomApi";
 import Button from "../../../components/common/Button";
@@ -13,6 +13,7 @@ import PageHeader from "../../../components/layout/PageHeader";
 import { useToast } from "../../../hooks/useToast";
 import { formatShortDateTime } from "../../../utils/formatDate";
 import AssignmentForm from "../components/AssignmentForm";
+import Skeleton, { SkeletonStatCard } from "../../../components/common/Skeleton";
 
 function getAssignmentListStatus(assignment, currentTimestamp) {
   if (assignment.ungradedCount > 0) {
@@ -211,7 +212,7 @@ export default function TeacherAssignmentListPage() {
 
     try {
       const response = await assignmentApi.create(payload.classroomId, payload);
-      showToast({ tone: "success", title: "Đã tạo bài tập", message: response.message });
+      showToast({ tone: "success", title: "Đã tạo bài tập", message: response.message || "Sinh viên trong lớp sẽ nhận thông báo về bài tập mới." });
       window.location.reload();
       return true;
     } catch (error) {
@@ -359,7 +360,39 @@ export default function TeacherAssignmentListPage() {
       ) : null}
 
       {isLoading ? (
-        <Card className="text-sm text-secondary">Đang tải bài tập...</Card>
+        <div className="space-y-6 animate-pulse">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[0.96fr_1.04fr]">
+            <div className="space-y-4">
+              {[1, 2].map((i) => (
+                <Card key={i} className="space-y-4">
+                  <div className="flex justify-between">
+                    <div className="space-y-2 w-1/2">
+                      <Skeleton className="h-5 w-24 rounded-full" />
+                      <Skeleton className="h-6 w-full" />
+                    </div>
+                    <Skeleton className="h-10 w-24 rounded-xl" />
+                  </div>
+                  <div className="grid gap-3 grid-cols-2">
+                    <Skeleton className="h-16 rounded-xl" />
+                    <Skeleton className="h-16 rounded-xl" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+            <Card className="space-y-4">
+              <Skeleton className="h-6 w-1/3" />
+              <Skeleton className="h-8 w-2/3" />
+              <Skeleton className="h-[200px] w-full rounded-xl" />
+            </Card>
+          </div>
+        </div>
       ) : visibleAssignments.length === 0 ? (
         <EmptyState title="Không có bài tập phù hợp với bộ lọc hiện tại." />
       ) : (

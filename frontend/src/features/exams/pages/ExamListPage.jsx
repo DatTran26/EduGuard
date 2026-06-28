@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { classroomApi } from "../../../api/classroomApi";
 import { examApi } from "../../../api/examApi";
+import { questionBankApi } from "../../../api/questionBankApi";
+import { assignmentApi } from "../../../api/assignmentApi";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
@@ -18,6 +20,15 @@ import TeacherQuestionWorkspace from "../components/TeacherQuestionWorkspace";
 import { buildExamFormValues } from "../components/exam-form-helpers";
 import { validateQuestionImportFile } from "../components/teacher-question-workspace-helpers";
 import { buildDraftQuestion, resequenceDraftQuestions } from "./exam-create-draft-helpers";
+import {
+  resolveAssignmentSubmission,
+  sortAssignmentsByDeadline,
+} from "../../assignments/assignmentHelpers";
+import StudentTaskTabs from "../components/StudentTaskTabs";
+import StudentAssignmentCard from "../components/StudentAssignmentCard";
+import StudentExamCard from "../components/StudentExamCard";
+import StudentTaskGrid from "../components/StudentTaskGrid";
+import StudentTaskToolbar from "../components/StudentTaskToolbar";
 
 // Hàm này tính vài con số nhanh cho đầu trang danh sách đề thi để màn hình bớt khô hơn.
 function buildSummaryItems(exams, role) {
@@ -89,16 +100,63 @@ function buildEditableImportPreviewQuestions(questions = []) {
   );
 }
 
+function buildDraftQuestionFromBankQuestion(question, orderIndex) {
+  return buildDraftQuestion(
+    {
+      content: question.content,
+      questionType: question.questionType,
+      score: question.defaultScore,
+      orderIndex,
+      answers: Array.isArray(question.answers)
+        ? question.answers.map((answer, index) => ({
+            content: answer.content,
+            isCorrect: answer.isCorrect,
+            orderIndex: Number(answer.orderIndex) || index + 1,
+          }))
+        : [],
+    },
+    orderIndex,
+  );
+}
+
+function buildStudentAssignmentCard(assignment, classroomName, userId) {
+  const submission = resolveAssignmentSubmission(assignment, userId);
+
+  return {
+    ...assignment,
+    classroomName,
+    mySubmission: submission,
+  };
+}
+
+async function loadStudentAssignmentsByClassrooms(classrooms = [], userId) {
+  const assignmentPromises = classrooms.map((classroom) =>
+    assignmentApi.getByClassroom(classroom.id)
+      .then((response) =>
+        (response.data ?? []).map((assignment) => ({
+          ...buildStudentAssignmentCard(assignment, classroom.name, userId),
+        })),
+      )
+      .catch(() => []),
+  );
+
+  const allAssignments = await Promise.all(assignmentPromises);
+  return allAssignments.flat();
+}
+
 // Trang này là trung tâm CRUD đề thi cho Teacher và là trang xem danh sách cho Admin/Student.
 export default function ExamListPage() {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const createExamSubmitRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [classrooms, setClassrooms] = useState([]);
   const [exams, setExams] = useState([]);
+  const [studentSubTab, setStudentSubTab] = useState("exams");
+  const [assignments, setAssignments] = useState([]);
+  const [isAssignmentsLoading, setIsAssignmentsLoading] = useState(false);
+  const [studentSearchQuery, setStudentSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingExamId, setDeletingExamId] = useState(null);
@@ -121,6 +179,13 @@ export default function ExamListPage() {
   const [importReviewMessage, setImportReviewMessage] = useState("");
   const [importResultErrors, setImportResultErrors] = useState([]);
   const [isImportSubmitting, setIsImportSubmitting] = useState(false);
+  const [questionBanks, setQuestionBanks] = useState([]);
+  const [selectedQuestionBankId, setSelectedQuestionBankId] = useState("");
+  const [bankQuestions, setBankQuestions] = useState([]);
+  const [selectedBankQuestionIds, setSelectedBankQuestionIds] = useState([]);
+  const [bankReviewMessage, setBankReviewMessage] = useState("");
+  const [isBankLoading, setIsBankLoading] = useState(false);
+  const [isBankSubmitting, setIsBankSubmitting] = useState(false);
   const selectedClassroomId = searchParams.get("classroomId") ?? "";
   const selectedScheduleStatus = searchParams.get("scheduleStatus") ?? "";
   const isCreateFormVisible = searchParams.get("create") === "1";
@@ -131,6 +196,7 @@ export default function ExamListPage() {
   const isStudentView = user?.role === "Student";
   const canCreateExam = isTeacherView && classrooms.length > 0;
   const isCreateFlowDraftMode = isCreateFormVisible && !activeCreateExam;
+  const createExamFormId = "teacher-exam-create-flow-form";
   const visibleExams = isStudentView
     ? filterExamsByScheduleStatus(exams, selectedScheduleStatus)
     : exams;
@@ -169,7 +235,95 @@ export default function ExamListPage() {
     );
   }, [location.pathname, location.search, location.state, navigate, showToast]);
 
+  // Tự động prefill form và câu hỏi khi navigate từ trang sinh đề ma trận
+  useEffect(() => {
+    if (!location.state?.fromMatrixDraft) {
+      return;
+    }
+
+    const matrixState = location.state;
+
+    // Prefill form values từ dữ liệu ma trận
+    setCreateDraftExamValues((previous) => {
+      const merged = {
+        ...buildExamFormValues(null, ""),
+        ...previous,
+      };
+
+      if (matrixState.title) {
+        merged.title = matrixState.title;
+      } else if (matrixState.matrixName) {
+        merged.title = `Đề thi - ${matrixState.matrixName}`;
+      }
+
+      if (matrixState.durationMinutes) {
+        merged.durationMinutes = String(matrixState.durationMinutes);
+      }
+
+      if (matrixState.classroomId) {
+        merged.classroomId = String(matrixState.classroomId);
+      }
+
+      if (matrixState.startTime) {
+        merged.startTime = matrixState.startTime;
+      }
+
+      if (matrixState.endTime) {
+        merged.endTime = matrixState.endTime;
+      }
+
+      if (matrixState.enableAntiCheat !== undefined) {
+        merged.enableAntiCheat = Boolean(matrixState.enableAntiCheat);
+      }
+
+      if (matrixState.settings) {
+        merged.settings = {
+          ...merged.settings,
+          ...matrixState.settings,
+        };
+        if (matrixState.settings.maxAttempts !== undefined) {
+          merged.settings.maxAttempts = String(matrixState.settings.maxAttempts);
+        }
+      }
+
+      return merged;
+    });
+
+    // Convert draft questions từ ma trận sang createFlowQuestions
+    if (Array.isArray(matrixState.questions) && matrixState.questions.length > 0) {
+      const convertedQuestions = matrixState.questions.map((q, index) =>
+        buildDraftQuestion(
+          {
+            content: q.content,
+            questionType: q.questionType,
+            score: q.score,
+            orderIndex: index + 1,
+            answers: Array.isArray(q.answers)
+              ? q.answers.map((ans, aIdx) => ({
+                  content: ans.content,
+                  isCorrect: ans.isCorrect,
+                  orderIndex: Number(ans.orderIndex) || aIdx + 1,
+                }))
+              : [],
+          },
+          index + 1,
+        ),
+      );
+      setCreateFlowQuestions(resequenceDraftQuestions(convertedQuestions));
+    }
+
+    // Mở form tạo đề và xóa state để tránh prefill lại khi refresh
+    const nextParams = new URLSearchParams(location.search);
+    nextParams.set("create", "1");
+    navigate(
+      { pathname: location.pathname, search: nextParams.toString() },
+      { replace: true, state: null },
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.fromMatrixDraft]);
+
   // Hàm này tải song song lớp học và đề thi theo quyền hiện tại để page có đủ dữ liệu hiển thị.
+
   async function loadExamPageData(filters = {}, options = {}) {
     const { showPageLoader = true } = options;
 
@@ -185,6 +339,15 @@ export default function ExamListPage() {
 
       setClassrooms(classroomResponse.data);
       setExams(examResponse.data);
+
+      if (user?.role === "Student") {
+        setIsAssignmentsLoading(true);
+        const nextAssignments = await loadStudentAssignmentsByClassrooms(
+          classroomResponse.data,
+          user?.id,
+        );
+        setAssignments(nextAssignments);
+      }
     } catch (error) {
       const nextMessage = error.message || "Không thể tải danh sách bài kiểm tra.";
       showToast({
@@ -196,6 +359,7 @@ export default function ExamListPage() {
       if (showPageLoader) {
         setIsLoading(false);
       }
+      setIsAssignmentsLoading(false);
     }
   }
 
@@ -217,6 +381,20 @@ export default function ExamListPage() {
 
         setClassrooms(classroomResponse.data);
         setExams(examResponse.data);
+
+        if (user?.role === "Student") {
+          setIsAssignmentsLoading(true);
+          const nextAssignments = await loadStudentAssignmentsByClassrooms(
+            classroomResponse.data,
+            user?.id,
+          );
+
+          if (!isMounted) {
+            return;
+          }
+
+          setAssignments(nextAssignments);
+        }
       } catch (error) {
         if (!isMounted) {
           return;
@@ -231,6 +409,7 @@ export default function ExamListPage() {
       } finally {
         if (isMounted) {
           setIsLoading(false);
+          setIsAssignmentsLoading(false);
         }
       }
     }
@@ -240,7 +419,15 @@ export default function ExamListPage() {
     return () => {
       isMounted = false;
     };
-  }, [selectedClassroomId, showToast]);
+  }, [selectedClassroomId, showToast, user?.id, user?.role]);
+
+  useEffect(() => {
+    if (!isTeacherView || !isCreateFormVisible) {
+      return;
+    }
+
+    void loadQuestionBanksForCreateFlow();
+  }, [isTeacherView, isCreateFormVisible]);
 
   function resetCreateFlowQuestionUi() {
     setEditingQuestionId(null);
@@ -257,6 +444,10 @@ export default function ExamListPage() {
     setImportPreviewQuestions([]);
     setImportReviewMessage("");
     setImportResultErrors([]);
+    setSelectedQuestionBankId("");
+    setBankQuestions([]);
+    setSelectedBankQuestionIds([]);
+    setBankReviewMessage("");
   }
 
   async function refreshCreateFlowExam(examId = activeCreateExam?.id) {
@@ -281,6 +472,125 @@ export default function ExamListPage() {
 
   async function syncExamListSilently() {
     await loadExamPageData(buildExamListFilters(selectedClassroomId), { showPageLoader: false });
+  }
+
+  async function loadQuestionBanksForCreateFlow() {
+    try {
+      const response = await questionBankApi.getBanks();
+      setQuestionBanks(response.data);
+    } catch (error) {
+      showToast({
+        tone: "danger",
+        title: "Tải ngân hàng câu hỏi thất bại",
+        message: error.message || "Không thể tải danh sách ngân hàng câu hỏi.",
+      });
+    }
+  }
+
+  async function loadSelectedBankQuestions(bankId = selectedQuestionBankId) {
+    if (!bankId) {
+      setBankQuestions([]);
+      setSelectedBankQuestionIds([]);
+      setBankReviewMessage("");
+      return;
+    }
+
+    setIsBankLoading(true);
+    setBankReviewMessage("");
+
+    try {
+      const response = await questionBankApi.getQuestions(bankId, { status: "Approved" });
+      setBankQuestions(response.data);
+      setSelectedBankQuestionIds([]);
+      if (response.data.length === 0) {
+        setBankReviewMessage("Ngân hàng này chưa có câu hỏi đã duyệt để thêm vào đề.");
+      }
+    } catch (error) {
+      setBankReviewMessage(error.message || "Không thể tải câu hỏi từ ngân hàng.");
+      showToast({
+        tone: "danger",
+        title: "Tải câu hỏi ngân hàng thất bại",
+        message: error.message || "Không thể tải câu hỏi từ ngân hàng.",
+      });
+    } finally {
+      setIsBankLoading(false);
+    }
+  }
+
+  function handleChangeQuestionBank(nextBankId) {
+    setSelectedQuestionBankId(nextBankId);
+    setSelectedBankQuestionIds([]);
+    void loadSelectedBankQuestions(nextBankId);
+  }
+
+  function handleToggleBankQuestion(questionId) {
+    const nextQuestionId = Number(questionId);
+    setSelectedBankQuestionIds((previousIds) =>
+      previousIds.includes(nextQuestionId)
+        ? previousIds.filter((id) => id !== nextQuestionId)
+        : [...previousIds, nextQuestionId],
+    );
+  }
+
+  async function handleCommitBankQuestions() {
+    const selectedQuestions = selectedBankQuestionIds
+      .map((questionId) => bankQuestions.find((question) => Number(question.id) === Number(questionId)))
+      .filter(Boolean);
+
+    if (selectedQuestions.length === 0) {
+      setBankReviewMessage("Hãy chọn ít nhất một câu hỏi đã duyệt từ ngân hàng.");
+      return;
+    }
+
+    setIsBankSubmitting(true);
+    setBankReviewMessage("");
+
+    if (!activeCreateExam) {
+      const startOrderIndex = createFlowQuestions.length + 1;
+      const draftQuestions = selectedQuestions.map((question, index) => buildDraftQuestionFromBankQuestion(question, startOrderIndex + index));
+
+      setCreateFlowQuestions((previousQuestions) => resequenceDraftQuestions([...previousQuestions, ...draftQuestions]));
+      setSelectedBankQuestionIds([]);
+      setQuestionWorkspaceMode("manual");
+      setQuestionWorkspaceFilter("All");
+      setQuestionWorkspaceSort("OrderAsc");
+      setExpandedQuestionId(draftQuestions[0]?.id ?? null);
+      setIsBankSubmitting(false);
+      showToast({
+        tone: "success",
+        title: "Đã thêm câu hỏi từ ngân hàng",
+        message: `${draftQuestions.length} câu hỏi đã được đưa vào đề nháp.`,
+      });
+      return;
+    }
+
+    try {
+      const response = await questionBankApi.snapshotQuestionsToExam(activeCreateExam.id, {
+        bankQuestionIds: selectedBankQuestionIds,
+        startOrderIndex: createFlowQuestions.length + 1,
+      });
+      await refreshCreateFlowExam(activeCreateExam.id);
+      await syncExamListSilently();
+      setSelectedBankQuestionIds([]);
+      setQuestionWorkspaceMode("manual");
+      setQuestionWorkspaceFilter("All");
+      setQuestionWorkspaceSort("OrderAsc");
+      setExpandedQuestionId(response.data[0]?.id ?? null);
+      showToast({
+        tone: "success",
+        title: "Đã thêm câu hỏi từ ngân hàng",
+        message: response.message || `${selectedQuestions.length} câu hỏi đã được thêm vào đề.`,
+      });
+    } catch (error) {
+      setBankReviewMessage(error.message || "Không thể thêm câu hỏi từ ngân hàng vào đề.");
+      showToast({
+        tone: "danger",
+        title: "Thêm câu hỏi từ ngân hàng thất bại",
+        message: error.message || "Không thể thêm câu hỏi từ ngân hàng vào đề.",
+      });
+    } finally {
+      setIsBankSubmitting(false);
+    }
   }
 
   function buildPreviewDraftQuestions(startOrderIndex = createFlowQuestions.length + 1) {
@@ -343,9 +653,6 @@ export default function ExamListPage() {
     setSearchParams(nextParams);
   }
 
-  function handleRequestCreateExamSubmit() {
-    void createExamSubmitRef.current?.();
-  }
 
   // Hàm này đổi filter lớp học trên URL để user refresh trang vẫn giữ được ngữ cảnh hiện tại.
   function updateExamListSearchParams(nextClassroomId, nextScheduleStatus) {
@@ -372,6 +679,8 @@ export default function ExamListPage() {
   }
 
   function handleResetStudentFilters() {
+    setStudentSearchQuery("");
+
     if (selectedClassroomId) {
       setIsLoading(true);
     }
@@ -400,7 +709,12 @@ export default function ExamListPage() {
       showToast({
         tone: "success",
         title: shouldAutoPublish ? "Đã lưu và publish đề thi" : "Đã lưu đề thi nháp",
-        message: publishResponse?.message || response.message,
+        message:
+          publishResponse?.message ||
+          response.message ||
+          (shouldAutoPublish
+            ? "Sinh viên trong lớp sẽ nhận thông báo về đề thi mới."
+            : "Bạn có thể tiếp tục thêm câu hỏi và publish sau."),
       });
       return false;
     } catch (error) {
@@ -474,7 +788,10 @@ export default function ExamListPage() {
       showToast({
         tone: "success",
         title: shouldAutoPublish ? "Đã lưu và publish đề thi" : "Đã cập nhật đề thi",
-        message: publishResponse?.message || response.message,
+        message:
+          publishResponse?.message ||
+          response.message ||
+          (shouldAutoPublish ? "Sinh viên trong lớp sẽ nhận thông báo về đề thi mới." : undefined),
       });
       return false;
     } catch (error) {
@@ -529,6 +846,13 @@ export default function ExamListPage() {
     setEditingQuestionId(null);
     setComposerRevision((previousValue) => previousValue + 1);
     setQuestionWorkspaceMode(nextMode);
+
+    if (nextMode === "bank") {
+      void loadQuestionBanksForCreateFlow();
+      if (selectedQuestionBankId) {
+        void loadSelectedBankQuestions(selectedQuestionBankId);
+      }
+    }
   }
 
   function handleToggleQuestionExpand(questionId) {
@@ -946,6 +1270,36 @@ export default function ExamListPage() {
     { label: "Đang diễn ra", value: "open" },
     { label: "Đã đóng", value: "closed" },
   ];
+  const normalizedStudentSearchQuery = studentSearchQuery.trim().toLowerCase();
+  const filteredAssignments = isStudentView
+    ? sortAssignmentsByDeadline(
+      (selectedClassroomId
+        ? assignments.filter((assignment) => String(assignment.classroomId) === String(selectedClassroomId))
+        : assignments
+      ).filter((assignment) =>
+        [assignment.title, assignment.classroomName].some((value) =>
+          String(value || "").toLowerCase().includes(normalizedStudentSearchQuery),
+        ),
+      ),
+    )
+    : [];
+  const filteredStudentExams = isStudentView
+    ? filterExamsByScheduleStatus(
+      (selectedClassroomId
+        ? exams.filter((exam) => String(exam.classroomId) === String(selectedClassroomId))
+        : exams
+      ).filter((exam) =>
+        [exam.title, exam.classroomName].some((value) =>
+          String(value || "").toLowerCase().includes(normalizedStudentSearchQuery),
+        ),
+      ),
+      selectedScheduleStatus,
+    )
+    : [];
+  const studentSectionTitle = studentSubTab === "assignments" ? "Danh sách bài tập" : "Danh sách bài thi";
+  const studentVisibleCount = studentSubTab === "assignments"
+    ? filteredAssignments.length
+    : filteredStudentExams.length;
 
   return (
     <div className="space-y-6">
@@ -970,16 +1324,7 @@ export default function ExamListPage() {
           ) : null}
         </div>
       ) : isStudentView ? (
-        <div className="flex flex-col gap-4 rounded-[24px] border border-border bg-surface p-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-3">
-            <p className="inline-flex rounded-full border border-info/20 bg-info-muted px-4 py-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-info">
-              {getRoleLabel(user?.role)}
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-[2.2rem]">
-              {pageCopy.title}
-            </h1>
-          </div>
-        </div>
+        <StudentTaskTabs activeTab={studentSubTab} onTabChange={setStudentSubTab} />
       ) : (
         <PageHeader
           actions={
@@ -1012,27 +1357,43 @@ export default function ExamListPage() {
         </div>
       ) : null}
 
-      <Card className="space-y-4">
-        <h3 className="text-lg font-semibold text-primary">Bộ lọc</h3>
-        <div className={`grid gap-4 ${isStudentView ? "lg:grid-cols-2" : "max-w-md"}`}>
-          <Select
-            id="exam-list-classroom-filter"
-            label="Lớp học"
-            onChange={(event) => handleClassroomFilterChange(event.target.value)}
-            options={filterOptions}
-            value={selectedClassroomId}
-          />
-          {isStudentView ? (
+      {isStudentView ? (
+        <StudentTaskToolbar
+          classrooms={classrooms}
+          onClassroomChange={handleClassroomFilterChange}
+          onReset={handleResetStudentFilters}
+          onSearchChange={setStudentSearchQuery}
+          onStatusChange={handleScheduleStatusFilterChange}
+          searchTerm={studentSearchQuery}
+          selectedClassroomId={selectedClassroomId}
+          selectedStatus={studentSubTab === "exams" ? selectedScheduleStatus : ""}
+          statusOptions={studentSubTab === "exams" ? scheduleFilterOptions : []}
+        />
+      ) : (
+        <Card className="space-y-4">
+          <h3 className="text-lg font-semibold text-primary">Bộ lọc</h3>
+          <div className="max-w-md">
             <Select
-              id="exam-list-schedule-status-filter"
-              label="Trạng thái lịch thi"
-              onChange={(event) => handleScheduleStatusFilterChange(event.target.value)}
-              options={scheduleFilterOptions}
-              value={selectedScheduleStatus}
+              id="exam-list-classroom-filter"
+              label="Lớp học"
+              onChange={(event) => handleClassroomFilterChange(event.target.value)}
+              options={filterOptions}
+              value={selectedClassroomId}
             />
-          ) : null}
+          </div>
+        </Card>
+      )}
+
+      {isStudentView ? (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-primary">{studentSectionTitle}</h2>
+          </div>
+          <p className="text-sm font-medium text-secondary">
+            {studentVisibleCount} mục
+          </p>
         </div>
-      </Card>
+      ) : null}
 
       {isTeacherView ? (
         classrooms.length > 0 ? (
@@ -1042,14 +1403,12 @@ export default function ExamListPage() {
                 classroomOptions={classrooms}
                 defaultClassroomId={defaultCreateClassroomId}
                 exam={activeCreateExam}
+                formId={createExamFormId}
                 hideSubmitButton
                 initialFormValues={activeCreateExam ? null : createDraftExamValues}
                 isSubmitting={isSubmitting}
                 key={createFormKey}
                 onFormValuesChange={activeCreateExam ? null : setCreateDraftExamValues}
-                onRegisterSubmit={(submitHandler) => {
-                  createExamSubmitRef.current = submitHandler;
-                }}
                 onSubmitExam={activeCreateExam ? handleUpdateCreateFlowExam : handleCreateExam}
                 showDescriptions={false}
                 submitLabel={activeCreateExam ? "Lưu thay đổi" : "Lưu toàn bộ đề thi"}
@@ -1058,6 +1417,9 @@ export default function ExamListPage() {
 
               <TeacherQuestionWorkspace
                 armedDeleteQuestionId={armedDeleteQuestionId}
+                bankOptions={questionBanks.map((bank) => ({ label: `${bank.name} (${bank.questionCount} câu)`, value: String(bank.id) }))}
+                bankQuestions={bankQuestions}
+                bankReviewMessage={bankReviewMessage}
                 canManage
                 composerRevision={composerRevision}
                 deletingQuestionId={deletingQuestionId}
@@ -1072,19 +1434,25 @@ export default function ExamListPage() {
                 importSubmittingLabel="Đang xử lý..."
                 importResultErrors={importResultErrors}
                 importReviewMessage={importReviewMessage}
+                isBankLoading={isBankLoading}
+                isBankSubmitting={isBankSubmitting}
                 isImportSubmitting={isImportSubmitting}
                 isDraftMode={isCreateFlowDraftMode}
                 isImportCommitDisabled={importPreviewQuestions.length === 0}
                 isQuestionSubmitting={isQuestionSubmitting}
                 isReady
                 onChangeMode={handleChangeQuestionWorkspaceMode}
+                onBankChange={handleChangeQuestionBank}
+                onBankQuestionToggle={handleToggleBankQuestion}
                 onClearFile={handleClearImportFile}
+                onCommitBankQuestions={handleCommitBankQuestions}
                 onCommitImport={activeCreateExam ? handleCommitImportedQuestions : null}
                 onDeleteQuestion={activeCreateExam ? handleDeleteCreateFlowQuestion : handleDeleteDraftQuestion}
                 onEditQuestion={handleStartEditingQuestion}
                 onFileSelected={handlePreviewImportedQuestions}
                 onFilterChange={setQuestionWorkspaceFilter}
                 onQuestionDirtyChange={setIsComposerDirty}
+                onRefreshBankQuestions={() => loadSelectedBankQuestions(selectedQuestionBankId)}
                 onRequestCreateNew={handleReturnToCreateQuestion}
                 onSortChange={setQuestionWorkspaceSort}
                 onSubmitCreateQuestion={activeCreateExam ? handleCreateFlowCreateQuestion : handleCreateDraftQuestion}
@@ -1095,6 +1463,8 @@ export default function ExamListPage() {
                 questionWorkspaceMode={questionWorkspaceMode}
                 questionWorkspaceSort={questionWorkspaceSort}
                 questions={createFlowQuestions}
+                selectedBankId={selectedQuestionBankId}
+                selectedBankQuestionIds={selectedBankQuestionIds}
                 showImportCommitButton={!isCreateFlowDraftMode}
                 stagedImportFile={stagedImportFile}
               />
@@ -1103,9 +1473,9 @@ export default function ExamListPage() {
                 <div className="flex justify-end">
                   <Button
                     className="w-full sm:w-auto"
-                    disabled={isSubmitting || isQuestionSubmitting || isImportSubmitting}
-                    onClick={handleRequestCreateExamSubmit}
-                    type="button"
+                    disabled={isSubmitting || isQuestionSubmitting || isImportSubmitting || isBankSubmitting}
+                    form={createExamFormId}
+                    type="submit"
                   >
                     {isSubmitting
                       ? "Đang lưu..."
@@ -1129,7 +1499,57 @@ export default function ExamListPage() {
         )
       ) : null}
 
-      {isLoading ? (
+      {isStudentView ? (
+        studentSubTab === "assignments" ? (
+          isAssignmentsLoading ? (
+            <StudentTaskGrid>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <SkeletonExamCard key={`student-assignment-skeleton-${index}`} />
+              ))}
+            </StudentTaskGrid>
+          ) : filteredAssignments.length > 0 ? (
+            <StudentTaskGrid>
+              {filteredAssignments.map((assignment) => (
+                <StudentAssignmentCard key={assignment.id} assignment={assignment} />
+              ))}
+            </StudentTaskGrid>
+          ) : (
+            <EmptyState
+              title={assignments.length > 0 ? "Không tìm thấy bài tập phù hợp" : "Chưa có bài tập nào"}
+              action={
+                assignments.length > 0 ? (
+                  <Button variant="secondary" onClick={handleResetStudentFilters}>
+                    Xóa bộ lọc
+                  </Button>
+                ) : null
+              }
+            />
+          )
+        ) : isLoading ? (
+          <StudentTaskGrid>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <SkeletonExamCard key={`student-exam-skeleton-${index}`} />
+            ))}
+          </StudentTaskGrid>
+        ) : filteredStudentExams.length > 0 ? (
+          <StudentTaskGrid>
+            {filteredStudentExams.map((exam) => (
+              <StudentExamCard key={exam.id} exam={exam} />
+            ))}
+          </StudentTaskGrid>
+        ) : (
+          <EmptyState
+            title={exams.length > 0 ? "Không tìm thấy bài thi phù hợp" : "Chưa có bài thi nào"}
+            action={
+              exams.length > 0 ? (
+                <Button variant="secondary" onClick={handleResetStudentFilters}>
+                  Xóa bộ lọc
+                </Button>
+              ) : null
+            }
+          />
+        )
+      ) : isLoading ? (
         <div className="grid gap-6">
           <SkeletonExamCard />
           <SkeletonExamCard />
@@ -1146,15 +1566,6 @@ export default function ExamListPage() {
             />
           ))}
         </div>
-      ) : isStudentView && exams.length > 0 ? (
-        <EmptyState
-          title="Không có bài kiểm tra phù hợp với bộ lọc."
-          action={
-            <Button variant="secondary" onClick={handleResetStudentFilters}>
-              Xóa bộ lọc
-            </Button>
-          }
-        />
       ) : (
         <EmptyState title="Chưa có bài kiểm tra nào." />
       )}

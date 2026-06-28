@@ -7,11 +7,15 @@ using EduGuard.Infrastructure.Assignments;
 using EduGuard.Infrastructure.Auth;
 using EduGuard.Infrastructure.Classrooms;
 using EduGuard.Infrastructure.Exams;
-using EduGuard.Infrastructure.Data;
+using EduGuard.Infrastructure.ExamMatrices;
 using EduGuard.Application.Options;
+using EduGuard.Infrastructure.Data;
+using EduGuard.Infrastructure.Notifications;
 using EduGuard.Infrastructure.Proctoring;
+using EduGuard.Infrastructure.QuestionBanks;
 using EduGuard.Infrastructure.Redis;
 using EduGuard.Infrastructure.Repositories;
+using EduGuard.Infrastructure.Email;
 using EduGuard.Infrastructure.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Logging;
@@ -23,6 +27,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace EduGuard.Infrastructure;
 
@@ -35,10 +40,15 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
+        services.AddMemoryCache();
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+        services.Configure<EmailVerificationOptions>(configuration.GetSection(EmailVerificationOptions.SectionName));
+
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>
         {
             options.Password.RequiredLength = 8;
             options.User.RequireUniqueEmail = true;
+            options.SignIn.RequireConfirmedEmail = false;
         })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
@@ -95,6 +105,9 @@ public static class DependencyInjection
         services.AddAuthorization();
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IEmailSettingsService, EmailSettingsService>();
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddScoped<IEmailVerificationService, EmailVerificationService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IClassroomRepository, ClassroomRepository>();
@@ -103,6 +116,10 @@ public static class DependencyInjection
         services.AddScoped<IAssignmentService, AssignmentService>();
         services.AddScoped<IExamRepository, ExamRepository>();
         services.AddScoped<IExamService, ExamService>();
+        services.AddScoped<IQuestionBankRepository, QuestionBankRepository>();
+        services.AddScoped<IQuestionBankService, QuestionBankService>();
+        services.AddScoped<IExamMatrixRepository, ExamMatrixRepository>();
+        services.AddScoped<IExamMatrixService, ExamMatrixService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
         services.AddScoped<IExamMonitoringService, ExamMonitoringService>();
         services.AddScoped<IProctoringRepository, ProctoringRepository>();
@@ -116,11 +133,14 @@ public static class DependencyInjection
         services.AddScoped<IProctoringDetectionService, ProctoringDetectionService>();
         services.AddScoped<IProctoringSignalingService, ProctoringSignalingService>();
         services.AddScoped<IWebRtcConfigService, WebRtcConfigService>();
+        services.AddScoped<ILiveKitTokenService, LiveKitTokenService>();
         services.AddScoped<ICheatingLogRepository, CheatingLogRepository>();
         services.AddScoped<IAntiCheatService, AntiCheatService>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         services.Configure<RedisOptions>(configuration.GetSection(RedisOptions.SectionName));
         services.Configure<WebRtcOptions>(configuration.GetSection(WebRtcOptions.SectionName));
+        services.Configure<LiveKitOptions>(configuration.GetSection(LiveKitOptions.SectionName));
         services.Configure<ProctoringOptions>(configuration.GetSection(ProctoringOptions.SectionName));
         var redisOptions = configuration.GetSection(RedisOptions.SectionName).Get<RedisOptions>() ?? new RedisOptions();
 
@@ -147,6 +167,7 @@ public static class DependencyInjection
 
         services.AddScoped<IExamCacheInvalidator, ExamCacheInvalidator>();
         services.AddHttpClient("ProctoringAi");
+        services.AddHttpClient<IAiQuestionGeneratorService, OpenAiQuestionGeneratorService>();
 
         return services;
     }

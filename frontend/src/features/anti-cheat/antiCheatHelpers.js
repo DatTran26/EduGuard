@@ -6,6 +6,10 @@ export const ANTI_CHEAT_EVENT_TYPES = {
   pageReload: "PAGE_RELOAD",
   disconnected: "DISCONNECTED",
   webcamOff: "WEBCAM_OFF",
+  phoneVisible: "PHONE_VISIBLE",
+  bookVisible: "BOOK_VISIBLE",
+  secondPersonVisible: "SECOND_PERSON_VISIBLE",
+  personNotVisible: "PERSON_NOT_VISIBLE",
 };
 
 const ANTI_CHEAT_EVENT_META = {
@@ -16,6 +20,10 @@ const ANTI_CHEAT_EVENT_META = {
   PAGE_RELOAD: { label: "Tải lại trang", variant: "caution" },
   DISCONNECTED: { label: "Mất kết nối", variant: "info" },
   WEBCAM_OFF: { label: "Tắt webcam", variant: "danger" },
+  PHONE_VISIBLE: { label: "AI: Điện thoại", variant: "danger" },
+  BOOK_VISIBLE: { label: "AI: Tài liệu", variant: "danger" },
+  SECOND_PERSON_VISIBLE: { label: "AI: Người thứ hai", variant: "danger" },
+  PERSON_NOT_VISIBLE: { label: "AI: Không thấy người", variant: "caution" },
 };
 
 export function getAntiCheatEventMeta(type) {
@@ -54,7 +62,7 @@ export function normalizeAntiCheatEventType(type) {
       ANTI_CHEAT_EVENT_TYPES.copyPaste,
       ANTI_CHEAT_EVENT_TYPES.exitFullscreen,
       ANTI_CHEAT_EVENT_TYPES.pageReload,
-      ANTI_CHEAT_EVENT_TYPES.disconnected,
+      ANTI_CHEAT_EVENT_TYPES.disconnected,  
       ANTI_CHEAT_EVENT_TYPES.webcamOff,
     ];
 
@@ -91,6 +99,22 @@ export function normalizeAntiCheatEventType(type) {
 
   if (type === "WebcamOff") {
     return ANTI_CHEAT_EVENT_TYPES.webcamOff;
+  }
+
+  if (type === "PhoneVisible") {
+    return ANTI_CHEAT_EVENT_TYPES.phoneVisible;
+  }
+
+  if (type === "BookVisible") {
+    return ANTI_CHEAT_EVENT_TYPES.bookVisible;
+  }
+
+  if (type === "SecondPersonVisible") {
+    return ANTI_CHEAT_EVENT_TYPES.secondPersonVisible;
+  }
+
+  if (type === "PersonNotVisible") {
+    return ANTI_CHEAT_EVENT_TYPES.personNotVisible;
   }
 
   return type;

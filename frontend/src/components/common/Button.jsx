@@ -9,6 +9,7 @@ const BUTTON_VARIANT_CLASS_NAMES = {
 
 // Component này là nút bấm dùng chung để sau này toàn bộ app giữ đúng một style thống nhất.
 export default function Button({
+  as: Component = "button",
   type = "button",
   variant = "primary",
   className,
@@ -17,10 +18,15 @@ export default function Button({
 }) {
   const variantClassName =
     BUTTON_VARIANT_CLASS_NAMES[variant] ?? BUTTON_VARIANT_CLASS_NAMES.primary;
+  const isNativeButton = Component === "button";
 
   return (
-    <button type={type} className={cn(variantClassName, className)} {...props}>
+    <Component
+      className={cn(variantClassName, className)}
+      {...(isNativeButton ? { type } : {})}
+      {...props}
+    >
       {children}
-    </button>
+    </Component>
   );
 }

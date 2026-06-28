@@ -5,9 +5,9 @@ import { classroomApi } from "../../api/classroomApi";
 import { examApi } from "../../api/examApi";
 import { cn } from "../../utils/cn";
 import {
+  buildTeacherTasksPath,
   buildClassroomDetailPathByRole,
   buildExamDetailPathByRole,
-  routeConfig,
 } from "../../routes/routeConfig";
 import { FiBookOpen, FiClipboard, FiFileText, FiSearch, FiUsers } from "react-icons/fi";
 
@@ -69,7 +69,10 @@ function buildSearchItems(role, searchSource) {
     type: "assignment",
     title: assignment.title,
     description: `${assignment.classroomName} • Hạn nộp`,
-    href: `${routeConfig.teacherAssignments}?classroomId=${assignment.classroomId}&assignmentId=${assignment.id}`,
+    href: buildTeacherTasksPath("assignment", {
+      classroomId: assignment.classroomId,
+      taskId: assignment.id,
+    }),
     keywords: [assignment.title, assignment.classroomName],
   }));
   const studentItems = searchSource.students.map((student) => ({

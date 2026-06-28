@@ -40,4 +40,14 @@ public class SignalRExamMonitoringNotifier : IExamMonitoringNotifier
             .Group(ExamMonitoringHub.GetAttemptGroupName(controlEvent.AttemptId))
             .SendAsync(eventName, controlEvent, ct);
     }
+
+    public Task SendLateJoinAsync(LateJoinEventDto lateJoinEvent, CancellationToken ct = default) =>
+        _hubContext.Clients
+            .Group(ExamMonitoringHub.GetExamGroupName(lateJoinEvent.ExamId))
+            .SendAsync("StudentJoinedExamLate", lateJoinEvent, ct);
+
+    public Task SendAiDetectionAsync(AiDetectionEventDto detectionEvent, CancellationToken ct = default) =>
+        _hubContext.Clients
+            .Group(ExamMonitoringHub.GetExamGroupName(detectionEvent.ExamId))
+            .SendAsync("ReceiveAiDetection", detectionEvent, ct);
 }

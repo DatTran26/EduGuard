@@ -1,4 +1,4 @@
-        using System.Security.Claims;
+using System.Security.Claims;
 using EduGuard.Application.DTOs.Auth;
 using EduGuard.Application.DTOs.Common;
 using EduGuard.Application.Services.Interfaces;
@@ -21,22 +21,73 @@ public class AuthController : ControllerBase
 
     [HttpPost("register")]
     [AllowAnonymous]
-    public async Task<ActionResult<ApiResponse<UserDto>>> Register(
+    public async Task<ActionResult<ApiResponse<RegisterResponse>>> Register(
         [FromBody] RegisterRequest request,
         CancellationToken ct)
     {
         try
         {
-            var user = await _authService.RegisterAsync(request, ct);
-            return Ok(ApiResponse<UserDto>.CreateSuccess(user, "Đăng ký thành công."));
+            var data = await _authService.RegisterAsync(request, ct);
+            var message = data.RequiresEmailVerification
+                ? "Đăng ký thành công. Vui lòng kiểm tra email để lấy mã xác thực."
+                : "Đăng ký thành công.";
+            return Ok(ApiResponse<RegisterResponse>.CreateSuccess(data, message));
         }
         catch (ValidationException ex)
         {
-            return BadRequest(ApiResponse<UserDto>.CreateFailure(ex.Errors.First().ErrorMessage));
+            return BadRequest(ApiResponse<RegisterResponse>.CreateFailure(ex.Errors.First().ErrorMessage));
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(ApiResponse<UserDto>.CreateFailure(ex.Message));
+            return BadRequest(ApiResponse<RegisterResponse>.CreateFailure(ex.Message));
+        }
+    }
+
+    [HttpPost("verify-email")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> VerifyEmail(
+        [FromBody] VerifyEmailRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var data = await _authService.VerifyEmailAsync(request, ct);
+            return Ok(ApiResponse<LoginResponse>.CreateSuccess(data, "Xác thực email thành công."));
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ApiResponse<LoginResponse>.CreateFailure(ex.Errors.First().ErrorMessage));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<LoginResponse>.CreateFailure(ex.Message));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ApiResponse<LoginResponse>.CreateFailure(ex.Message));
+        }
+    }
+
+    [HttpPost("resend-verification")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<object>>> ResendVerification(
+        [FromBody] ResendVerificationRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            await _authService.ResendVerificationEmailAsync(request, ct);
+            return Ok(ApiResponse<object>.CreateSuccess(
+                new { },
+                "Mã xác thực mới đã được gửi nếu email tồn tại và chưa xác thực."));
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ApiResponse<object>.CreateFailure(ex.Errors.First().ErrorMessage));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.CreateFailure(ex.Message));
         }
     }
 

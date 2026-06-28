@@ -4,17 +4,19 @@ import Avatar from "../common/Avatar";
 import Button from "../common/Button";
 import { cn } from "../../utils/cn";
 import { classroomApi } from "../../api/classroomApi";
+import { examApi } from "../../api/examApi";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
 import { useToast } from "../../hooks/useToast";
 import { getProfileRouteByRole, getRoleLabel } from "../../routes/roleRoutes";
 import { routeConfig } from "../../routes/routeConfig";
+import { notificationApi } from "../../api/notificationApi";
 import {
-  readNotificationLastSeenAt,
-  readNotifications,
-  writeNotificationLastSeenAt,
-  writeNotifications,
-} from "../../features/notifications/notificationStorage";
+  getNotificationCardClasses,
+  getNotificationDotClasses,
+  getNotificationTitleClasses,
+  resolveNotificationPath,
+} from "../../features/notifications/utils/notificationUtils";
 import TeacherQuickCreateButton from "./TeacherQuickCreateButton";
 import TeacherShellSearch from "./TeacherShellSearch";
 import {
@@ -40,16 +42,21 @@ import {
 const BREADCRUMB_MAX_VISIBLE = 4;
 
 const breadcrumbLabelBySegment = {
+  admin: "Quản trị",
   assignments: "Bài tập",
   classrooms: "Lớp học",
   exams: "Đề thi",
   dashboard: "Dashboard",
+  tasks: "Hoạt động học tập",
   profile: "Hồ sơ",
   results: "Kết quả",
   users: "Người dùng",
   join: "Tham gia lớp",
   monitoring: "Giám sát thi",
+  "proctoring-evidence": "Kho hình ảnh/ Video",
   notifications: "Thông báo",
+  "question-banks": "Ngân hàng câu hỏi",
+  "proctoring-ai": "AI giám sát",
 };
 
 const homeHrefByRoleSegment = {
@@ -68,9 +75,23 @@ const classroomBreadcrumbRoutePatterns = [
   routeConfig.studentClassroomDetail,
 ];
 
+const examBreadcrumbRoutePatterns = [
+  routeConfig.adminExamDetail,
+  routeConfig.teacherExamDetail,
+  routeConfig.studentExamDetail,
+];
+
 function getClassroomBreadcrumbMatch(pathname) {
   return (
     classroomBreadcrumbRoutePatterns
+      .map((path) => matchPath({ path, end: true }, pathname || "/"))
+      .find(Boolean) ?? null
+  );
+}
+
+function getExamBreadcrumbMatch(pathname) {
+  return (
+    examBreadcrumbRoutePatterns
       .map((path) => matchPath({ path, end: true }, pathname || "/"))
       .find(Boolean) ?? null
   );
@@ -186,10 +207,14 @@ export default function TopBar({
   const { showToast } = useToast();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [notificationItems, setNotificationItems] = useState(() => readNotifications());
-  const [lastSeenAt, setLastSeenAt] = useState(() => readNotificationLastSeenAt());
+  const [notificationItems, setNotificationItems] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [classroomBreadcrumbState, setClassroomBreadcrumbState] = useState({
     classroomId: "",
+    label: "",
+  });
+  const [examBreadcrumbState, setExamBreadcrumbState] = useState({
+    examId: "",
     label: "",
   });
   const userMenuItems = buildUserMenuItems(isDarkMode);
@@ -197,6 +222,9 @@ export default function TopBar({
   const classroomBreadcrumbMatch = getClassroomBreadcrumbMatch(location?.pathname);
   const classroomBreadcrumbPath = classroomBreadcrumbMatch?.pathname || "";
   const classroomBreadcrumbId = classroomBreadcrumbMatch?.params?.classroomId || "";
+  const examBreadcrumbMatch = getExamBreadcrumbMatch(location?.pathname);
+  const examBreadcrumbPath = examBreadcrumbMatch?.pathname || "";
+  const examBreadcrumbId = examBreadcrumbMatch?.params?.examId || "";
 
   useEffect(() => {
     if (!isUserMenuOpen && !isNotificationOpen) {
@@ -231,17 +259,37 @@ export default function TopBar({
     };
   }, [isUserMenuOpen, isNotificationOpen]);
 
+  async function fetchNotifications() {
+    try {
+      const [countRes, listRes] = await Promise.all([
+        notificationApi.getUnreadCount(),
+        notificationApi.getMyNotifications()
+      ]);
+      setUnreadCount(countRes.data?.count ?? 0);
+      setNotificationItems((listRes.data || []).slice(0, 5));
+    } catch (error) {
+      console.error("Lỗi khi tải thông báo:", error);
+    }
+  }
+
   useEffect(() => {
-    function handleIncomingNotification(event) {
-      const nextItem = event?.detail;
-      if (!nextItem?.id) {
-        return;
-      }
-      setNotificationItems((previousValue) => [nextItem, ...previousValue].slice(0, 30));
+    function handleNotificationRefresh() {
+      void fetchNotifications();
     }
 
-    window.addEventListener("eduguard:notification", handleIncomingNotification);
-    return () => window.removeEventListener("eduguard:notification", handleIncomingNotification);
+    const initialFetchTimeout = window.setTimeout(handleNotificationRefresh, 0);
+
+    window.addEventListener("eduguard:notification-updated", handleNotificationRefresh);
+    window.addEventListener("eduguard:notification", handleNotificationRefresh);
+    
+    const interval = setInterval(handleNotificationRefresh, 30000);
+
+    return () => {
+      window.clearTimeout(initialFetchTimeout);
+      window.removeEventListener("eduguard:notification-updated", handleNotificationRefresh);
+      window.removeEventListener("eduguard:notification", handleNotificationRefresh);
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -282,6 +330,44 @@ export default function TopBar({
     };
   }, [classroomBreadcrumbId, classroomBreadcrumbPath]);
 
+  useEffect(() => {
+    if (!examBreadcrumbId || !examBreadcrumbPath) {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadExamBreadcrumbLabel() {
+      try {
+        const response = await examApi.getById(examBreadcrumbId);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setExamBreadcrumbState({
+          examId: examBreadcrumbId,
+          label: response.data?.title || `Bài kiểm tra ${examBreadcrumbId}`,
+        });
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setExamBreadcrumbState({
+          examId: examBreadcrumbId,
+          label: `Bài kiểm tra ${examBreadcrumbId}`,
+        });
+      }
+    }
+
+    loadExamBreadcrumbLabel();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [examBreadcrumbId, examBreadcrumbPath]);
+
   // Hàm này đóng dropdown menu người dùng để các thao tác điều hướng phía sau gọn hơn.
   function closeUserMenu() {
     setIsUserMenuOpen(false);
@@ -295,29 +381,35 @@ export default function TopBar({
 
   function toggleNotifications() {
     setIsUserMenuOpen(false);
-    setIsNotificationOpen((previousValue) => {
-      const nextValue = !previousValue;
-      if (nextValue) {
-        const nowIso = new Date().toISOString();
-        writeNotificationLastSeenAt(nowIso);
-        setLastSeenAt(nowIso);
-      }
-      return nextValue;
-    });
+    setIsNotificationOpen((previousValue) => !previousValue);
   }
 
-  function clearNotifications() {
-    const nextItems = [];
-    setNotificationItems(nextItems);
-    writeNotifications(nextItems);
-    const nowIso = new Date().toISOString();
-    writeNotificationLastSeenAt(nowIso);
-    setLastSeenAt(nowIso);
-    showToast({
-      tone: "success",
-      title: "Đã dọn thông báo",
-      message: "Danh sách thông báo đã được làm sạch.",
-    });
+  async function handleMarkAllAsRead() {
+    try {
+      await notificationApi.markAllAsRead();
+      fetchNotifications();
+      showToast({
+        tone: "success",
+        title: "Thành công",
+        message: "Đã đánh dấu đọc tất cả thông báo.",
+      });
+    } catch (error) {
+      console.error("Lỗi đánh dấu đọc tất cả:", error);
+    }
+  }
+
+  async function handleNotificationClick(item) {
+    if (!item.isRead) {
+      try {
+        await notificationApi.markAsRead(item.userNotificationId);
+        fetchNotifications();
+        window.dispatchEvent(new CustomEvent("eduguard:notification-updated"));
+      } catch (error) {
+        console.error("Lỗi đánh dấu đọc thông báo:", error);
+      }
+    }
+    setIsNotificationOpen(false);
+    navigate(resolveNotificationPath(item, user?.role));
   }
 
   // Hàm này đưa người dùng tới trang hồ sơ từ dropdown mà không đổi logic trang hồ sơ hiện tại.
@@ -374,29 +466,36 @@ export default function TopBar({
 
   function handleOpenNotificationsPage() {
     setIsNotificationOpen(false);
-
-    if (isTeacherView) {
-      navigate(routeConfig.teacherNotifications);
-    }
+    navigate(routeConfig.notifications);
   }
-
-  const unreadCount = notificationItems.filter((item) => item?.createdAt && item.createdAt > lastSeenAt).length;
   const roleLabel = getRoleLabel(user?.role);
   const classroomBreadcrumbLabel = classroomBreadcrumbId
     ? classroomBreadcrumbState.classroomId === classroomBreadcrumbId
       ? classroomBreadcrumbState.label
       : "Đang tải lớp..."
     : "";
+  const examBreadcrumbLabel = examBreadcrumbId
+    ? examBreadcrumbState.examId === examBreadcrumbId
+      ? examBreadcrumbState.label
+      : "Đang tải bài kiểm tra..."
+    : "";
+  const breadcrumbLabelOverrides = {
+    ...(user?.role === "Student" ? { [routeConfig.studentExams]: "Bài kiểm tra" } : {}),
+    ...(classroomBreadcrumbPath && classroomBreadcrumbLabel
+      ? { [classroomBreadcrumbPath]: classroomBreadcrumbLabel }
+      : {}),
+    ...(examBreadcrumbPath && examBreadcrumbLabel
+      ? { [examBreadcrumbPath]: examBreadcrumbLabel }
+      : {}),
+  };
   const breadcrumbItems = buildBreadcrumbTrail(
     location?.pathname,
-    classroomBreadcrumbPath && classroomBreadcrumbLabel
-      ? { [classroomBreadcrumbPath]: classroomBreadcrumbLabel }
-      : {},
+    breadcrumbLabelOverrides,
   );
   const shouldCondenseSearch = classroomBreadcrumbLabel.length > 18;
 
   return (
-    <header className="z-10 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 py-3 md:gap-4 md:px-6">
+    <header className="relative z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 py-3 md:gap-4 md:px-6">
       <div
         className={cn(
           "flex min-w-0 items-center gap-3 lg:flex-1",
@@ -504,27 +603,22 @@ export default function TopBar({
               <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
                 <div>
                   <p className="text-xs font-semibold text-primary">Thông báo</p>
-                  <p className="pt-0.5 text-[10px] text-secondary">
-                    {notificationItems.length > 0 ? "Cập nhật theo thời gian thực" : "Chưa có thông báo nào"}
-                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {isTeacherView ? (
-                    <button
-                      type="button"
-                      className="rounded-[12px] border border-border px-3 py-1.5 text-[11px] font-semibold text-secondary hover:bg-surface-sunken hover:text-primary transition-all duration-200"
-                      onClick={handleOpenNotificationsPage}
-                    >
-                      Xem tất cả
-                    </button>
-                  ) : null}
                   <button
                     type="button"
                     className="rounded-[12px] border border-border px-3 py-1.5 text-[11px] font-semibold text-secondary hover:bg-surface-sunken hover:text-primary transition-all duration-200"
-                    onClick={clearNotifications}
-                    disabled={notificationItems.length === 0}
+                    onClick={handleOpenNotificationsPage}
                   >
-                    Dọn
+                    Xem tất cả
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-[12px] border border-border px-3 py-1.5 text-[11px] font-semibold text-secondary hover:bg-surface-sunken hover:text-primary transition-all duration-200"
+                    onClick={handleMarkAllAsRead}
+                    disabled={unreadCount === 0}
+                  >
+                    Đọc hết
                   </button>
                 </div>
               </div>
@@ -532,28 +626,24 @@ export default function TopBar({
               <div className="max-h-[360px] overflow-y-auto p-1">
                 {notificationItems.length > 0 ? (
                   <div className="space-y-1">
-                    {notificationItems.map((item) => (
+                    {notificationItems.map((item) => {
+                      return (
                       <div
-                        key={item.id}
-                        className="rounded-[16px] border border-border bg-surface px-3 py-2.5"
+                        key={item.userNotificationId}
+                        onClick={() => handleNotificationClick(item)}
+                        className={`cursor-pointer rounded-[16px] border p-3 text-left transition-all ${getNotificationCardClasses(item.type, item.isRead, item)}`}
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-xs font-semibold text-primary">
+                          <div className="min-w-0 flex-1">
+                            <p className={`truncate text-xs font-semibold ${getNotificationTitleClasses(item.type, item.isRead, item)}`}>
                               {item.title || "Thông báo"}
                             </p>
-                            <p className="pt-1 text-[11px] leading-relaxed text-secondary">
-                              {item.message || "Bạn có thông báo mới."}
+                            <p className="pt-1 text-[11px] leading-relaxed text-secondary line-clamp-2">
+                              {item.content || "Bạn có thông báo mới."}
                             </p>
                           </div>
                           <span
-                            className={`mt-0.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${
-                              item.tone === "danger"
-                                ? "bg-rose-500"
-                                : item.tone === "success"
-                                  ? "bg-emerald-500"
-                                  : "bg-sky-500"
-                            }`}
+                            className={`mt-1 inline-flex h-2 w-2 shrink-0 rounded-full ${getNotificationDotClasses(item.type, item.isRead, item)}`}
                             aria-hidden="true"
                           />
                         </div>
@@ -563,14 +653,12 @@ export default function TopBar({
                           </p>
                         ) : null}
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 ) : (
                   <div className="px-3 py-8">
                     <p className="text-xs font-semibold text-primary">Không có thông báo mới.</p>
-                    <p className="pt-1 text-[11px] text-secondary">
-                      Khi hệ thống đẩy cảnh báo/nhắc nhở, chúng sẽ xuất hiện ở đây.
-                    </p>
                   </div>
                 )}
               </div>

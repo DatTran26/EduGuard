@@ -148,6 +148,15 @@ export const examAttemptApi = {
     };
   },
 
+  async getMyAttemptForExam(examId) {
+    const apiResponse = await requestApi(() => axiosClient.get(`/exams/${examId}/my-attempt`));
+
+    return {
+      ...apiResponse,
+      data: apiResponse.data ? normalizeAttemptDto(apiResponse.data) : null,
+    };
+  },
+
   async getByExam(examId) {
     const apiResponse = await requestApi(() => axiosClient.get(`/exams/${examId}/attempts`));
 
@@ -156,6 +165,19 @@ export const examAttemptApi = {
       data: Array.isArray(apiResponse.data)
         ? apiResponse.data.map((attempt) => normalizeAttemptDto(attempt))
         : [],
+    };
+  },
+
+  async sendHeartbeat(attemptId, payload = {}) {
+    const apiResponse = await requestApi(() =>
+      axiosClient.post(`/attempts/${attemptId}/heartbeat`, {
+        client: payload.client?.trim() || "web",
+      }),
+    );
+
+    return {
+      ...apiResponse,
+      data: apiResponse.data ?? null,
     };
   },
 };

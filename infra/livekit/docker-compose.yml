@@ -1,0 +1,31 @@
+services:
+  livekit:
+    image: livekit/livekit-server:v1.8.4
+    command: --config /etc/livekit.yaml
+    restart: unless-stopped
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "52000-52100:52000-52100/udp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+
+  coturn:
+    image: instrumentisto/coturn:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+    command:
+      - -n
+      - --log-file=stdout
+      - --realm=${TURN_REALM:-wpcteam.homes}
+      - --listening-port=3478
+      - --fingerprint
+      - --lt-cred-mech
+      - --user=${TURN_USERNAME:-eduguard}:${TURN_SECRET:-eduguard-dev-turn-secret}
+      - --no-cli
+      - --no-tls
+      - --no-dtls

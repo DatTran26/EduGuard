@@ -178,6 +178,111 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.ToTable("Assignments", (string)null);
                 });
 
+            modelBuilder.Entity("EduGuard.Domain.Entities.BankAnswer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BankQuestionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BankQuestionId");
+
+                    b.ToTable("BankAnswers", (string)null);
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.BankQuestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Chapter")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("DefaultScore")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<int>("Difficulty")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LearningOutcome")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Lesson")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("ParentQuestionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QuestionBankId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QuestionType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("TeacherId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("TimesUsed")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentQuestionId");
+
+                    b.HasIndex("TeacherId", "QuestionType");
+
+                    b.HasIndex("QuestionBankId", "Status", "Difficulty");
+
+                    b.ToTable("BankQuestions", (string)null);
+                });
+
             modelBuilder.Entity("EduGuard.Domain.Entities.CheatingLog", b =>
                 {
                     b.Property<int>("Id")
@@ -387,6 +492,98 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.ToTable("ExamAttempts", (string)null);
                 });
 
+            modelBuilder.Entity("EduGuard.Domain.Entities.ExamMatrix", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<string>("GradeLevel")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("TeacherId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("TotalQuestions")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalScore")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeacherId", "Name");
+
+                    b.ToTable("ExamMatrices", (string)null);
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.ExamMatrixItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Chapter")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Difficulty")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExamMatrixId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LearningOutcome")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Lesson")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("QuestionCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("QuestionType")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("ScorePerQuestion")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamMatrixId");
+
+                    b.ToTable("ExamMatrixItems", (string)null);
+                });
+
             modelBuilder.Entity("EduGuard.Domain.Entities.ExamProctorAssignment", b =>
                 {
                     b.Property<int>("Id")
@@ -529,6 +726,87 @@ namespace EduGuard.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("ExamSettings", (string)null);
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.EmailSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("FromAddress")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("FromName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Host")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("OtpExpiryMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OtpLength")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Password")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Port")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("RequireOnRegister")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ResendCooldownSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("UseSsl")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EmailSettings", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Enabled = false,
+                            FromAddress = "noreply@eduguard.local",
+                            FromName = "EduGuard",
+                            Host = "smtp.gmail.com",
+                            OtpExpiryMinutes = 10,
+                            OtpLength = 6,
+                            Password = "",
+                            Port = 587,
+                            RequireOnRegister = true,
+                            ResendCooldownSeconds = 60,
+                            UpdatedAt = new DateTime(2026, 6, 27, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UseSsl = true,
+                            Username = ""
+                        });
                 });
 
             modelBuilder.Entity("EduGuard.Domain.Entities.LiveProctoringSession", b =>
@@ -801,6 +1079,67 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.ToTable("ProctoringStates", (string)null);
                 });
 
+            modelBuilder.Entity("EduGuard.Domain.Entities.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClassroomId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ActionUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("RelatedExamAttemptId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RelatedExamId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SenderId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("SourceKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassroomId");
+
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("SourceKey", "CreatedAt");
+
+                    b.ToTable("Notifications", (string)null);
+                });
+
             modelBuilder.Entity("EduGuard.Domain.Entities.Question", b =>
                 {
                     b.Property<int>("Id")
@@ -808,6 +1147,12 @@ namespace EduGuard.Infrastructure.Data.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BankQuestionId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BankQuestionVersion")
+                        .HasColumnType("int");
 
                     b.Property<string>("Content")
                         .IsRequired()
@@ -832,9 +1177,54 @@ namespace EduGuard.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BankQuestionId");
+
                     b.HasIndex("ExamId");
 
                     b.ToTable("Questions", (string)null);
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.QuestionBank", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("GradeLevel")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("TeacherId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeacherId", "Name");
+
+                    b.ToTable("QuestionBanks", (string)null);
                 });
 
             modelBuilder.Entity("EduGuard.Domain.Entities.RefreshToken", b =>
@@ -950,6 +1340,42 @@ namespace EduGuard.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Submissions", (string)null);
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.UserNotification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("NotificationId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NotificationId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserNotifications", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -1138,6 +1564,43 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.Navigation("Teacher");
                 });
 
+            modelBuilder.Entity("EduGuard.Domain.Entities.BankAnswer", b =>
+                {
+                    b.HasOne("EduGuard.Domain.Entities.BankQuestion", "BankQuestion")
+                        .WithMany("Answers")
+                        .HasForeignKey("BankQuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BankQuestion");
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.BankQuestion", b =>
+                {
+                    b.HasOne("EduGuard.Domain.Entities.BankQuestion", "ParentQuestion")
+                        .WithMany("Versions")
+                        .HasForeignKey("ParentQuestionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EduGuard.Domain.Entities.QuestionBank", "QuestionBank")
+                        .WithMany("Questions")
+                        .HasForeignKey("QuestionBankId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduGuard.Domain.Entities.ApplicationUser", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ParentQuestion");
+
+                    b.Navigation("QuestionBank");
+
+                    b.Navigation("Teacher");
+                });
+
             modelBuilder.Entity("EduGuard.Domain.Entities.CheatingLog", b =>
                 {
                     b.HasOne("EduGuard.Domain.Entities.ExamAttempt", "ExamAttempt")
@@ -1217,6 +1680,28 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("EduGuard.Domain.Entities.ExamMatrix", b =>
+                {
+                    b.HasOne("EduGuard.Domain.Entities.ApplicationUser", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.ExamMatrixItem", b =>
+                {
+                    b.HasOne("EduGuard.Domain.Entities.ExamMatrix", "ExamMatrix")
+                        .WithMany("Items")
+                        .HasForeignKey("ExamMatrixId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ExamMatrix");
+                });
+
             modelBuilder.Entity("EduGuard.Domain.Entities.ExamProctorAssignment", b =>
                 {
                     b.HasOne("EduGuard.Domain.Entities.Exam", "Exam")
@@ -1237,6 +1722,25 @@ namespace EduGuard.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Exam");
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("EduGuard.Domain.Entities.Classroom", "Classroom")
+                        .WithMany("Notifications")
+                        .HasForeignKey("ClassroomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduGuard.Domain.Entities.ApplicationUser", "Sender")
+                        .WithMany("SentNotifications")
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Classroom");
+
+                    b.Navigation("Sender");
                 });
 
             modelBuilder.Entity("EduGuard.Domain.Entities.LiveProctoringSession", b =>
@@ -1274,12 +1778,12 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.HasOne("EduGuard.Domain.Entities.CheatingLog", "CheatingLog")
                         .WithMany()
                         .HasForeignKey("CheatingLogId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("EduGuard.Domain.Entities.ExamAttempt", "ExamAttempt")
                         .WithMany()
                         .HasForeignKey("ExamAttemptId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("CheatingLog");
@@ -1300,13 +1804,31 @@ namespace EduGuard.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("EduGuard.Domain.Entities.Question", b =>
                 {
+                    b.HasOne("EduGuard.Domain.Entities.BankQuestion", "BankQuestion")
+                        .WithMany("ExamQuestionSnapshots")
+                        .HasForeignKey("BankQuestionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("EduGuard.Domain.Entities.Exam", "Exam")
                         .WithMany("Questions")
                         .HasForeignKey("ExamId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("BankQuestion");
+
                     b.Navigation("Exam");
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.QuestionBank", b =>
+                {
+                    b.HasOne("EduGuard.Domain.Entities.ApplicationUser", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Teacher");
                 });
 
             modelBuilder.Entity("EduGuard.Domain.Entities.RefreshToken", b =>
@@ -1363,6 +1885,25 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.Navigation("Assignment");
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.UserNotification", b =>
+                {
+                    b.HasOne("EduGuard.Domain.Entities.Notification", "Notification")
+                        .WithMany("UserNotifications")
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduGuard.Domain.Entities.ApplicationUser", "User")
+                        .WithMany("UserNotifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Notification");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -1423,6 +1964,10 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.Navigation("OwnedClassrooms");
 
                     b.Navigation("RefreshTokens");
+
+                    b.Navigation("SentNotifications");
+
+                    b.Navigation("UserNotifications");
                 });
 
             modelBuilder.Entity("EduGuard.Domain.Entities.Assignment", b =>
@@ -1430,9 +1975,20 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.Navigation("Submissions");
                 });
 
+            modelBuilder.Entity("EduGuard.Domain.Entities.BankQuestion", b =>
+                {
+                    b.Navigation("Answers");
+
+                    b.Navigation("ExamQuestionSnapshots");
+
+                    b.Navigation("Versions");
+                });
+
             modelBuilder.Entity("EduGuard.Domain.Entities.Classroom", b =>
                 {
                     b.Navigation("Members");
+
+                    b.Navigation("Notifications");
                 });
 
             modelBuilder.Entity("EduGuard.Domain.Entities.Exam", b =>
@@ -1451,9 +2007,25 @@ namespace EduGuard.Infrastructure.Data.Migrations
                     b.Navigation("StudentAnswers");
                 });
 
+            modelBuilder.Entity("EduGuard.Domain.Entities.ExamMatrix", b =>
+                {
+                    b.Navigation("Items");
+
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.Notification", b =>
+                {
+                    b.Navigation("UserNotifications");
+                });
+
             modelBuilder.Entity("EduGuard.Domain.Entities.Question", b =>
                 {
                     b.Navigation("Answers");
+                });
+
+            modelBuilder.Entity("EduGuard.Domain.Entities.QuestionBank", b =>
+                {
+                    b.Navigation("Questions");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { classroomApi } from "../../api/classroomApi";
-import { routeConfig } from "../../routes/routeConfig";
+import { buildTeacherTasksPath, routeConfig } from "../../routes/routeConfig";
 import { FiChevronDown, FiChevronRight, FiPlus } from "react-icons/fi";
 
 function buildQuickCreateOptions(classroomCount) {
@@ -17,14 +17,14 @@ function buildQuickCreateOptions(classroomCount) {
       id: "assignment",
       label: "Tạo bài tập",
       description: classroomCount > 0 ? "Đi tới workspace bài tập" : "Cần có lớp học trước",
-      href: `${routeConfig.teacherAssignments}?create=1`,
+      href: buildTeacherTasksPath("assignment", { create: 1 }),
       disabled: classroomCount === 0,
     },
     {
       id: "exam",
       label: "Tạo đề thi",
       description: classroomCount > 0 ? "Đi tới workspace đề thi" : "Cần có lớp học trước",
-      href: `${routeConfig.teacherExams}?create=1`,
+      href: buildTeacherTasksPath("exam", { create: 1 }),
       disabled: classroomCount === 0,
     },
   ];

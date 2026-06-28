@@ -69,12 +69,51 @@ public class ExamRepository : IExamRepository
     public Task<int> CountAttemptsAsync(int examId, string studentId, CancellationToken ct = default) =>
         _db.ExamAttempts.CountAsync(x => x.ExamId == examId && x.StudentId == studentId, ct);
 
+    public Task<int> CountSubmittedAttemptsAsync(int examId, string studentId, CancellationToken ct = default) =>
+        _db.ExamAttempts.CountAsync(
+            x => x.ExamId == examId && x.StudentId == studentId && x.Status == ExamAttemptStatus.Submitted,
+            ct);
+
     public Task<ExamAttempt?> GetInProgressAttemptAsync(int examId, string studentId, CancellationToken ct = default) =>
         _db.ExamAttempts
             .Include(x => x.StudentAnswers)
             .FirstOrDefaultAsync(
                 x => x.ExamId == examId && x.StudentId == studentId && x.Status == ExamAttemptStatus.InProgress,
                 ct);
+
+    public Task<ExamAttempt?> GetResumableAttemptAsync(int examId, string studentId, CancellationToken ct = default) =>
+        _db.ExamAttempts
+            .Include(x => x.StudentAnswers)
+            .Where(x =>
+                x.ExamId == examId &&
+                x.StudentId == studentId &&
+                (x.Status == ExamAttemptStatus.InProgress || x.Status == ExamAttemptStatus.PausedByProctor))
+            .OrderByDescending(x => x.StartedAt)
+            .FirstOrDefaultAsync(ct);
+
+    public Task<ExamAttempt?> GetLatestStudentAttemptAsync(int examId, string studentId, CancellationToken ct = default) =>
+        _db.ExamAttempts
+            .Where(x => x.ExamId == examId && x.StudentId == studentId)
+            .OrderByDescending(x => x.StartedAt)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<Dictionary<int, ExamAttempt>> GetLatestAttemptsByStudentForExamsAsync(
+        IReadOnlyCollection<int> examIds,
+        string studentId,
+        CancellationToken ct = default)
+    {
+        if (examIds.Count == 0)
+            return new Dictionary<int, ExamAttempt>();
+
+        var attempts = await _db.ExamAttempts
+            .Where(x => x.StudentId == studentId && examIds.Contains(x.ExamId))
+            .OrderByDescending(x => x.StartedAt)
+            .ToListAsync(ct);
+
+        return attempts
+            .GroupBy(x => x.ExamId)
+            .ToDictionary(group => group.Key, group => group.First());
+    }
 
     public Task<List<ExamAttempt>> GetAttemptsByExamIdAsync(int examId, CancellationToken ct = default) =>
         _db.ExamAttempts

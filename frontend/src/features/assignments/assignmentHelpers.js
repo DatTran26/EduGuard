@@ -1,3 +1,5 @@
+import { parseDateValue } from "../../utils/formatDate";
+
 const ASSIGNMENT_SUBMISSION_CACHE_KEY = "eduguard_assignment_submission_cache";
 
 function readSubmissionCache() {
@@ -41,6 +43,18 @@ export function cacheSubmission(userId, submission) {
 
   cache[cacheKey] = submission;
   writeSubmissionCache(cache);
+}
+
+export function resolveAssignmentSubmission(assignment, userId, localSubmission = null) {
+  if (assignment?.mySubmission) {
+    return assignment.mySubmission;
+  }
+
+  if (localSubmission) {
+    return localSubmission;
+  }
+
+  return getCachedSubmission(userId, assignment?.id);
 }
 
 export function getAssignmentStatusMeta(assignment, localSubmission) {
@@ -132,22 +146,86 @@ export function buildAssignmentSummaryItems(assignments = []) {
   ];
 }
 
-export function toAssignmentDateTimeInputValue(value) {
+const VIETNAM_TIME_ZONE = "Asia/Ho_Chi_Minh";
+const VIETNAM_UTC_OFFSET_MINUTES = 7 * 60;
+
+const vietnamDateTimeFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: VIETNAM_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+function formatVietnamDateTimeParts(value) {
   if (!value) {
-    return "";
+    return null;
   }
 
-  const dateObject = new Date(value);
+  const dateObject = parseDateValue(value);
 
-  if (Number.isNaN(dateObject.getTime())) {
-    return "";
+  if (!dateObject) {
+    return null;
   }
 
-  const year = dateObject.getFullYear();
-  const month = String(dateObject.getMonth() + 1).padStart(2, "0");
-  const day = String(dateObject.getDate()).padStart(2, "0");
-  const hours = String(dateObject.getHours()).padStart(2, "0");
-  const minutes = String(dateObject.getMinutes()).padStart(2, "0");
+  const partLookup = {};
 
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+  vietnamDateTimeFormatter.formatToParts(dateObject).forEach((part) => {
+    if (part.type !== "literal") {
+      partLookup[part.type] = part.value;
+    }
+  });
+
+  return {
+    year: partLookup.year,
+    month: partLookup.month,
+    day: partLookup.day,
+    hour: partLookup.hour,
+    minute: partLookup.minute,
+  };
+}
+
+function parseDateTimeLocalInputValue(value) {
+  const matchedParts = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+
+  if (!matchedParts) {
+    return null;
+  }
+
+  const [, year, month, day, hour, minute] = matchedParts;
+
+  return {
+    year: Number(year),
+    month: Number(month),
+    day: Number(day),
+    hour: Number(hour),
+    minute: Number(minute),
+  };
+}
+
+export function toAssignmentDateTimeInputValue(value) {
+  const parts = formatVietnamDateTimeParts(value);
+  return parts ? `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}` : "";
+}
+
+export function toAssignmentVietnamISOString(value) {
+  const parsedValue = parseDateTimeLocalInputValue(value);
+
+  if (!parsedValue) {
+    return null;
+  }
+
+  const utcTime =
+    Date.UTC(
+      parsedValue.year,
+      parsedValue.month - 1,
+      parsedValue.day,
+      parsedValue.hour,
+      parsedValue.minute,
+    ) -
+    VIETNAM_UTC_OFFSET_MINUTES * 60 * 1000;
+
+  return new Date(utcTime).toISOString();
 }

@@ -17,6 +17,7 @@ public class AssignmentService : IAssignmentService
     private readonly IValidator<PatchAssignmentRequest> _patchValidator;
     private readonly IValidator<SubmitAssignmentRequest> _submitValidator;
     private readonly IValidator<GradeSubmissionRequest> _gradeValidator;
+    private readonly INotificationService _notificationService;
 
     public AssignmentService(
         IAssignmentRepository assignmentRepository,
@@ -25,7 +26,8 @@ public class AssignmentService : IAssignmentService
         IValidator<UpdateAssignmentRequest> updateValidator,
         IValidator<PatchAssignmentRequest> patchValidator,
         IValidator<SubmitAssignmentRequest> submitValidator,
-        IValidator<GradeSubmissionRequest> gradeValidator)
+        IValidator<GradeSubmissionRequest> gradeValidator,
+        INotificationService notificationService)
     {
         _assignmentRepository = assignmentRepository;
         _classroomRepository = classroomRepository;
@@ -34,6 +36,7 @@ public class AssignmentService : IAssignmentService
         _patchValidator = patchValidator;
         _submitValidator = submitValidator;
         _gradeValidator = gradeValidator;
+        _notificationService = notificationService;
     }
 
     public async Task<AssignmentDto> CreateAsync(
@@ -60,6 +63,7 @@ public class AssignmentService : IAssignmentService
 
         await _assignmentRepository.AddAsync(assignment, ct);
         await _assignmentRepository.SaveChangesAsync(ct);
+        await _notificationService.CreateAssignmentCreatedNotificationAsync(assignment.Id, teacherId, ct);
         return MapAssignment(assignment);
     }
 
@@ -73,7 +77,21 @@ public class AssignmentService : IAssignmentService
         await ClassroomAccessHelper.EnsureCanAccessClassroomAsync(_classroomRepository, classroom, userId, roles, ct);
 
         var assignments = await _assignmentRepository.GetByClassroomIdAsync(classroomId, ct);
-        return assignments.Select(MapAssignment).ToList();
+        var dtos = assignments.Select(MapAssignment).ToList();
+
+        if (roles.Contains("Student"))
+        {
+            foreach (var dto in dtos)
+            {
+                var submission = await _assignmentRepository.GetSubmissionAsync(dto.Id, userId, ct);
+                if (submission != null)
+                {
+                    dto.MySubmission = MapSubmission(submission);
+                }
+            }
+        }
+
+        return dtos;
     }
 
     public async Task<AssignmentDto> GetByIdAsync(
@@ -85,7 +103,17 @@ public class AssignmentService : IAssignmentService
         var assignment = await RequireAssignmentAsync(assignmentId, ct);
         var classroom = await ClassroomAccessHelper.RequireClassroomAsync(_classroomRepository, assignment.ClassroomId, ct);
         await ClassroomAccessHelper.EnsureCanAccessClassroomAsync(_classroomRepository, classroom, userId, roles, ct);
-        return MapAssignment(assignment);
+        
+        var dto = MapAssignment(assignment);
+        if (roles.Contains("Student"))
+        {
+            var submission = await _assignmentRepository.GetSubmissionAsync(dto.Id, userId, ct);
+            if (submission != null)
+            {
+                dto.MySubmission = MapSubmission(submission);
+            }
+        }
+        return dto;
     }
 
     public async Task<AssignmentDto> UpdateAsync(
@@ -166,12 +194,26 @@ public class AssignmentService : IAssignmentService
         var assignment = await RequireAssignmentAsync(assignmentId, ct);
         await EnsureActiveStudentInClassroomAsync(assignment.ClassroomId, studentId, ct);
 
-        if (DateTime.UtcNow > assignment.Deadline)
+        if (DateTime.UtcNow > DateTime.SpecifyKind(assignment.Deadline, DateTimeKind.Utc))
             throw new InvalidOperationException("Đã quá hạn nộp bài.");
 
         var existing = await _assignmentRepository.GetSubmissionAsync(assignmentId, studentId, ct);
+        
         if (existing is not null)
-            throw new InvalidOperationException("Bạn đã nộp bài tập này.");
+        {
+            // Re-submission: update existing submission and reset grading info
+            existing.Content = request.Content.Trim();
+            existing.SubmittedAt = DateTime.UtcNow;
+            existing.Score = null;
+            existing.Feedback = null;
+            existing.GradedAt = null;
+
+            _assignmentRepository.UpdateSubmission(existing);
+            await _assignmentRepository.SaveChangesAsync(ct);
+
+            var savedExisting = await _assignmentRepository.GetSubmissionByIdAsync(existing.Id, ct) ?? existing;
+            return MapSubmission(savedExisting);
+        }
 
         var submission = new Submission
         {
@@ -245,9 +287,9 @@ public class AssignmentService : IAssignmentService
         TeacherId = assignment.TeacherId,
         Title = assignment.Title,
         Description = assignment.Description,
-        Deadline = assignment.Deadline,
+        Deadline = DateTime.SpecifyKind(assignment.Deadline, DateTimeKind.Utc),
         MaxScore = assignment.MaxScore,
-        CreatedAt = assignment.CreatedAt,
+        CreatedAt = DateTime.SpecifyKind(assignment.CreatedAt, DateTimeKind.Utc),
         SubmissionCount = assignment.Submissions?.Count ?? 0
     };
 
@@ -261,7 +303,7 @@ public class AssignmentService : IAssignmentService
         Content = submission.Content,
         Score = submission.Score,
         Feedback = submission.Feedback,
-        SubmittedAt = submission.SubmittedAt,
-        GradedAt = submission.GradedAt
+        SubmittedAt = DateTime.SpecifyKind(submission.SubmittedAt, DateTimeKind.Utc),
+        GradedAt = submission.GradedAt.HasValue ? DateTime.SpecifyKind(submission.GradedAt.Value, DateTimeKind.Utc) : null
     };
 }

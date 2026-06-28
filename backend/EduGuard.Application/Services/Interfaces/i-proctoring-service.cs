@@ -1,3 +1,4 @@
+using EduGuard.Application.DTOs.Exams;
 using EduGuard.Application.DTOs.Proctoring;
 
 namespace EduGuard.Application.Services.Interfaces;
@@ -10,8 +11,15 @@ public interface IProctoringService
     Task<ProctoringStateDto> GetAttemptStateAsync(int attemptId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default);
 
     Task<IReadOnlyList<ExamProctorAssignmentDto>> GetProctorsAsync(int examId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default);
+    Task<IReadOnlyList<ProctorCandidateDto>> GetProctorCandidatesAsync(int examId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default);
     Task<ExamProctorAssignmentDto> AddProctorAsync(int examId, AddExamProctorRequest request, string userId, IReadOnlyList<string> roles, CancellationToken ct = default);
     Task RemoveProctorAsync(int examId, string teacherId, string userId, IReadOnlyList<string> roles, CancellationToken ct = default);
+    Task<IReadOnlyList<AssignedProctorExamDto>> GetAssignedExamsAsync(string userId, IReadOnlyList<string> roles, CancellationToken ct = default);
+    Task<ProctoringEvidenceListResultDto> GetEvidenceListAsync(
+        ProctoringEvidenceListQuery query,
+        string userId,
+        IReadOnlyList<string> roles,
+        CancellationToken ct = default);
 
     Task<ProctoringAiSettingsDto> GetAiSettingsAsync(CancellationToken ct = default);
     Task<ProctoringAiSettingsDto> UpdateAiSettingsAsync(UpdateProctoringAiSettingsRequest request, CancellationToken ct = default);

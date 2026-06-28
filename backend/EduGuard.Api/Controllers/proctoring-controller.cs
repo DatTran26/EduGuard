@@ -19,6 +19,7 @@ public class ProctoringController : ControllerBase
     private readonly IProctoringEvidenceService _proctoringEvidenceService;
     private readonly IProctoringDetectionService _proctoringDetectionService;
     private readonly IWebRtcConfigService _webRtcConfigService;
+    private readonly ILiveKitTokenService _liveKitTokenService;
 
     public ProctoringController(
         IProctoringService proctoringService,
@@ -28,7 +29,8 @@ public class ProctoringController : ControllerBase
         IProctoringActionService proctoringActionService,
         IProctoringEvidenceService proctoringEvidenceService,
         IProctoringDetectionService proctoringDetectionService,
-        IWebRtcConfigService webRtcConfigService)
+        IWebRtcConfigService webRtcConfigService,
+        ILiveKitTokenService liveKitTokenService)
     {
         _proctoringService = proctoringService;
         _examLobbyService = examLobbyService;
@@ -38,6 +40,7 @@ public class ProctoringController : ControllerBase
         _proctoringEvidenceService = proctoringEvidenceService;
         _proctoringDetectionService = proctoringDetectionService;
         _webRtcConfigService = webRtcConfigService;
+        _liveKitTokenService = liveKitTokenService;
     }
 
     [HttpGet("api/proctoring/webrtc-config")]
@@ -49,6 +52,21 @@ public class ProctoringController : ControllerBase
             iceServers = _webRtcConfigService.GetIceServers()
         }));
     }
+
+    [HttpGet("api/proctoring/sfu-config")]
+    [Authorize(Roles = "Teacher,Student,Admin")]
+    public ActionResult<ApiResponse<SfuConfigDto>> GetSfuConfig() =>
+        Ok(ApiResponse<SfuConfigDto>.CreateSuccess(_liveKitTokenService.GetConfig()));
+
+    [HttpGet("api/exams/{examId:int}/proctoring/sfu-token")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<ActionResult<ApiResponse<SfuTokenDto>>> GetTeacherSfuToken(int examId, CancellationToken ct) =>
+        await ExecuteTeacherAsync(() => _liveKitTokenService.CreateTeacherTokenAsync(examId, GetUserId()!, GetRoles(), ct));
+
+    [HttpGet("api/attempts/{attemptId:int}/proctoring/sfu-token")]
+    [Authorize(Roles = "Student")]
+    public async Task<ActionResult<ApiResponse<SfuTokenDto>>> GetStudentSfuToken(int attemptId, CancellationToken ct) =>
+        await ExecuteStudentAsync(() => _liveKitTokenService.CreateStudentTokenAsync(attemptId, GetUserId()!, ct));
 
     [HttpGet("api/exams/{examId:int}/proctoring/room")]
     [Authorize(Roles = "Teacher,Admin")]
@@ -189,6 +207,30 @@ public class ProctoringController : ControllerBase
             return ApiResponse<object>.CreateSuccess(null!, "Đã kết thúc bài làm.");
         });
 
+    [HttpGet("api/proctoring/evidence")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<ActionResult<ApiResponse<ProctoringEvidenceListResultDto>>> GetEvidenceList(
+        [FromQuery] int? examId,
+        [FromQuery] int? attemptId,
+        [FromQuery] string? evidenceType,
+        [FromQuery] string? search,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 24,
+        CancellationToken ct = default) =>
+        await ExecuteTeacherAsync(() => _proctoringService.GetEvidenceListAsync(
+            new ProctoringEvidenceListQuery
+            {
+                ExamId = examId,
+                AttemptId = attemptId,
+                EvidenceType = evidenceType,
+                Search = search,
+                Page = page,
+                PageSize = pageSize
+            },
+            GetUserId()!,
+            GetRoles(),
+            ct));
+
     [HttpPost("api/attempts/{attemptId:int}/proctoring/evidence")]
     [Authorize(Roles = "Teacher,Admin,Student")]
     [Consumes("multipart/form-data")]
@@ -277,6 +319,16 @@ public class ProctoringController : ControllerBase
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ExamProctorAssignmentDto>>>> GetProctors(int examId, CancellationToken ct) =>
         await ExecuteTeacherAsync(() => _proctoringService.GetProctorsAsync(examId, GetUserId()!, GetRoles(), ct));
+
+    [HttpGet("api/exams/{examId:int}/proctors/candidates")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ProctorCandidateDto>>>> GetProctorCandidates(int examId, CancellationToken ct) =>
+        await ExecuteTeacherAsync(() => _proctoringService.GetProctorCandidatesAsync(examId, GetUserId()!, GetRoles(), ct));
+
+    [HttpGet("api/teacher/proctoring/assigned-exams")]
+    [Authorize(Roles = "Teacher")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<AssignedProctorExamDto>>>> GetAssignedExams(CancellationToken ct) =>
+        await ExecuteTeacherAsync(() => _proctoringService.GetAssignedExamsAsync(GetUserId()!, GetRoles(), ct));
 
     [HttpPost("api/exams/{examId:int}/proctors")]
     [Authorize(Roles = "Teacher,Admin")]

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { FiActivity, FiAward, FiAlertTriangle } from "react-icons/fi";
 import { antiCheatApi } from "../../../api/antiCheatApi";
 import { classroomApi } from "../../../api/classroomApi";
@@ -7,6 +7,7 @@ import { examApi } from "../../../api/examApi";
 import { examAttemptApi } from "../../../api/examAttemptApi";
 import Card from "../../../components/common/Card";
 import EmptyState from "../../../components/common/EmptyState";
+import Skeleton from "../../../components/common/Skeleton";
 import Select from "../../../components/forms/Select";
 import TextInput from "../../../components/forms/TextInput";
 import StatCard from "../../../components/dashboard/StatCard";
@@ -53,15 +54,36 @@ function matchesRisk(row, riskFilter) {
 }
 
 export default function TeacherResultsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [classrooms, setClassrooms] = useState([]);
   const [exams, setExams] = useState([]);
   const [rows, setRows] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedClassroomId, setSelectedClassroomId] = useState("");
-  const [selectedExamId, setSelectedExamId] = useState("");
+  const [selectedClassroomId, setSelectedClassroomId] = useState(() => searchParams.get("classroomId") ?? "");
+  const [selectedExamId, setSelectedExamId] = useState(() => searchParams.get("examId") ?? "");
   const [selectedRisk, setSelectedRisk] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (selectedClassroomId) {
+      nextParams.set("classroomId", selectedClassroomId);
+    } else {
+      nextParams.delete("classroomId");
+    }
+
+    if (selectedExamId) {
+      nextParams.set("examId", selectedExamId);
+    } else {
+      nextParams.delete("examId");
+    }
+
+    if (nextParams.toString() !== searchParams.toString()) {
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, selectedClassroomId, selectedExamId, setSearchParams]);
 
   useEffect(() => {
     let isMounted = true;
@@ -271,7 +293,23 @@ export default function TeacherResultsPage() {
       </Card>
 
       {isLoading ? (
-        <Card className="text-sm text-secondary">Đang tải kết quả bài thi...</Card>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="space-y-4 animate-pulse">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-2 w-1/3">
+                  <div className="flex gap-2">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-5 w-24 rounded-full" />
+                  </div>
+                  <Skeleton className="h-6 w-full rounded-md" />
+                  <Skeleton className="h-4 w-2/3 rounded-md" />
+                </div>
+                <Skeleton className="h-10 w-24 rounded-xl" />
+              </div>
+            </Card>
+          ))}
+        </div>
       ) : visibleRows.length === 0 ? (
         <EmptyState title="Không có lượt làm phù hợp với bộ lọc hiện tại." />
       ) : (

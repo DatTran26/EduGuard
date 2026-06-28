@@ -61,7 +61,7 @@ public class ExamLobbyService : IExamLobbyService
             StartTime = ExamDateTimeHelper.MarkNullableAsUtc(exam.StartTime),
             EndTime = ExamDateTimeHelper.MarkNullableAsUtc(exam.EndTime),
             IsOpen = isOpen,
-            RequireCamera = exam.Setting?.RequireCamera ?? false,
+            RequireCamera = ProctoringSettingsHelper.IsCameraMonitoringEnabled(exam.Setting),
             RequireFullscreen = exam.Setting?.RequireFullscreen ?? false,
             SecondsUntilOpen = secondsUntilOpen,
             WaitingStudentCount = cache.Students.Count

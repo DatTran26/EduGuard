@@ -1,4 +1,5 @@
 using EduGuard.Application.DTOs.Exams;
+using EduGuard.Application.DTOs.Proctoring;
 using EduGuard.Application.Repositories.Interfaces;
 using EduGuard.Application.Services.Interfaces;
 using EduGuard.Domain.Entities;
@@ -12,16 +13,28 @@ public class ExamAttemptService : IExamAttemptService
 {
     private readonly IExamRepository _examRepository;
     private readonly IClassroomRepository _classroomRepository;
+    private readonly IExamMonitoringService _examMonitoringService;
     private readonly IValidator<SaveStudentAnswerRequest> _saveAnswerValidator;
+    private readonly IAttemptPresenceService _presenceService;
+    private readonly INotificationService _notificationService;
+    private readonly IExamMonitoringNotifier _examMonitoringNotifier;
 
     public ExamAttemptService(
         IExamRepository examRepository,
         IClassroomRepository classroomRepository,
-        IValidator<SaveStudentAnswerRequest> saveAnswerValidator)
+        IExamMonitoringService examMonitoringService,
+        IValidator<SaveStudentAnswerRequest> saveAnswerValidator,
+        IAttemptPresenceService presenceService,
+        INotificationService notificationService,
+        IExamMonitoringNotifier examMonitoringNotifier)
     {
         _examRepository = examRepository;
         _classroomRepository = classroomRepository;
+        _examMonitoringService = examMonitoringService;
         _saveAnswerValidator = saveAnswerValidator;
+        _presenceService = presenceService;
+        _notificationService = notificationService;
+        _examMonitoringNotifier = examMonitoringNotifier;
     }
 
     public async Task<StartExamResponse> StartAsync(int examId, string studentId, CancellationToken ct = default)
@@ -31,18 +44,19 @@ public class ExamAttemptService : IExamAttemptService
 
         await EnsureStudentCanTakeExamAsync(exam, studentId, ct);
         EnsureExamWindowOpen(exam);
-
         var setting = exam.Setting;
         var maxAttempts = setting?.MaxAttempts ?? 1;
-        var attemptCount = await _examRepository.CountAttemptsAsync(examId, studentId, ct);
-        var inProgress = await _examRepository.GetInProgressAttemptAsync(examId, studentId, ct);
+        var resumable = await _examRepository.GetResumableAttemptAsync(examId, studentId, ct);
 
-        if (inProgress is not null)
+        if (resumable is not null)
         {
-            return BuildStartResponse(exam, inProgress);
+            await _presenceService.TouchAsync(resumable.Id, studentId, examId, ct: ct);
+            return BuildStartResponse(exam, resumable, isNewAttempt: false);
         }
 
-        if (attemptCount >= maxAttempts)
+        var submittedCount = await _examRepository.CountSubmittedAttemptsAsync(examId, studentId, ct);
+
+        if (submittedCount >= maxAttempts)
             throw new InvalidOperationException("Bạn đã hết lượt làm bài.");
 
         var attempt = new ExamAttempt
@@ -57,7 +71,14 @@ public class ExamAttemptService : IExamAttemptService
         await _examRepository.SaveChangesAsync(ct);
 
         var saved = await _examRepository.GetAttemptByIdAsync(attempt.Id, ct) ?? attempt;
-        return BuildStartResponse(exam, saved);
+        await _presenceService.TouchAsync(saved.Id, studentId, examId, ct: ct);
+
+        if (ExamJoinHelper.IsLateJoin(exam, saved.StartedAt))
+        {
+            await NotifyLateJoinAsync(saved, exam, ct);
+        }
+
+        return BuildStartResponse(exam, saved, isNewAttempt: true);
     }
 
     public async Task<ExamAttemptDetailDto> GetAttemptAsync(
@@ -117,8 +138,18 @@ public class ExamAttemptService : IExamAttemptService
         attempt.Status = ExamAttemptStatus.Submitted;
         _examRepository.UpdateAttempt(attempt);
         await _examRepository.SaveChangesAsync(ct);
+        await _presenceService.RemoveAsync(attempt.Id, attempt.ExamId, ct);
 
         return BuildResult(attempt, showDetails: attempt.Exam.Setting?.ShowResultAfterSubmit ?? false);
+    }
+
+    public async Task HeartbeatAsync(int attemptId, string studentId, string? client = null, CancellationToken ct = default)
+    {
+        var attempt = await _examRepository.GetAttemptByIdAsync(attemptId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy lượt thi.");
+
+        EnsureInProgressOwnedByStudent(attempt, studentId);
+        await _presenceService.TouchAsync(attemptId, studentId, attempt.ExamId, client, ct);
     }
 
     public async Task<ExamResultDto> GetResultAsync(
@@ -145,10 +176,26 @@ public class ExamAttemptService : IExamAttemptService
             ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
 
         if (!roles.Contains("Admin") && exam.TeacherId != userId)
-            throw new UnauthorizedAccessException("Chỉ giáo viên tạo đề mới được xem lượt thi.");
+        {
+            if (!roles.Contains("Teacher"))
+                throw new UnauthorizedAccessException("Chỉ giáo viên tạo đề mới được xem lượt thi.");
+
+            await _examMonitoringService.EnsureCanMonitorExamAsync(examId, userId, roles, ct);
+        }
 
         var attempts = await _examRepository.GetAttemptsByExamIdAsync(examId, ct);
         return attempts.Select(ExamMapper.MapAttempt).ToList();
+    }
+
+    public async Task<ExamAttemptDto?> GetMyAttemptAsync(int examId, string studentId, CancellationToken ct = default)
+    {
+        var exam = await _examRepository.GetByIdAsync(examId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy đề thi.");
+
+        await EnsureStudentCanTakeExamAsync(exam, studentId, ct);
+
+        var attempt = await _examRepository.GetLatestStudentAttemptAsync(examId, studentId, ct);
+        return attempt is null ? null : ExamMapper.MapAttempt(attempt);
     }
 
     private async Task EnsureStudentCanTakeExamAsync(Exam exam, string studentId, CancellationToken ct)
@@ -196,11 +243,48 @@ public class ExamAttemptService : IExamAttemptService
         throw new UnauthorizedAccessException("Bạn không có quyền xem lượt thi này.");
     }
 
-    private static StartExamResponse BuildStartResponse(Exam exam, ExamAttempt attempt) => new()
+    private async Task NotifyLateJoinAsync(ExamAttempt attempt, Exam exam, CancellationToken ct)
+    {
+        var attemptWithStudent = await _examRepository.GetAttemptByIdAsync(attempt.Id, ct) ?? attempt;
+        attemptWithStudent.Exam = exam;
+
+        try
+        {
+            await _notificationService.CreateLateJoinNotificationAsync(attemptWithStudent, ct);
+        }
+        catch
+        {
+            // Không chặn luồng bắt đầu thi nếu gửi thông báo thất bại.
+        }
+
+        try
+        {
+            await _examMonitoringNotifier.SendLateJoinAsync(new LateJoinEventDto
+            {
+                ExamId = exam.Id,
+                AttemptId = attempt.Id,
+                StudentId = attempt.StudentId,
+                StudentName = attemptWithStudent.Student?.FullName ?? "Học sinh",
+                StartedAt = attempt.StartedAt,
+                ExamStartTime = ExamDateTimeHelper.MarkNullableAsUtc(exam.StartTime),
+                LateByMinutes = ExamJoinHelper.GetLateByMinutes(exam, attempt.StartedAt)
+            }, ct);
+        }
+        catch
+        {
+            // Không chặn luồng bắt đầu thi nếu gửi realtime thất bại.
+        }
+    }
+
+    private static StartExamResponse BuildStartResponse(Exam exam, ExamAttempt attempt, bool isNewAttempt) => new()
     {
         Attempt = ExamMapper.MapAttempt(attempt),
         DurationMinutes = exam.DurationMinutes,
-        Questions = ExamShuffleHelper.BuildAttemptQuestions(exam.Questions, exam.Setting)
+        Questions = ExamShuffleHelper.BuildAttemptQuestions(exam.Questions, exam.Setting),
+        IsLateJoin = isNewAttempt && ExamJoinHelper.IsLateJoin(exam, attempt.StartedAt),
+        RequireCamera = exam.Setting?.RequireCamera == true ||
+            exam.Setting?.EnableLiveProctoring == true ||
+            exam.Setting?.EnableCameraProctoring == true
     };
 
     private static void ValidateAnswerPayload(Question question, SaveStudentAnswerRequest request)

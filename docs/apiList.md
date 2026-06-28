@@ -56,12 +56,14 @@ Tick `- [ ]` khi endpoint **có controller + Swagger + test cơ bản**.
 | Classrooms | 8 | 8 |
 | Assignments | 8 | 8 |
 | Exams | 11 | 11 |
+| Question Banks | 11 | 11 |
+| Exam Matrices | 8 | 8 |
 | Exam Attempts | 6 | 6 |
 | Anti-cheat | 4 | 4 |
 | Notifications | 3 | 0 |
 | Dashboard | 3 | 0 |
 | SignalR Hubs | 2 | 2 |
-| **Tổng** | **57** | **46** |
+| **Tổng** | **76** | **65** |
 
 ---
 
@@ -225,6 +227,60 @@ Tick `- [ ]` khi endpoint **có controller + Swagger + test cơ bản**.
 
 ---
 
+## 6A. Question Banks
+
+| ID | Method | Path | Auth | Role | MVP | Feature | Mô tả |
+|----|--------|------|------|------|-----|---------|-------|
+| API-QBK-01 | GET | `/api/question-banks` | Bearer | Teacher/Admin | ✓ | F-EXM-22 | Danh sách ngân hàng câu hỏi |
+| API-QBK-02 | POST | `/api/question-banks` | Bearer | Teacher | ✓ | F-EXM-22 | Tạo ngân hàng câu hỏi |
+| API-QBK-03 | GET | `/api/question-banks/{id}` | Bearer | Teacher/Admin | ✓ | F-EXM-22 | Chi tiết ngân hàng câu hỏi |
+| API-QBK-04 | PUT | `/api/question-banks/{id}` | Bearer | Teacher | ✓ | F-EXM-22 | Sửa ngân hàng câu hỏi |
+| API-QBK-05 | DELETE | `/api/question-banks/{id}` | Bearer | Teacher | ✓ | F-EXM-22 | Xóa ngân hàng câu hỏi |
+| API-QBK-06 | GET | `/api/question-banks/{bankId}/questions` | Bearer | Teacher/Admin | ✓ | F-EXM-22 | Danh sách câu hỏi trong ngân hàng |
+| API-QBK-07 | POST | `/api/question-banks/{bankId}/questions` | Bearer | Teacher | ✓ | F-EXM-22 | Thêm câu hỏi vào ngân hàng |
+| API-QBK-08 | PUT | `/api/bank-questions/{id}` | Bearer | Teacher | ✓ | F-EXM-22 | Cập nhật câu hỏi ngân hàng theo version |
+| API-QBK-09 | POST | `/api/bank-questions/{id}/archive` | Bearer | Teacher | ✓ | F-EXM-22 | Lưu trữ câu hỏi ngân hàng |
+| API-QBK-10 | POST | `/api/question-banks/{bankId}/questions/import` | Bearer | Teacher | ✓ | F-EXM-22 | Import câu hỏi vào ngân hàng |
+| API-QBK-11 | POST | `/api/exams/{examId}/bank-questions` | Bearer | Teacher | ✓ | F-EXM-22 | Snapshot câu hỏi ngân hàng vào đề hiện có |
+
+- [x] API-QBK-01 List question banks
+- [x] API-QBK-02 Create question bank
+- [x] API-QBK-03 Get question bank
+- [x] API-QBK-04 Update question bank
+- [x] API-QBK-05 Delete question bank
+- [x] API-QBK-06 List bank questions
+- [x] API-QBK-07 Create bank question
+- [x] API-QBK-08 Update bank question version
+- [x] API-QBK-09 Archive bank question
+- [x] API-QBK-10 Import bank questions
+- [x] API-QBK-11 Snapshot bank questions into exam
+
+---
+
+## 6B. Exam Matrices
+
+| ID | Method | Path | Auth | Role | MVP | Feature | Mô tả |
+|----|--------|------|------|------|-----|---------|-------|
+| API-MTX-01 | GET | `/api/exam-matrices` | Bearer | Teacher/Admin | ✓ | F-EXM-23 | Danh sách ma trận đề |
+| API-MTX-02 | POST | `/api/exam-matrices` | Bearer | Teacher | ✓ | F-EXM-23 | Tạo ma trận đề |
+| API-MTX-03 | GET | `/api/exam-matrices/{id}` | Bearer | Teacher/Admin | ✓ | F-EXM-23 | Chi tiết ma trận đề |
+| API-MTX-04 | PUT | `/api/exam-matrices/{id}` | Bearer | Teacher | ✓ | F-EXM-23 | Sửa ma trận đề |
+| API-MTX-05 | DELETE | `/api/exam-matrices/{id}` | Bearer | Teacher | ✓ | F-EXM-23 | Xóa ma trận đề |
+| API-MTX-06 | POST | `/api/exam-matrices/{id}/validate?questionBankId={questionBankId}` | Bearer | Teacher | ✓ | F-EXM-23 | Kiểm tra đủ câu hỏi trước khi tạo đề |
+| API-MTX-07 | POST | `/api/exam-matrices/{id}/generate-preview?questionBankId={questionBankId}` | Bearer | Teacher | ✓ | F-EXM-23 | Xem trước bộ câu hỏi được chọn |
+| API-MTX-08 | POST | `/api/exam-matrices/{id}/create-exam` | Bearer | Teacher | ✓ | F-EXM-23 | Tạo đề thi và snapshot câu hỏi trong transaction |
+
+- [x] API-MTX-01 List exam matrices
+- [x] API-MTX-02 Create exam matrix
+- [x] API-MTX-03 Get exam matrix
+- [x] API-MTX-04 Update exam matrix
+- [x] API-MTX-05 Delete exam matrix
+- [x] API-MTX-06 Validate matrix availability
+- [x] API-MTX-07 Generate matrix preview
+- [x] API-MTX-08 Create exam from matrix
+
+---
+
 ## 7. Exam Attempts (làm bài online)
 
 | ID | Method | Path | Auth | Role | MVP | Feature | Mô tả |
@@ -321,6 +377,7 @@ Không phải REST — kết nối WebSocket qua `@microsoft/signalr`.
 | API-PRO-02 | GET | `/api/exams/{examId}/proctoring/room` | Bearer | Teacher, Admin | ✓ | Teacher control room summary |
 | API-PRO-03 | GET | `/api/exams/{examId}/proctoring/states` | Bearer | Teacher, Admin | ✓ | Student tile states |
 | API-PRO-04 | GET | `/api/attempts/{attemptId}/proctoring/detail` | Bearer | Teacher, Admin, Student | ✓ | Attempt detail + evidence |
+| API-PRO-04b | GET | `/api/proctoring/evidence` | Bearer | Teacher, Admin | ✓ | Paginated evidence gallery (filter by exam, type, search) |
 | API-PRO-05 | POST | `/api/attempts/{attemptId}/proctoring/evidence` | Bearer | Teacher, Admin | ✓ | Upload snapshot/clip |
 | API-PRO-06 | POST | `/api/attempts/{attemptId}/proctoring/detect` | Bearer | Teacher, Admin, Student | | YOLO proxy |
 | API-PRO-07 | GET/PUT | `/api/admin/proctoring/ai-settings` | Bearer | Admin | | AI thresholds |
@@ -342,6 +399,8 @@ Lobby + student heartbeat + live watch + pause/resume/warn/terminate + co-procto
 | `ClassroomsController` | `/api/classrooms` | CLS (8/8) | ✓ |
 | `AssignmentsController` | `/api/assignments`, nested classroom | ASG (8/8) | ✓ |
 | `ExamsController` | `/api/exams`, nested classroom | EXM (11/11) | ✓ |
+| `QuestionBanksController` | `/api/question-banks`, `/api/bank-questions`, `/api/exams/{id}/bank-questions` | QBK (11/11) | ✓ |
+| `ExamMatricesController` | `/api/exam-matrices` | MTX (8/8) | ✓ |
 | `ExamAttemptsController` | `/api/attempts`, `/api/exams/{id}/start` | ATT (6/6) | ✓ |
 | `AntiCheatController` | `/api/anti-cheat` | AC (4/4) | ✓ |
 | `ProctoringController` | `/api/proctoring`, `/api/exams/*/proctoring`, `/api/attempts/*/proctoring` | PRO | ✓ |
@@ -356,8 +415,8 @@ Lobby + student heartbeat + live watch + pause/resume/warn/terminate + co-procto
 
 | Trạng thái | Số lượng |
 |------------|----------|
-| Tổng REST + Hub | 57 |
-| Đã tick `[x]` | 46 |
+| Tổng REST + Hub | 76 |
+| Đã tick `[x]` | 65 |
 | Còn lại | 11 |
 
 *Backend: Auth + Classroom + Assignment + Exam + Attempt + Anti-cheat REST + SignalR hubs (Phase 2–8). Frontend auth/classroom/exam/attempt/anti-cheat realtime đã nối API thật ở các màn hiện có; user/profile/dashboard vẫn còn mock ở những phần BE chưa cung cấp endpoint.*

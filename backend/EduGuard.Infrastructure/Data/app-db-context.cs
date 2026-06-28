@@ -22,15 +22,23 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ExamSetting> ExamSettings => Set<ExamSetting>();
     public DbSet<Question> Questions => Set<Question>();
     public DbSet<Answer> Answers => Set<Answer>();
+    public DbSet<QuestionBank> QuestionBanks => Set<QuestionBank>();
+    public DbSet<BankQuestion> BankQuestions => Set<BankQuestion>();
+    public DbSet<BankAnswer> BankAnswers => Set<BankAnswer>();
+    public DbSet<ExamMatrix> ExamMatrices => Set<ExamMatrix>();
+    public DbSet<ExamMatrixItem> ExamMatrixItems => Set<ExamMatrixItem>();
     public DbSet<ExamAttempt> ExamAttempts => Set<ExamAttempt>();
     public DbSet<StudentAnswer> StudentAnswers => Set<StudentAnswer>();
     public DbSet<CheatingLog> CheatingLogs => Set<CheatingLog>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<LiveProctoringSession> LiveProctoringSessions => Set<LiveProctoringSession>();
     public DbSet<ProctoringEvidence> ProctoringEvidences => Set<ProctoringEvidence>();
     public DbSet<ProctoringState> ProctoringStates => Set<ProctoringState>();
     public DbSet<ProctorAction> ProctorActions => Set<ProctorAction>();
     public DbSet<ExamProctorAssignment> ExamProctorAssignments => Set<ExamProctorAssignment>();
     public DbSet<ProctoringAiSettings> ProctoringAiSettings => Set<ProctoringAiSettings>();
+    public DbSet<EmailSettings> EmailSettings => Set<EmailSettings>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
